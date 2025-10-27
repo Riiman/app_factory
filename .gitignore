@@ -1,0 +1,449 @@
+# ============================================================================
+# TURNING IDEAS APP FACTORY - GITIGNORE
+# ============================================================================
+
+# ============================================================================
+# ENVIRONMENT & SECRETS
+# ============================================================================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+*.env
+.envrc
+
+# API Keys and Secrets
+secrets/
+*.key
+*.pem
+*.cert
+*.crt
+
+# ============================================================================
+# PYTHON / FLASK BACKEND
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+virtualenv/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Flask stuff
+instance/
+.webassets-cache
+*.log
+
+# Scrapy stuff
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ============================================================================
+# REACT / NODE FRONTEND
+# ============================================================================
+
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+package-lock.json
+yarn.lock
+
+# Testing
+/coverage
+
+# Production build
+/build
+/dist
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+out
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# ============================================================================
+# DATABASE FILES
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+turning_ideas.db
+instance/*.db
+migrations/versions/*.pyc
+
+# Generated documents
+generated_documents/
+documents/
+submissions/
+progress_tracking/
+
+# Uploaded files
+uploads/
+temp/
+tmp/
+
+# ============================================================================
+# IDE & EDITOR
+# ============================================================================
+
+# VSCode
+.vscode/
+*.code-workspace
+.history/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# NetBeans
+nbproject/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# IntelliJ
+*.iml
+.idea/
+
+# ============================================================================
+# OPERATING SYSTEM
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# LOGS & TEMPORARY FILES
+# ============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ============================================================================
+# BACKUP & ARCHIVE FILES
+# ============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*.temp
+*.tmp
+*-backup
+*-old
+backup/
+backups/
+
+# Compressed files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.dmg
+
+# ============================================================================
+# DOCKER (if using)
+# ============================================================================
+docker-compose.override.yml
+.dockerignore
+
+# ============================================================================
+# MISCELLANEOUS
+# ============================================================================
+
+# Thumbnails
+*.thumb
+
+# Files that might appear in the root
+.cache
+.tmp
+.sass-cache
+
+# Documentation builds
+_site/
+.jekyll-cache/
+.jekyll-metadata
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Local configuration
+local_settings.py
+local_config.py
+
+# Test output
+test-results/
+test_output/
+
+# Project specific generated files
+*.generated.*
+.generated/
+
+# AI/ML model files (if storing locally)
+*.h5
+*.pkl
+*.joblib
+*.model
+models/
+
+# Large data files
+data/
+datasets/
+*.csv
+*.json.bak
+
+# Keep important empty directories with .gitkeep
+!.gitkeep
+
+# ============================================================================
+# SECURITY & SENSITIVE DATA
+# ============================================================================
+
+# Never commit these
+*secret*
+*token*
+*password*
+*api_key*
+*apikey*
+*credentials*
+*private_key*
+
+# Exclude but keep structure
+generated_documents/*
+!generated_documents/.gitkeep
+
+submissions/*
+!submissions/.gitkeep
+
+progress_tracking/*
+!progress_tracking/.gitkeep
+
+uploads/*
+!uploads/.gitkeep

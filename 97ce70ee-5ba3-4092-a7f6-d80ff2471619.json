@@ -1,0 +1,113 @@
+{
+  "submission_id": "97ce70ee-5ba3-4092-a7f6-d80ff2471619",
+  "created_at": "2025-10-27T14:59:19.908414",
+  "stages": {
+    "1": {
+      "data": {
+        "startupName": "VentureXit",
+        "websiteUrl": "www.venturexit.in",
+        "foundingYear": "2025",
+        "currentStage": "MVP",
+        "numberOfFounders": "3",
+        "teamMembers": "6",
+        "headquarters": "Noida India",
+        "founderLinkedIn": " linkedin.com/in/ashishmittalturningideas",
+        "companyOverview": " VentureXit is an AI-driven digital marketplace that enables startups and SMEs in India to sell their businesses online and helps other startups, enterprises, and investors discover, acquire, or merge with them efficiently. Inspired by global models like Acquire.com, VentureXit tailors the startup exit and acquisition process for India\u2019s fragmented ecosystem. The platform brings transparency to startup exits by automating valuation, due diligence, and deal flow matching. It connects verified sellers with qualified buyers\u2014ranging from corporates seeking strategic acquisitions to micro-PE investors looking for profitable opportunities. VentureXit is incubated by TurningIdeas Ventures, aligning with its mission of accelerating founder journeys from idea to exit. The platform will evolve into India\u2019s most trusted marketplace for startup M&A, providing data-driven insights, valuation tools, and access to legal and financial partners in one place."
+      },
+      "completed_at": "2025-10-27T14:59:19.908428"
+    },
+    "2": {
+      "data": {
+        "problemStatement": "India has thousands of startups and small businesses that shut down due to lack of scale, liquidity, or investor access \u2014 despite having valuable assets like technology, brand, or customers. Currently, there is no structured, transparent, or efficient marketplace for startup acquisitions in India.",
+        "targetAudience": "Founders of early-stage startups, bootstrapped businesses, angel investors, and SMEs seeking exits. Also, acquirers like corporates, startup studios, and micro-PEs struggle to discover viable acquisition targets.",
+        "currentSolutions": "Platforms like Smergers, IndiaBizForSale, and Planify exist but focus broadly on business sales \u2014 not startup-specific, tech-enabled, or automated acquisition processes.",
+        "valueProposition": "VentureXit combines AI-driven valuation, verified deal flow, and end-to-end digital acquisition tools (NDA, due diligence, escrow) to simplify startup exits.",
+        "coreInnovation": "Automated valuation engine + smart matching algorithm that pairs startups and buyers based on metrics like ARR, industry, geography, and growth potential.",
+        "timing": "With 100K+ active startups and rising consolidation in SaaS, D2C, and tech sectors, India needs a formal digital exit marketplace \u2014 similar to how AngelList revolutionized fundraising."
+      },
+      "completed_at": "2025-10-27T15:01:10.202369"
+    },
+    "3": {
+      "data": {
+        "productDescription": "A secure online marketplace enabling founders to list their startups for acquisition and allowing buyers to discover, evaluate, and acquire them digitally.",
+        "productType": "SaaS-based hybrid platform with AI automation for valuation and matchmaking.",
+        "technologiesUsed": "Frontend: React/Next.js\nBackend: Node.js (FastAPI microservices)\nDatabase: PostgreSQL & MongoDB\nInfrastructure: AWS / GCP\nAI Layer: Python-based ML models for valuation and buyer-seller matching\nIntegrations: e-signature (DocuSign), escrow (RazorpayX), and analytics dashboards\n",
+        "developmentStage": "MVP",
+        "technicalComponents": "Frontend: React/Next.js\nBackend: Node.js (FastAPI microservices)\nDatabase: PostgreSQL & MongoDB\nInfrastructure: AWS / GCP\nAI Layer: Python-based ML models for valuation and buyer-seller matching\nIntegrations: e-signature (DocuSign), escrow (RazorpayX), and analytics dashboards\n",
+        "mvpLink": "No",
+        "techStack": "Frontend: React/Next.js\nBackend: Node.js (FastAPI microservices)\nDatabase: PostgreSQL & MongoDB\nInfrastructure: AWS / GCP\nAI Layer: Python-based ML models for valuation and buyer-seller matching\nIntegrations: e-signature (DocuSign), escrow (RazorpayX), and analytics dashboards\n",
+        "aiMlComponents": "Auto-valuation model based on financials, industry benchmarks, and funding data\nML-driven buyer recommendations\nDocument redaction and privacy scoring engine",
+        "technicalGoals": "Launch beta with 100 verified startup listings\nIntegrate escrow and NDA modules",
+        "technicalChallenges": "Standardizing startup valuation data.\nBuilding trust and liquidity among early adopters."
+      },
+      "completed_at": "2025-10-27T15:04:14.816481"
+    },
+    "4": {
+      "data": {
+        "targetMarket": "Startups (Tech, SaaS, D2C), SMEs, angel investors, micro-PE funds, and corporate innovation teams.",
+        "marketSize": "TAM: ~$15B (Indian SME M&A + startup secondary exits)\nSAM: ~$2B (Tech & startup acquisitions below $10M valuation)\nSOM: ~$100M (Initial focus on early-stage exits in India)",
+        "customerReach": "Partnerships with incubators & startup accelerators\nFounder exit advisory webinars\nTargeted LinkedIn outreach to micro-PEs, corporates, and VCs\nCommunity-driven approach via \u201cFounders to Founders\u201d exit groups",
+        "competitors": "Smergers\nIndiaBizForSale\nPlanify",
+        "differentiation": "Startup-specific automation (valuation + due diligence)\nCurated & verified deal flow\nEscrow-based trust mechanism",
+        "barriers": "Trust, regulatory compliance, and transaction liquidity.",
+        "earlyAdopters": "TurningIdeas portfolio startups and SME founders in Tier-1 and Tier-2 cities."
+      },
+      "completed_at": "2025-10-27T15:06:13.226425"
+    },
+    "5": {
+      "data": {
+        "businessModel": "B2B",
+        "currentRevenue": "Listing fees for sellers (freemium \u2192 paid premium visibility)\nSuccess fee (2\u20135%) on closed transactions\nSubscription plans for investors/buyers\nAdd-on services (valuation, due diligence, legal)",
+        "revenueStreams": "Free basic listing\n\u20b910K\u2013\u20b950K premium visibility plans\n2\u20135% success fee",
+        "pricingStrategy": "Fremium model",
+        "willingnessToPay": " Positive response from TurningIdeas startup founders & small D2C brand owners.",
+        "cac": " Target CAC \u20b93K\u2013\u20b95K",
+        "ltv": "Estimated LTV \u20b950K\u2013\u20b975K",
+        "revenueScale": "Expand listings to 500+ startups and onboard 100+ active buyers within 12 months."
+      },
+      "completed_at": "2025-10-27T15:08:27.518818"
+    },
+    "6": {
+      "data": {
+        "activeUsers": "0",
+        "keyMetrics": "Monthly Active Buyers/Sellers\nConversion Rate (Listings \u2192 Deals)\nTime-to-Deal (in days)\nAverage Deal Value",
+        "fundingRaised": "Bootstrapped by founders; exploring seed support via TurningIdeas Ventures.",
+        "acceleratorExperience": "Applying to TurningIdeas Incubation Cohort 2026.",
+        "milestones": "Requirement document & MVP spec completed (Q4 2025)\nPlatform prototype demo (Q2 2026)\n100 live listings & 10 closed deals (Q4 2026)\n",
+        "nextMilestones": "Launch AI valuation engine\nBuild strategic partnerships with legal and M&A advisors\n"
+      },
+      "completed_at": "2025-10-27T15:10:40.625522"
+    },
+    "7": {
+      "data": {
+        "founderBackground": "ers:\nAshish Mittal (CEO): 25 years in IT, startup mentoring, GTM & growth strategy (ex-Google, Microsoft).\nCo-founder \u2013 Product & Tech: TBD (Full-stack development & AI expertise).\nCo-founder \u2013 Ops & Partnerships: TBD (M&A and business development).",
+        "teamRoles": "Product: Tech lead + 2 developers\nMarketing: 1 digital growth specialist\nOperations: 1 analyst + 1 community manager",
+        "priorExperience": "yes",
+        "skillGaps": "Advanced AI engineering & UX design.",
+        "lookingFor": " Technical co-founder, design partner, and M&A advisor."
+      },
+      "completed_at": "2025-10-27T15:11:53.055381"
+    },
+    "8": {
+      "data": {
+        "supportTypes": [
+          "Technical Development (MVP, Architecture, Scaling)",
+          "Product Design and UI/UX",
+          "Business Strategy and GTM Planning",
+          "Fundraising and Investor Connections",
+          "Mentorship and Advisory",
+          "Hiring Support"
+        ],
+        "technicalSupport": "AWS/GCP credits and developer resources.",
+        "validationSupport": "Yes, with TurningIdeas startup portfolio.",
+        "shortTermGoals": "Launch MVP, onboard 50 startups, initiate 5 pilot acquisitions.",
+        "expectedOutcomes": "Live platform with verified deal flow\nInvestor & startup acquisition partnerships\nSeed funding readiness within 9\u201312 months"
+      },
+      "completed_at": "2025-10-27T15:13:11.640490"
+    }
+  },
+  "updated_at": "2025-10-27T15:13:11.640498",
+  "current_stage": 8,
+  "status": "completed",
+  "completed_at": "2025-10-27T15:13:11.647729"
+}
