@@ -239,25 +239,40 @@
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .form-container {
-    padding: 2rem 1.5rem;
-  }
+/* Loading State */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 2rem;
+}
 
-  .form-header h1 {
-    font-size: 2rem;
-  }
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
 
-  .form-container h2 {
-    font-size: 1.5rem;
-  }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
-  .form-navigation {
-    flex-direction: column;
-  }
+.loading-container p {
+  color: #718096;
+  font-size: 1.1rem;
+}
 
-  .nav-btn {
-    width: 100%;
-  }
+/* Form Errors Summary */
+.form-errors {
+  background: #fff5f5;
+  border: 1px solid #fc8181;
+  border-radius: 8px;
+  padding:2rem
 }

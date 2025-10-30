@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
+import { api, setAuthToken } from '../services/api';
+import { TOKEN_KEY } from '../config/config'; 
 
 const AuthContext = createContext(null);
 
@@ -7,12 +9,21 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [startup, setStartup] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('access_token'));
+  const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY));
 
   // Set axios default header
-  useEffect(() => {
+  // useEffect(() => {
+  //   if (token) {
+  //     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  //     fetchCurrentUser();
+  //   } else {
+  //     setLoading(false);
+  //   }
+  // }, [token]);
+
+    useEffect(() => {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setAuthToken(token);  // Use setAuthToken from api.js
       fetchCurrentUser();
     } else {
       setLoading(false);
@@ -21,7 +32,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/me');
+      const response = await api.get('/me');
       if (response.data.success) {
         setUser(response.data.user);
         setStartup(response.data.startup);
@@ -36,31 +47,38 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/login', {
-        email,
-        password
-      });
-
+      console.log("Running Login in Auth Context")
+      const response = await api.post('/login', { email, password });
+      console.log('�� Login response received:', response.data);
       if (response.data.success) {
-        const { access_token, user, startup } = response.data;
-        localStorage.setItem('access_token', access_token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-        setToken(access_token);
+        const { token, user, startup } = response.data;
+        console.log('�� Access token from response:', token);
+        console.log('�� User from response:', user);
+        console.log('�� Startup from response:', startup);
+        localStorage.setItem(TOKEN_KEY, token);
+        // localStorage.setItem('USER_KEY', JSON.stringify(user));
+        setAuthToken(token);
+        // axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setToken(token);
         setUser(user);
         setStartup(startup);
-        return { success: true };
+        return { success: true, startup }; // Return startup object on success
       }
+      // This part is unlikely to be hit if backend always returns success: false on error
+      return { success: false, error: 'Login failed' };
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data?.error || 'Login failed'
+        error: error.response?.data?.error || 'Login failed',
+        code: error.response?.data?.code, // Pass the code back
+        reason: error.response?.data?.reason
       };
     }
   };
 
   const signup = async (userData) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/signup', userData);
+      const response = await api.post('/signup', userData);
       return {
         success: response.data.success,
         message: response.data.message
@@ -74,8 +92,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
+    localStorage.removeItem('TOKEN_KEY');
     delete axios.defaults.headers.common['Authorization'];
+    setAuthToken(null);
     setToken(null);
     setUser(null);
     setStartup(null);

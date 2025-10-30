@@ -352,7 +352,6 @@ pids
 *.orig
 *.save
 *.temp
-*.tmp
 *-backup
 *-old
 backup/

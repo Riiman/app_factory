@@ -1,257 +1,467 @@
+import openai
 import os
-import json
-from openai import AzureOpenAI
 from datetime import datetime
-from typing import Dict, Any
+from docx import Document
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from config import Config
 
-class IncubatorGuideGenerator:
+openai.api_key = Config.OPENAI_API_KEY
+
+
+class DocumentGenerator:
+
     """
-    Generates comprehensive incubator guide documents using Azure OpenAI.
-    Uses multi-stage approach for detailed, structured output.
+    Service for generating AI-powered business documents
     """
     
-    def __init__(self, api_key: str, endpoint: str, deployment_name: str, api_version: str = "2024-08-01-preview"):
-        """
-        Initialize Azure OpenAI client.
-        
-        Args:
-            api_key: Azure OpenAI API key
-            endpoint: Azure OpenAI endpoint URL
-            deployment_name: Name of the deployed model
-            api_version: API version to use
-        """
-        self.client = AzureOpenAI(
-            api_key=api_key,
-            api_version=api_version,
-            azure_endpoint=endpoint
-        )
-        self.deployment_name = deployment_name
+    def __init__(self):
+        self.upload_folder = Config.UPLOAD_FOLDER
+        os.makedirs(self.upload_folder, exist_ok=True)
     
-    def safe_get(self, data: Dict, *keys, default: str = "Not specified"):
-        """Safely get nested dictionary values with a default."""
+    def generate_document(self, document_type, submission_data, custom_prompt=''):
+        """
+        Generate a document based on type and submission data
+        """
         try:
-            for key in keys:
-                data = data[key]
-            return data if data else default
-        except (KeyError, TypeError):
-            return default
+            if document_type == 'pitch_deck':
+                return self._generate_pitch_deck(submission_data, custom_prompt)
+            elif document_type == 'business_plan':
+                return self._generate_business_plan(submission_data, custom_prompt)
+            elif document_type == 'financial_model':
+                return self._generate_financial_model(submission_data, custom_prompt)
+            elif document_type == 'executive_summary':
+                return self._generate_executive_summary(submission_data, custom_prompt)
+            else:
+                return {'success': False, 'error': 'Invalid document type'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
-    def generate_founder_specs(self, startup_data: Dict[str, Any]) -> str:
-        """Stage 1: Generate detailed founder specifications and team analysis."""
-        stage_1 = self.safe_get(startup_data, 'stages', '1', 'data', default={})
-        stage_7 = self.safe_get(startup_data, 'stages', '7', 'data', default={})
-        stage_8 = self.safe_get(startup_data, 'stages', '8', 'data', default={})
-        
-        prompt = f"""You are an expert startup analyst for an incubator program. Analyze the following founder and startup information to create a comprehensive FOUNDER SPECS section for an incubator guide.
-
-STARTUP INFORMATION:
-- Name: {stage_1.get('startupName', 'N/A')}
-- Founded: {stage_1.get('foundingYear', 'N/A')}
-- Current Stage: {stage_1.get('currentStage', 'N/A')}
-- Team Size: {stage_1.get('numberOfFounders', 'N/A')} founders, {stage_1.get('teamMembers', 'N/A')} total members
-- Location: {stage_1.get('headquarters', 'N/A')}
-
-FOUNDER BACKGROUND:
-{stage_7.get('founderBackground', 'Not provided')}
-
-TEAM COMPOSITION:
-{stage_7.get('teamRoles', 'Not provided')}
-
-PRIOR EXPERIENCE:
-{stage_7.get('priorExperience', 'Not provided')}
-
-SKILL GAPS:
-{stage_7.get('skillGaps', 'Not provided')}
-
-LOOKING FOR:
-{stage_7.get('lookingFor', 'Not provided')}
-
-SUPPORT NEEDS:
-{', '.join(stage_8.get('supportTypes', []))}
-
-COMPANY OVERVIEW:
-{stage_1.get('companyOverview', 'Not provided')}
-
-Generate a detailed FOUNDER SPECS section that includes:
-1. **Founder Profile & Background**
-2. **Team Composition & Roles**
-3. **Capability Gaps & Hiring Needs**
-4. **Support Requirements from Incubator**
-5. **Founder Development Plan**
-
-Make the analysis actionable, specific, and directly tied to building the MVP and launching successfully."""
-
-        response = self.client.chat.completions.create(
-            model=self.deployment_name,
-            messages=[
-                {"role": "system", "content": "You are an expert startup analyst and incubator advisor with deep experience in evaluating founding teams and structuring support programs."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=2500
-        )
-        
-        return response.choices[0].message.content
+    def _generate_ai_content(self, prompt, max_tokens=2000):
+        """
+        Generate content using OpenAI API
+        """
+        try:
+            response = openai.ChatCompletion.create(
+                model=Config.OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are an expert business consultant and document writer specializing in startup pitch decks, business plans, and financial models."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+            
+            return {
+                'success': True,
+                'content': response.choices[0].message.content,
+                'tokens': response.usage.total_tokens
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
-    def generate_product_scope(self, startup_data: Dict[str, Any]) -> str:
-        """Stage 2: Generate detailed MVP product scope and technical specifications."""
-        stage_2 = self.safe_get(startup_data, 'stages', '2', 'data', default={})
-        stage_3 = self.safe_get(startup_data, 'stages', '3', 'data', default={})
-        
-        prompt = f"""You are a senior product architect and technical lead for an incubator program. Create a detailed PRODUCT SCOPE document for MVP development.
-
-PROBLEM & SOLUTION:
-- Problem Statement: {stage_2.get('problemStatement', 'N/A')}
-- Target Audience: {stage_2.get('targetAudience', 'N/A')}
-- Value Proposition: {stage_2.get('valueProposition', 'N/A')}
-- Core Innovation: {stage_2.get('coreInnovation', 'N/A')}
-
-PRODUCT DETAILS:
-- Description: {stage_3.get('productDescription', 'N/A')}
-- Product Type: {stage_3.get('productType', 'N/A')}
-- Development Stage: {stage_3.get('developmentStage', 'N/A')}
-
-TECH STACK:
-{stage_3.get('techStack', 'Not provided')}
-
-AI/ML COMPONENTS:
-{stage_3.get('aiMlComponents', 'Not provided')}
-
-TECHNICAL GOALS:
-{stage_3.get('technicalGoals', 'Not provided')}
-
-TECHNICAL CHALLENGES:
-{stage_3.get('technicalChallenges', 'Not provided')}
-
-Generate a comprehensive PRODUCT SCOPE section with:
-1. **MVP Vision & Objectives**
-2. **Core Features Specification**
-3. **Technical Architecture**
-4. **AI/ML Implementation Roadmap**
-5. **Development Phases & Timeline**
-6. **Technical Risk Mitigation**
-7. **Resource Requirements**"""
-
-        response = self.client.chat.completions.create(
-            model=self.deployment_name,
-            messages=[
-                {"role": "system", "content": "You are a senior product architect and technical lead specializing in MVP development for startups."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=3500
-        )
-        
-        return response.choices[0].message.content
+    def _generate_pitch_deck(self, submission_data, custom_prompt):
+        """
+        Generate a pitch deck document
+        """
+        try:
+            startup_name = submission_data.get('startupName', 'Startup')
+            
+            # Generate AI content for each slide
+            prompt = f"""
+            Create a comprehensive pitch deck content for the following startup:
+            
+            Startup Name: {startup_name}
+            Industry: {submission_data.get('industry', 'N/A')}
+            Stage: {submission_data.get('stage', 'N/A')}
+            Description: {submission_data.get('description', 'N/A')}
+            Problem: {submission_data.get('problemStatement', 'N/A')}
+            Solution: {submission_data.get('solution', 'N/A')}
+            Target Market: {submission_data.get('targetMarket', 'N/A')}
+            Business Model: {submission_data.get('businessModel', 'N/A')}
+            Competition: {submission_data.get('competition', 'N/A')}
+            Team Size: {submission_data.get('teamSize', 'N/A')}
+            Funding Required: ${submission_data.get('fundingRequired', 0)}
+            
+            {custom_prompt}
+            
+            Generate content for the following slides:
+            1. Title Slide
+            2. Problem Statement
+            3. Solution
+            4. Market Opportunity
+            5. Business Model
+            6. Competition & Competitive Advantage
+            7. Go-to-Market Strategy
+            8. Financial Projections
+            9. Team
+            10. Ask & Use of Funds
+            
+            Format each slide with a clear heading and bullet points.
+            """
+            
+            ai_result = self._generate_ai_content(prompt, max_tokens=3000)
+            
+            if not ai_result['success']:
+                return ai_result
+            
+            # Create Word document
+            doc = Document()
+            
+            # Title
+            title = doc.add_heading(f'{startup_name} - Pitch Deck', 0)
+            title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # Add generated content
+            content_lines = ai_result['content'].split('\n')
+            for line in content_lines:
+                if line.strip():
+                    if line.startswith('#') or line.endswith(':'):
+                        doc.add_heading(line.strip('#').strip(':').strip(), level=1)
+                    elif line.startswith('-') or line.startswith('•'):
+                        doc.add_paragraph(line.strip('-').strip('•').strip(), style='List Bullet')
+                    else:
+                        doc.add_paragraph(line.strip())
+            
+            # Add footer
+            doc.add_paragraph()
+            footer = doc.add_paragraph(f'Generated on {datetime.now().strftime("%B %d, %Y")}')
+            footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # Save document
+            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            filename = f'{startup_name.replace(" ", "_")}_PitchDeck_{timestamp}.docx'
+            filepath = os.path.join(self.upload_folder, filename)
+            doc.save(filepath)
+            
+            file_size = os.path.getsize(filepath)
+            
+            return {
+                'success': True,
+                'title': f'{startup_name} - Pitch Deck',
+                'file_name': filename,
+                'file_path': filepath,
+                'file_size': file_size,
+                'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'tokens': ai_result['tokens']
+            }
+            
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
-    def generate_gtm_strategy(self, startup_data: Dict[str, Any]) -> str:
-        """Stage 3: Generate detailed Go-To-Market strategy."""
-        stage_4 = self.safe_get(startup_data, 'stages', '4', 'data', default={})
-        stage_5 = self.safe_get(startup_data, 'stages', '5', 'data', default={})
-        
-        prompt = f"""You are a seasoned GTM strategist and growth advisor for early-stage startups. Create a comprehensive, actionable GO-TO-MARKET STRATEGY.
-
-TARGET MARKET:
-- Target Market: {stage_4.get('targetMarket', 'N/A')}
-- Market Size: {stage_4.get('marketSize', 'N/A')}
-- Early Adopters: {stage_4.get('earlyAdopters', 'N/A')}
-
-COMPETITIVE LANDSCAPE:
-- Competitors: {stage_4.get('competitors', 'N/A')}
-- Differentiation: {stage_4.get('differentiation', 'N/A')}
-
-BUSINESS MODEL:
-- Model Type: {stage_5.get('businessModel', 'N/A')}
-- Revenue Streams: {stage_5.get('revenueStreams', 'N/A')}
-- Pricing Strategy: {stage_5.get('pricingStrategy', 'N/A')}
-
-Generate a detailed, executable GTM STRATEGY with:
-1. **Market Entry Strategy**
-2. **Customer Acquisition Strategy (0-6 Months)**
-3. **Positioning & Messaging Framework**
-4. **Launch Roadmap**
-5. **Growth Tactics & Experiments**
-6. **Partnerships & Ecosystem Strategy**
-7. **Budget Breakdown & Resource Allocation**
-8. **Metrics & Success Framework**
-9. **Risk Mitigation & Contingencies**"""
-
-        response = self.client.chat.completions.create(
-            model=self.deployment_name,
-            messages=[
-                {"role": "system", "content": "You are an expert GTM strategist specializing in early-stage startup launches."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=4000
-        )
-        
-        return response.choices[0].message.content
+    def _generate_business_plan(self, submission_data, custom_prompt):
+        """
+        Generate a comprehensive business plan
+        """
+        try:
+            startup_name = submission_data.get('startupName', 'Startup')
+            
+            prompt = f"""
+            Create a detailed business plan for the following startup:
+            
+            Startup Name: {startup_name}
+            Industry: {submission_data.get('industry', 'N/A')}
+            Stage: {submission_data.get('stage', 'N/A')}
+            Description: {submission_data.get('description', 'N/A')}
+            Problem: {submission_data.get('problemStatement', 'N/A')}
+            Solution: {submission_data.get('solution', 'N/A')}
+            Target Market: {submission_data.get('targetMarket', 'N/A')}
+            Market Size: {submission_data.get('marketSize', 'N/A')}
+            Business Model: {submission_data.get('businessModel', 'N/A')}
+            Revenue Streams: {submission_data.get('revenueStreams', 'N/A')}
+            Competition: {submission_data.get('competition', 'N/A')}
+            Competitive Advantage: {submission_data.get('competitiveAdvantage', 'N/A')}
+            Team: {submission_data.get('teamDescription', 'N/A')}
+            Current Traction: {submission_data.get('currentTraction', 'N/A')}
+            Funding Required: ${submission_data.get('fundingRequired', 0)}
+            Current Revenue: ${submission_data.get('currentRevenue', 0)}
+            
+            {custom_prompt}
+            
+            Generate a comprehensive business plan with the following sections:
+            1. Executive Summary
+            2. Company Description
+            3. Market Analysis
+            4. Organization and Management
+            5. Service or Product Line
+            6. Marketing and Sales Strategy
+            7. Financial Projections
+            8. Funding Requirements
+            9. Appendix
+            
+            Make it detailed, professional, and investor-ready.
+            """
+            
+            ai_result = self._generate_ai_content(prompt, max_tokens=4000)
+            
+            if not ai_result['success']:
+                return ai_result
+            
+            # Create Word document
+            doc = Document()
+            
+            # Title page
+            title = doc.add_heading(f'{startup_name}', 0)
+            title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            subtitle = doc.add_heading('Business Plan', level=1)
+            subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            doc.add_paragraph()
+            date_para = doc.add_paragraph(datetime.now().strftime("%B %d, %Y"))
+            date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            doc.add_page_break()
+            
+            # Table of Contents
+            doc.add_heading('Table of Contents', level=1)
+            toc_items = [
+                'Executive Summary',
+                'Company Description',
+                'Market Analysis',
+                'Organization and Management',
+                'Service or Product Line',
+                'Marketing and Sales Strategy',
+                'Financial Projections',
+                'Funding Requirements',
+                'Appendix'
+            ]
+            for i, item in enumerate(toc_items, 1):
+                doc.add_paragraph(f'{i}. {item}', style='List Number')
+            
+            doc.add_page_break()
+            
+            # Add generated content
+            content_lines = ai_result['content'].split('\n')
+            for line in content_lines:
+                if line.strip():
+                    if line.startswith('#') or (line.isupper() and len(line.split()) <= 5):
+                        doc.add_heading(line.strip('#').strip(), level=1)
+                    elif line.startswith('##'):
+                        doc.add_heading(line.strip('#').strip(), level=2)
+                    elif line.startswith('-') or line.startswith('•'):
+                        doc.add_paragraph(line.strip('-').strip('•').strip(), style='List Bullet')
+                    else:
+                        doc.add_paragraph(line.strip())
+            
+            # Save document
+            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            filename = f'{startup_name.replace(" ", "_")}_BusinessPlan_{timestamp}.docx'
+            filepath = os.path.join(self.upload_folder, filename)
+            doc.save(filepath)
+            
+            file_size = os.path.getsize(filepath)
+            
+            return {
+                'success': True,
+                'title': f'{startup_name} - Business Plan',
+                'file_name': filename,
+                'file_path': filepath,
+                'file_size': file_size,
+                'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'tokens': ai_result['tokens']
+            }
+            
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
-    def compile_final_document(self, startup_data: Dict[str, Any], founder_specs: str, 
-                               product_scope: str, gtm_strategy: str) -> str:
-        """Compile all sections into a final formatted document."""
-        stage_1 = self.safe_get(startup_data, 'stages', '1', 'data', default={})
-        
-        document = f"""
-{'='*80}
-INCUBATOR PROGRAM GUIDE
-{'='*80}
+    def _generate_financial_model(self, submission_data, custom_prompt):
+        """
+        Generate a financial model document
+        """
+        try:
+            startup_name = submission_data.get('startupName', 'Startup')
+            
+            prompt = f"""
+            Create a detailed 3-year financial projection for the following startup:
+            
+            Startup Name: {startup_name}
+            Industry: {submission_data.get('industry', 'N/A')}
+            Business Model: {submission_data.get('businessModel', 'N/A')}
+            Revenue Streams: {submission_data.get('revenueStreams', 'N/A')}
+            Current Revenue: ${submission_data.get('currentRevenue', 0)}
+            Funding Required: ${submission_data.get('fundingRequired', 0)}
+            Monthly Burn Rate: ${submission_data.get('monthlyBurnRate', 0)}
+            Team Size: {submission_data.get('teamSize', 1)}
+            
+            {custom_prompt}
+            
+            Generate a comprehensive financial model including:
+            1. Revenue Projections (Year 1, 2, 3)
+            2. Cost Structure
+            3. Profit & Loss Statement
+            4. Cash Flow Projection
+            5. Break-even Analysis
 
-Startup: {stage_1.get('startupName', 'N/A')}
-Website: {stage_1.get('websiteUrl', 'N/A')}
-Document Generated: {datetime.now().strftime('%B %d, %Y')}
-Program: TurningIdeas Incubation Cohort 2026
-
-{'='*80}
-EXECUTIVE SUMMARY
-{'='*80}
-
-{stage_1.get('companyOverview', 'N/A')}
-
-This document serves as a comprehensive guide for the incubator program to:
-1. Understand the founding team capabilities and support needs
-2. Build and launch the MVP with clearly defined scope and specifications
-3. Execute an effective go-to-market strategy to achieve initial traction
-
-{'='*80}
-SECTION 1: FOUNDER SPECS
-{'='*80}
-
-{founder_specs}
-
-{'='*80}
-SECTION 2: PRODUCT SCOPE & MVP SPECIFICATIONS
-{'='*80}
-
-{product_scope}
-
-{'='*80}
-SECTION 3: GO-TO-MARKET STRATEGY
-{'='*80}
-
-{gtm_strategy}
-
-{'='*80}
-END OF DOCUMENT
-{'='*80}
-"""
-        return document
+            6. Key Financial Metrics (CAC, LTV, Gross Margin, etc.)
+            7. Funding Allocation
+            8. Growth Assumptions
+            
+            Provide realistic numbers and clear explanations for each projection.
+            """
+            
+            ai_result = self._generate_ai_content(prompt, max_tokens=3500)
+            
+            if not ai_result['success']:
+                return ai_result
+            
+            # Create Word document
+            doc = Document()
+            
+            # Title
+            title = doc.add_heading(f'{startup_name} - Financial Model', 0)
+            title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            subtitle = doc.add_heading('3-Year Financial Projections', level=1)
+            subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            doc.add_paragraph()
+            date_para = doc.add_paragraph(datetime.now().strftime("%B %d, %Y"))
+            date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            doc.add_page_break()
+            
+            # Add generated content
+            content_lines = ai_result['content'].split('\n')
+            for line in content_lines:
+                if line.strip():
+                    if line.startswith('#') or (line.isupper() and len(line.split()) <= 6):
+                        doc.add_heading(line.strip('#').strip(), level=1)
+                    elif line.startswith('##'):
+                        doc.add_heading(line.strip('#').strip(), level=2)
+                    elif line.startswith('-') or line.startswith('•'):
+                        doc.add_paragraph(line.strip('-').strip('•').strip(), style='List Bullet')
+                    else:
+                        doc.add_paragraph(line.strip())
+            
+            # Add disclaimer
+            doc.add_page_break()
+            doc.add_heading('Disclaimer', level=1)
+            disclaimer_text = """
+            This financial model is based on assumptions and projections. Actual results may vary significantly. 
+            This document should not be considered as financial advice. Please consult with financial professionals 
+            before making any investment decisions.
+            """
+            doc.add_paragraph(disclaimer_text)
+            
+            # Save document
+            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            filename = f'{startup_name.replace(" ", "_")}_FinancialModel_{timestamp}.docx'
+            filepath = os.path.join(self.upload_folder, filename)
+            doc.save(filepath)
+            
+            file_size = os.path.getsize(filepath)
+            
+            return {
+                'success': True,
+                'title': f'{startup_name} - Financial Model',
+                'file_name': filename,
+                'file_path': filepath,
+                'file_size': file_size,
+                'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'tokens': ai_result['tokens']
+            }
+            
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
-    def generate_complete_guide(self, startup_data: Dict[str, Any]) -> str:
-        """Main method to generate the complete incubator guide."""
-        print("Generating Founder Specs section...")
-        founder_specs = self.generate_founder_specs(startup_data)
-        
-        print("Generating Product Scope section...")
-        product_scope = self.generate_product_scope(startup_data)
-        
-        print("Generating GTM Strategy section...")
-        gtm_strategy = self.generate_gtm_strategy(startup_data)
-        
-        print("Compiling final document...")
-        final_document = self.compile_final_document(
-            startup_data, founder_specs, product_scope, gtm_strategy
-        )
-        
-        return final_document
+    def _generate_executive_summary(self, submission_data, custom_prompt):
+        """
+        Generate an executive summary
+        """
+        try:
+            startup_name = submission_data.get('startupName', 'Startup')
+            
+            prompt = f"""
+            Create a compelling executive summary for the following startup:
+            
+            Startup Name: {startup_name}
+            Industry: {submission_data.get('industry', 'N/A')}
+            Stage: {submission_data.get('stage', 'N/A')}
+            Description: {submission_data.get('description', 'N/A')}
+            Problem: {submission_data.get('problemStatement', 'N/A')}
+            Solution: {submission_data.get('solution', 'N/A')}
+            Unique Value Proposition: {submission_data.get('uniqueValueProposition', 'N/A')}
+            Target Market: {submission_data.get('targetMarket', 'N/A')}
+            Market Size: {submission_data.get('marketSize', 'N/A')}
+            Business Model: {submission_data.get('businessModel', 'N/A')}
+            Competitive Advantage: {submission_data.get('competitiveAdvantage', 'N/A')}
+            Current Traction: {submission_data.get('currentTraction', 'N/A')}
+            Team Size: {submission_data.get('teamSize', 'N/A')}
+            Funding Required: ${submission_data.get('fundingRequired', 0)}
+            Current Revenue: ${submission_data.get('currentRevenue', 0)}
+            
+            {custom_prompt}
+            
+            Create a concise, compelling executive summary (2-3 pages) that includes:
+            1. Company Overview
+            2. Problem & Solution
+            3. Market Opportunity
+            4. Business Model
+            5. Competitive Advantage
+            6. Traction & Milestones
+            7. Financial Highlights
+            8. Funding Ask & Use of Funds
+            9. Vision & Next Steps
+            
+            Make it investor-ready and compelling.
+            """
+            
+            ai_result = self._generate_ai_content(prompt, max_tokens=2500)
+            
+            if not ai_result['success']:
+                return ai_result
+            
+            # Create Word document
+            doc = Document()
+            
+            # Title
+            title = doc.add_heading(f'{startup_name}', 0)
+            title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            subtitle = doc.add_heading('Executive Summary', level=1)
+            subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            doc.add_paragraph()
+            date_para = doc.add_paragraph(datetime.now().strftime("%B %d, %Y"))
+            date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            doc.add_page_break()
+            
+            # Add generated content
+            content_lines = ai_result['content'].split('\n')
+            for line in content_lines:
+                if line.strip():
+                    if line.startswith('#'):
+                        doc.add_heading(line.strip('#').strip(), level=1)
+                    elif line.startswith('##'):
+                        doc.add_heading(line.strip('#').strip(), level=2)
+                    elif line.startswith('-') or line.startswith('•'):
+                        doc.add_paragraph(line.strip('-').strip('•').strip(), style='List Bullet')
+                    else:
+                        doc.add_paragraph(line.strip())
+            
+            # Save document
+            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            filename = f'{startup_name.replace(" ", "_")}_ExecutiveSummary_{timestamp}.docx'
+            filepath = os.path.join(self.upload_folder, filename)
+            doc.save(filepath)
+            
+            file_size = os.path.getsize(filepath)
+            
+            return {
+                'success': True,
+                'title': f'{startup_name} - Executive Summary',
+                'file_name': filename,
+                'file_path': filepath,
+                'file_size': file_size,
+                'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'tokens': ai_result['tokens']
+            }
+            
+        except Exception as e:
+            return {'success': False, 'error': str(e)}

@@ -1,23 +1,22 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';  // Use context instead
+import { ROUTES } from '../config/constants';
+import LoadingSpinner from './LoadingSpinner';
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
+  const { user, loading, authReady } = useAuth();  // Get loading state
+  
+  // Show loading while checking auth
   if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Loading...</p>
-      </div>
-    );
+    return LoadingSpinner
   }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  
+  // Redirect if not authenticated
+  if (!user) {
+    return <Navigate to={ROUTES.LOGIN} replace />;
   }
-
+  
   return children;
 };
 
