@@ -18,6 +18,10 @@ export const API_ENDPOINTS = {
     STATS: '/dashboard/stats',
     RECENT_ACTIVITY: '/dashboard/recent-activity',
     NOTIFICATIONS: '/dashboard/notifications',
+    GET: '/dashboard',
+    OVERVIEW: '/dashboard/overview',
+    STAGES: '/dashboard/stages',
+    STAGE: (key) => `/dashboard/stage/${key}`
   },
   
   // Submissions
@@ -43,6 +47,20 @@ export const API_ENDPOINTS = {
     UPDATE_PROFILE: '/user/profile',
     CHANGE_PASSWORD: '/user/change-password',
   },
+  TASKS: {
+    GET: (stageKey) => `/dashboard/stage/${stageKey}/tasks`,
+    CREATE: (stageKey) => `/dashboard/stage/${stageKey}/tasks`,
+    UPDATE: (id) => `/dashboard/tasks/${id}`,
+    DELETE: (id) => `/dashboard/tasks/${id}`
+  },
+  METRICS: {
+    GET: (stageKey) => `/dashboard/stage/${stageKey}/metrics`,
+    UPSERT: (stageKey) => `/dashboard/stage/${stageKey}/metrics`
+  },
+  ARTIFACTS: {
+    GET: (stageKey) => `/dashboard/stage/${stageKey}/artifacts`,
+    CREATE: (stageKey) => `/dashboard/stage/${stageKey}/artifacts`
+  }
 };
 
 // Startup Status
@@ -232,4 +250,32 @@ export const ROUTES = {
   DOCUMENTS: '/documents',
   SUBMISSIONS: '/submissions',
   SETTINGS: '/settings',
+};
+
+export const STAGE_KEYS = [
+  'founder_specifications',
+  'product_scope',
+  'gtm_scope',
+  'product_ux',
+  'product_code',
+  'test_deploy',
+  'share_monitor',
+  'monetize_gtm',
+  'fundraise'
+];
+
+export const STATUS_COLORS = {
+  completed: '#10b981',
+  in_progress: '#f59e0b',
+  blocked: '#ef4444',
+  in_review: '#3b82f6',
+  not_started: '#9ca3af',
+  skipped: '#6b7280'
+};
+
+export const PRIORITY_COLORS = {
+  p0: '#ef4444',
+  p1: '#f59e0b',
+  p2: '#3b82f6',
+  p3: '#6b7280'
 };

@@ -331,30 +331,42 @@ def get_current_user():
     """Get current user info"""
     try:
         
-        current_user_id = get_jwt_identity()
-        print(f"Current user ID: {current_user_id}")
-        user = User.query.get(int(current_user_id))
-        print(f"Current user: {user}")
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
         if not user:
             return jsonify({'success': False, 'error': 'User not found'}), 404
         
-        # Get startup info
-        startup = user.startup
-        startup_info = None
-        if startup:
-            startup_info = {
-                'submission_id': startup.submission_id,
-                'status': startup.status,
-                'current_stage': startup.current_stage
-            }
+        # Try serializing step by step to find which field breaks
+        result = {
+            'id': user.id,
+            'email': user.email
+        }
+        print(f"[DEBUG] Basic fields OK: {result}")
+        
+        # Try adding more fields one by one
+        result['username'] = user.full_name if hasattr(user, 'full_name') else None
+        print(f"[DEBUG] Added username: {result}")
+        
+        result['role'] = user.role if hasattr(user, 'role') else 'user'
+        print(f"[DEBUG] Added role: {result}")
+        
+        # If you have a submission relationship:
+        try:
+            result['has_submission'] = user.submission is not None
+        except Exception as e:
+            print(f"[DEBUG] Submission check failed: {e}")
+            result['has_submission'] = False
         
         return jsonify({
             'success': True,
-            'user': user.to_dict(),
-            'startup': startup_info
+            'user': result
         }), 200
         
     except Exception as e:
+        print(f"[ERROR in /me] {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @auth_bp.route('/forgot-password', methods=['POST'])

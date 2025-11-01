@@ -1,0 +1,181 @@
+{
+  "success": true,
+  "startup_name": "VentureXit",
+  "generated_at": "2025-11-01T07:26:37.517197Z",
+  "stage_plans": {
+    "1": {
+      "stage": "1",
+      "stage_name": "Problem & Market Context",
+      "tasks": [
+        {
+          "id": "task_1_1",
+          "title": "Validate problem",
+          "priority": "p0"
+        }
+      ],
+      "metrics": [
+        {
+          "id": "metric_1_1",
+          "name": "Problem Validation",
+          "current": 0,
+          "target": 85,
+          "unit": "pts"
+        }
+      ],
+      "artifacts": [
+        {
+          "id": "artifact_1_1",
+          "name": "Problem Report"
+        }
+      ],
+      "experiments": []
+    },
+    "2": {
+      "stage": "2",
+      "stage_name": "Product & Technology",
+      "tasks": [
+        {
+          "id": "task_2_1",
+          "title": "Define MVP features",
+          "priority": "p0",
+          "depends_on_artifacts": [
+            "artifact_1_1"
+          ]
+        }
+      ],
+      "metrics": [],
+      "artifacts": [
+        {
+          "id": "artifact_2_1",
+          "name": "MVP Specification"
+        }
+      ],
+      "experiments": []
+    },
+    "3": {
+      "stage": "3",
+      "stage_name": "GTM & Positioning",
+      "tasks": [
+        {
+          "id": "task_3_1",
+          "title": "Develop GTM strategy",
+          "priority": "p0",
+          "depends_on_artifacts": [
+            "artifact_2_1"
+          ]
+        }
+      ],
+      "metrics": [],
+      "artifacts": [
+        {
+          "id": "artifact_3_1",
+          "name": "GTM Plan"
+        }
+      ],
+      "experiments": []
+    },
+    "4": {
+      "stage": "4",
+      "stage_name": "Business Model & Pricing",
+      "tasks": [
+        {
+          "id": "task_4_1",
+          "title": "Define pricing strategy",
+          "priority": "p0"
+        }
+      ],
+      "metrics": [],
+      "artifacts": [],
+      "experiments": []
+    },
+    "5": {
+      "stage": "5",
+      "stage_name": "Team & Hiring",
+      "tasks": [
+        {
+          "id": "task_5_1",
+          "title": "Identify hiring needs",
+          "priority": "p0"
+        }
+      ],
+      "metrics": [],
+      "artifacts": [],
+      "experiments": []
+    },
+    "6": {
+      "stage": "6",
+      "stage_name": "Milestones & Roadmap",
+      "tasks": [
+        {
+          "id": "task_6_1",
+          "title": "Create roadmap",
+          "priority": "p0"
+        }
+      ],
+      "metrics": [],
+      "artifacts": [],
+      "experiments": []
+    },
+    "7": {
+      "stage": "7",
+      "stage_name": "Funding Strategy",
+      "tasks": [
+        {
+          "id": "task_7_1",
+          "title": "Fundraising strategy",
+          "priority": "p0"
+        }
+      ],
+      "metrics": [],
+      "artifacts": [],
+      "experiments": []
+    },
+    "8": {
+      "stage": "8",
+      "stage_name": "Support & Outcomes",
+      "tasks": [
+        {
+          "id": "task_8_1",
+          "title": "Map support tracks",
+          "priority": "p0"
+        }
+      ],
+      "metrics": [],
+      "artifacts": [],
+      "experiments": []
+    },
+    "9": {
+      "stage": "9",
+      "stage_name": "Launch & Operations",
+      "tasks": [
+        {
+          "id": "task_9_1",
+          "title": "Launch preparation",
+          "priority": "p0"
+        }
+      ],
+      "metrics": [],
+      "artifacts": [],
+      "experiments": []
+    }
+  },
+  "summary": {
+    "total_stages": 9,
+    "completed_stages": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9"
+    ],
+    "total_tasks": 9,
+    "total_metrics": 1,
+    "total_artifacts": 3,
+    "total_experiments": 0,
+    "relationships_mapped": true
+  }
+}

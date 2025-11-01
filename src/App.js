@@ -14,10 +14,11 @@ import VerifyEmail from './pages/VerifyEmail';
 
 // Dashboard Pages
 import Dashboard from './pages/Dashboard';
-// import SubmissionForm from '../deleted files/frontend/pages/Delete_SubmissionForm';
+import StagePage from './pages/StagePage';
 import EvaluationForm from './pages/EvaluationForm';
 import Documents from './pages/Documents';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 
 // Public Pages
 import Home from './pages/Home';
@@ -28,8 +29,8 @@ import './App.css';
 function App() {
   return (
     <Router>
-      <ToastProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <ToastProvider>
           <div className="App">
             <Routes>
               {/* Public Routes */}
@@ -40,49 +41,42 @@ function App() {
               <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
               <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmail />} />
 
-              {/* Protected Routes */}
-              <Route
-                path={ROUTES.DASHBOARD}
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
+              {/* Protected Routes - Each wrapped individually */}
+              <Route 
+                path={ROUTES.DASHBOARD} 
+                element={<ProtectedRoute><Dashboard /></ProtectedRoute>} 
               />
-              <Route
-                path={ROUTES.SUBMISSIONS}
-                element={
-                  <ProtectedRoute>
-                    <EvaluationForm />
-                  </ProtectedRoute>
-                }
+              <Route 
+                path={`${ROUTES.DASHBOARD}/stage/:stageKey`} 
+                element={<ProtectedRoute><StagePage /></ProtectedRoute>} 
               />
-              <Route
-                path={ROUTES.DOCUMENTS}
-                element={
-                  <ProtectedRoute>
-                    <Documents />
-                  </ProtectedRoute>
-                }
+              <Route 
+                path={ROUTES.EVALUATION_FORM} 
+                element={<ProtectedRoute><EvaluationForm /></ProtectedRoute>} 
               />
-              <Route
-                path={ROUTES.PROFILE}
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
+              <Route 
+                path={ROUTES.DOCUMENTS} 
+                element={<ProtectedRoute><Documents /></ProtectedRoute>} 
+              />
+              <Route 
+                path={ROUTES.PROFILE} 
+                element={<ProtectedRoute><Profile /></ProtectedRoute>} 
+              />
+              <Route 
+                path={ROUTES.SETTINGS} 
+                element={<ProtectedRoute><Settings /></ProtectedRoute>} 
+              />
+              <Route 
+                path={ROUTES.SUBMISSIONS} 
+                element={<ProtectedRoute><EvaluationForm /></ProtectedRoute>} 
               />
 
-              {/* Redirect root to home */}
-              <Route path="/" element={<Navigate to={ROUTES.HOME} replace />} />
-
-              {/* 404 Not Found */}
+              {/* Fallback */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
-        </AuthProvider>
-      </ToastProvider>
+        </ToastProvider>
+      </AuthProvider>
     </Router>
   );
 }

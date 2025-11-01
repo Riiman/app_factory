@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { API_URL, TOKEN_KEY } from '../config/config';
 import { HTTP_STATUS, ERROR_MESSAGES } from '../config/constants';
@@ -89,19 +88,57 @@ const apiService = {
     resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
   },
 
-  // Dashboard
+  // Dashboard - Updated with new endpoints
   dashboard: {
+    getDashboard: () => api.get('/dashboard'),
+    getOverview: () => api.get('/dashboard/overview'),
+    getStages: () => api.get('/dashboard/stages'),
+    getStage: (stageKey) => api.get(`/dashboard/stage/${stageKey}`),
+    updateStage: (stageKey, data) => api.put(`/dashboard/stage/${stageKey}`, data),
+    
+    // Legacy endpoints (keep for backward compatibility)
     getStats: () => api.get('/dashboard/stats'),
     getRecentActivity: () => api.get('/dashboard/recent-activity'),
     getNotifications: () => api.get('/dashboard/notifications'),
-    getDashboard: () => api.get(`/dashboard`),
+  },
+
+  // Tasks - New
+  tasks: {
+    getTasks: (stageKey) => api.get(`/dashboard/stage/${stageKey}/tasks`),
+    createTask: (stageKey, data) => api.post(`/dashboard/stage/${stageKey}/tasks`, data),
+    updateTask: (taskId, data) => api.put(`/dashboard/tasks/${taskId}`, data),
+    deleteTask: (taskId) => api.delete(`/dashboard/tasks/${taskId}`),
+  },
+
+  // Metrics - New
+  metrics: {
+    getMetrics: (stageKey) => api.get(`/dashboard/stage/${stageKey}/metrics`),
+    upsertMetric: (stageKey, data) => api.post(`/dashboard/stage/${stageKey}/metrics`, data),
+  },
+
+  // Artifacts - New
+  artifacts: {
+    getArtifacts: (stageKey) => api.get(`/dashboard/stage/${stageKey}/artifacts`),
+    createArtifact: (stageKey, data) => api.post(`/dashboard/stage/${stageKey}/artifacts`, data),
+  },
+
+  // Experiments - New
+  experiments: {
+    getExperiments: (stageKey) => api.get(`/dashboard/stage/${stageKey}/experiments`),
+    createExperiment: (stageKey, data) => api.post(`/dashboard/stage/${stageKey}/experiments`, data),
+  },
+
+  // Integrations - New
+  integrations: {
+    getIntegrations: () => api.get('/dashboard/integrations'),
+    connectIntegration: (type, config) => api.post('/dashboard/integrations', { type, config }),
   },
 
   // Submissions
   submissions: {
     submitStage: (data) => api.post('/submissions/submit-stage', data),
     submitFinal: () => api.post('/submissions/submit-final'),
-    getSubmission: () => api.get(`/submissions`),
+    getSubmission: () => api.get('/submissions'),
     listSubmissions: () => api.get('/submissions'),
     updateStatus: (id, status) => api.put(`/submissions/${id}/status`, { status }),
     getCurrent: () => api.get('/submissions/current'),
