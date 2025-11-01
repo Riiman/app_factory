@@ -1,15 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { ROUTES, SUCCESS_MESSAGES } from '../config/constants';
-import './AuthPages.css';
+
+// MUI Components
+import { Container, Box, Typography, Button, TextField, Paper, CircularProgress, Link } from '@mui/material';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, user, startup } = useAuth(); // We don't need startup here anymore
+  const { login, user } = useAuth();
   const { showSuccess, showError } = useToast();
   
   const [formData, setFormData] = useState({
@@ -22,13 +24,8 @@ const LoginPage = () => {
   const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
-    // If a user is already logged in when they visit the login page,
-    // redirect them away. This prevents a logged-in user from seeing the login screen.
     if (user){
       console.log('Founder user: ', user)
-      // if (startup && startup.submission_id) {
-      //   console.log("Running use effect in Login.js")
-      // // A simple redirect to home is safe. The App router will handle further redirection if needed.
       navigate(ROUTES.DASHBOARD);
     }
   }, [user, navigate]);
@@ -47,24 +44,19 @@ const LoginPage = () => {
     setShowResend(false);
 
     try {
-      // The login function from AuthContext returns { success, startup }
       const result = await login(formData.email, formData.password);
 
       if (result.success) {
         showSuccess(SUCCESS_MESSAGES.LOGIN_SUCCESS);
 
-        // If the user has a startup submission, go to the dashboard.
         if (result.startup && result.startup.submission_id) {
           console.log("Logged in. Startup found. Redirecting to Dashboard.js...  " , result.startup);
           navigate(`${ROUTES.DASHBOARD}`);
         } else {
-          // If it's a new user with no submission, go to the submission form.
-          // Note: Using ROUTES.SUBMISSIONS from your constants file.
           console.log('Logged in. No startup found. Redirecting to Submission Form.js...  ', result.startup);
           navigate(ROUTES.SUBMISSIONS);
         }
       } else {
-        // This part handles login failures (e.g., wrong password)
         const errorMessage = result.error || 'Login failed. Please try again.';
         setError(errorMessage);
         showError(errorMessage);
@@ -88,7 +80,6 @@ const LoginPage = () => {
     }
     setIsResending(true);
     try {
-      // Assuming there's a resend verification function in authService
       await authService.resendVerification(formData.email);
       showSuccess(SUCCESS_MESSAGES.VERIFICATION_EMAIL_SENT);
       setShowResend(false);
@@ -101,64 +92,86 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-header">
-          <h1>Welcome Back!</h1>
-          <p>Sign in to access your startup dashboard</p>
-        </div>
+    <Container component="main" maxWidth="xs">
+      <Paper elevation={3} sx={{ mt: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography component="h1" variant="h5">
+          Welcome Back!
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+          Sign in to access your startup dashboard
+        </Typography>
 
-        <form className="auth-form" onSubmit={handleLogin}>
-          <div className="form-group">
-            <label>Email Address</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="your@email.com"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              required
-            />
-          </div>
+        <Box component="form" onSubmit={handleLogin} noValidate sx={{ mt: 1 }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            autoFocus
+            value={formData.email}
+            onChange={handleChange}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type="password"
+            id="password"
+            autoComplete="current-password"
+            value={formData.password}
+            onChange={handleChange}
+          />
 
           {showResend && (
-            <div className="resend-verification-section">
-              <button
+            <Box sx={{ mt: 2, mb: 2, textAlign: 'center' }}>
+              <Button
                 type="button"
+                variant="outlined"
                 onClick={handleResendVerification}
-                className="resend-btn"
                 disabled={isResending}
               >
                 {isResending ? 'Sending...' : 'Resend Verification Email'}
-              </button>
-            </div>
+              </Button>
+            </Box>
           )}
 
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <Typography color="error" variant="body2" sx={{ mt: 2, mb: 1 }}>
+              {error}
+            </Typography>
+          )}
 
-          <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Signing In...' : 'Sign In'}
-          </button>
-        </form>
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+          </Button>
+        </Box>
 
-        <div className="auth-footer">
-          <p>Don't have an account? <Link to="/signup">Sign Up</Link></p>
-          <p><Link to="/">Back to Home</Link></p>
-        </div>
-      </div>
-    </div>
+        <Box sx={{ mt: 2 }}>
+          <Link component={RouterLink} to={ROUTES.SIGNUP} variant="body2">
+            Don't have an account? Sign Up
+          </Link>
+          <br />
+          <Link component={RouterLink} to={ROUTES.FORGOT_PASSWORD} variant="body2">
+            Forgot password?
+          </Link>
+          <br />
+          <Link component={RouterLink} to="/" variant="body2">
+            Back to Home
+          </Link>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 

@@ -1,11 +1,16 @@
 import React from 'react';
 
+// MUI Components
+import { Container, Box, Typography, Paper } from '@mui/material';
+
 const Settings = () => {
   return (
-    <div style={{ padding: '40px', textAlign: 'center' }}>
-      <h1>Settings</h1>
-      <p>Settings page coming soon...</p>
-    </div>
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="h4" gutterBottom>Settings</Typography>
+        <Typography variant="body1" paragraph>Settings page coming soon...</Typography>
+      </Paper>
+    </Container>
   );
 };
 

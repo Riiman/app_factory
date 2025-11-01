@@ -46,11 +46,29 @@ def create_app(config_name=None):
     from app.routes.dashboard import dashboard_bp
     from app.routes.submissions import submissions_bp
     from app.routes.documents import documents_bp
+    from app.routes.platform import platform_bp
+    from app.routes.product_scope import product_scope_bp
+    from app.routes.gtm_scope import gtm_scope_bp
+    from app.routes.ux_design import ux_design_bp
+    from app.routes.build import build_bp
+    from app.routes.deployment import deployment_bp
+    from app.routes.analytics import analytics_bp
+    from app.routes.monetization import monetization_bp
+    from app.routes.fundraising import fundraising_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(dashboard_bp, url_prefix='/api')
     app.register_blueprint(submissions_bp, url_prefix='/api')
     app.register_blueprint(documents_bp, url_prefix='/api')
+    app.register_blueprint(platform_bp, url_prefix='/api')
+    app.register_blueprint(product_scope_bp, url_prefix='/api')
+    app.register_blueprint(gtm_scope_bp, url_prefix='/api')
+    app.register_blueprint(ux_design_bp, url_prefix='/api')
+    app.register_blueprint(build_bp, url_prefix='/api')
+    app.register_blueprint(deployment_bp, url_prefix='/api')
+    app.register_blueprint(analytics_bp, url_prefix='/api')
+    app.register_blueprint(monetization_bp, url_prefix='/api')
+    app.register_blueprint(fundraising_bp, url_prefix='/api')
     
     # Error handlers
     @app.errorhandler(404)

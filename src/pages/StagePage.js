@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
+
+// MUI Components
+import { Container, Box, Typography, Button, Paper, CircularProgress, Tabs, Tab, LinearProgress, Select, MenuItem, InputLabel, FormControl, Grid } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+
+// Custom Components
 import Checklist from '../components/Checklist';
 import DynamicForm from '../components/DynamicForm';
 import MetricsPanel from '../components/MetricsPanel';
 import ArtifactList from '../components/ArtifactList';
 import ExperimentList from '../components/ExperimentList';
-import './StagePage.css';
 
 const StagePage = () => {
   const { stageKey } = useParams();
   const navigate = useNavigate();
   const [stageData, setStageData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('checklist');
+  const [activeTab, setActiveTab] = useState(0); // Use index for MUI Tabs
+
+  const tabLabels = [
+    'Checklist', 'Details', 'Metrics', 'Artifacts',
+    ...(stageKey === 'gtm_scope' || stageKey === 'monetize_gtm' ? ['Experiments'] : [])
+  ];
 
   useEffect(() => {
     fetchStageData();
@@ -34,7 +44,8 @@ const StagePage = () => {
     }
   };
 
-  const handleStatusChange = async (newStatus) => {
+  const handleStatusChange = async (event) => {
+    const newStatus = event.target.value;
     try {
       await apiService.dashboard.updateStage(stageKey, { status: newStatus });
       fetchStageData();
@@ -52,149 +63,145 @@ const StagePage = () => {
     }
   };
 
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
   if (loading) {
-    return <div className="loading">Loading stage...</div>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+        <Typography variant="h6" sx={{ ml: 2 }}>Loading stage...</Typography>
+      </Box>
+    );
   }
 
   if (!stageData) {
-    return <div className="error">Stage not found</div>;
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Paper elevation={3} sx={{ p: 3 }}>
+          <Typography variant="h5" color="error" gutterBottom>Stage not found</Typography>
+        </Paper>
+      </Container>
+    );
   }
 
   const { stage, template } = stageData;
 
   return (
-    <div className="stage-page">
-      {/* Header */}
-      <div className="stage-header">
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          ← Back to Dashboard
-        </button>
-        
-        <div className="stage-info">
-          <h1>{stage.name}</h1>
-          <p className="stage-description">{template?.description}</p>
-        </div>
-
-        <div className="stage-meta">
-          <div className="status-selector">
-            <label>Status:</label>
-            <select 
-              value={stage.status} 
-              onChange={(e) => handleStatusChange(e.target.value)}
-            >
-              <option value="not_started">Not Started</option>
-              <option value="in_progress">In Progress</option>
-              <option value="blocked">Blocked</option>
-              <option value="in_review">In Review</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
+    <Container maxWidth="xl" sx={{ mt: 3, mb: 3 }}>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/dashboard')}>
+            Back to Dashboard
+          </Button>
           
-          <div className="progress-indicator">
-            <span>Progress: {Math.round(stage.progress)}%</span>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill" 
-                style={{ width: `${stage.progress}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h4" component="h1" gutterBottom>{stage.name}</Typography>
+            <Typography variant="body1" color="text.secondary">{template?.description}</Typography>
+          </Box>
 
-      {/* Tabs */}
-      <div className="stage-tabs">
-        <button 
-          className={activeTab === 'checklist' ? 'tab active' : 'tab'}
-          onClick={() => setActiveTab('checklist')}
-        >
-          Checklist ({stage.tasks?.length || 0})
-        </button>
-        <button 
-          className={activeTab === 'form' ? 'tab active' : 'tab'}
-          onClick={() => setActiveTab('form')}
-        >
-          Details
-        </button>
-        <button 
-          className={activeTab === 'metrics' ? 'tab active' : 'tab'}
-          onClick={() => setActiveTab('metrics')}
-        >
-          Metrics ({stage.metrics?.length || 0})
-        </button>
-        <button 
-          className={activeTab === 'artifacts' ? 'tab active' : 'tab'}
-          onClick={() => setActiveTab('artifacts')}
-        >
-          Artifacts ({stage.artifacts?.length || 0})
-        </button>
-        {(stageKey === 'gtm_scope' || stageKey === 'monetize_gtm') && (
-          <button 
-            className={activeTab === 'experiments' ? 'tab active' : 'tab'}
-            onClick={() => setActiveTab('experiments')}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <FormControl variant="outlined" size="small" sx={{ mr: 2, minWidth: 120 }}>
+              <InputLabel>Status</InputLabel>
+              <Select 
+                value={stage.status} 
+                onChange={handleStatusChange}
+                label="Status"
+              >
+                <MenuItem value="not_started">Not Started</MenuItem>
+                <MenuItem value="in_progress">In Progress</MenuItem>
+                <MenuItem value="blocked">Blocked</MenuItem>
+                <MenuItem value="in_review">In Review</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </Select>
+            </FormControl>
+            
+            <Box sx={{ minWidth: 120 }}>
+              <Typography variant="body2">Progress: {Math.round(stage.progress)}%</Typography>
+              <LinearProgress variant="determinate" value={stage.progress} sx={{ height: 8, borderRadius: 4 }} />
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Tabs */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            aria-label="stage tabs"
           >
-            Experiments ({stage.experiments?.length || 0})
-          </button>
-        )}
-      </div>
+            {tabLabels.map((label, index) => (
+              <Tab key={index} label={label} />
+            ))}
+          </Tabs>
+        </Box>
 
-      {/* Tab Content */}
-      <div className="stage-content">
-        {activeTab === 'checklist' && (
-          <Checklist 
-            stageKey={stageKey}
-            tasks={stage.tasks || []}
-            onUpdate={fetchStageData}
-          />
-        )}
+        {/* Tab Content */}
+        <Box sx={{ p: 2 }}>
+          {activeTab === 0 && (
+            <Checklist 
+              stageKey={stageKey}
+              tasks={stage.tasks || []}
+              onUpdate={fetchStageData}
+            />
+          )}
 
-        {activeTab === 'form' && (
-          <DynamicForm 
-            schema={template?.form_schema}
-            initialValues={stage.form_data}
-            onSave={handleFormSave}
-          />
-        )}
+          {activeTab === 1 && (
+            <DynamicForm 
+              schema={template?.form_schema}
+              initialValues={stage.form_data}
+              onSave={handleFormSave}
+            />
+          )}
 
-        {activeTab === 'metrics' && (
-          <MetricsPanel 
-            stageKey={stageKey}
-            metrics={stage.metrics || []}
-            defaultMetrics={template?.default_metrics}
-            onUpdate={fetchStageData}
-          />
-        )}
+          {activeTab === 2 && (
+            <MetricsPanel 
+              stageKey={stageKey}
+              metrics={stage.metrics || []}
+              defaultMetrics={template?.default_metrics}
+              onUpdate={fetchStageData}
+            />
+          )}
 
-        {activeTab === 'artifacts' && (
-          <ArtifactList 
-            stageKey={stageKey}
-            artifacts={stage.artifacts || []}
-            onUpdate={fetchStageData}
-          />
-        )}
+          {activeTab === 3 && (
+            <ArtifactList 
+              stageKey={stageKey}
+              artifacts={stage.artifacts || []}
+              onUpdate={fetchStageData}
+            />
+          )}
 
-        {activeTab === 'experiments' && (
-          <ExperimentList 
-            stageKey={stageKey}
-            experiments={stage.experiments || []}
-            onUpdate={fetchStageData}
-          />
-        )}
-      </div>
+          {(stageKey === 'gtm_scope' || stageKey === 'monetize_gtm') && activeTab === 4 && (
+            <ExperimentList 
+              stageKey={stageKey}
+              experiments={stage.experiments || []}
+              onUpdate={fetchStageData}
+            />
+          )}
+        </Box>
 
-      {/* Acceptance Criteria Sidebar */}
-      {stage.acceptance_criteria && stage.acceptance_criteria.length > 0 && (
-        <div className="acceptance-criteria-panel">
-          <h3>Acceptance Criteria</h3>
-          {stage.acceptance_criteria.map((criterion, idx) => (
-            <div key={idx} className={`criterion ${criterion.passed ? 'passed' : 'pending'}`}>
-              <span className="criterion-icon">{criterion.passed ? '✓' : '○'}</span>
-              <span className="criterion-text">{criterion.rule.description}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+        {/* Acceptance Criteria Sidebar */}
+        {stage.acceptance_criteria && stage.acceptance_criteria.length > 0 && (
+          <Paper elevation={1} sx={{ p: 2, mt: 3 }}>
+            <Typography variant="h6" gutterBottom>Acceptance Criteria</Typography>
+            <Box>
+              {stage.acceptance_criteria.map((criterion, idx) => (
+                <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body1" sx={{ mr: 1 }}>
+                    {criterion.passed ? '✓' : '○'}
+                  </Typography>
+                  <Typography variant="body1">{criterion.rule.description}</Typography>
+                </Box>
+              ))}
+            </Box>
+          </Paper>
+        )}
+      </Paper>
+    </Container>
   );
 };
 

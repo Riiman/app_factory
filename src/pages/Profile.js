@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import axios from 'axios';
-import './Profile.css';
+
+// MUI Components
+import { Container, Box, Typography, Button, TextField, Paper, CircularProgress, Grid } from '@mui/material';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -103,87 +105,93 @@ const Profile = () => {
   };
 
   return (
-    <div className="profile-container">
-      <h2>Profile Settings</h2>
-      
-      <div className="profile-section">
-        <h3>Update Profile</h3>
-        <form onSubmit={handleUpdateProfile}>
-          <div className="form-group">
-            <label htmlFor="fullName">Full Name</label>
-            <input
-              type="text"
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Typography variant="h4" gutterBottom>Profile Settings</Typography>
+        
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h5" gutterBottom>Update Profile</Typography>
+          <Box component="form" onSubmit={handleUpdateProfile} sx={{ mt: 2 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
               id="fullName"
+              label="Full Name"
               name="fullName"
               value={formData.fullName}
               onChange={handleChange}
-              required
             />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
+            <TextField
+              margin="normal"
+              required
+              fullWidth
               id="email"
+              label="Email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               disabled
             />
-          </div>
-          
-          <button type="submit" disabled={loading}>
-            {loading ? 'Updating...' : 'Update Profile'}
-          </button>
-        </form>
-      </div>
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Update Profile'}
+            </Button>
+          </Box>
+        </Box>
 
-      <div className="profile-section">
-        <h3>Change Password</h3>
-        <form onSubmit={handleChangePassword}>
-          <div className="form-group">
-            <label htmlFor="currentPassword">Current Password</label>
-            <input
-              type="password"
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h5" gutterBottom>Change Password</Typography>
+          <Box component="form" onSubmit={handleChangePassword} sx={{ mt: 2 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
               id="currentPassword"
+              label="Current Password"
               name="currentPassword"
+              type="password"
               value={formData.currentPassword}
               onChange={handleChange}
-              required
             />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="newPassword">New Password</label>
-            <input
-              type="password"
+            <TextField
+              margin="normal"
+              required
+              fullWidth
               id="newPassword"
+              label="New Password"
               name="newPassword"
+              type="password"
               value={formData.newPassword}
               onChange={handleChange}
-              required
             />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm New Password</label>
-            <input
-              type="password"
+            <TextField
+              margin="normal"
+              required
+              fullWidth
               id="confirmPassword"
+              label="Confirm New Password"
               name="confirmPassword"
+              type="password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              required
             />
-          </div>
-          
-          <button type="submit" disabled={loading}>
-            {loading ? 'Changing...' : 'Change Password'}
-          </button>
-        </form>
-      </div>
-    </div>
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Change Password'}
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 

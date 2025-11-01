@@ -132,6 +132,11 @@ class Submission(db.Model):
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
     reviewed_at = db.Column(db.DateTime)
     
+    # Evaluation fields
+    evaluation_summary = db.Column(db.Text)  # AI-generated summary
+    platform_feedback = db.Column(db.Text)   # Manual feedback from team
+    action_tasks = db.Column(db.Text)        # JSON array of tasks
+    
     # Relationships
     user = db.relationship('User', back_populates='submission')
     startup = db.relationship('Startup', back_populates='submission', uselist=False)
@@ -438,6 +443,7 @@ class Metric(db.Model):
     
     key = db.Column(db.String(100), nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
+    metric_type = db.Column(db.String(50), default='product') # analytics, marketing, product
     value = db.Column(db.Float)
     target = db.Column(db.Float)
     unit = db.Column(db.String(50))
@@ -639,3 +645,169 @@ class Document(db.Model):
             'stage': self.stage,
             'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None
         }
+
+# ============================================================================
+# PRODUCT SCOPE
+# ============================================================================
+
+class ProductScope(db.Model):
+    __tablename__ = 'product_scopes'
+    id = db.Column(db.Integer, primary_key=True)
+    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
+    status = db.Column(db.String(50), default='draft') # draft, in_review, approved, changes_requested
+    version = db.Column(db.Integer, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    stage_instance = db.relationship('StageInstance', backref=db.backref('product_scope', uselist=False))
+    features = db.relationship('Feature', back_populates='scope', cascade='all, delete-orphan')
+
+class Feature(db.Model):
+    __tablename__ = 'features'
+    id = db.Column(db.Integer, primary_key=True)
+    scope_id = db.Column(db.Integer, db.ForeignKey('product_scopes.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    priority = db.Column(db.String(50)) # must-have, should-have, later
+    status = db.Column(db.String(50), default='pending') # pending, approved, rejected
+    build_status = db.Column(db.String(50), default='pending') # pending, in_progress, completed
+    
+    scope = db.relationship('ProductScope', back_populates='features')
+    comments = db.relationship('Comment', back_populates='feature', cascade='all, delete-orphan')
+
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    feature_id = db.Column(db.Integer, db.ForeignKey('features.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    context = db.Column(db.String(255)) # e.g., 'feature', 'ux_wireframe'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    feature = db.relationship('Feature', back_populates='comments')
+    user = db.relationship('User', backref='comments')
+
+# ============================================================================
+# GTM SCOPE
+# ============================================================================
+
+class GtmScope(db.Model):
+    __tablename__ = 'gtm_scopes'
+    id = db.Column(db.Integer, primary_key=True)
+    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
+    status = db.Column(db.String(50), default='draft') # draft, in_review, approved, changes_requested
+    version = db.Column(db.Integer, default=1)
+    icp = db.Column(db.Text) # Ideal Customer Profile
+    target_geographies = db.Column(db.Text)
+    channels = db.Column(db.Text)
+    positioning_statement = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    stage_instance = db.relationship('StageInstance', backref=db.backref('gtm_scope', uselist=False))
+
+# ============================================================================
+# UX DESIGN SCOPE
+# ============================================================================
+
+class UxDesignScope(db.Model):
+    __tablename__ = 'ux_design_scopes'
+    id = db.Column(db.Integer, primary_key=True)
+    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
+    status = db.Column(db.String(50), default='draft') # draft, in_review, approved
+    wireframe_url = db.Column(db.String(1000))
+    wireframe_status = db.Column(db.String(50), default='pending') # pending, in_review, approved
+    mockup_url = db.Column(db.String(1000))
+    mockup_status = db.Column(db.String(50), default='pending')
+    final_ui_url = db.Column(db.String(1000))
+    final_ui_status = db.Column(db.String(50), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    stage_instance = db.relationship('StageInstance', backref=db.backref('ux_design_scope', uselist=False))
+
+# ============================================================================
+# BUILD
+# ============================================================================
+
+class Build(db.Model):
+    __tablename__ = 'builds'
+    id = db.Column(db.Integer, primary_key=True)
+    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
+    version_number = db.Column(db.String(50), nullable=False)
+    changelog = db.Column(db.Text)
+    status = db.Column(db.String(50), default='in_progress') # in_progress, completed, deployed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    stage_instance = db.relationship('StageInstance', backref='builds')
+
+# ============================================================================
+# DEPLOYMENT
+# ============================================================================
+
+class Deployment(db.Model):
+    __tablename__ = 'deployments'
+    id = db.Column(db.Integer, primary_key=True)
+    build_id = db.Column(db.Integer, db.ForeignKey('builds.id'), nullable=False)
+    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
+    environment = db.Column(db.String(50), nullable=False) # staging, production
+    url = db.Column(db.String(1000))
+    status = db.Column(db.String(50), default='pending') # pending, deployed, awaiting_approval, approved_for_release, live
+    feedback_form_url = db.Column(db.String(1000))
+    launch_checklist = db.Column(db.Text) # JSON array of checklist items
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    build = db.relationship('Build', backref='deployments')
+    stage_instance = db.relationship('StageInstance', backref='deployments')
+
+# ============================================================================
+# MONETIZATION
+# ============================================================================
+
+class Monetization(db.Model):
+    __tablename__ = 'monetization'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    payment_integration_type = db.Column(db.String(100)) # Stripe, Razorpay, etc.
+    payment_integration_config = db.Column(db.Text) # JSON, encrypted
+    revenue_share_percentage = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('monetization', uselist=False))
+
+class Campaign(db.Model):
+    __tablename__ = 'campaigns'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    channel = db.Column(db.String(100)) # LinkedIn, X, Paid Ads, etc.
+    status = db.Column(db.String(50), default='active') # active, paused, completed
+    start_date = db.Column(db.DateTime)
+    end_date = db.Column(db.DateTime)
+    budget = db.Column(db.Float)
+    roi = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref='campaigns')
+
+# ============================================================================
+# FUNDRAISING & HANDOVER
+# ============================================================================
+
+class Fundraising(db.Model):
+    __tablename__ = 'fundraising'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    readiness_score = db.Column(db.Float, default=0.0)
+    pitch_deck_url = db.Column(db.String(1000))
+    investor_connect_status = db.Column(db.String(50), default='pending') # pending, in_progress, completed
+    commission_status = db.Column(db.String(50), default='pending') # pending, paid, waived
+    code_access_status = db.Column(db.String(50), default='locked') # locked, requested, granted
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('fundraising', uselist=False))

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import './KpiCard.css';
+// MUI Components
+import { Box, Typography, Paper, LinearProgress, Button, TextField } from '@mui/material';
 
 const KpiCard = ({ metric, editable = false, onEdit, onSave, isEditing }) => {
   const [editValue, setEditValue] = useState(metric?.value || 0);
 
   const getProgressColor = () => {
-    if (!metric?.target) return '#3b82f6';
+    if (!metric?.target) return 'primary'; // Default to primary color
     const ratio = metric.value / metric.target;
-    if (ratio >= 1) return '#10b981';
-    if (ratio >= 0.7) return '#f59e0b';
-    return '#ef4444';
+    if (ratio >= 1) return 'success';
+    if (ratio >= 0.7) return 'warning';
+    return 'error';
   };
 
   const formatValue = (value) => {
@@ -25,68 +26,70 @@ const KpiCard = ({ metric, editable = false, onEdit, onSave, isEditing }) => {
 
   if (!metric) {
     return (
-      <div className="kpi-card">
-        <div className="kpi-title">{metric?.title || 'Metric'}</div>
-        <div className="kpi-value">-</div>
-      </div>
+      <Paper elevation={2} sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="subtitle1">Metric</Typography>
+        <Typography variant="h5">-</Typography>
+      </Paper>
     );
   }
 
   return (
-    <div className="kpi-card" style={{ borderTopColor: getProgressColor() }}>
-      <div className="kpi-header">
-        <div className="kpi-title">{metric.name}</div>
+    <Paper elevation={2} sx={{ p: 2, borderLeft: `5px solid`, borderColor: `${getProgressColor()}.main` }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="subtitle1" component="div" sx={{ fontWeight: 'bold' }}>{metric.name}</Typography>
         {metric.source && (
-          <span className="kpi-source">{metric.source}</span>
+          <Typography variant="caption" color="text.secondary">{metric.source}</Typography>
         )}
-      </div>
+      </Box>
 
       {isEditing ? (
-        <div className="kpi-edit">
-          <input
+        <Box sx={{ mt: 1 }}>
+          <TextField
             type="number"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            fullWidth
+            size="small"
             autoFocus
+            sx={{ mb: 1 }}
           />
-          <div className="edit-actions">
-            <button className="btn-sm btn-primary" onClick={handleSave}>Save</button>
-            <button className="btn-sm btn-secondary" onClick={() => onEdit(null)}>Cancel</button>
-          </div>
-        </div>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="contained" size="small" onClick={handleSave} sx={{ mr: 1 }}>Save</Button>
+            <Button variant="outlined" size="small" onClick={() => onEdit(null)}>Cancel</Button>
+          </Box>
+        </Box>
       ) : (
         <>
-          <div className="kpi-value" onClick={editable ? onEdit : undefined}>
+          <Typography variant="h4" component="div" onClick={editable ? onEdit : undefined} sx={{ cursor: editable ? 'pointer' : 'default' }}>
             {formatValue(metric.value)}
-            {editable && <span className="edit-icon">✏️</span>}
-          </div>
+            {editable && <Typography component="span" sx={{ ml: 1 }}>✏️</Typography>}
+          </Typography>
 
           {metric.target && (
-            <div className="kpi-target">
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               Target: {formatValue(metric.target)}
-            </div>
+            </Typography>
           )}
 
           {metric.target && (
-            <div className="kpi-progress">
-              <div 
-                className="kpi-progress-bar"
-                style={{ 
-                  width: `${Math.min((metric.value / metric.target) * 100, 100)}%`,
-                  backgroundColor: getProgressColor()
-                }}
+            <Box sx={{ mt: 1 }}>
+              <LinearProgress 
+                variant="determinate" 
+                value={Math.min((metric.value / metric.target) * 100, 100)}
+                color={getProgressColor()}
+                sx={{ height: 8, borderRadius: 4 }}
               />
-            </div>
+            </Box>
           )}
 
           {metric.last_synced_at && (
-            <div className="kpi-sync">
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
               Updated: {new Date(metric.last_synced_at).toLocaleDateString()}
-            </div>
+            </Typography>
           )}
         </>
       )}
-    </div>
+    </Paper>
   );
 };
 

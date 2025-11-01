@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import './AuthPages.css';
+
+// MUI Components
+import { Container, Box, Typography, Button, TextField, Paper, CircularProgress, Link, Alert } from '@mui/material';
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ const SignupPage = () => {
       [e.target.name]: e.target.value
     });
     setError('');
+    setSuccess('');
   };
 
   const handleSubmit = async (e) => {
@@ -65,87 +68,103 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-header">
-          <h1>Create Your Account</h1>
-          <p>Join Turning Ideas App Factory and start your journey</p>
-        </div>
+    <Container component="main" maxWidth="xs">
+      <Paper elevation={3} sx={{ mt: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography component="h1" variant="h5">
+          Create Your Account
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+          Join Turning Ideas App Factory and start your journey
+        </Typography>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Full Name *</label>
-            <input
-              type="text"
-              name="full_name"
-              value={formData.full_name}
-              onChange={handleChange}
-              placeholder="John Doe"
-              required
-            />
-          </div>
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="full_name"
+            label="Full Name"
+            name="full_name"
+            autoComplete="name"
+            autoFocus
+            value={formData.full_name}
+            onChange={handleChange}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            value={formData.email}
+            onChange={handleChange}
+          />
+          <TextField
+            margin="normal"
+            fullWidth
+            id="mobile"
+            label="Mobile Number"
+            name="mobile"
+            autoComplete="tel"
+            value={formData.mobile}
+            onChange={handleChange}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type="password"
+            id="password"
+            autoComplete="new-password"
+            value={formData.password}
+            onChange={handleChange}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="confirmPassword"
+            label="Confirm Password"
+            type="password"
+            id="confirmPassword"
+            autoComplete="new-password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+          />
 
-          <div className="form-group">
-            <label>Email Address *</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="your@email.com"
-              required
-            />
-          </div>
+          {error && (
+            <Alert severity="error" sx={{ mt: 2, width: '100%' }}>{error}</Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ mt: 2, width: '100%' }}>{success}</Alert>
+          )}
 
-          <div className="form-group">
-            <label>Mobile Number</label>
-            <input
-              type="tel"
-              name="mobile"
-              value={formData.mobile}
-              onChange={handleChange}
-              placeholder="+91 98765 43210"
-            />
-          </div>
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign Up'}
+          </Button>
+        </Box>
 
-          <div className="form-group">
-            <label>Password *</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="At least 6 characters"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Confirm Password *</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re-enter your password"
-              required
-            />
-          </div>
-
-          {error && <div className="error-message">{error}</div>}
-          {success && <div className="success-message">{success}</div>}
-
-          <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Creating Account...' : 'Sign Up'}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          <p>Already have an account? <Link to="/login">Sign In</Link></p>
-          <p><Link to="/">Back to Home</Link></p>
-        </div>
-      </div>
-    </div>
+        <Box sx={{ mt: 2 }}>
+          <Link component={RouterLink} to="/login" variant="body2">
+            Already have an account? Sign In
+          </Link>
+          <br />
+          <Link component={RouterLink} to="/" variant="body2">
+            Back to Home
+          </Link>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 

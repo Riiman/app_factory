@@ -159,6 +159,69 @@ const apiService = {
     updateProfile: (data) => api.put('/user/profile', data),
     changePassword: (data) => api.post('/user/change-password', data),
   },
+
+  // Platform
+  platform: {
+    getSubmissions: () => api.get('/platform/submissions'),
+    getSubmission: (submissionId) => api.get(`/platform/submissions/${submissionId}`),
+    evaluateSubmission: (submissionId, data) => api.post(`/platform/submissions/${submissionId}/evaluate`, data),
+    getAllStartupsWithMetrics: () => api.get('/platform/startups-with-metrics'),
+  },
+
+  productScope: {
+    createScope: (startupId) => api.post(`/platform/startups/${startupId}/scope`),
+    addFeature: (scopeId, data) => api.post(`/platform/scopes/${scopeId}/features`, data),
+    getScope: () => api.get('/dashboard/scope'),
+    addComment: (featureId, data) => api.post(`/dashboard/features/${featureId}/comments`, data),
+    approveScope: () => api.post('/dashboard/scope/approve'),
+    requestChanges: () => api.post('/dashboard/scope/request-changes'),
+  },
+
+  gtmScope: {
+    createOrUpdateScope: (startupId, data) => api.post(`/platform/startups/${startupId}/gtm-scope`, data),
+    getScope: () => api.get('/dashboard/gtm-scope'),
+    approveScope: () => api.post('/dashboard/gtm-scope/approve'),
+    requestChanges: () => api.post('/dashboard/gtm-scope/request-changes'),
+  },
+
+  uxDesign: {
+    createOrUpdateScope: (startupId, data) => api.post(`/platform/startups/${startupId}/ux-design`, data),
+    getScope: () => api.get('/dashboard/ux-design'),
+    approveScope: (data) => api.post('/dashboard/ux-design/approve', data),
+    addComment: (data) => api.post('/dashboard/ux-design/comments', data),
+  },
+
+  build: {
+    updateFeatureStatus: (featureId, data) => api.put(`/platform/features/${featureId}/status`, data),
+    getBuildProgress: () => api.get('/dashboard/build-progress'),
+    getBuilds: () => api.get('/dashboard/builds'),
+  },
+
+  deployment: {
+    createDeployment: (buildId, data) => api.post(`/platform/builds/${buildId}/deployments`, data),
+    updateDeployment: (deploymentId, data) => api.put(`/platform/deployments/${deploymentId}`, data),
+    getDeployments: () => api.get('/dashboard/deployments'),
+    approveRelease: (deploymentId) => api.post(`/dashboard/deployments/${deploymentId}/approve-release`),
+    submitFeedback: (deploymentId, data) => api.post(`/dashboard/deployments/${deploymentId}/submit-feedback`, data),
+  },
+
+  analytics: {
+    getDashboardAnalytics: () => api.get('/dashboard/analytics'),
+  },
+
+  monetization: {
+    createOrUpdateMonetization: (startupId, data) => api.post(`/platform/startups/${startupId}/monetization`, data),
+    createCampaign: (startupId, data) => api.post(`/platform/startups/${startupId}/campaigns`, data),
+    getDashboardMonetization: () => api.get('/dashboard/monetization'),
+  },
+
+  fundraising: {
+    createOrUpdateFundraising: (startupId, data) => api.post(`/platform/startups/${startupId}/fundraising`, data),
+    manageCodeHandover: (startupId, data) => api.post(`/platform/startups/${startupId}/code-handover`, data),
+    getDashboardFundraising: () => api.get('/dashboard/fundraising'),
+    payCommission: () => api.post('/dashboard/fundraising/pay-commission'),
+    requestCodeAccess: () => api.post('/dashboard/fundraising/request-code-access'),
+  },
 };
 
 export default apiService;

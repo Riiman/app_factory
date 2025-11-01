@@ -1,12 +1,17 @@
 import React from 'react';
-import './ActivityFeed.css';
+// MUI Components
+import { Box, Typography, Paper, List, ListItem, ListItemText, ListItemIcon, Avatar } from '@mui/material';
+// Icons
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 const ActivityFeed = ({ activity }) => {
   if (!activity || (!activity.tasks?.length && !activity.artifacts?.length)) {
     return (
-      <div className="empty-state">
-        <p>No recent activity</p>
-      </div>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="body1">No recent activity</Typography>
+      </Box>
     );
   }
 
@@ -15,11 +20,11 @@ const ActivityFeed = ({ activity }) => {
     ...activity.artifacts.map(a => ({ ...a, type: 'artifact', time: a.created_at }))
   ].sort((a, b) => new Date(b.time) - new Date(a.time));
 
-  const getActivityIcon = (type, status) => {
-    if (type === 'task') {
-      return status === 'done' ? '✅' : '📝';
+  const getActivityIcon = (item) => {
+    if (item.type === 'task') {
+      return item.status === 'done' ? <CheckCircleOutlineIcon color="success" /> : <AssignmentIcon color="info" />;
     }
-    return '📎';
+    return <AttachFileIcon color="action" />;
   };
 
   const getActivityText = (item) => {
@@ -43,19 +48,31 @@ const ActivityFeed = ({ activity }) => {
   };
 
   return (
-    <div className="activity-feed">
-      {allActivity.slice(0, 10).map((item, index) => (
-        <div key={`${item.type}-${item.id}-${index}`} className="activity-item">
-          <span className="activity-icon">{getActivityIcon(item.type, item.status)}</span>
-          <div className="activity-content">
-            <p className="activity-text">
-              <strong>{getActivityText(item)}:</strong> {item.title}
-            </p>
-            <span className="activity-time">{formatTime(item.time)}</span>
-          </div>
-        </div>
-      ))}
-    </div>
+    <Box>
+      <List>
+        {allActivity.slice(0, 10).map((item, index) => (
+          <ListItem key={`${item.type}-${item.id}-${index}`} disablePadding sx={{ mb: 1 }}>
+            <ListItemIcon>
+              <Avatar sx={{ bgcolor: 'primary.light' }}>
+                {getActivityIcon(item)}
+              </Avatar>
+            </ListItemIcon>
+            <ListItemText 
+              primary={
+                <Typography variant="body1">
+                  <strong>{getActivityText(item)}:</strong> {item.title}
+                </Typography>
+              }
+              secondary={
+                <Typography variant="caption" color="text.secondary">
+                  {formatTime(item.time)}
+                </Typography>
+              }
+            />
+          </ListItem>
+        ))}
+      </List>
+    </Box>
   );
 };
 

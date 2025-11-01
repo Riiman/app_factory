@@ -1,11 +1,13 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import authService from '../services/authService';
 import { useToast } from '../context/ToastContext';
 import { isValidEmail } from '../utils/helpers';
 import { ROUTES, SUCCESS_MESSAGES } from '../config/constants';
-import './ForgotPassword.css';
+
+// MUI Components
+import { Container, Box, Typography, Button, TextField, Paper, CircularProgress, Link, Alert } from '@mui/material';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -46,56 +48,69 @@ const ForgotPassword = () => {
 
   if (emailSent) {
     return (
-      <div className="forgot-password-page">
-        <div className="forgot-password-container">
-          <div className="success-message">
-            <div className="success-icon">✓</div>
-            <h2>Check Your Email</h2>
-            <p>We've sent password reset instructions to:</p>
-            <p className="email-sent"><strong>{email}</strong></p>
-            <p>Didn't receive the email? Check your spam folder.</p>
-            <Link to={ROUTES.LOGIN} className="back-to-login">
-              Back to Login
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Container component="main" maxWidth="xs">
+        <Paper elevation={3} sx={{ mt: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Typography component="h1" variant="h5" gutterBottom>
+            Check Your Email
+          </Typography>
+          <Typography variant="body1" paragraph>
+            We've sent password reset instructions to:
+          </Typography>
+          <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 2 }}>
+            {email}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            Didn't receive the email? Check your spam folder.
+          </Typography>
+          <Link component={RouterLink} to={ROUTES.LOGIN} variant="button" sx={{ mt: 2 }}>
+            Back to Login
+          </Link>
+        </Paper>
+      </Container>
     );
   }
 
   return (
-    <div className="forgot-password-page">
-      <div className="forgot-password-container">
-        <h1>Reset Password</h1>
-        <p className="subtitle">
+    <Container component="main" maxWidth="xs">
+      <Paper elevation={3} sx={{ mt: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography component="h1" variant="h5" gutterBottom>
+          Reset Password
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 3 }}>
           Enter your email address and we'll send you a link to reset your password.
-        </p>
-        <form onSubmit={handleSubmit} className="forgot-password-form">
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isSubmitting}
-              autoFocus
-            />
-          </div>
-          {error && <div className="error-message">{error}</div>}
-          <button 
-            type="submit" 
-            className="submit-button"
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isSubmitting}
+          />
+          {error && (
+            <Alert severity="error" sx={{ mt: 2, width: '100%' }}>{error}</Alert>
+          )}
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Sending...' : 'Send Reset Link'}
-          </button>
-        </form>
-        <div className="links">
-          <Link to={ROUTES.LOGIN}>Back to Login</Link>
-        </div>
-      </div>
-    </div>
+            {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Send Reset Link'}
+          </Button>
+        </Box>
+        <Link component={RouterLink} to={ROUTES.LOGIN} variant="body2">
+          Back to Login
+        </Link>
+      </Paper>
+    </Container>
   );
 };
 

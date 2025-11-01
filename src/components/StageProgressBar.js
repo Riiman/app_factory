@@ -1,5 +1,6 @@
 import React from 'react';
-import './StageProgressBar.css';
+// MUI Components
+import { Box, Typography, LinearProgress, Paper, Chip, Grid } from '@mui/material';
 
 const StageProgressBar = ({ stages = [], currentStage, overallProgress = 0 }) => {
   // If no stages, don't render
@@ -8,54 +9,71 @@ const StageProgressBar = ({ stages = [], currentStage, overallProgress = 0 }) =>
   }
 
   const getStatusColor = (status) => {
-    const colors = {
-      'completed': '#10b981',
-      'in_progress': '#f59e0b',
-      'blocked': '#ef4444',
-      'in_review': '#3b82f6',
-      'not_started': '#9ca3af',
-      'skipped': '#6b7280'
-    };
-    return colors[status] || '#9ca3af';
+    switch (status) {
+      case 'completed': return 'success';
+      case 'in_progress': return 'info';
+      case 'blocked': return 'error';
+      case 'in_review': return 'warning';
+      case 'not_started': return 'default';
+      case 'skipped': return 'default';
+      default: return 'default';
+    }
   };
 
   return (
-    <div className="stage-progress-bar">
-      <div className="progress-header">
-        <h3>MVP Development Progress</h3>
-        <span className="overall-progress">{Math.round(overallProgress)}% Complete</span>
-      </div>
+    <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="h6">MVP Development Progress</Typography>
+        <Typography variant="subtitle1">{Math.round(overallProgress)}% Complete</Typography>
+      </Box>
       
-      <div className="progress-track">
-        <div 
-          className="progress-fill" 
-          style={{ width: `${overallProgress}%` }}
-        />
-      </div>
+      <LinearProgress 
+        variant="determinate" 
+        value={overallProgress}
+        sx={{ height: 10, borderRadius: 5, mb: 2 }}
+      />
 
-      <div className="stages-container">
+      <Grid container spacing={1} justifyContent="space-between">
         {stages.map((stage, index) => (
-          <div 
-            key={stage.id || index} 
-            className={`stage-item ${stage.stage_key === currentStage ? 'current' : ''}`}
-          >
-            <div 
-              className="stage-indicator"
-              style={{ 
-                backgroundColor: getStatusColor(stage.status),
-                borderColor: stage.stage_key === currentStage ? '#1e40af' : 'transparent'
+          <Grid item key={stage.id || index} xs>
+            <Box 
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                position: 'relative',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  top: '15px',
+                  left: '50%',
+                  width: 'calc(100% - 30px)',
+                  height: '2px',
+                  backgroundColor: index < stages.length - 1 ? '#e0e0e0' : 'transparent',
+                  zIndex: 0,
+                  transform: 'translateX(-50%)',
+                },
               }}
             >
-              {stage.status === 'completed' ? '✓' : index + 1}
-            </div>
-            <div className="stage-info">
-              <span className="stage-name">{stage.name || `Stage ${index + 1}`}</span>
-              <span className="stage-progress">{Math.round(stage.progress || 0)}%</span>
-            </div>
-          </div>
+              <Chip 
+                label={stage.status === 'completed' ? '✓' : index + 1}
+                color={getStatusColor(stage.status)}
+                sx={{
+                  zIndex: 1,
+                  mb: 0.5,
+                  backgroundColor: stage.stage_key === currentStage ? 'primary.main' : undefined,
+                  color: stage.stage_key === currentStage ? 'white' : undefined,
+                }}
+              />
+              <Typography variant="caption" align="center" sx={{ fontWeight: stage.stage_key === currentStage ? 'bold' : 'normal' }}>
+                {stage.name || `Stage ${index + 1}`}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">{Math.round(stage.progress || 0)}%</Typography>
+            </Box>
+          </Grid>
         ))}
-      </div>
-    </div>
+      </Grid>
+    </Paper>
   );
 };
 

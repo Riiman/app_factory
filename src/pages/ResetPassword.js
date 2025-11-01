@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import authService from '../services/authService';
 import { useToast } from '../context/ToastContext';
 import { isValidPassword } from '../utils/helpers';
 import { ROUTES, SUCCESS_MESSAGES, VALIDATION } from '../config/constants';
-import './ResetPassword.css';
+
+// MUI Components
+import { Container, Box, Typography, Button, TextField, Paper, CircularProgress, Link, Alert } from '@mui/material';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -55,7 +57,6 @@ const ResetPassword = () => {
       [name]: value
     }));
 
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -92,80 +93,88 @@ const ResetPassword = () => {
 
   if (!tokenValid) {
     return (
-      <div className="reset-password-page">
-        <div className="reset-password-container">
-          <div className="error-state">
-            <div className="error-icon">✕</div>
-            <h2>Invalid Reset Link</h2>
-            <p>This password reset link is invalid or has expired.</p>
-            <p>Please request a new password reset link.</p>
-            <button 
-              onClick={() => navigate(ROUTES.FORGOT_PASSWORD)}
-              className="request-new-btn"
-            >
-              Request New Link
-            </button>
-          </div>
-        </div>
-      </div>
+      <Container component="main" maxWidth="xs">
+        <Paper elevation={3} sx={{ mt: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Typography component="h1" variant="h5" color="error" gutterBottom>
+            Invalid Reset Link
+          </Typography>
+          <Typography variant="body1" paragraph>
+            This password reset link is invalid or has expired.
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Please request a new password reset link.
+          </Typography>
+          <Button 
+            variant="contained"
+            onClick={() => navigate(ROUTES.FORGOT_PASSWORD)}
+            sx={{ mt: 2 }}
+          >
+            Request New Link
+          </Button>
+        </Paper>
+      </Container>
     );
   }
 
   return (
-    <div className="reset-password-page">
-      <div className="reset-password-container">
-        <div className="reset-password-header">
-          <h1>Create New Password</h1>
-          <p>Enter your new password below.</p>
-        </div>
+    <Container component="main" maxWidth="xs">
+      <Paper elevation={3} sx={{ mt: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography component="h1" variant="h5" gutterBottom>
+          Create New Password
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 3 }}>
+          Enter your new password below.
+        </Typography>
 
-        <form onSubmit={handleSubmit} className="reset-password-form">
-          <div className="form-group">
-            <label htmlFor="password">New Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter new password"
-              disabled={isSubmitting}
-              autoFocus
-            />
-            {errors.password && (
-              <span className="field-error">{errors.password}</span>
-            )}
-            <small className="field-hint">
-              Password must be at least {VALIDATION.PASSWORD_MIN_LENGTH} characters
-            </small>
-          </div>
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="password"
+            label="New Password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            autoFocus
+            value={formData.password}
+            onChange={handleChange}
+            disabled={isSubmitting}
+            error={!!errors.password}
+            helperText={errors.password}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: -1, mb: 2, display: 'block' }}>
+            Password must be at least {VALIDATION.PASSWORD_MIN_LENGTH} characters
+          </Typography>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Confirm your password"
-              disabled={isSubmitting}
-            />
-            {errors.confirmPassword && (
-              <span className="field-error">{errors.confirmPassword}</span>
-            )}
-          </div>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="confirmPassword"
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            disabled={isSubmitting}
+            error={!!errors.confirmPassword}
+            helperText={errors.confirmPassword}
+          />
 
-          <button 
-            type="submit" 
-            className="reset-password-btn"
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Resetting...' : 'Reset Password'}
-          </button>
-        </form>
-      </div>
-    </div>
+            {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Reset Password'}
+          </Button>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 

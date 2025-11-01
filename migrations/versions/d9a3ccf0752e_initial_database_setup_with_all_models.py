@@ -1,8 +1,8 @@
-"""Initial 9-stage architecture
+"""Initial database setup with all models
 
-Revision ID: 2262fd46f6c7
+Revision ID: d9a3ccf0752e
 Revises: 
-Create Date: 2025-10-31 11:47:48.009019
+Create Date: 2025-11-02 03:51:55.452732
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '2262fd46f6c7'
+revision = 'd9a3ccf0752e'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -86,6 +86,9 @@ def upgrade():
     sa.Column('status', sa.String(length=50), nullable=True),
     sa.Column('submitted_at', sa.DateTime(), nullable=True),
     sa.Column('reviewed_at', sa.DateTime(), nullable=True),
+    sa.Column('evaluation_summary', sa.Text(), nullable=True),
+    sa.Column('platform_feedback', sa.Text(), nullable=True),
+    sa.Column('action_tasks', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('submission_id'),
@@ -111,6 +114,22 @@ def upgrade():
     with op.batch_alter_table('startups', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_startups_slug'), ['slug'], unique=True)
 
+    op.create_table('campaigns',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('startup_id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=200), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('channel', sa.String(length=100), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('start_date', sa.DateTime(), nullable=True),
+    sa.Column('end_date', sa.DateTime(), nullable=True),
+    sa.Column('budget', sa.Float(), nullable=True),
+    sa.Column('roi', sa.Float(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('documents',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('startup_id', sa.Integer(), nullable=False),
@@ -126,6 +145,19 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('fundraising',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('startup_id', sa.Integer(), nullable=False),
+    sa.Column('readiness_score', sa.Float(), nullable=True),
+    sa.Column('pitch_deck_url', sa.String(length=1000), nullable=True),
+    sa.Column('investor_connect_status', sa.String(length=50), nullable=True),
+    sa.Column('commission_status', sa.String(length=50), nullable=True),
+    sa.Column('code_access_status', sa.String(length=50), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('integrations',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('startup_id', sa.Integer(), nullable=False),
@@ -136,6 +168,17 @@ def upgrade():
     sa.Column('last_synced_at', sa.DateTime(), nullable=True),
     sa.Column('connected_at', sa.DateTime(), nullable=True),
     sa.Column('error_message', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('monetization',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('startup_id', sa.Integer(), nullable=False),
+    sa.Column('payment_integration_type', sa.String(length=100), nullable=True),
+    sa.Column('payment_integration_config', sa.Text(), nullable=True),
+    sa.Column('revenue_share_percentage', sa.Float(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
@@ -185,6 +228,16 @@ def upgrade():
     sa.ForeignKeyConstraint(['uploaded_by'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('builds',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('stage_instance_id', sa.Integer(), nullable=False),
+    sa.Column('version_number', sa.String(length=50), nullable=False),
+    sa.Column('changelog', sa.Text(), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['stage_instance_id'], ['stage_instances.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('experiments',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('stage_instance_id', sa.Integer(), nullable=False),
@@ -201,11 +254,26 @@ def upgrade():
     sa.ForeignKeyConstraint(['stage_instance_id'], ['stage_instances.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('gtm_scopes',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('stage_instance_id', sa.Integer(), nullable=False),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('version', sa.Integer(), nullable=True),
+    sa.Column('icp', sa.Text(), nullable=True),
+    sa.Column('target_geographies', sa.Text(), nullable=True),
+    sa.Column('channels', sa.Text(), nullable=True),
+    sa.Column('positioning_statement', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['stage_instance_id'], ['stage_instances.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('metrics',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('stage_instance_id', sa.Integer(), nullable=False),
     sa.Column('key', sa.String(length=100), nullable=False),
     sa.Column('name', sa.String(length=200), nullable=False),
+    sa.Column('metric_type', sa.String(length=50), nullable=True),
     sa.Column('value', sa.Float(), nullable=True),
     sa.Column('target', sa.Float(), nullable=True),
     sa.Column('unit', sa.String(length=50), nullable=True),
@@ -222,6 +290,16 @@ def upgrade():
         batch_op.create_index('idx_stage_metric', ['stage_instance_id', 'key'], unique=False)
         batch_op.create_index(batch_op.f('ix_metrics_key'), ['key'], unique=False)
 
+    op.create_table('product_scopes',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('stage_instance_id', sa.Integer(), nullable=False),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('version', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['stage_instance_id'], ['stage_instances.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('tasks',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('stage_instance_id', sa.Integer(), nullable=False),
@@ -240,26 +318,88 @@ def upgrade():
     sa.ForeignKeyConstraint(['stage_instance_id'], ['stage_instances.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('ux_design_scopes',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('stage_instance_id', sa.Integer(), nullable=False),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('wireframe_url', sa.String(length=1000), nullable=True),
+    sa.Column('wireframe_status', sa.String(length=50), nullable=True),
+    sa.Column('mockup_url', sa.String(length=1000), nullable=True),
+    sa.Column('mockup_status', sa.String(length=50), nullable=True),
+    sa.Column('final_ui_url', sa.String(length=1000), nullable=True),
+    sa.Column('final_ui_status', sa.String(length=50), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['stage_instance_id'], ['stage_instances.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('deployments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('build_id', sa.Integer(), nullable=False),
+    sa.Column('stage_instance_id', sa.Integer(), nullable=False),
+    sa.Column('environment', sa.String(length=50), nullable=False),
+    sa.Column('url', sa.String(length=1000), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('feedback_form_url', sa.String(length=1000), nullable=True),
+    sa.Column('launch_checklist', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['build_id'], ['builds.id'], ),
+    sa.ForeignKeyConstraint(['stage_instance_id'], ['stage_instances.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('features',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('scope_id', sa.Integer(), nullable=False),
+    sa.Column('title', sa.String(length=200), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('priority', sa.String(length=50), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('build_status', sa.String(length=50), nullable=True),
+    sa.ForeignKeyConstraint(['scope_id'], ['product_scopes.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('comments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('feature_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('context', sa.String(length=255), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['feature_id'], ['features.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('comments')
+    op.drop_table('features')
+    op.drop_table('deployments')
+    op.drop_table('ux_design_scopes')
     op.drop_table('tasks')
+    op.drop_table('product_scopes')
     with op.batch_alter_table('metrics', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_metrics_key'))
         batch_op.drop_index('idx_stage_metric')
 
     op.drop_table('metrics')
+    op.drop_table('gtm_scopes')
     op.drop_table('experiments')
+    op.drop_table('builds')
     op.drop_table('artifacts')
     with op.batch_alter_table('stage_instances', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_stage_instances_stage_key'))
         batch_op.drop_index('idx_startup_stage')
 
     op.drop_table('stage_instances')
+    op.drop_table('monetization')
     op.drop_table('integrations')
+    op.drop_table('fundraising')
     op.drop_table('documents')
+    op.drop_table('campaigns')
     with op.batch_alter_table('startups', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_startups_slug'))
 

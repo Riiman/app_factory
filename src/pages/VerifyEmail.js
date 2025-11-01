@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import authService from '../services/authService';
 import { useToast } from '../context/ToastContext';
-import LoadingSpinner from '../components/LoadingSpinner';
 import { ROUTES, SUCCESS_MESSAGES } from '../config/constants';
-import './VerifyEmail.css';
+
+// MUI Components
+import { Container, Box, Typography, Button, TextField, Paper, CircularProgress, Link, Alert, AlertTitle } from '@mui/material';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -69,75 +70,86 @@ const VerifyEmail = () => {
 
   if (verificationStatus === 'verifying') {
     return (
-      <div className="verify-email-page">
-        <div className="verify-email-container">
-          <LoadingSpinner size="large" message="Verifying your email..." />
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress size={60} />
+        <Typography variant="h6" sx={{ mt: 2 }}>Verifying your email...</Typography>
+      </Box>
     );
   }
 
   if (verificationStatus === 'success') {
     return (
-      <div className="verify-email-page">
-        <div className="verify-email-container">
-          <div className="success-state">
-            <div className="success-icon">✓</div>
-            <h1>Email Verified!</h1>
-            <p>Your email has been successfully verified.</p>
-            <p>Redirecting you to login page...</p>
-            <button 
+      <Container component="main" maxWidth="xs">
+        <Paper elevation={3} sx={{ mt: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Alert severity="success" iconMapping={{ success: <CheckCircleOutlineIcon fontSize="inherit" /> }}>
+            <AlertTitle>Email Verified!</AlertTitle>
+            <Typography variant="body1" paragraph>
+              Your email has been successfully verified.
+            </Typography>
+            <Typography variant="body2" paragraph>
+              Redirecting you to the login page...
+            </Typography>
+            <Button 
+              variant="contained"
               onClick={() => navigate(ROUTES.LOGIN)}
-              className="login-btn"
+              sx={{ mt: 2 }}
             >
               Go to Login
-            </button>
-          </div>
-        </div>
-      </div>
+            </Button>
+          </Alert>
+        </Paper>
+      </Container>
     );
   }
 
   return (
-    <div className="verify-email-page">
-      <div className="verify-email-container">
-        <div className="error-state">
-          <div className="error-icon">✕</div>
-          <h1>Verification Failed</h1>
-          <p className="error-message">{errorMessage}</p>
-          <p>The verification link may have expired or is invalid.</p>
+    <Container component="main" maxWidth="xs">
+      <Paper elevation={3} sx={{ mt: 8, p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+          <AlertTitle>Verification Failed</AlertTitle>
+          <Typography variant="body1" paragraph>{errorMessage}</Typography>
+          <Typography variant="body2" paragraph>
+            The verification link may have expired or is invalid.
+          </Typography>
+        </Alert>
 
-          <div className="resend-section">
-            <h3>Resend Verification Email</h3>
-            <form onSubmit={handleResendVerification}>
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={resendEmail}
-                onChange={(e) => setResendEmail(e.target.value)}
-                disabled={isResending}
-              />
-              <button 
-                type="submit" 
-                className="resend-btn"
-                disabled={isResending}
-              >
-                {isResending ? 'Sending...' : 'Resend Email'}
-              </button>
-            </form>
-          </div>
+        <Box sx={{ width: '100%', mt: 3 }}>
+          <Typography variant="h6" gutterBottom>Resend Verification Email</Typography>
+          <Box component="form" onSubmit={handleResendVerification} noValidate sx={{ mt: 1 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="resend-email"
+              label="Enter your email"
+              name="resendEmail"
+              autoComplete="email"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              disabled={isResending}
+            />
+            <Button 
+              type="submit" 
+              fullWidth
+              variant="contained"
+              sx={{ mt: 2, mb: 2 }}
+              disabled={isResending}
+            >
+              {isResending ? <CircularProgress size={24} color="inherit" /> : 'Resend Email'}
+            </Button>
+          </Box>
+        </Box>
 
-          <div className="footer-links">
-            <button onClick={() => navigate(ROUTES.LOGIN)} className="link-btn">
-              Back to Login
-            </button>
-            <button onClick={() => navigate(ROUTES.SIGNUP)} className="link-btn">
-              Create New Account
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+          <Link component={RouterLink} to={ROUTES.LOGIN} variant="body2">
+            Back to Login
+          </Link>
+          <Link component={RouterLink} to={ROUTES.SIGNUP} variant="body2">
+            Create New Account
+          </Link>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 
