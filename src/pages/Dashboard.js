@@ -1,71 +1,38 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import apiService from '../services/api';
-import { useAuth } from '../context/AuthContext';
-
-// MUI Components
-import { AppBar, Toolbar, Typography, Button, Container, Grid, Paper, Tabs, Tab, Box, CircularProgress, Alert } from '@mui/material';
-import { styled } from '@mui/material/styles';
-
-// Custom Components
-import StageProgressBar from '../components/StageProgressBar';
-import StageCard from '../components/StageCard';
-import KpiCard from '../components/KpiCard';
-import AlertPanel from '../components/AlertPanel'; // This might need refactoring to MUI Alert
-import ActivityFeed from '../components/ActivityFeed';
 import ProductScopeView from '../components/ProductScopeView';
-import GtmScopeView from '../components/GtmScopeView';
+import { useAuth } from '../context/AuthContext';
+import StageProgressBar from '../components/StageProgressBar';
 import UxDesignView from '../components/UxDesignView';
-import BuildProgressView from '../components/BuildProgressView';
-import TestDeployView from '../components/TestDeployView';
 import ShareMonitorView from '../components/ShareMonitorView';
-import MonetizeGtmView from '../components/MonetizeGtmView';
 import FundraisingHandoverView from '../components/FundraisingHandoverView';
-
-// Custom CSS (will be phased out)
-import './Dashboard.css';
-
-const StyledTab = styled(Tab)(({ theme }) => ({
-  textTransform: 'none',
-  fontWeight: theme.typography.fontWeightRegular,
-  fontSize: theme.typography.pxToRem(15),
-  marginRight: theme.spacing(1),
-  color: 'rgba(255, 255, 255, 0.7)',
-  '&.Mui-selected': {
-    color: '#fff',
-  },
-  '&.Mui-focusVisible': {
-    backgroundColor: 'rgba(100, 95, 228, 0.3)',
-  },
-}));
+import GtmScopeView from '../components/GtmScopeView';
+import MonetizeGtmView from '../components/MonetizeGtmView';
+import BuildProgressView from '../components/BuildProgressView';
+import apiService from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import TestDeployView from '../components/TestDeployView';
+import { useLocation } from 'react-router-dom';
+import Sidebar from '../components/Sidebar';
 
 const Dashboard = () => {
+  const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(0); // Use index for MUI Tabs
   const [error, setError] = useState(null);
 
-  const tabLabels = [
-    'Overview', 'Stages', 'Metrics', 'Integrations', 'Evaluation',
-    'Product Scope', 'GTM Scope', 'UX Design', 'Build Progress',
-    'Test & Deploy', 'Share & Monitor', 'Monetize & GTM', 'Fundraising & Handover'
-  ];
-
-  const tabKeys = [
-    'overview', 'stages', 'metrics', 'integrations', 'evaluation',
-    'product-scope', 'gtm-scope', 'ux-design', 'build-progress',
-    'test-deploy', 'share-monitor', 'monetize-gtm', 'fundraising'
-  ];
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      navigate('/platform/dashboard');
+    }
+  }, [user, navigate]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.dashboard.getDashboard();
-      
-      console.log('Dashboard Response:', response.data);
-      
+
       if (response.data.success) {
         setDashboardData(response.data.data);
       } else {
@@ -73,8 +40,8 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error('Error fetching dashboard:', err);
-      setError(err.message);
-      
+      setError(err);
+
       if (err.response?.status === 404) {
         navigate('/evaluation-form');
       }
@@ -90,41 +57,140 @@ const Dashboard = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      console.log("Logout succesful")
+      navigate('/');
     } catch (err) {
       console.error('Logout error:', err);
-    } finally {
-      navigate('/');
     }
-  };
-
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ ml: 2 }}>Loading your dashboard...</Typography>
-      </Box>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        }}
+      >
+        <div
+          style={{
+            width: '60px',
+            height: '60px',
+            border: '5px solid #fff',
+            borderBottomColor: 'transparent',
+            borderRadius: '50%',
+            display: 'inline-block',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '24px',
+          }}
+        ></div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+        <h2 style={{ color: 'white', fontWeight: 600, fontSize: '1.5rem' }}>
+          Loading your dashboard...
+        </h2>
+      </div>
     );
   }
 
   if (error) {
+    if (error.response && error.response.status === 404) {
+      return (
+        <div style={{ maxWidth: '800px', margin: '64px auto', padding: '32px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)' }}>
+          <h3 style={{ color: '#F44336', fontWeight: 700, marginBottom: '16px' }}>
+            ⚠️ Data Not Found
+          </h3>
+          <p style={{ color: '#757575', marginBottom: '24px' }}>
+            The requested data is not yet available, or you do not have permission to view it.
+          </p>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button
+              onClick={fetchDashboardData}
+              style={{
+                backgroundColor: '#1976D2',
+                color: 'white',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+              }}
+            >
+              Retry
+            </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                backgroundColor: 'transparent',
+                color: '#1976D2',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                border: '1px solid #1976D2',
+                cursor: 'pointer',
+                fontSize: '1rem',
+              }}
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h5" color="error" gutterBottom>⚠️ Error Loading Dashboard</Typography>
-          <Typography variant="body1" paragraph>{error}</Typography>
-          <Button variant="contained" onClick={fetchDashboardData} sx={{ mr: 1 }}>Retry</Button>
-          <Button variant="outlined" onClick={handleLogout}>Back to Login</Button>
-        </Paper>
-      </Container>
+      <div style={{ maxWidth: '800px', margin: '64px auto', padding: '32px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)' }}>
+        <h3 style={{ color: '#F44336', fontWeight: 700, marginBottom: '16px' }}>
+          ⚠️ Error Loading Dashboard
+        </h3>
+        <p style={{ color: '#757575', marginBottom: '24px' }}>
+          {error.message || 'An unexpected error occurred.'}
+        </p>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <button
+            onClick={fetchDashboardData}
+            style={{
+              backgroundColor: '#1976D2',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+            }}
+          >
+            Retry
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#1976D2',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: '1px solid #1976D2',
+              cursor: 'pointer',
+              fontSize: '1rem',
+            }}
+          >
+            Back to Login
+          </button>
+        </div>
+      </div>
     );
   }
 
   if (!dashboardData) {
+    return null;
+  }
+
+  if (dashboardData.submission?.status === 'pending') {
+    navigate('/pending-review');
     return null;
   }
 
@@ -136,384 +202,504 @@ const Dashboard = () => {
     alerts = []
   } = dashboardData;
 
-  return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {startup.name || 'My Startup'}
-          </Typography>
-          <Typography variant="subtitle1" sx={{ mr: 2 }}>
-            Status: {startup.status || 'pending'}
-          </Typography>
-          <Button color="inherit" onClick={() => navigate('/profile')}>Profile</Button>
-          <Button color="inherit" onClick={() => navigate('/settings')}>Settings</Button>
-          <Button color="inherit" onClick={handleLogout}>Logout</Button>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="xl" sx={{ mt: 3, mb: 3 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            {/* Progress Bar */}
-            {stages.length > 0 && (
-              <StageProgressBar 
-                stages={stages} 
-                currentStage={startup.current_stage_key || 'founder_specifications'}
-                overallProgress={startup.overall_progress || 0}
-              />
-            )}
-          </Grid>
-
-          <Grid item xs={12}>
-            {/* Alerts */}
-            {alerts && alerts.length > 0 && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                {alerts.map((alert, index) => (
-                  <Typography key={index} variant="body2">{alert.message}</Typography>
-                ))}
-              </Alert>
-            )}
-          </Grid>
-
-          <Grid item xs={12}>
-            <Paper elevation={2}>
-              <Tabs
-                value={activeTab}
-                onChange={handleTabChange}
-                variant="scrollable"
-                scrollButtons="auto"
-                aria-label="dashboard tabs"
-                sx={{ borderBottom: 1, borderColor: 'divider' }}
-              >
-                {tabLabels.map((label, index) => (
-                  <StyledTab key={index} label={label} />
-                ))}
-              </Tabs>
-              <Box sx={{ p: 3 }}>
-                {activeTab === 0 && (
-                  <OverviewTab 
-                    startup={startup}
-                    stages={stages}
-                    recentActivity={recent_activity}
-                  />
-                )}
-
-                {activeTab === 1 && (
-                  <StagesTab 
-                    stages={stages}
-                    onStageClick={(stageKey) => navigate(`/dashboard/stage/${stageKey}`)}
-                  />
-                )}
-
-                {activeTab === 2 && (
-                  <MetricsTab stages={stages} />
-                )}
-
-                {activeTab === 3 && (
-                  <IntegrationsTab 
-                    integrations={integrations}
-                    onConnect={(type) => {/* Handle integration */}}
-                  />
-                )}
-
-                {activeTab === 4 && (
-                  <EvaluationTab submission={dashboardData.submission} />
-                )}
-
-                {activeTab === 5 && (
-                  <ProductScopeView />
-                )}
-
-                {activeTab === 6 && (
-                  <GtmScopeView />
-                )}
-
-                {activeTab === 7 && (
-                  <UxDesignView />
-                )}
-
-                {activeTab === 8 && (
-                  <BuildProgressView />
-                )}
-
-                {activeTab === 9 && (
-                  <TestDeployView />
-                )}
-
-                {activeTab === 10 && (
-                  <ShareMonitorView />
-                )}
-
-                {activeTab === 11 && (
-                  <MonetizeGtmView />
-                )}
-
-                {activeTab === 12 && (
-                  <FundraisingHandoverView />
-                )}
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Container>
-    </Box>
-  );
-};
-
-const EvaluationTab = ({ submission }) => {
-  if (!submission || submission.status !== 'reviewed') {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Typography variant="body1">Your submission has not been reviewed yet.</Typography>
-      </Box>
-    );
-  }
-
-  const actionTasks = JSON.parse(submission.action_tasks || '[]');
-
-  return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h5" gutterBottom>Evaluation Feedback</Typography>
-      
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h6">Evaluation Summary</Typography>
-        <Typography variant="body1">{submission.evaluation_summary}</Typography>
-      </Box>
-
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h6">Platform Feedback</Typography>
-        <Typography variant="body1">{submission.platform_feedback}</Typography>
-      </Box>
-
-      {actionTasks.length > 0 && (
-        <Box>
-          <Typography variant="h6">Action Tasks</Typography>
-          <ul>
-            {actionTasks.map((task, index) => (
-              <li key={index}><Typography variant="body1">{task}</Typography></li>
-            ))}
-          </ul>
-        </Box>
-      )}
-    </Box>
-  );
-};
-
-
-const OverviewTab = ({ startup, stages, recentActivity }) => {
-  const completedStages = stages.filter(s => s.status === 'completed').length;
-  const inProgressStages = stages.filter(s => s.status === 'in_progress').length;
-  const blockedStages = stages.filter(s => s.status === 'blocked').length;
-
-  return (
-    <Box>
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiCard 
-            metric={{
-              name: 'Overall Progress',
-              value: Math.round(startup.overall_progress || 0),
-              unit: 'percentage'
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiCard 
-            metric={{
-              name: 'Stages Completed',
-              value: completedStages,
-              target: stages.length
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiCard 
-            metric={{
-              name: 'In Progress',
-              value: inProgressStages
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiCard 
-            metric={{
-              name: 'Blocked',
-              value: blockedStages
-            }}
-          />
-        </Grid>
-      </Grid>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>Current Stage</Typography>
-            {stages.find(s => s.stage_key === startup.current_stage_key) ? (
-              <StageCard 
-                stage={stages.find(s => s.stage_key === startup.current_stage_key)}
-                featured
-              />
-            ) : (
-              <Typography variant="body1">No active stage</Typography>
-            )}
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>Recent Activity</Typography>
-            <ActivityFeed activity={recentActivity} />
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {inProgressStages > 0 && (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="h6" gutterBottom>🎯 Next Steps</Typography>
-          <Paper elevation={2} sx={{ p: 2 }}>
-            <ul>
-              {stages
-                .filter(s => s.status === 'in_progress')
-                .slice(0, 3)
-                .map(stage => (
-                  <li key={stage.id}>
-                    <Typography variant="body1">
-                      Complete <strong>{stage.name}</strong>
-                      {stage.blockers && stage.blockers.length > 0 && (
-                        <Typography component="span" color="error" sx={{ ml: 1 }}>⚠️ Blocked</Typography>
-                      )}
-                    </Typography>
-                  </li>
-                ))}
-            </ul>
-          </Paper>
-        </Box>
-      )}
-    </Box>
-  );
-};
-
-const StagesTab = ({ stages, onStageClick }) => {
-  if (stages.length === 0) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Typography variant="body1">No stages available. Please complete your evaluation form first.</Typography>
-      </Box>
-    );
-  }
-
-  return (
-    <Box>
-      <Grid container spacing={2}>
-        {stages.map(stage => (
-          <Grid item xs={12} sm={6} md={4} key={stage.id}>
-            <StageCard 
-              stage={stage}
-              onClick={() => onStageClick(stage.stage_key)}
-            />
-          </Grid>
-        ))}
-      </Grid>
-    </Box>
-  );
-};
-
-const MetricsTab = ({ stages }) => {
-  const [selectedStage, setSelectedStage] = useState('all');
-  const [metrics, setMetrics] = useState([]);
-
-  useEffect(() => {
-    if (selectedStage === 'all') {
-      const allMetrics = stages.flatMap(s => s.metrics || []);
-      setMetrics(allMetrics);
-    } else {
-      const stage = stages.find(s => s.stage_key === selectedStage);
-      setMetrics(stage?.metrics || []);
+  const EvaluationTab = ({ submission }) => {
+    if (!submission || submission.status !== 'reviewed') {
+      return (
+        <div style={{ padding: '16px' }}>
+          <p>Your submission has not been reviewed yet.</p>
+        </div>
+      );
     }
-  }, [selectedStage, stages]);
 
-  return (
-    <Box>
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h6" gutterBottom>Filter by Stage:</Typography>
-        <select value={selectedStage} onChange={(e) => setSelectedStage(e.target.value)}>
-          <option value="all">All Stages</option>
-          {stages.map(stage => (
-            <option key={stage.id} value={stage.stage_key}>
-              {stage.name}
-            </option>
-          ))}
-        </select>
-      </Box>
+    const actionTasks = JSON.parse(submission.action_tasks || '[]');
 
-      <Grid container spacing={2}>
-        {metrics.map(metric => (
-          <Grid item xs={12} sm={6} md={4} key={metric.id}>
-            <KpiCard 
-              metric={metric}
-            />
-          </Grid>
-        ))}
+    return (
+      <div style={{ padding: '16px' }}>
+        <h4 style={{ fontSize: '1.5rem', marginBottom: '16px' }}>Evaluation Feedback</h4>
         
-        {metrics.length === 0 && (
-          <Grid item xs={12}>
-            <Typography variant="body1">No metrics available for this selection</Typography>
-          </Grid>
-        )}
-      </Grid>
-    </Box>
-  );
-};
+        <div style={{ marginBottom: '16px' }}>
+          <h5 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Evaluation Summary</h5>
+          <p>{submission.evaluation_summary}</p>
+        </div>
 
-const IntegrationsTab = ({ integrations, onConnect }) => {
-  const availableIntegrations = [
-    { type: 'github', name: 'GitHub', icon: '🔗', description: 'Connect code repos' },
-    { type: 'figma', name: 'Figma', icon: '🎨', description: 'Sync design files' },
-    { type: 'ga4', name: 'Google Analytics', icon: '📊', description: 'Track analytics' },
-    { type: 'stripe', name: 'Stripe', icon: '💳', description: 'Monitor revenue' },
-  ];
+        <div style={{ marginBottom: '16px' }}>
+          <h5 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Platform Feedback</h5>
+          <p>{submission.platform_feedback}</p>
+        </div>
+
+        {actionTasks.length > 0 && (
+          <div>
+            <h5 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Action Tasks</h5>
+            <ul>
+              {actionTasks.map((task, index) => (
+                <li key={index}><p>{task}</p></li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const OverviewTab = ({ startup, stages, recentActivity }) => {
+    const completedStages = stages.filter(s => s.status === 'completed').length;
+    const inProgressStages = stages.filter(s => s.status === 'in_progress').length;
+    const blockedStages = stages.filter(s => s.status === 'blocked').length;
+
+    const getStatusBadge = (status) => {
+      let backgroundColor = '#e0e0e0'; // default grey
+      let color = '#333';
+      if (status === 'active') {
+        backgroundColor = '#e8f5e9'; // success light green
+        color = '#388e3c'; // success green
+      } else if (status === 'pending') {
+        backgroundColor = '#fff3e0'; // warning light orange
+        color = '#f57c00'; // warning orange
+      } else if (status === 'completed') {
+        backgroundColor = '#e3f2fd'; // info light blue
+        color = '#1976d2'; // info blue
+      }
+      return (
+        <span
+          style={{
+            backgroundColor,
+            color,
+            padding: '4px 8px',
+            borderRadius: '8px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+          }}
+        >
+          {status}
+        </span>
+      );
+    };
+
+    return (
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)', height: '100%' }}>
+            <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '8px' }}>Overall Progress</h4>
+            <h3 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#1976D2' }}>
+              {Math.round(startup.overall_progress || 0)}%
+            </h3>
+            <div style={{
+              height: '8px',
+              borderRadius: '4px',
+              backgroundColor: 'rgba(102, 126, 234, 0.1)',
+              marginTop: '8px',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                width: `${startup.overall_progress || 0}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '4px',
+              }}></div>
+            </div>
+          </div>
+          <div style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)', height: '100%' }}>
+            <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '8px' }}>Stages Completed</h4>
+            <h3 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#388e3c' }}>
+              {completedStages}
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: '#757575' }}>
+              of {stages.length} total
+            </p>
+          </div>
+          <div style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)', height: '100%' }}>
+            <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '8px' }}>In Progress</h4>
+            <h3 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f57c00' }}>
+              {inProgressStages}
+            </h3>
+          </div>
+          <div style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)', height: '100%' }}>
+            <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '8px' }}>Blocked</h4>
+            <h3 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#F44336' }}>
+              {blockedStages}
+            </h3>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+          <div style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)', height: '100%' }}>
+            <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '16px' }}>Current Status</h4>
+            {startup.status ? (
+              <div style={{ padding: '16px' }}>
+                <h5 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>
+                  {startup.status.replace('_', ' ').toUpperCase()}
+                </h5>
+                {getStatusBadge(startup.status)}
+              </div>
+            ) : (
+              <p>No status available</p>
+            )}
+          </div>
+
+          <div style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)', height: '100%' }}>
+            <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '16px' }}>Recent Activity</h4>
+            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              {recentActivity.tasks && recentActivity.tasks.length > 0 ? (
+                <div>
+                  {recentActivity.tasks.slice(0, 5).map((task, index) => (
+                    <div key={index} style={{ paddingBottom: '16px', borderBottom: index < recentActivity.tasks.length - 1 ? '1px solid #eeeeee' : 'none' }}>
+                      <p style={{ fontWeight: 600 }}>{task.title}</p>
+                      <span style={{ fontSize: '0.75rem', color: '#757575' }}>
+                        {new Date(task.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#757575' }}>No recent tasks</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {inProgressStages > 0 && (
+          <div style={{ marginTop: '24px' }}>
+            <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '16px' }}>🎯 Next Steps</h4>
+            <div style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)' }}>
+              <ul>
+                {stages
+                  .filter(s => s.status === 'in_progress')
+                  .slice(0, 3)
+                  .map(stage => (
+                    <li key={stage.id}>
+                      <p style={{ display: 'inline' }}>
+                        Complete <strong style={{ fontWeight: 700 }}>{stage.name}</strong>
+                        {stage.blockers && stage.blockers.length > 0 && (
+                          <span style={{ color: '#F44336', marginLeft: '8px' }}>⚠️ Blocked</span>
+                        )}
+                      </p>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const MetricsTab = ({ stages }) => {
+    const [selectedStage, setSelectedStage] = useState('all');
+    const [metrics, setMetrics] = useState([]);
+
+    useEffect(() => {
+      if (selectedStage === 'all') {
+        const allMetrics = stages.flatMap(s => s.metrics || []);
+        setMetrics(allMetrics);
+      } else {
+        const stage = stages.find(s => s.stage_key === selectedStage);
+        setMetrics(stage?.metrics || []);
+      }
+    }, [selectedStage, stages]);
+
+    return (
+      <div>
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '16px' }}>Filter by Stage:</h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <button 
+              style={{
+                padding: '8px 16px',
+                borderRadius: '5px',
+                border: selectedStage === 'all' ? 'none' : '1px solid #ccc',
+                backgroundColor: selectedStage === 'all' ? '#1976D2' : '#f0f0f0',
+                color: selectedStage === 'all' ? 'white' : '#333',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+              }}
+              onClick={() => setSelectedStage('all')}
+            >
+              All Stages
+            </button>
+            {stages.map(stage => (
+              <button 
+                key={stage.id} 
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '5px',
+                  border: selectedStage === stage.stage_key ? 'none' : '1px solid #ccc',
+                  backgroundColor: selectedStage === stage.stage_key ? '#1976D2' : '#f0f0f0',
+                  color: selectedStage === stage.stage_key ? 'white' : '#333',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+                onClick={() => setSelectedStage(stage.stage_key)}
+              >
+                {stage.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+          {metrics.map(metric => (
+            <div key={metric.id} style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)', height: '100%' }}>
+              <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '8px' }}>{metric.name}</h4>
+              <h3 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#1976D2', marginBottom: '8px' }}>
+                {metric.value}{metric.unit}
+              </h3>
+              {metric.target && (
+                <p style={{ fontSize: '0.875rem', color: '#757575' }}>
+                  Target: {metric.target}{metric.unit}
+                </p>
+              )}
+              <div style={{
+                marginTop: '8px',
+                height: '6px',
+                borderRadius: '3px',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  width: `${metric.progress || 0}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: '3px',
+                }}></div>
+              </div>
+            </div>
+          ))}
+          
+          {metrics.length === 0 && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <p>No metrics available for this selection</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Placeholder for Funding Tab
+  const FundingTab = () => (
+    <div style={{ padding: '16px', color: '#757575' }}>Funding information will be displayed here.</div>
+  );
+
+  // Placeholder for Revenue Tab
+  const RevenueTab = () => (
+    <div style={{ padding: '16px', color: '#757575' }}>Revenue information will be displayed here.</div>
+  );
+
+  const IntegrationsTab = ({ integrations, onConnect }) => {
+    const availableIntegrations = [
+      { type: 'github', name: 'GitHub', icon: '🔗', description: 'Connect code repos' },
+      { type: 'figma', name: 'Figma', icon: '🎨', description: 'Sync design files' },
+      { type: 'ga4', name: 'Google Analytics', icon: '📊', description: 'Track analytics' },
+      { type: 'stripe', name: 'Stripe', icon: '💳', description: 'Monitor revenue' },
+    ];
+
+    return (
+      <div>
+        {integrations.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <h4 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px' }}>✅ Connected Integrations</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              {integrations.map(integration => (
+                <div key={integration.id} style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)' }}>
+                  <h5 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '8px' }}>{integration.type}</h5>
+                  <p style={{ fontSize: '0.875rem', color: '#757575', marginBottom: '8px' }}>{integration.status}</p>
+                  <p style={{ fontSize: '0.75rem', color: '#757575' }}>
+                    Last synced: {integration.last_synced_at ? new Date(integration.last_synced_at).toLocaleString() : 'Never'}
+                  </p>
+                  {integration.error_message && (
+                    <p style={{ fontSize: '0.75rem', color: '#F44336', marginTop: '8px' }}>
+                      {integration.error_message}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <h4 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px' }}>🔌 Available Integrations</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+          {availableIntegrations
+            .filter(ai => !integrations.find(i => i.type === ai.type))
+            .map(integration => (
+              <div key={integration.type} style={{ padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)', height: '100%' }}>
+                <h5 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '8px' }}>{integration.name}</h5>
+                <p style={{ fontSize: '0.875rem', color: '#757575', marginBottom: '16px' }}>{integration.description}</p>
+                <button 
+                  onClick={() => onConnect(integration.type)} 
+                  style={{
+                    backgroundColor: '#1976D2',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    width: '100%',
+                  }}
+                >
+                  Connect
+                </button>
+              </div>
+            ))}
+        </div>
+      </div>
+    );
+  };
+
+  const ScopeTab = ({ startupId }) => {
+    return (
+      <div>
+        <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '24px' }}>Startup Scope</h3>
+        <div style={{ marginBottom: '32px' }}>
+          <h4 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px' }}>Product Scope</h4>
+          <ProductScopeView startupId={startupId} />
+        </div>
+        <div>
+          <h4 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px' }}>GTM Scope</h4>
+          <GtmScopeView startupId={startupId} />
+        </div>
+      </div>
+    );
+  };
+
+
+  const renderContent = () => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    switch (tab) {
+      case 'product':
+        return <ProductScopeView startupId={startup.id} />;
+      case 'gtm':
+        return <GtmScopeView startupId={startup.id} />;
+      case 'funding':
+        return <FundingTab />;
+      case 'revenue':
+        return <RevenueTab />;
+      case '2':
+        return <MetricsTab stages={stages} />;
+      case '3':
+        return <IntegrationsTab integrations={integrations} onConnect={(type) => {/* Handle integration */}} />;
+      case '4':
+        return <EvaluationTab submission={dashboardData.submission} />;
+      case 'scope': // New case for ScopeTab
+        return <ScopeTab startupId={startup.id} />;
+      case 'ux-design': // New case for UX/UI Tab
+        return <UxDesignView startupId={startup.id} />;
+      case '5':
+        return <ProductScopeView />;
+      case '6':
+        return <GtmScopeView />;
+      case '7':
+        return <UxDesignView />;
+      case '8':
+        return <BuildProgressView />;
+      case '9':
+        return <TestDeployView />;
+      case '10':
+        return <ShareMonitorView />;
+      case '11':
+        return <MonetizeGtmView />;
+      case '12':
+        return <FundraisingHandoverView />;
+      default:
+        return <OverviewTab startup={startup} stages={stages} recentActivity={recent_activity} />;
+    }
+  };
 
   return (
-    <Box>
-      {integrations.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h5" gutterBottom>✅ Connected Integrations</Typography>
-          <Grid container spacing={2}>
-            {integrations.map(integration => (
-              <Grid item xs={12} sm={6} md={4} key={integration.id}>
-                <Paper elevation={2} sx={{ p: 2 }}>
-                  <Typography variant="h6">{integration.type}</Typography>
-                  <Typography variant="body2">Status: {integration.status}</Typography>
-                  <Typography variant="body2">Last synced: {integration.last_synced_at ? new Date(integration.last_synced_at).toLocaleString() : 'Never'}</Typography>
-                  {integration.error_message && (
-                    <Typography variant="body2" color="error">{integration.error_message}</Typography>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f5f7fa' }}>
+      <Sidebar onLogout={handleLogout} />
+      <main
+        style={{
+          flexGrow: 1,
+          paddingLeft: '280px', // Sidebar width
+          paddingTop: '32px',
+          paddingBottom: '32px',
+        }}
+      >
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px' }}>
+          <div style={{ opacity: 1, transition: 'opacity 500ms ease-in' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+              {/* Progress Section */}
+              <div>
+                <div style={{ padding: '24px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '8px' }}>
+                      Overall Progress
+                    </h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div
+                        style={{
+                          flexGrow: 1,
+                          height: '10px',
+                          borderRadius: '5px',
+                          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${startup.overall_progress || 0}%`,
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                            borderRadius: '5px',
+                          }}
+                        ></div>
+                      </div>
+                      <h4 style={{ fontSize: '1.125rem', fontWeight: 700, minWidth: '60px' }}>
+                        {startup.overall_progress || 0}%
+                      </h4>
+                    </div>
+                  </div>
+                  {stages.length > 0 && (
+                    <StageProgressBar
+                      stages={stages}
+                      currentStage={startup.current_stage_key || 'founder_specifications'}
+                      overallProgress={startup.overall_progress || 0}
+                    />
                   )}
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
+                </div>
+              </div>
 
-      <Typography variant="h5" gutterBottom>🔌 Available Integrations</Typography>
-      <Grid container spacing={2}>
-        {availableIntegrations
-          .filter(ai => !integrations.find(i => i.type === ai.type))
-          .map(integration => (
-            <Grid item xs={12} sm={6} md={4} key={integration.type}>
-              <Paper elevation={2} sx={{ p: 2 }}>
-                <Typography variant="h6">{integration.name}</Typography>
-                <Typography variant="body2">{integration.description}</Typography>
-                <Button variant="contained" onClick={() => onConnect(integration.type)} sx={{ mt: 2 }}>
-                  Connect
-                </Button>
-              </Paper>
-            </Grid>
-          ))}
-      </Grid>
-    </Box>
+              {/* Alerts Section */}
+              {alerts && alerts.length > 0 && (
+                <div>
+                  <div style={{ opacity: 1, transition: 'opacity 500ms ease-in' }}>
+                    <div
+                      style={{
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                        backgroundColor: '#fff3e0',
+                        padding: '16px',
+                        color: '#f57c00',
+                      }}
+                    >
+                      {alerts.map((alert, index) => (
+                        <p key={index} style={{ marginBottom: index < alerts.length - 1 ? '8px' : '0' }}>
+                          {alert.message}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Content */}
+              <div>
+                <div style={{ borderRadius: '16px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)' }}>
+                  <div style={{ padding: '24px' }}>
+                    {renderContent()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 };
+
+
 
 export default Dashboard;

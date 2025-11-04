@@ -14,6 +14,28 @@ import uuid
 
 submissions_bp = Blueprint('submissions', __name__)
 
+@submissions_bp.route('/platform/submissions', methods=['GET'])
+@jwt_required()
+def get_all_submissions():
+    """Get all submissions for the admin platform"""
+    try:
+        # Add role check for admin
+        # current_user_role = get_jwt().get('role')
+        # if current_user_role != 'admin':
+        #     return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+        print("Fetching all submissions...")
+        submissions = Submission.query.all()
+        print(f"Found {len(submissions)} submissions.")
+        submissions_data = [s.to_dict() for s in submissions]
+        print("Successfully converted submissions to dicts.")
+        return jsonify({'success': True, 'submissions': submissions_data}), 200
+    except Exception as e:
+        print(f"Error in get_all_submissions: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ============================================================================
 # EVALUATION FORM ENDPOINTS (Initial Submission)
 # ============================================================================
@@ -171,7 +193,7 @@ def submit_final():
                 submission_id=submission.id,
                 name=submission.startup_name or 'My Startup',
                 slug=_generate_slug(submission.startup_name or f'startup-{user_id}'),
-                status='active',
+                status=StartupStatus.UNDER_REVIEW,
                 current_stage_key='founder_specifications',
                 overall_progress=0.0
             )
@@ -223,6 +245,9 @@ def _map_stage_data_to_submission(submission, stage, stage_data):
         submission.startup_name = stage_data.get('startup_name', submission.startup_name)
         submission.founder_linkedin = stage_data.get('founder_name')
         submission.website_url = stage_data.get('website')
+        submission.email = stage_data.get('email')
+        submission.phone = stage_data.get('phone')
+        submission.location = stage_data.get('location')
     
     elif stage == 2:  # Business Concept
         submission.problem_statement = stage_data.get('problem_statement')
@@ -231,21 +256,31 @@ def _map_stage_data_to_submission(submission, stage, stage_data):
         submission.unique_value_proposition = stage_data.get('unique_value')
     
     elif stage == 3:  # Market Analysis
+        submission.market_size = stage_data.get('market_size')
         submission.competition = stage_data.get('competitors')
         submission.competitive_advantage = stage_data.get('competitive_advantage')
+        submission.industry = stage_data.get('industry')
     
     elif stage == 4:  # Business Model
         submission.revenue_streams = stage_data.get('revenue_model')
         submission.pricing_strategy = stage_data.get('pricing_strategy')
         submission.go_to_market_strategy = stage_data.get('customer_acquisition')
+        submission.funding_stage = stage_data.get('funding_stage')
         submission.funding_required = stage_data.get('funding_raised')
     
     elif stage == 5:  # Team & Resources
         submission.team_size = stage_data.get('team_size')
         submission.team_description = stage_data.get('key_team_members')
+        submission.technical_skills = json.dumps(stage_data.get('technical_skills'))
+        submission.resources_needed = stage_data.get('resources_needed')
     
     elif stage == 6:  # Traction & Milestones
         submission.current_stage = stage_data.get('current_stage')
+        submission.users_customers = stage_data.get('users_customers')
+        submission.revenue = stage_data.get('revenue')
+        submission.key_achievements = stage_data.get('key_achievements')
+        submission.future_goals = stage_data.get('future_goals')
+        submission.why_incubator = stage_data.get('why_incubator')
 
 
 def _seed_stages_from_submission(startup, submission):

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '../services/api';
+import SubmissionData from '../components/SubmissionData';
 
 // MUI Components
 import { Container, Box, Typography, Button, TextField, Paper, CircularProgress } from '@mui/material';
@@ -81,13 +82,11 @@ const PlatformEvaluation = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Typography variant="h4" gutterBottom>Evaluate Submission</Typography>
+      <SubmissionData submission={submission} />
       <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>Evaluate Submission</Typography>
-        <Typography variant="h5" gutterBottom>{submission.startup_name}</Typography>
-        <Typography variant="body1" paragraph><strong>Status:</strong> {submission.status}</Typography>
-        <Typography variant="body1" paragraph><strong>Submitted At:</strong> {new Date(submission.submitted_at).toLocaleDateString()}</Typography>
-        
+        <Typography variant="h5" gutterBottom>Evaluation</Typography>
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
           <TextField
             label="Evaluation Summary"

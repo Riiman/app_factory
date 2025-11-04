@@ -6,6 +6,7 @@ import { ROUTES, SUCCESS_MESSAGES } from '../config/constants';
 
 // MUI Components
 import { Container, Box, Typography, Button, TextField, Paper, CircularProgress, Link, Alert, AlertTitle } from '@mui/material';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();

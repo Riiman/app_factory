@@ -23,12 +23,7 @@ const LoginPage = () => {
   const [showResend, setShowResend] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
-  useEffect(() => {
-    if (user){
-      console.log('Founder user: ', user)
-      navigate(ROUTES.DASHBOARD);
-    }
-  }, [user, navigate]);
+
 
   const handleChange = (e) => {
     setFormData({
@@ -49,9 +44,15 @@ const LoginPage = () => {
       if (result.success) {
         showSuccess(SUCCESS_MESSAGES.LOGIN_SUCCESS);
 
-        if (result.startup && result.startup.submission_id) {
-          console.log("Logged in. Startup found. Redirecting to Dashboard.js...  " , result.startup);
-          navigate(`${ROUTES.DASHBOARD}`);
+        if (result.user.role === 'admin') {
+          navigate('/platform/dashboard');
+        } else if (result.startup && result.startup.submission_id) {
+          if (result.startup.submission_status === 'pending') {
+            navigate('/pending-review');
+          } else {
+            console.log("Logged in. Startup found. Redirecting to Dashboard.js...  " , result.startup);
+            navigate(`${ROUTES.DASHBOARD}`);
+          }
         } else {
           console.log('Logged in. No startup found. Redirecting to Submission Form.js...  ', result.startup);
           navigate(ROUTES.SUBMISSIONS);

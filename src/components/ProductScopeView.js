@@ -1,123 +1,99 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
 
-// MUI Components
-import { Box, Typography, Button, TextField, Paper, CircularProgress, Grid, List, ListItem, ListItemText } from '@mui/material';
-
-const ProductScopeView = () => {
+const ProductScopeView = ({ startupId }) => {
   const [scope, setScope] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [comment, setComment] = useState('');
 
   useEffect(() => {
     const fetchScope = async () => {
+      if (!startupId) {
+        setError('Startup ID is required to fetch product scope.');
+        setLoading(false);
+        return;
+      }
       try {
-        const response = await apiService.productScope.getScope();
+        // Assuming an API endpoint like /api/platform/startups/{startupId}/product-scope
+        // We need to verify this in api.js or create a new one if it doesn't exist
+        const response = await apiService.platform.getProductScope(startupId);
         if (response.data.success) {
           setScope(response.data.data);
         } else {
-          setError(response.data.error);
+          setError(response.data.error || 'Failed to fetch product scope.');
         }
       } catch (err) {
-        setError(err.message);
+        setError(err);
       }
       setLoading(false);
     };
 
     fetchScope();
-  }, []);
-
-  const handleAddComment = async (featureId) => {
-    try {
-      await apiService.productScope.addComment(featureId, { content: comment });
-      setComment('');
-      // Refresh scope data (re-fetch scope or update state locally)
-    } catch (error) {
-      console.error('Error adding comment:', error);
-    }
-  };
-
-  const handleApprove = async () => {
-    try {
-      await apiService.productScope.approveScope();
-      // Refresh scope data
-    } catch (error) {
-      console.error('Error approving scope:', error);
-    }
-  };
-
-  const handleRequestChanges = async () => {
-    try {
-      await apiService.productScope.requestChanges();
-      // Refresh scope data
-    } catch (error) {
-      console.error('Error requesting changes:', error);
-    }
-  };
+  }, [startupId]);
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100px' }}>
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        ></div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
     );
   }
 
   if (error) {
-    return <Typography color="error">Error: {error}</Typography>;
+    if (error.response && error.response.status === 404) {
+      return <div style={{ padding: '16px', color: '#757575' }}>Product Scope: Under Process</div>;
+    }
+    return <div style={{ color: '#F44336', padding: '16px' }}>Error: {error}</div>;
   }
 
   if (!scope) {
-    return <Typography>Product scope not yet defined.</Typography>;
+    return <div style={{ padding: '16px', color: '#757575' }}>Product Scope: Under Process</div>;
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>Product Scope</Typography>
-      <Typography variant="h6" gutterBottom>Status: {scope.status}</Typography>
+    <div style={{ padding: '16px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)', backgroundColor: '#ffffff' }}>
+      <h4 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px' }}>Product Scope Details</h4>
+      <p style={{ marginBottom: '8px' }}><strong>Status:</strong> {scope.status}</p>
       
-      <Grid container spacing={3}>
-        {scope.features.map(feature => (
-          <Grid item xs={12} sm={6} md={4} key={feature.id}>
-            <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
-              <Typography variant="h6" gutterBottom>{feature.title}</Typography>
-              <Typography variant="body2" paragraph>{feature.description}</Typography>
-              <Typography variant="body2"><strong>Priority:</strong> {feature.priority}</Typography>
+      <div style={{ marginTop: '24px' }}>
+        <h5 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '12px' }}>Features:</h5>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+          {scope.features.map(feature => (
+            <div key={feature.id} style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#f9f9f9' }}>
+              <h6 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '8px' }}>{feature.title}</h6>
+              <p style={{ fontSize: '0.875rem', color: '#555', marginBottom: '8px' }}>{feature.description}</p>
+              <p style={{ fontSize: '0.8rem', color: '#777' }}><strong>Priority:</strong> {feature.priority}</p>
               
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2">Comments</Typography>
-                <List dense>
-                  {feature.comments.map((c, i) => (
-                    <ListItem key={i} disablePadding>
-                      <ListItemText primary={c} />
-                    </ListItem>
-                  ))}
-                </List>
-                <TextField
-                  label="Add a comment"
-                  variant="outlined"
-                  fullWidth
-                  multiline
-                  rows={2}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  sx={{ mt: 1, mb: 1 }}
-                />
-                <Button variant="contained" size="small" onClick={() => handleAddComment(feature.id)}>Add Comment</Button>
-              </Box>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
-
-      {scope.status === 'in_review' && (
-        <Box sx={{ mt: 3 }}>
-          <Button variant="contained" color="primary" onClick={handleApprove} sx={{ mr: 2 }}>Approve Scope</Button>
-          <Button variant="outlined" color="secondary" onClick={handleRequestChanges}>Request Changes</Button>
-        </Box>
-      )}
-    </Box>
+              {feature.comments && feature.comments.length > 0 && (
+                <div style={{ marginTop: '12px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px' }}>Comments:</p>
+                  <ul style={{ listStyleType: 'disc', paddingLeft: '20px', margin: 0 }}>
+                    {feature.comments.map((c, i) => (
+                      <li key={i} style={{ fontSize: '0.8rem', color: '#666', marginBottom: '4px' }}>{c}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 };
 

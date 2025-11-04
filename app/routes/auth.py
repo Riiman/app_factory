@@ -277,19 +277,15 @@ def login():
         if submission:
             startup_data = {
                 'submission_id': submission.id,
-                'startup_name': submission.startup_name
+                'startup_name': submission.startup_name,
+                'submission_status': submission.status
             }
 
         access_token = create_access_token(identity=str(user.id))
         return jsonify({
             'success': True,
             'token': access_token,
-            'user': {
-                'id': user.id,
-                'name': user.full_name,
-                'email': user.email,
-                'is_verified': user.is_verified
-            },
+            'user': user.to_dict(),
             'startup': startup_data # Include startup data in the response
         }), 200
 

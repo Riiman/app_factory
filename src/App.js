@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -29,6 +29,13 @@ import PlatformDeployment from './pages/PlatformDeployment';
 import PlatformMultiStartupMonitor from './pages/PlatformMultiStartupMonitor';
 import PlatformMonetization from './pages/PlatformMonetization';
 import PlatformFundraising from './pages/PlatformFundraising';
+import PendingReviewPage from './pages/PendingReview';
+import PlatformSubmissions from './pages/PlatformSubmissions';
+import PlatformStartups from './pages/PlatformStartups';
+import PlatformMetrics from './pages/PlatformMetrics';
+import PlatformSettings from './pages/PlatformSettings';
+import PlatformCohort from './pages/PlatformCohort';
+import PlatformLayout from './pages/PlatformLayout';
 
 // Public Pages
 import Home from './pages/Home';
@@ -80,48 +87,32 @@ function App() {
                 path={ROUTES.SUBMISSIONS} 
                 element={<ProtectedRoute><EvaluationForm /></ProtectedRoute>} 
               />
+              <Route 
+                path="/pending-review"
+                element={<ProtectedRoute><PendingReviewPage /></ProtectedRoute>}
+              />
 
               {/* Platform Routes */}
               <Route 
-                path="/platform/dashboard"
-                element={<ProtectedRoute><PlatformDashboard /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/evaluation/:submissionId"
-                element={<ProtectedRoute><PlatformEvaluation /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/scope/:startupId"
-                element={<ProtectedRoute><PlatformProductScope /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/gtm-scope/:startupId"
-                element={<ProtectedRoute><PlatformGtmScope /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/ux-design/:startupId"
-                element={<ProtectedRoute><PlatformUxDesign /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/sprint-board/:startupId"
-                element={<ProtectedRoute><PlatformSprintBoard /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/deployment/:startupId"
-                element={<ProtectedRoute><PlatformDeployment /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/monitor"
-                element={<ProtectedRoute><PlatformMultiStartupMonitor /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/monetization/:startupId"
-                element={<ProtectedRoute><PlatformMonetization /></ProtectedRoute>}
-              />
-              <Route 
-                path="/platform/fundraising/:startupId"
-                element={<ProtectedRoute><PlatformFundraising /></ProtectedRoute>}
-              />
+                path="/platform"
+                element={<ProtectedRoute roles={['admin']}><PlatformLayout /></ProtectedRoute>}
+              >
+                <Route path="dashboard" element={<PlatformDashboard />} />
+                <Route path="evaluation/:submissionId" element={<PlatformEvaluation />} />
+                <Route path="scope/:startupId" element={<PlatformProductScope />} />
+                <Route path="gtm-scope/:startupId" element={<PlatformGtmScope />} />
+                <Route path="ux-design/:startupId" element={<PlatformUxDesign />} />
+                <Route path="sprint-board/:startupId" element={<PlatformSprintBoard />} />
+                <Route path="deployment/:startupId" element={<PlatformDeployment />} />
+                <Route path="monitor" element={<PlatformMultiStartupMonitor />} />
+                <Route path="monetization/:startupId" element={<PlatformMonetization />} />
+                <Route path="fundraising/:startupId" element={<PlatformFundraising />} />
+                <Route path="submissions" element={<PlatformSubmissions />} />
+                <Route path="startups" element={<PlatformStartups />} />
+                <Route path="metrics" element={<PlatformMetrics />} />
+                <Route path="settings" element={<PlatformSettings />} />
+                <Route path="cohort" element={<PlatformCohort />} />
+              </Route>
 
               {/* Fallback */}
               <Route path="*" element={<NotFound />} />

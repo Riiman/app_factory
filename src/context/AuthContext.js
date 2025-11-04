@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
         setToken(token);
         setUser(user);
         setStartup(startup);
-        return { success: true, startup }; // Return startup object on success
+        return { success: true, user, startup }; // Return startup object on success
       }
       // This part is unlikely to be hit if backend always returns success: false on error
       return { success: false, error: 'Login failed' };

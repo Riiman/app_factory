@@ -1,78 +1,170 @@
 import React from 'react';
-// MUI Components
-import { Box, Typography, Paper, List, ListItem, ListItemText, ListItemIcon, Avatar } from '@mui/material';
-// Icons
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
+import { 
+  Box, 
+  Typography, 
+  Avatar, 
+  Card, 
+  CardContent,
+  Chip,
+  Divider 
+} from '@mui/material';
+import { styled, alpha } from '@mui/material/styles';
+import {
+  CheckCircle,
+  Description,
+  Comment,
+  Upload,
+  Person,
+  Schedule
+} from '@mui/icons-material';
 
-const ActivityFeed = ({ activity }) => {
-  if (!activity || (!activity.tasks?.length && !activity.artifacts?.length)) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Typography variant="body1">No recent activity</Typography>
-      </Box>
-    );
-  }
+const ActivityItem = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  gap: theme.spacing(2),
+  padding: theme.spacing(2),
+  borderRadius: 12,
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    background: alpha(theme.palette.primary.main, 0.05),
+  },
+}));
 
-  const allActivity = [
-    ...activity.tasks.map(t => ({ ...t, type: 'task', time: t.updated_at })),
-    ...activity.artifacts.map(a => ({ ...a, type: 'artifact', time: a.created_at }))
-  ].sort((a, b) => new Date(b.time) - new Date(a.time));
-
-  const getActivityIcon = (item) => {
-    if (item.type === 'task') {
-      return item.status === 'done' ? <CheckCircleOutlineIcon color="success" /> : <AssignmentIcon color="info" />;
+const ActivityIcon = styled(Avatar)(({ theme, type }) => {
+  const getColor = () => {
+    switch (type) {
+      case 'task':
+        return theme.palette.success.main;
+      case 'document':
+        return theme.palette.info.main;
+      case 'comment':
+        return theme.palette.warning.main;
+      case 'upload':
+        return theme.palette.primary.main;
+      default:
+        return theme.palette.grey[500];
     }
-    return <AttachFileIcon color="action" />;
   };
 
-  const getActivityText = (item) => {
-    if (item.type === 'task') {
-      return item.status === 'done' ? 'Completed task' : 'Updated task';
+  return {
+    width: 40,
+    height: 40,
+    background: alpha(getColor(), 0.1),
+    color: getColor(),
+  };
+});
+
+const TimelineConnector = styled(Box)(({ theme }) => ({
+  width: 2,
+  height: '100%',
+  marginLeft: 19,
+  background: theme.palette.grey[200],
+}));
+
+const ActivityFeed = ({ activities = [] }) => {
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case 'task':
+        return <CheckCircle />;
+      case 'document':
+        return <Description />;
+      case 'comment':
+        return <Comment />;
+      case 'upload':
+        return <Upload />;
+      default:
+        return <Person />;
     }
-    return 'Added artifact';
   };
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${diffInHours}h ago`;
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString();
+    }
   };
 
+  if (!activities || activities.length === 0) {
+    return (
+      <Card>
+        <CardContent sx={{ textAlign: 'center', py: 6 }}>
+          <Schedule sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.3 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No Recent Activity
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Your activity will appear here
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Box>
-      <List>
-        {allActivity.slice(0, 10).map((item, index) => (
-          <ListItem key={`${item.type}-${item.id}-${index}`} disablePadding sx={{ mb: 1 }}>
-            <ListItemIcon>
-              <Avatar sx={{ bgcolor: 'primary.light' }}>
-                {getActivityIcon(item)}
-              </Avatar>
-            </ListItemIcon>
-            <ListItemText 
-              primary={
-                <Typography variant="body1">
-                  <strong>{getActivityText(item)}:</strong> {item.title}
-                </Typography>
-              }
-              secondary={
-                <Typography variant="caption" color="text.secondary">
-                  {formatTime(item.time)}
-                </Typography>
-              }
-            />
-          </ListItem>
-        ))}
-      </List>
-    </Box>
+    <Card>
+      <CardContent>
+        <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+          Recent Activity
+        </Typography>
+
+        <Box>
+          {activities.map((activity, index) => (
+            <Box key={activity.id || index}>
+              <ActivityItem>
+                <Box sx={{ position: 'relative' }}>
+                  <ActivityIcon type={activity.type}>
+                    {getActivityIcon(activity.type)}
+                  </ActivityIcon>
+                  {index < activities.length - 1 && (
+                    <TimelineConnector sx={{ position: 'absolute', top: 48, left: 0 }} />
+                  )}
+                </Box>
+
+                <Box sx={{ flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      {activity.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatTime(activity.timestamp)}
+                    </Typography>
+                  </Box>
+
+                  <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 1 }}>
+                    {activity.description}
+                  </Typography>
+
+                  {activity.tags && activity.tags.length > 0 && (
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {activity.tags.map((tag, tagIndex) => (
+                        <Chip 
+                          key={tagIndex}
+                          label={tag} 
+                          size="small"
+                          sx={{ height: 24 }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              </ActivityItem>
+
+              {index < activities.length - 1 && (
+                <Divider sx={{ my: 1, opacity: 0.5 }} />
+              )}
+            </Box>
+          ))}
+        </Box>
+      </CardContent>
+    </Card>
   );
 };
 

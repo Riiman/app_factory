@@ -431,7 +431,7 @@ const EvaluationForm = () => {
       if (response.data.success) {
         setShowSuccess(true);
         setTimeout(() => {
-          navigate('/dashboard');  // Just /dashboard, no ID
+          navigate('/pending-review');
         }, 2000);
       }
     } catch (error) {

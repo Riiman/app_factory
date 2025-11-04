@@ -48,6 +48,14 @@ class ExperimentStatus(str, Enum):
     COMPLETED = 'completed'
     FAILED = 'failed'
 
+class StartupStatus(str, Enum):
+    ACTIVE = 'active'
+    SCOPE_APPROVED = 'scope_approved'
+    CONTRACT_SIGNED = 'contract_signed'
+    IN_COHORT = 'in_cohort'
+    GRADUATED = 'graduated'
+    DROPPED = 'dropped'
+
 # ============================================================================
 # CORE USER & STARTUP MODELS
 # ============================================================================
@@ -63,6 +71,7 @@ class User(db.Model):
     mobile = db.Column(db.String(20))
     is_verified = db.Column(db.Boolean, default=False)
     verification_token = db.Column(db.String(100), unique=True)
+    role = db.Column(db.String(20), default='user')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     
@@ -83,6 +92,7 @@ class User(db.Model):
             'full_name': self.full_name,
             'mobile': self.mobile,
             'is_verified': self.is_verified,
+            'role': self.role if hasattr(self, 'role') else 'user',
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -103,6 +113,19 @@ class Submission(db.Model):
     headquarters = db.Column(db.String(200))
     founder_linkedin = db.Column(db.String(500))
     team_description = db.Column(db.Text)
+    email = db.Column(db.String(120))
+    phone = db.Column(db.String(20))
+    location = db.Column(db.String(100))
+    market_size = db.Column(db.String(100))
+    industry = db.Column(db.String(100))
+    funding_stage = db.Column(db.String(100))
+    technical_skills = db.Column(db.Text)
+    resources_needed = db.Column(db.Text)
+    users_customers = db.Column(db.String(100))
+    revenue = db.Column(db.String(100))
+    key_achievements = db.Column(db.Text)
+    future_goals = db.Column(db.Text)
+    why_incubator = db.Column(db.Text)
     
     # Stage 2: Product Scope
     company_overview = db.Column(db.Text)
@@ -145,10 +168,39 @@ class Submission(db.Model):
         return {
             'id': self.id,
             'submission_id': self.submission_id,
+            'startup_id': self.startup.id if self.startup else None,
             'startup_name': self.startup_name,
+            'website_url': self.website_url,
+            'founding_year': self.founding_year,
+            'number_of_founders': self.number_of_founders,
+            'team_size': self.team_size,
+            'headquarters': self.headquarters,
+            'founder_linkedin': self.founder_linkedin,
+            'team_description': self.team_description,
             'company_overview': self.company_overview,
+            'problem_statement': self.problem_statement,
+            'solution': self.solution,
+            'unique_value_proposition': self.unique_value_proposition,
+            'tech_stack': self.tech_stack,
+            'key_features': self.key_features,
+            'target_market': self.target_market,
+            'customer_segments': self.customer_segments,
+            'competition': self.competition,
+            'competitive_advantage': self.competitive_advantage,
+            'pricing_strategy': self.pricing_strategy,
+            'go_to_market_strategy': self.go_to_market_strategy,
+            'funding_required': self.funding_required,
+            'current_stage': self.current_stage,
+            'revenue_streams': self.revenue_streams,
+            'business_model': self.business_model,
+            'pitch_deck_url': self.pitch_deck_url,
+            'demo_url': self.demo_url,
             'status': self.status,
-            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None
+            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
+            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
+            'evaluation_summary': self.evaluation_summary,
+            'platform_feedback': self.platform_feedback,
+            'action_tasks': self.action_tasks
         }
 
 class Startup(db.Model):
@@ -163,8 +215,7 @@ class Startup(db.Model):
     slug = db.Column(db.String(200), unique=True, index=True)
     current_stage_key = db.Column(db.String(50), default='founder_specifications')
     overall_progress = db.Column(db.Float, default=0.0)  # 0-100
-    
-    status = db.Column(db.String(50), default='active')
+    status = db.Column(db.Enum(StartupStatus), default=StartupStatus.ACTIVE)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

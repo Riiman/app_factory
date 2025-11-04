@@ -4,9 +4,46 @@ analytics.py - Endpoints for managing analytics and metrics
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import User, Startup, StageInstance, Metric, db
+from app.models import User, Startup, StageInstance, Metric, db, Submission
+from app.utils.azure_openai_utils import generate_evaluation_insights
+from flask import stream_with_context, Response
 
 analytics_bp = Blueprint('analytics', __name__)
+
+@analytics_bp.route('/analyze-submission', methods=['POST'])
+@jwt_required()
+def analyze_submission():
+    try:
+        data = request.get_json()
+        submission_id = data.get('submission_id')
+
+        if not submission_id:
+            return jsonify({'success': False, 'error': 'Submission ID is required'}), 400
+
+        submission = Submission.query.get(submission_id)
+
+        if not submission:
+            return jsonify({'success': False, 'error': 'Submission not found'}), 404
+
+        # Call the Gemini API to generate insights
+        insights_stream = generate_evaluation_insights(submission)
+
+        # Consume and print the stream for debugging
+        full_response = ""
+        for chunk in insights_stream:
+            full_response += chunk
+            print(f"Stream chunk: {chunk}") # Print each chunk
+        print(f"Full streamed response: {full_response}") # Print the full response
+
+        # Re-create the stream for the actual response
+        insights_stream = generate_evaluation_insights(submission)
+
+        return Response(stream_with_context(insights_stream), mimetype='text/event-stream')
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 # Platform endpoints
 @analytics_bp.route('/platform/startups/<int:startup_id>/metrics', methods=['POST'])
