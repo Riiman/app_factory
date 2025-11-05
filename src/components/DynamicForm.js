@@ -25,7 +25,7 @@ const DynamicForm = ({ schema, initialValues = {}, onSave }) => {
   };
 
   const renderField = (field) => {
-    const { name, label, type, required, options, placeholder } = field;
+    const { name, type, required, options, placeholder } = field;
     const value = formData[name] || '';
 
     switch (type) {

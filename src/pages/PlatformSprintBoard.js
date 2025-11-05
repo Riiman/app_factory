@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import apiService from '../services/api';
 
 // MUI Components
-import { Container, Box, Typography, Button, Paper, CircularProgress, Grid, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { Container, Box, Typography, Paper, CircularProgress, Grid, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 
 const PlatformSprintBoard = () => {
   const { startupId } = useParams();

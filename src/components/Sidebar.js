@@ -12,7 +12,6 @@ const ExitToApp = () => <span style={{ marginRight: '8px' }}>🚪</span>;
 const ChevronRight = () => <span style={{ marginLeft: 'auto' }}>▶️</span>;
 const ExpandMore = () => <span style={{ marginLeft: 'auto' }}>🔽</span>;
 const ScopeIcon = () => <span style={{ marginRight: '8px' }}>📋</span>; // Icon for Product Scope
-const UxUiIcon = () => <span style={{ marginRight: '8px' }}>🎨</span>; // New icon for UI/UX
 
   const Sidebar = ({ onLogout }) => {
     const navigate = useNavigate();

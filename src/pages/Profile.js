@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import axios from 'axios';
 
 // MUI Components
-import { Container, Box, Typography, Button, TextField, Paper, CircularProgress, Grid } from '@mui/material';
+import { Container, Box, Typography, Button, TextField, Paper, CircularProgress } from '@mui/material';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 

@@ -16,7 +16,7 @@ const Documents = () => {
 
   useEffect(() => {
     loadDocuments();
-  }, []);
+  }, [loadDocuments]);
 
   const loadDocuments = async () => {
     try {

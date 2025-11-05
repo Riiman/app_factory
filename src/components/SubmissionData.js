@@ -8,7 +8,6 @@ const SubmissionData = ({ submission }) => {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [analysisStream, setAnalysisStream] = useState('');
-  const api = useApi();
   const { showSuccess, showError } = useToast();
 
   const handleAnalyze = async () => {

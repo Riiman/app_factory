@@ -7,7 +7,7 @@ import { Container, Box, Typography, Button, TextField, Paper, CircularProgress,
 
 const PlatformDeployment = () => {
   const { startupId } = useParams();
-  const [deployments, setDeployments] = useState([]);
+  const [deployments, ] = useState([]);
   const [environment, setEnvironment] = useState('staging');
   const [url, setUrl] = useState('');
   const [feedbackFormUrl, setFeedbackFormUrl] = useState('');

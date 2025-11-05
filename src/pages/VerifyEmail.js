@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import authService from '../services/authService';
 import { useToast } from '../context/ToastContext';
@@ -20,16 +20,7 @@ const VerifyEmail = () => {
 
   const token = searchParams.get('token');
 
-  useEffect(() => {
-    if (token) {
-      verifyEmailToken();
-    } else {
-      setVerificationStatus('error');
-      setErrorMessage('Invalid verification link');
-    }
-  }, [token]);
-
-  const verifyEmailToken = async () => {
+  const verifyEmailToken = useCallback(async () => {
     try {
       await authService.verifyEmail(token);
       setVerificationStatus('success');
@@ -45,7 +36,16 @@ const VerifyEmail = () => {
       setErrorMessage(errorMsg);
       showError(errorMsg);
     }
-  };
+  }, [token, navigate, showSuccess, showError]);
+
+  useEffect(() => {
+    if (token) {
+      verifyEmailToken();
+    } else {
+      setVerificationStatus('error');
+      setErrorMessage('Invalid verification link');
+    }
+  }, [token, verifyEmailToken]);
 
   const handleResendVerification = async (e) => {
     e.preventDefault();

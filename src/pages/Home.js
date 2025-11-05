@@ -215,9 +215,9 @@ const Home = () => {
               <Link to={ROUTES.PRIVACY}>Privacy Policy</Link>
             </div>
             <div className="footer-social">
-              <a href="#" aria-label="Twitter">🐦</a>
-              <a href="#" aria-label="LinkedIn">💼</a>
-              <a href="#" aria-label="Instagram">📸</a>
+              <a href="/#" aria-label="Twitter">🐦</a>
+              <a href="/#" aria-label="LinkedIn">💼</a>
+              <a href="/#" aria-label="Instagram">📸</a>
             </div>
           </div>
           <div className="footer-bottom">

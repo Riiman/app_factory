@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,7 @@ import { Container, Box, Typography, Button, TextField, Paper, CircularProgress,
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const { showSuccess, showError } = useToast();
   
   const [formData, setFormData] = useState({

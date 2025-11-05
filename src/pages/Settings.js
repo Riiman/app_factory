@@ -1,7 +1,7 @@
 import React from 'react';
 
 // MUI Components
-import { Container, Box, Typography, Paper } from '@mui/material';
+import { Container, Typography, Paper } from '@mui/material';
 
 const Settings = () => {
   return (

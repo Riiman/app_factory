@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { api, setAuthToken } from '../services/api';
 import { TOKEN_KEY } from '../config/config'; 
@@ -11,26 +11,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY));
 
-  // Set axios default header
-  // useEffect(() => {
-  //   if (token) {
-  //     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  //     fetchCurrentUser();
-  //   } else {
-  //     setLoading(false);
-  //   }
-  // }, [token]);
+  const logout = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    delete axios.defaults.headers.common['Authorization'];
+    setAuthToken(null);
+    setToken(null);
+    setUser(null);
+    setStartup(null);
+  }, []);
 
-    useEffect(() => {
-    if (token) {
-      setAuthToken(token);  // Use setAuthToken from api.js
-      fetchCurrentUser();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUser = useCallback(async () => {
     try {
       const response = await api.get('/me');
       if (response.data.success) {
@@ -43,7 +33,16 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout]);
+
+    useEffect(() => {
+    if (token) {
+      setAuthToken(token);  // Use setAuthToken from api.js
+      fetchCurrentUser();
+    } else {
+      setLoading(false);
+    }
+  }, [token, fetchCurrentUser]);
 
   const login = async (email, password) => {
     try {
@@ -89,15 +88,6 @@ export const AuthProvider = ({ children }) => {
         error: error.response?.data?.error || 'Signup failed'
       };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    delete axios.defaults.headers.common['Authorization'];
-    setAuthToken(null);
-    setToken(null);
-    setUser(null);
-    setStartup(null);
   };
 
   const value = {

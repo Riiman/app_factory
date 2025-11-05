@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
 
 // MUI Components
-import { Container, Box, Typography, Button, Paper, CircularProgress, Tabs, Tab, LinearProgress, Select, MenuItem, InputLabel, FormControl, Grid } from '@mui/material';
+import { Container, Box, Typography, Button, Paper, CircularProgress, Tabs, Tab, LinearProgress, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 // Custom Components
@@ -27,7 +27,7 @@ const StagePage = () => {
 
   useEffect(() => {
     fetchStageData();
-  }, [stageKey]);
+  }, [stageKey, fetchStageData]);
 
   const fetchStageData = async () => {
     try {

@@ -4,9 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
 import './EvaluationForm.css';
 
-// API Configuration
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
 // Form Stages Configuration
 const STAGES = [
   {
@@ -304,7 +301,7 @@ const EvaluationForm = () => {
     if (Object.keys(initialData).length > 0) {
       setFormData(prev => ({ ...prev, ...initialData }));
     }
-  }, [currentStage]);
+  }, [currentStage, formData]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -353,7 +350,7 @@ const EvaluationForm = () => {
       
       // Phone validation
       if (field.type === 'tel' && formData[field.name]) {
-        const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
+        const phoneRegex = /^[+]?[0-9\s()-]{10,}$/;
         if (!phoneRegex.test(formData[field.name])) {
           newErrors[field.name] = 'Please enter a valid phone number';
         }
@@ -361,7 +358,7 @@ const EvaluationForm = () => {
       
       // URL validation
       if (field.type === 'url' && formData[field.name]) {
-        const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+        const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
         if (!urlRegex.test(formData[field.name])) {
           newErrors[field.name] = 'Please enter a valid website URL';
         }
