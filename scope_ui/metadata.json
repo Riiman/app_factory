@@ -1,0 +1,5 @@
+{
+  "name": "Scope Document Viewer",
+  "description": "A web application to display a detailed scope of engagement document, allowing users and admins to add comments and accept or reject the scope. The document outlines application features, technology stack, and go-to-market strategy for a startup.",
+  "requestFramePermissions": []
+}

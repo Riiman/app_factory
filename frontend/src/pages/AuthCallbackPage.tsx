@@ -1,12 +1,12 @@
 import React, { FC, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { useAuthRedirect } from '../utils/useAuthRedirect';
+import { useStageRedirect } from '../utils/useStageRedirect';
 
 const AuthCallbackPage: FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { handleNavigation } = useAuthRedirect();
+  const { handleNavigation } = useStageRedirect();
 
   useEffect(() => {
     const handleAuth = async () => {
@@ -16,13 +16,13 @@ const AuthCallbackPage: FC = () => {
       if (user) {
         localStorage.setItem('user', user);
 
-        // Now, get the submission status
+        // Now, get the submission and startup status
         try {
           const response = await api.fetch('/auth/status');
           const data = await response.json();
 
           if (response.ok && data.success) {
-            handleNavigation(data.submission_status);
+            handleNavigation(data.startup_stage, data.submission_status);
           } else {
             navigate('/login?error=status_check_failed');
           }

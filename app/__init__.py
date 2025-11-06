@@ -50,15 +50,13 @@ def create_app(config_class=Config):
         app.logger.debug('Body: %s', request.get_data())
 
     with app.app_context():
-        from .routes.auth import auth_bp
-        from .routes.submissions import submissions_bp
-        from .routes.startups import startups_bp
-        
-        # Explicitly import models to ensure they are registered with SQLAlchemy's metadata
-        from .models import User, Submission, Startup, Evaluation, Product, BusinessOverview, MarketingCampaign, MarketingOverview, Fundraise, Founder, Task, Experiment, Artifact, ProductBusinessDetails, BusinessMonthlyData, MarketingContentCalendar, MarketingContentItem
-        
-        app.register_blueprint(auth_bp)
-        app.register_blueprint(submissions_bp)
-        app.register_blueprint(startups_bp)
+    from .routes.auth import auth_bp
+    from .routes.submissions import submissions_bp
+    from .routes.startups import startups_bp
+    from .routes.stages import stages_bp
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(submissions_bp)
+    app.register_blueprint(startups_bp)
+    app.register_blueprint(stages_bp)
 
     return app

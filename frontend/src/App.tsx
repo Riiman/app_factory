@@ -12,6 +12,10 @@ import PendingReviewPage from './pages/PendingReviewPage';
 import RejectedSubmissionPage from './pages/RejectedSubmissionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import EvaluationPage from './pages/EvaluationPage';
+import ScopePage from './pages/ScopePage';
+import ContractPage from './pages/ContractPage';
+
 const App: FC = () => {
   return (
     <Router>
@@ -35,6 +39,9 @@ const App: FC = () => {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/pending-review" element={<PendingReviewPage />} />
             <Route path="/rejected-submission" element={<RejectedSubmissionPage />} />
+            <Route path="/evaluation" element={<EvaluationPage />} />
+            <Route path="/scope" element={<ScopePage />} />
+            <Route path="/contract" element={<ContractPage />} />
           </Route>
 
           {/* Redirect any unknown paths to home */}

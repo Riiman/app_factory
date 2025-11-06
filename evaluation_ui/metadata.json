@@ -1,0 +1,5 @@
+{
+  "name": "Task Manager",
+  "description": "A user-centric task management application where users can view assigned tasks, see task details, mark them as complete, and add resulting files or links as proof of completion.",
+  "requestFramePermissions": []
+}

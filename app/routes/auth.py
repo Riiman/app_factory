@@ -7,13 +7,27 @@ from app.utils.decorators import session_required
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-@auth_bp.route('/status', methods=['GET'])
+@auth_bp.route('/status')
 @session_required
 def status():
     user_id = session.get('user_id')
-    submission = Submission.query.filter_by(user_id=user_id).order_by(Submission.submitted_at.desc()).first()
-    submission_status = submission.status.value if submission else None
-    return jsonify({'success': True, 'submission_status': submission_status})
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+
+    submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+    
+    startup_stage = None
+    if submission and submission.startup:
+        startup_stage = submission.startup[0].current_stage.value if submission.startup else None
+
+    return jsonify({
+        'success': True,
+        'is_logged_in': True,
+        'submission_status': submission.status.value if submission else None,
+        'startup_stage': startup_stage
+    })
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
