@@ -1,11 +1,15 @@
-import { useState } from "react";
+
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "./components/ui/sidebar";
 import { AppSidebar } from "./components/AppSidebar";
 import { DashboardContent } from "./components/DashboardContent";
 import { SubmissionsContent } from "./components/SubmissionsContent";
 import { Separator } from "./components/ui/separator";
+import { LoginForm } from "./components/Login";
+import { SignupForm } from "./components/Signup";
+import { useState } from "react";
 
-export default function App() {
+function DashboardLayout() {
   const [activeView, setActiveView] = useState("dashboard");
 
   const renderContent = () => {
@@ -48,5 +52,17 @@ export default function App() {
         {renderContent()}
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/signup" element={<SignupForm />} />
+        <Route path="/*" element={<DashboardLayout />} />
+      </Routes>
+    </Router>
   );
 }

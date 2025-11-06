@@ -1,864 +1,868 @@
 from app import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-import json
 from enum import Enum
+import json # Import json for JSON fields
 
-# ============================================================================
-# ENUMS
-# ============================================================================
+class UserRole(Enum):
+    """Defines the roles a user can have within the application."""
+    USER = "user"
+    ADMIN = "admin"
 
-class StageStatus(str, Enum):
-    NOT_STARTED = 'not_started'
-    IN_PROGRESS = 'in_progress'
-    BLOCKED = 'blocked'
-    IN_REVIEW = 'in_review'
-    COMPLETED = 'completed'
-    SKIPPED = 'skipped'
+class SubmissionStatus(Enum):
+    """Represents the various states of a startup submission."""
+    PENDING = "pending"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
 
-class TaskStatus(str, Enum):
-    TODO = 'todo'
-    IN_PROGRESS = 'in_progress'
-    BLOCKED = 'blocked'
-    DONE = 'done'
+class StartupStatus(Enum):
+    """Defines the operational status of a startup within the incubator program."""
+    ACTIVE = "active"
+    INCUBATING = "incubating"
+    GRADUATED = "graduated"
+    ARCHIVED = "archived"
 
-class TaskPriority(str, Enum):
-    P0 = 'p0'  # Critical
-    P1 = 'p1'  # High
-    P2 = 'p2'  # Medium
-    P3 = 'p3'  # Low
+    def __str__(self):
+        return self.value
 
-class ArtifactType(str, Enum):
-    DOCUMENT = 'document'
-    LINK = 'link'
-    FILE = 'file'
-    CODE_REPO = 'code_repo'
-    DESIGN = 'design'
-    VIDEO = 'video'
+class StartupStage(Enum):
+    """Represents the current stage of a startup in its lifecycle within the program."""
+    EVALUATION = "evaluation"
+    SCOPE = "scope"
+    CONTRACT = "contract"
+    ADMITTED = "admitted"
+    GRADUATED = "graduated"
+    ARCHIVED = "archived"
 
-class IntegrationStatus(str, Enum):
-    CONNECTED = 'connected'
-    DISCONNECTED = 'disconnected'
-    ERROR = 'error'
-    PENDING = 'pending'
+    def __str__(self):
+        return self.value
 
-class ExperimentStatus(str, Enum):
-    DRAFT = 'draft'
-    RUNNING = 'running'
-    COMPLETED = 'completed'
-    FAILED = 'failed'
+class ArtifactType(Enum):
+    """Specifies the type of an artifact, e.g., file, link, or text content."""
+    FILE = "file"
+    LINK = "link"
+    TEXT = "text"
 
-class StartupStatus(str, Enum):
-    ACTIVE = 'active'
-    SCOPE_APPROVED = 'scope_approved'
-    CONTRACT_SIGNED = 'contract_signed'
-    IN_COHORT = 'in_cohort'
-    GRADUATED = 'graduated'
-    DROPPED = 'dropped'
+    def __str__(self):
+        return self.value
 
-# ============================================================================
-# CORE USER & STARTUP MODELS
-# ============================================================================
+class TaskStatus(Enum):
+    """Indicates the current status of a task."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+    def __str__(self):
+        return self.value
+
+class RequestStatus(Enum):
+    """Represents the status of a request, e.g., for resources or mentorship."""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+    def __str__(self):
+        return self.value
+
+class ExperimentStatus(Enum):
+    """Describes the current state of an experiment."""
+    PLANNED = "planned"
+    RUNNING = "running"
+    COMPLETED = "completed"
+
+    def __str__(self):
+        return self.value
+
+class ProductStage(Enum):
+    """Indicates the development stage of a product."""
+    CONCEPT = "concept"
+    DEVELOPMENT = "development"
+    BETA = "beta"
+    LIVE = "live"
+
+    def __str__(self):
+        return self.value
+
+class Scope(Enum):
+    """Defines the functional area or domain a task, experiment, or artifact belongs to."""
+    PRODUCT = "product"
+    BUSINESS = "business"
+    FUNDRAISE = "fundraise"
+    MARKETING = "marketing"
+    GENERAL = "general"
+
+    def __str__(self):
+        return self.value
+
+class Task(db.Model):
+    """Represents a task associated with a startup, which can be linked to various entities."""
+    __tablename__ = 'tasks'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    scope = db.Column(db.Enum(Scope), default=Scope.GENERAL, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    due_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.Enum(TaskStatus), default=TaskStatus.PENDING, nullable=False)
+    linked_to_id = db.Column(db.Integer) # ID of the linked entity (e.g., Product, Experiment)
+    linked_to_type = db.Column(db.String(50)) # Type of the linked entity (e.g., 'product', 'experiment')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', back_populates='tasks')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'scope': str(self.scope),
+            'name': self.name,
+            'description': self.description,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'status': str(self.status),
+            'linked_to_id': self.linked_to_id,
+            'linked_to_type': self.linked_to_type,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+class Experiment(db.Model):
+    """Represents an experiment conducted by a startup, which can be linked to various entities."""
+    __tablename__ = 'experiments'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    scope = db.Column(db.Enum(Scope), default=Scope.GENERAL, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    assumption = db.Column(db.Text, nullable=True)
+    validation_method = db.Column(db.Text, nullable=True)
+    result = db.Column(db.Text, nullable=True)
+    status = db.Column(db.Enum(ExperimentStatus), default=ExperimentStatus.PLANNED, nullable=False)
+    linked_to_id = db.Column(db.Integer) # ID of the linked entity (e.g., Product, Task)
+    linked_to_type = db.Column(db.String(50)) # Type of the linked entity (e.g., 'product', 'task')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', back_populates='experiments')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'scope': str(self.scope),
+            'name': self.name,
+            'description': self.description,
+            'assumption': self.assumption,
+            'validation_method': self.validation_method,
+            'result': self.result,
+            'status': str(self.status),
+            'linked_to_id': self.linked_to_id,
+            'linked_to_type': self.linked_to_type,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+class Artifact(db.Model):
+    """Represents a digital artifact (file, link, text) associated with a startup or other entities."""
+    __tablename__ = 'artifacts'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    scope = db.Column(db.Enum(Scope), default=Scope.GENERAL, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    type = db.Column(db.Enum(ArtifactType), nullable=False)
+    location = db.Column(db.Text, nullable=False) # URL for links, file path for files, or content for text
+    linked_to_id = db.Column(db.Integer) # ID of the linked entity (e.g., Task, Experiment, FundingRound)
+    linked_to_type = db.Column(db.String(50)) # Type of the linked entity (e.g., 'task', 'experiment', 'funding_round')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', back_populates='artifacts')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'scope': str(self.scope),
+            'name': self.name,
+            'description': self.description,
+            'type': str(self.type),
+            'location': self.location,
+            'linked_to_id': self.linked_to_id,
+            'linked_to_type': self.linked_to_type,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
 
 class User(db.Model):
-    """One user per startup (1:1 relationship)"""
+    """Represents a user of the application, including authentication details and roles."""
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(128), nullable=True) # Nullable for OAuth users
     full_name = db.Column(db.String(100), nullable=False)
-    mobile = db.Column(db.String(20))
     is_verified = db.Column(db.Boolean, default=False)
-    verification_token = db.Column(db.String(100), unique=True)
-    role = db.Column(db.String(20), default='user')
+    role = db.Column(db.Enum(UserRole), default=UserRole.USER, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_login = db.Column(db.DateTime)
     
-    # One-to-one relationships
-    startup = db.relationship('Startup', back_populates='user', uselist=False, cascade='all, delete-orphan')
-    submission = db.relationship('Submission', back_populates='user', uselist=False, cascade='all, delete-orphan')
+    # OAuth provider IDs
+    google_id = db.Column(db.String(128), unique=True, nullable=True)
+    linkedin_id = db.Column(db.String(128), unique=True, nullable=True)
     
+    submissions = db.relationship('Submission', back_populates='user', lazy=True, cascade='all, delete-orphan')
+    startups = db.relationship('Startup', back_populates='user', lazy=True, cascade='all, delete-orphan')
+    created_monthly_data = db.relationship('BusinessMonthlyData', back_populates='creator', lazy=True)
+    created_marketing_campaigns = db.relationship('MarketingCampaign', back_populates='creator', lazy=True)
+    owned_content_calendars = db.relationship('MarketingContentCalendar', back_populates='owner', lazy=True)
+    created_content_items = db.relationship('MarketingContentItem', back_populates='creator', lazy=True)
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
     def to_dict(self):
         return {
             'id': self.id,
             'email': self.email,
             'full_name': self.full_name,
-            'mobile': self.mobile,
             'is_verified': self.is_verified,
-            'role': self.role if hasattr(self, 'role') else 'user',
-            'created_at': self.created_at.isoformat() if self.created_at else None
-        }
-
-class Submission(db.Model):
-    """Initial form submitted by user - seeds stage 1-3 data"""
-    __tablename__ = 'submissions'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False)
-    submission_id = db.Column(db.String(100), unique=True, nullable=False)
-    
-    # Stage 1: Founder Specifications
-    startup_name = db.Column(db.String(200))
-    website_url = db.Column(db.String(500))
-    founding_year = db.Column(db.Integer)
-    number_of_founders = db.Column(db.Integer)
-    team_size = db.Column(db.Integer)
-    headquarters = db.Column(db.String(200))
-    founder_linkedin = db.Column(db.String(500))
-    team_description = db.Column(db.Text)
-    email = db.Column(db.String(120))
-    phone = db.Column(db.String(20))
-    location = db.Column(db.String(100))
-    market_size = db.Column(db.String(100))
-    industry = db.Column(db.String(100))
-    funding_stage = db.Column(db.String(100))
-    technical_skills = db.Column(db.Text)
-    resources_needed = db.Column(db.Text)
-    users_customers = db.Column(db.String(100))
-    revenue = db.Column(db.String(100))
-    key_achievements = db.Column(db.Text)
-    future_goals = db.Column(db.Text)
-    why_incubator = db.Column(db.Text)
-    
-    # Stage 2: Product Scope
-    company_overview = db.Column(db.Text)
-    problem_statement = db.Column(db.Text)
-    solution = db.Column(db.Text)
-    unique_value_proposition = db.Column(db.Text)
-    tech_stack = db.Column(db.Text)  # JSON
-    key_features = db.Column(db.Text)  # JSON array
-    
-    # Stage 3: GTM Scope
-    target_market = db.Column(db.Text)
-    customer_segments = db.Column(db.Text)  # JSON
-    competition = db.Column(db.Text)
-    competitive_advantage = db.Column(db.Text)
-    pricing_strategy = db.Column(db.Text)
-    go_to_market_strategy = db.Column(db.Text)
-    
-    # Stage 9: Fundraise
-    funding_required = db.Column(db.String(100))
-    current_stage = db.Column(db.String(50))
-    revenue_streams = db.Column(db.Text)
-    business_model = db.Column(db.Text)
-    pitch_deck_url = db.Column(db.String(500))
-    demo_url = db.Column(db.String(500))
-    
-    status = db.Column(db.String(50), default='pending')
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
-    reviewed_at = db.Column(db.DateTime)
-    
-    # Evaluation fields
-    evaluation_summary = db.Column(db.Text)  # AI-generated summary
-    platform_feedback = db.Column(db.Text)   # Manual feedback from team
-    action_tasks = db.Column(db.Text)        # JSON array of tasks
-    
-    # Relationships
-    user = db.relationship('User', back_populates='submission')
-    startup = db.relationship('Startup', back_populates='submission', uselist=False)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'submission_id': self.submission_id,
-            'startup_id': self.startup.id if self.startup else None,
-            'startup_name': self.startup_name,
-            'website_url': self.website_url,
-            'founding_year': self.founding_year,
-            'number_of_founders': self.number_of_founders,
-            'team_size': self.team_size,
-            'headquarters': self.headquarters,
-            'founder_linkedin': self.founder_linkedin,
-            'team_description': self.team_description,
-            'company_overview': self.company_overview,
-            'problem_statement': self.problem_statement,
-            'solution': self.solution,
-            'unique_value_proposition': self.unique_value_proposition,
-            'tech_stack': self.tech_stack,
-            'key_features': self.key_features,
-            'target_market': self.target_market,
-            'customer_segments': self.customer_segments,
-            'competition': self.competition,
-            'competitive_advantage': self.competitive_advantage,
-            'pricing_strategy': self.pricing_strategy,
-            'go_to_market_strategy': self.go_to_market_strategy,
-            'funding_required': self.funding_required,
-            'current_stage': self.current_stage,
-            'revenue_streams': self.revenue_streams,
-            'business_model': self.business_model,
-            'pitch_deck_url': self.pitch_deck_url,
-            'demo_url': self.demo_url,
-            'status': self.status,
-            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
-            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
-            'evaluation_summary': self.evaluation_summary,
-            'platform_feedback': self.platform_feedback,
-            'action_tasks': self.action_tasks
+            'role': self.role.value,
+            'created_at': self.created_at.isoformat()
         }
 
 class Startup(db.Model):
-    """Core startup entity - owns all stage instances"""
+    """Represents a startup being incubated, linking to various operational and strategic details."""
     __tablename__ = 'startups'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False)
-    submission_id = db.Column(db.Integer, db.ForeignKey('submissions.id'), unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    submission_id = db.Column(db.Integer, db.ForeignKey('submissions.id'), unique=True, nullable=False)
     
     name = db.Column(db.String(200), nullable=False)
-    slug = db.Column(db.String(200), unique=True, index=True)
-    current_stage_key = db.Column(db.String(50), default='founder_specifications')
-    overall_progress = db.Column(db.Float, default=0.0)  # 0-100
-    status = db.Column(db.Enum(StartupStatus), default=StartupStatus.ACTIVE)
+    slug = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    status = db.Column(db.Enum(StartupStatus), default=StartupStatus.ACTIVE, nullable=False)
+    overall_progress = db.Column(db.Float, default=0.0)
+    current_stage = db.Column(db.Enum(StartupStage), default=StartupStage.EVALUATION, nullable=False)
+    next_milestone = db.Column(db.String(255), nullable=True)
+    recent_activity = db.Column(db.JSON, nullable=True) # Store as JSON array of strings
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    user = db.relationship('User', back_populates='startup')
-    submission = db.relationship('Submission', back_populates='startup')
-    stage_instances = db.relationship('StageInstance', back_populates='startup', cascade='all, delete-orphan')
-    documents = db.relationship('Document', back_populates='startup', cascade='all, delete-orphan')
-    integrations = db.relationship('Integration', back_populates='startup', cascade='all, delete-orphan')
-    
-    def initialize_stages(self):
-        """Create all 9 stage instances for this startup"""
-        stages_config = [
-            {'key': 'founder_specifications', 'order': 1},
-            {'key': 'product_scope', 'order': 2},
-            {'key': 'gtm_scope', 'order': 3},
-            {'key': 'product_ux', 'order': 4},
-            {'key': 'product_code', 'order': 5},
-            {'key': 'test_deploy', 'order': 6},
-            {'key': 'share_monitor', 'order': 7},
-            {'key': 'monetize_gtm', 'order': 8},
-            {'key': 'fundraise', 'order': 9}
-        ]
-        
-        for config in stages_config:
-            template = StageTemplate.query.filter_by(key=config['key']).first()
-            if template:
-                instance = StageInstance(
-                    startup_id=self.id,
-                    template_id=template.id,
-                    stage_key=config['key'],
-                    order=config['order'],
-                    status=StageStatus.NOT_STARTED
-                )
-                db.session.add(instance)
-        
-        db.session.commit()
-    
-    def compute_progress(self):
-        """Calculate overall progress from stage completions"""
-        total_stages = len(self.stage_instances)
-        if total_stages == 0:
-            return 0.0
-        
-        completed = sum(1 for si in self.stage_instances if si.status == StageStatus.COMPLETED)
-        in_progress = sum(si.progress / 100.0 for si in self.stage_instances if si.status == StageStatus.IN_PROGRESS)
-        
-        return ((completed + in_progress) / total_stages) * 100
-    
+
+    user = db.relationship('User', back_populates='startups')
+    submission = db.relationship('Submission', backref='startup', uselist=False)
+
+    # New relationships
+    products = db.relationship('Product', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+    business_overview = db.relationship('BusinessOverview', back_populates='startup', uselist=False, cascade='all, delete-orphan')
+    monthly_data = db.relationship('BusinessMonthlyData', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+    fundraise_details = db.relationship('Fundraise', back_populates='startup', uselist=False, cascade='all, delete-orphan')
+    founders = db.relationship('Founder', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+    funding_rounds = db.relationship('FundingRound', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+    marketing_campaigns = db.relationship('MarketingCampaign', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+    tasks = db.relationship('Task', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+    experiments = db.relationship('Experiment', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+    artifacts = db.relationship('Artifact', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+    marketing_overview = db.relationship('MarketingOverview', back_populates='startup', uselist=False, cascade='all, delete-orphan')
+
     def to_dict(self):
         return {
             'id': self.id,
+            'user_id': self.user_id,
+            'submission_id': self.submission_id,
             'name': self.name,
             'slug': self.slug,
-            'current_stage_key': self.current_stage_key,
+            'status': str(self.status),
             'overall_progress': self.overall_progress,
-            'status': self.status,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'current_stage': str(self.current_stage),
+            'next_milestone': self.next_milestone,
+            'recent_activity': self.recent_activity,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'business_overview': self.business_overview.to_dict() if self.business_overview else None,
+            'monthly_data': [data.to_dict() for data in self.monthly_data],
+            'funding_rounds': [round.to_dict() for round in self.funding_rounds],
+            'tasks': [task.to_dict() for task in self.tasks],
+            'experiments': [experiment.to_dict() for experiment in self.experiments],
+            'marketing_campaigns': [campaign.to_dict() for campaign in self.marketing_campaigns],
+            'founders': [founder.to_dict() for founder in self.founders],
+            'marketing_overview': self.marketing_overview.to_dict() if self.marketing_overview else None,
         }
 
-# ============================================================================
-# STAGE TEMPLATE & INSTANCE
-# ============================================================================
-
-class StageTemplate(db.Model):
-    """Global template defining each of the 9 stages"""
-    __tablename__ = 'stage_templates'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text)
-    order = db.Column(db.Integer, nullable=False)
-    
-    # JSON schemas
-    form_schema = db.Column(db.Text)  # JSON Schema for dynamic form
-    default_checklist = db.Column(db.Text)  # JSON array of default tasks
-    default_metrics = db.Column(db.Text)  # JSON array of metric definitions
-    acceptance_criteria = db.Column(db.Text)  # JSON array of rules
-    
-    is_active = db.Column(db.Boolean, default=True)
-    version = db.Column(db.String(20), default='1.0')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    stage_instances = db.relationship('StageInstance', back_populates='template')
-    
-    def get_form_schema(self):
-        return json.loads(self.form_schema) if self.form_schema else {}
-    
-    def get_default_checklist(self):
-        return json.loads(self.default_checklist) if self.default_checklist else []
-    
-    def get_default_metrics(self):
-        return json.loads(self.default_metrics) if self.default_metrics else []
-    
-    def get_acceptance_criteria(self):
-        return json.loads(self.acceptance_criteria) if self.acceptance_criteria else []
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'key': self.key,
-            'name': self.name,
-            'description': self.description,
-            'order': self.order,
-            'form_schema': self.get_form_schema(),
-            'default_checklist': self.get_default_checklist(),
-            'default_metrics': self.get_default_metrics(),
-            'acceptance_criteria': self.get_acceptance_criteria()
-        }
-
-class StageInstance(db.Model):
-    """Per-startup instance of a stage"""
-    __tablename__ = 'stage_instances'
-    
+class Product(db.Model):
+    """Represents a product developed by a startup, including its features, metrics, and business details."""
+    __tablename__ = 'products'
     id = db.Column(db.Integer, primary_key=True)
     startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey('stage_templates.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    stage = db.Column(db.Enum(ProductStage), default=ProductStage.CONCEPT, nullable=False)
+    version = db.Column(db.String(50), nullable=True)
+    targeted_launch_date = db.Column(db.Date, nullable=True)
+    actual_launch_date = db.Column(db.Date, nullable=True)
+    customer_segment = db.Column(db.Text, nullable=True)
+    unique_value_prop = db.Column(db.Text, nullable=True)
+    tech_stack = db.Column(db.JSON, nullable=True) # Store as JSON array of strings
     
-    stage_key = db.Column(db.String(50), nullable=False, index=True)
-    order = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.Enum(StageStatus), default=StageStatus.NOT_STARTED)
-    progress = db.Column(db.Float, default=0.0)  # 0-100
-    
-    # Stage-specific data
-    form_data = db.Column(db.Text)  # JSON: user-filled form values
-    
-    # Ownership and dates
-    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    due_date = db.Column(db.DateTime)
-    started_at = db.Column(db.DateTime)
-    completed_at = db.Column(db.DateTime)
-    
-    # Notes and blockers
-    notes = db.Column(db.Text)
-    blockers = db.Column(db.Text)  # JSON array
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    startup = db.relationship('Startup', back_populates='stage_instances')
-    template = db.relationship('StageTemplate', back_populates='stage_instances')
-    tasks = db.relationship('Task', back_populates='stage_instance', cascade='all, delete-orphan')
-    metrics = db.relationship('Metric', back_populates='stage_instance', cascade='all, delete-orphan')
-    artifacts = db.relationship('Artifact', back_populates='stage_instance', cascade='all, delete-orphan')
-    experiments = db.relationship('Experiment', back_populates='stage_instance', cascade='all, delete-orphan')
-    
-    __table_args__ = (
-        db.Index('idx_startup_stage', 'startup_id', 'stage_key'),
-    )
-    
-    def get_form_data(self):
-        return json.loads(self.form_data) if self.form_data else {}
-    
-    def set_form_data(self, data):
-        self.form_data = json.dumps(data)
-    
-    def get_blockers(self):
-        return json.loads(self.blockers) if self.blockers else []
-    
-    def compute_progress(self):
-        """Calculate progress from tasks and acceptance criteria"""
-        total_tasks = len(self.tasks)
-        if total_tasks == 0:
-            return 0.0
-        
-        completed_tasks = sum(1 for t in self.tasks if t.status == TaskStatus.DONE)
-        return (completed_tasks / total_tasks) * 100
-    
-    def check_acceptance_criteria(self):
-        """Evaluate all acceptance criteria rules"""
-        criteria = self.template.get_acceptance_criteria()
-        results = []
-        
-        for rule in criteria:
-            # Simple rule evaluation - extend with JSONLogic or custom evaluator
-            passed = self._evaluate_rule(rule)
-            results.append({
-                'rule': rule,
-                'passed': passed
-            })
-        
-        return results
-    
-    def _evaluate_rule(self, rule):
-        """Placeholder for rule evaluation logic"""
-        # Implement JSONLogic or custom rule engine
-        return True
-    
-    def to_dict(self, include_details=False):
-        data = {
-            'id': self.id,
-            'stage_key': self.stage_key,
-            'name': self.template.name if self.template else self.stage_key,
-            'order': self.order,
-            'status': self.status.value if isinstance(self.status, Enum) else self.status,
-            'progress': self.progress,
-            'due_date': self.due_date.isoformat() if self.due_date else None,
-            'started_at': self.started_at.isoformat() if self.started_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'notes': self.notes,
-            'blockers': self.get_blockers()
-        }
-        
-        if include_details:
-            data.update({
-                'form_data': self.get_form_data(),
-                'tasks': [t.to_dict() for t in self.tasks],
-                'metrics': [m.to_dict() for m in self.metrics],
-                'artifacts': [a.to_dict() for a in self.artifacts],
-                'experiments': [e.to_dict() for e in self.experiments],
-                'acceptance_criteria': self.check_acceptance_criteria()
-            })
-        
-        return data
+    startup = db.relationship('Startup', back_populates='products')
+    features = db.relationship('Feature', back_populates='product', lazy=True, cascade='all, delete-orphan')
+    product_metrics = db.relationship('ProductMetric', back_populates='product', lazy=True, cascade='all, delete-orphan')
+    product_issues = db.relationship('ProductIssue', back_populates='product', lazy=True, cascade='all, delete-orphan')
+    business_details = db.relationship('ProductBusinessDetails', back_populates='product', uselist=False, cascade='all, delete-orphan')
+    marketing_campaigns = db.relationship('MarketingCampaign', back_populates='product', lazy=True)
 
-# ============================================================================
-# TASK MANAGEMENT
-# ============================================================================
-
-class Task(db.Model):
-    """Checklist items within a stage"""
-    __tablename__ = 'tasks'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    
-    title = db.Column(db.String(500), nullable=False)
-    description = db.Column(db.Text)
-    status = db.Column(db.Enum(TaskStatus), default=TaskStatus.TODO)
-    priority = db.Column(db.Enum(TaskPriority), default=TaskPriority.P2)
-    
-    assignee_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    due_date = db.Column(db.DateTime)
-    completed_at = db.Column(db.DateTime)
-    
-    tags = db.Column(db.Text)  # JSON array
-    order = db.Column(db.Integer, default=0)
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    stage_instance = db.relationship('StageInstance', back_populates='tasks')
-    
-    def get_tags(self):
-        return json.loads(self.tags) if self.tags else []
-    
     def to_dict(self):
         return {
             'id': self.id,
-            'title': self.title,
-            'description': self.description,
-            'status': self.status.value if isinstance(self.status, Enum) else self.status,
-            'priority': self.priority.value if isinstance(self.priority, Enum) else self.priority,
-            'assignee_id': self.assignee_id,
-            'due_date': self.due_date.isoformat() if self.due_date else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'tags': self.get_tags(),
-            'order': self.order
-        }
-
-# ============================================================================
-# METRICS
-# ============================================================================
-
-class Metric(db.Model):
-    """KPIs tracked per stage"""
-    __tablename__ = 'metrics'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    
-    key = db.Column(db.String(100), nullable=False, index=True)
-    name = db.Column(db.String(200), nullable=False)
-    metric_type = db.Column(db.String(50), default='product') # analytics, marketing, product
-    value = db.Column(db.Float)
-    target = db.Column(db.Float)
-    unit = db.Column(db.String(50))
-    
-    source = db.Column(db.String(100))  # 'manual', 'integration', 'computed'
-    source_integration_id = db.Column(db.Integer, db.ForeignKey('integrations.id'))
-    
-    last_synced_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    stage_instance = db.relationship('StageInstance', back_populates='metrics')
-    
-    __table_args__ = (
-        db.Index('idx_stage_metric', 'stage_instance_id', 'key'),
-    )
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'key': self.key,
+            'startup_id': self.startup_id,
             'name': self.name,
-            'value': self.value,
-            'target': self.target,
-            'unit': self.unit,
-            'source': self.source,
-            'last_synced_at': self.last_synced_at.isoformat() if self.last_synced_at else None
-        }
-
-# ============================================================================
-# ARTIFACTS
-# ============================================================================
-
-class Artifact(db.Model):
-    """Documents, files, links attached to stages"""
-    __tablename__ = 'artifacts'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    
-    title = db.Column(db.String(500), nullable=False)
-    artifact_type = db.Column(db.Enum(ArtifactType), nullable=False)
-    url = db.Column(db.String(1000))
-    file_path = db.Column(db.String(1000))
-    
-    description = db.Column(db.Text)
-    version = db.Column(db.String(50))
-    visibility = db.Column(db.String(50), default='private')  # 'private', 'team', 'public'
-    
-    artifact_metadata = db.Column(db.Text)  # JSON: file size, mime type, etc.
-    
-    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    stage_instance = db.relationship('StageInstance', back_populates='artifacts')
-    
-    def get_metadata(self):
-        return json.loads(self.artifact_metadata) if self.artifact_metadata else {}
-    
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'title': self.title,
-            'type': self.artifact_type.value if isinstance(self.artifact_type, Enum) else self.artifact_type,
-            'url': self.url,
             'description': self.description,
+            'stage': str(self.stage),
             'version': self.version,
-            'visibility': self.visibility,
-            'metadata': self.get_metadata(),
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'targeted_launch_date': self.targeted_launch_date.isoformat() if self.targeted_launch_date else None,
+            'actual_launch_date': self.actual_launch_date.isoformat() if self.actual_launch_date else None,
+            'customer_segment': self.customer_segment,
+            'unique_value_prop': self.unique_value_prop,
+            'tech_stack': self.tech_stack,
+            'features': [feature.to_dict() for feature in self.features],
+            'product_metrics': [metric.to_dict() for metric in self.product_metrics],
+            'product_issues': [issue.to_dict() for issue in self.product_issues],
+            'business_details': self.business_details.to_dict() if self.business_details else None,
+            'marketing_campaigns': [campaign.to_dict() for campaign in self.marketing_campaigns],
         }
-
-# ============================================================================
-# EXPERIMENTS (GTM)
-# ============================================================================
-
-class Experiment(db.Model):
-    """GTM experiments tracked per stage"""
-    __tablename__ = 'experiments'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    
-    name = db.Column(db.String(200), nullable=False)
-    hypothesis = db.Column(db.Text)
-    status = db.Column(db.Enum(ExperimentStatus), default=ExperimentStatus.DRAFT)
-    
-    metric_keys = db.Column(db.Text)  # JSON array of metric keys to track
-    results = db.Column(db.Text)  # JSON: outcome data
-    learnings = db.Column(db.Text)
-    
-    started_at = db.Column(db.DateTime)
-    completed_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    stage_instance = db.relationship('StageInstance', back_populates='experiments')
-    
-    def get_metric_keys(self):
-        return json.loads(self.metric_keys) if self.metric_keys else []
-    
-    def get_results(self):
-        return json.loads(self.results) if self.results else {}
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'hypothesis': self.hypothesis,
-            'status': self.status.value if isinstance(self.status, Enum) else self.status,
-            'metric_keys': self.get_metric_keys(),
-            'results': self.get_results(),
-            'learnings': self.learnings,
-            'started_at': self.started_at.isoformat() if self.started_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None
-        }
-
-# ============================================================================
-# INTEGRATIONS
-# ============================================================================
-
-class Integration(db.Model):
-    """Third-party tool connections per startup"""
-    __tablename__ = 'integrations'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
-    
-    integration_type = db.Column(db.String(100), nullable=False)  # 'github', 'figma', 'ga4', etc.
-    status = db.Column(db.Enum(IntegrationStatus), default=IntegrationStatus.PENDING)
-    
-    config = db.Column(db.Text)  # JSON: API keys, scopes, etc. (encrypted)
-    scopes = db.Column(db.Text)  # JSON array
-    
-    last_synced_at = db.Column(db.DateTime)
-    connected_at = db.Column(db.DateTime)
-    error_message = db.Column(db.Text)
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    startup = db.relationship('Startup', back_populates='integrations')
-    
-    def get_config(self):
-        return json.loads(self.config) if self.config else {}
-    
-    def get_scopes(self):
-        return json.loads(self.scopes) if self.scopes else []
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'type': self.integration_type,
-            'status': self.status.value if isinstance(self.status, Enum) else self.status,
-            'scopes': self.get_scopes(),
-            'last_synced_at': self.last_synced_at.isoformat() if self.last_synced_at else None,
-            'connected_at': self.connected_at.isoformat() if self.connected_at else None,
-            'error_message': self.error_message
-        }
-
-# ============================================================================
-# DOCUMENTS (LEGACY - Keep for backward compatibility)
-# ============================================================================
-
-class Document(db.Model):
-    """Legacy document model - can migrate to Artifacts"""
-    __tablename__ = 'documents'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
-    document_type = db.Column(db.String(100), nullable=False)
-    title = db.Column(db.String(500), nullable=False)
-    file_path = db.Column(db.String(1000), nullable=False)
-    file_size = db.Column(db.Integer)
-    
-    stage = db.Column(db.String(50))
-    tags = db.Column(db.Text)  # JSON
-    
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    startup = db.relationship('Startup', back_populates='documents')
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'document_type': self.document_type,
-            'title': self.title,
-            'file_path': self.file_path,
-            'file_size': self.file_size,
-            'stage': self.stage,
-            'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None
-        }
-
-# ============================================================================
-# PRODUCT SCOPE
-# ============================================================================
-
-class ProductScope(db.Model):
-    __tablename__ = 'product_scopes'
-    id = db.Column(db.Integer, primary_key=True)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    status = db.Column(db.String(50), default='draft') # draft, in_review, approved, changes_requested
-    version = db.Column(db.Integer, default=1)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    stage_instance = db.relationship('StageInstance', backref=db.backref('product_scope', uselist=False))
-    features = db.relationship('Feature', back_populates='scope', cascade='all, delete-orphan')
 
 class Feature(db.Model):
+    """Represents a specific feature of a product."""
     __tablename__ = 'features'
     id = db.Column(db.Integer, primary_key=True)
-    scope_id = db.Column(db.Integer, db.ForeignKey('product_scopes.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text)
-    priority = db.Column(db.String(50)) # must-have, should-have, later
-    status = db.Column(db.String(50), default='pending') # pending, approved, rejected
-    build_status = db.Column(db.String(50), default='pending') # pending, in_progress, completed
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    acceptance_criteria = db.Column(db.Text, nullable=True)
+
+    product = db.relationship('Product', back_populates='features')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'product_id': self.product_id,
+            'name': self.name,
+            'description': self.description,
+            'acceptance_criteria': self.acceptance_criteria,
+        }
+
+class ProductMetric(db.Model):
+    """Tracks various metrics related to a product's performance."""
+    __tablename__ = 'product_metrics'
+    metric_id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    metric_name = db.Column(db.String(255), nullable=False)
+    value = db.Column(db.Numeric(15,2), nullable=True)
+    target_value = db.Column(db.Numeric(15,2), nullable=True)
+    unit = db.Column(db.String(50), nullable=True)
+    period = db.Column(db.String(50), nullable=True) # weekly, monthly, quarterly
+    date_recorded = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    product = db.relationship('Product', back_populates='product_metrics')
+
+    def to_dict(self):
+        return {
+            'metric_id': self.metric_id,
+            'product_id': self.product_id,
+            'metric_name': self.metric_name,
+            'value': float(self.value) if self.value is not None else None,
+            'target_value': float(self.target_value) if self.target_value is not None else None,
+            'unit': self.unit,
+            'period': self.period,
+            'date_recorded': self.date_recorded.isoformat() if self.date_recorded else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+class ProductIssue(db.Model):
+    """Records issues or bugs identified for a product."""
+    __tablename__ = 'product_issues'
+    issue_id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    severity = db.Column(db.String(50), nullable=True) # Low, Medium, High, Critical
+    status = db.Column(db.String(50), nullable=True) # Open, In Progress, Resolved
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+
+    product = db.relationship('Product', back_populates='product_issues')
+    creator = db.relationship('User', backref='created_issues')
+
+    def to_dict(self):
+        return {
+            'issue_id': self.issue_id,
+            'product_id': self.product_id,
+            'title': self.title,
+            'description': self.description,
+            'severity': self.severity,
+            'status': self.status,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+        }
+
+class BusinessOverview(db.Model):
+    """Provides a high-level overview of a startup's business model and key partnerships."""
+    __tablename__ = 'business_overview'
+    business_id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), unique=True, nullable=False)
+    business_model = db.Column(db.String(255), nullable=True)
+    key_partners = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    startup = db.relationship('Startup', back_populates='business_overview')
+
+    def to_dict(self):
+        return {
+            'business_id': self.business_id,
+            'startup_id': self.startup_id,
+            'business_model': self.business_model,
+            'key_partners': self.key_partners,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+class ProductBusinessDetails(db.Model):
+    """Details the business aspects specific to a product, such as pricing and target customers."""
+    __tablename__ = 'product_business_details'
+    product_business_id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), unique=True, nullable=False)
+    pricing_model = db.Column(db.String(255), nullable=True)
+    target_customer = db.Column(db.Text, nullable=True)
+    revenue_streams = db.Column(db.Text, nullable=True)
+    distribution_channels = db.Column(db.Text, nullable=True)
+    cost_structure = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    product = db.relationship('Product', back_populates='business_details')
+
+    def to_dict(self):
+        return {
+            'product_business_id': self.product_business_id,
+            'product_id': self.product_id,
+            'pricing_model': self.pricing_model,
+            'target_customer': self.target_customer,
+            'revenue_streams': self.revenue_streams,
+            'distribution_channels': self.distribution_channels,
+            'cost_structure': self.cost_structure,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+class BusinessMonthlyData(db.Model):
+    """Stores monthly financial and operational data for a startup."""
+    __tablename__ = 'business_monthly_data'
+    record_id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    month_start = db.Column(db.Date, nullable=False)
+    total_revenue = db.Column(db.Numeric(15,2), nullable=True)
+    total_expenses = db.Column(db.Numeric(15,2), nullable=True)
+    net_burn = db.Column(db.Numeric(15,2), nullable=True)
+    cash_in_bank = db.Column(db.Numeric(15,2), nullable=True)
+    mrr = db.Column(db.Numeric(15,2), nullable=True)
+    churn_rate = db.Column(db.Numeric(5,2), nullable=True)
+    new_customers = db.Column(db.Integer, nullable=True)
+    total_customers = db.Column(db.Integer, nullable=True)
+    key_highlights = db.Column(db.Text, nullable=True)
+    key_challenges = db.Column(db.Text, nullable=True)
+    next_focus = db.Column(db.Text, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', back_populates='monthly_data')
+    creator = db.relationship('User', back_populates='created_monthly_data')
+
+    def to_dict(self):
+        return {
+            'record_id': self.record_id,
+            'startup_id': self.startup_id,
+            'month_start': self.month_start.isoformat() if self.month_start else None,
+            'total_revenue': float(self.total_revenue) if self.total_revenue is not None else None,
+            'total_expenses': float(self.total_expenses) if self.total_expenses is not None else None,
+            'net_burn': float(self.net_burn) if self.net_burn is not None else None,
+            'cash_in_bank': float(self.cash_in_bank) if self.cash_in_bank is not None else None,
+            'mrr': float(self.mrr) if self.mrr is not None else None,
+            'churn_rate': float(self.churn_rate) if self.churn_rate is not None else None,
+            'new_customers': self.new_customers,
+            'total_customers': self.total_customers,
+            'key_highlights': self.key_highlights,
+            'key_challenges': self.key_challenges,
+            'next_focus': self.next_focus,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+class MarketingOverview(db.Model):
+    """Provides a high-level overview of a startup's marketing strategy and positioning."""
+    __tablename__ = 'marketing_overview'
+    marketing_id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), unique=True, nullable=False)
+    positioning_statement = db.Column(db.Text, nullable=True)
+
+    startup = db.relationship('Startup', back_populates='marketing_overview')
+
+    def to_dict(self):
+        return {
+            'marketing_id': self.marketing_id,
+            'startup_id': self.startup_id,
+            'positioning_statement': self.positioning_statement,
+        }
+
+class MarketingCampaignStatus(Enum):
+    """Defines the status of a marketing campaign."""
+    PLANNED = "planned"
+    ACTIVE = "active"
+    COMPLETED = "completed"
+
+    def __str__(self):
+        return self.value
+
+class MarketingContentStatus(Enum):
+    """Defines the status of a marketing content item."""
+    PLANNED = "planned"
+    PUBLISHED = "published"
+    CANCELLED = "cancelled"
+
+    def __str__(self):
+        return self.value
+
+class MarketingCampaign(db.Model):
+    """Represents a marketing campaign for a startup or a specific product."""
+    __tablename__ = 'marketing_campaigns'
+    campaign_id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    scope = db.Column(db.String(50), default='overall') # e.g., 'overall', 'product_launch'
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True)
+    campaign_name = db.Column(db.String(255), nullable=False)
+    objective = db.Column(db.Text, nullable=True)
+    channel = db.Column(db.String(100), nullable=True)
+    start_date = db.Column(db.Date, nullable=True)
+    end_date = db.Column(db.Date, nullable=True)
+    spend = db.Column(db.Numeric(15,2), nullable=True)
+    impressions = db.Column(db.Integer, nullable=True)
+    clicks = db.Column(db.Integer, nullable=True)
+    conversions = db.Column(db.Integer, nullable=True)
+    status = db.Column(db.Enum(MarketingCampaignStatus), default=MarketingCampaignStatus.PLANNED, nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+    content_mode = db.Column(db.Boolean, default=False) # True if campaign involves content calendar
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', back_populates='marketing_campaigns')
+    product = db.relationship('Product', back_populates='marketing_campaigns')
+    creator = db.relationship('User', back_populates='created_marketing_campaigns')
+    content_calendars = db.relationship('MarketingContentCalendar', back_populates='campaign', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'campaign_id': self.campaign_id,
+            'startup_id': self.startup_id,
+            'scope': self.scope,
+            'product_id': self.product_id,
+            'campaign_name': self.campaign_name,
+            'objective': self.objective,
+            'channel': self.channel,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'spend': float(self.spend) if self.spend is not None else None,
+            'impressions': self.impressions,
+            'clicks': self.clicks,
+            'conversions': self.conversions,
+            'status': str(self.status),
+            'notes': self.notes,
+            'content_mode': self.content_mode,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'content_calendars': [calendar.to_dict() for calendar in self.content_calendars],
+        }
+
+class MarketingContentCalendar(db.Model):
+    """Manages a content calendar for a specific marketing campaign."""
+    __tablename__ = 'marketing_content_calendar'
+    calendar_id = db.Column(db.Integer, primary_key=True)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('marketing_campaigns.campaign_id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    start_date = db.Column(db.Date, nullable=True)
+    end_date = db.Column(db.Date, nullable=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    campaign = db.relationship('MarketingCampaign', back_populates='content_calendars')
+    owner = db.relationship('User', back_populates='owned_content_calendars')
+    content_items = db.relationship('MarketingContentItem', back_populates='calendar', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'calendar_id': self.calendar_id,
+            'campaign_id': self.campaign_id,
+            'title': self.title,
+            'description': self.description,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'owner_id': self.owner_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'content_items': [item.to_dict() for item in self.content_items],
+        }
+
+class MarketingContentItem(db.Model):
+    """Represents a single piece of marketing content within a content calendar."""
+    __tablename__ = 'marketing_content_items'
+    content_id = db.Column(db.Integer, primary_key=True)
+    calendar_id = db.Column(db.Integer, db.ForeignKey('marketing_content_calendar.calendar_id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    content_type = db.Column(db.String(100), nullable=True)
+    content_body = db.Column(db.Text, nullable=True)
+    channel = db.Column(db.String(100), nullable=True)
+    publish_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.Enum(MarketingContentStatus), default=MarketingContentStatus.PLANNED, nullable=False)
+    performance = db.Column(db.JSON, nullable=True) # Store as JSON for flexible performance metrics
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    calendar = db.relationship('MarketingContentCalendar', back_populates='content_items')
+    creator = db.relationship('User', back_populates='created_content_items')
+
+    def to_dict(self):
+        return {
+            'content_id': self.content_id,
+            'calendar_id': self.calendar_id,
+            'title': self.title,
+            'content_type': self.content_type,
+            'content_body': self.content_body,
+            'channel': self.channel,
+            'publish_date': self.publish_date.isoformat() if self.publish_date else None,
+            'status': str(self.status),
+            'performance': self.performance,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+class Fundraise(db.Model):
+    """Stores high-level fundraise details for a startup."""
+    __tablename__ = 'fundraise_details'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), unique=True, nullable=False)
+    funding_stage = db.Column(db.String(100), nullable=True) # e.g., Bootstrapped, Pre-Seed, Seed, Series A
+    amount_raised = db.Column(db.Float, nullable=True)
+
+    startup = db.relationship('Startup', back_populates='fundraise_details')
+    next_funding_goal = db.relationship('NextFundingGoal', back_populates='fundraise', uselist=False, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'funding_stage': self.funding_stage,
+            'amount_raised': self.amount_raised,
+            'next_funding_goal': self.next_funding_goal.to_dict() if self.next_funding_goal else None,
+        }
+
+class NextFundingGoal(db.Model):
+    """Details the next funding goal for a startup's fundraise efforts."""
+    __tablename__ = 'next_funding_goals'
+    id = db.Column(db.Integer, primary_key=True)
+    fundraise_id = db.Column(db.Integer, db.ForeignKey('fundraise_details.id'), unique=True, nullable=False)
+    target_amount = db.Column(db.Float, nullable=True)
+    target_valuation = db.Column(db.Float, nullable=True)
+    target_close_date = db.Column(db.Date, nullable=True)
+
+    fundraise = db.relationship('Fundraise', back_populates='next_funding_goal')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'fundraise_id': self.fundraise_id,
+            'target_amount': self.target_amount,
+            'target_valuation': self.target_valuation,
+            'target_close_date': self.target_close_date.isoformat() if self.target_close_date else None,
+        }
+
+class FundingRound(db.Model):
+    """Records details about individual funding rounds a startup has raised or is raising."""
+    __tablename__ = 'funding_rounds'
+    round_id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    round_type = db.Column(db.String(50), nullable=True) # Pre-Seed, Seed, Series A, etc.
+    status = db.Column(db.String(50), nullable=True) # Planned, In Progress, Closed
+    target_amount = db.Column(db.Numeric(15,2), nullable=True)
+    amount_raised = db.Column(db.Numeric(15,2), nullable=True)
+    valuation_pre = db.Column(db.Numeric(15,2), nullable=True)
+    valuation_post = db.Column(db.Numeric(15,2), nullable=True)
+    date_opened = db.Column(db.Date, nullable=True)
+    date_closed = db.Column(db.Date, nullable=True)
+    lead_investor = db.Column(db.String(255), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    pitch_deck_url = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', back_populates='funding_rounds')
+    investors = db.relationship('RoundInvestor', back_populates='funding_round')
+
+    def to_dict(self):
+        return {
+            'round_id': self.round_id,
+            'startup_id': self.startup_id,
+            'round_type': self.round_type,
+            'status': self.status,
+            'target_amount': float(self.target_amount) if self.target_amount is not None else None,
+            'amount_raised': float(self.amount_raised) if self.amount_raised is not None else None,
+            'valuation_pre': float(self.valuation_pre) if self.valuation_pre is not None else None,
+            'valuation_post': float(self.valuation_post) if self.valuation_post is not None else None,
+            'date_opened': self.date_opened.isoformat() if self.date_opened else None,
+            'date_closed': self.date_closed.isoformat() if self.date_closed else None,
+            'lead_investor': self.lead_investor,
+            'notes': self.notes,
+            'pitch_deck_url': self.pitch_deck_url,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'investors': [investor.to_dict() for investor in self.investors],
+        }
+
+
+
+class Investor(db.Model):
+    """Represents an investor who has participated in funding rounds."""
+    __tablename__ = 'investors'
+    investor_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    firm_name = db.Column(db.String(255), nullable=True)
+    type = db.Column(db.String(50), nullable=True) # Angel, VC, Fund, Accelerator
+    email = db.Column(db.String(255), nullable=True)
+    website = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    rounds = db.relationship('RoundInvestor', back_populates='investor')
+
+    def to_dict(self):
+        return {
+            'investor_id': self.investor_id,
+            'name': self.name,
+            'firm_name': self.firm_name,
+            'type': self.type,
+            'email': self.email,
+            'website': self.website,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+class RoundInvestor(db.Model):
+    """Represents the many-to-many relationship between funding rounds and investors."""
+    __tablename__ = 'round_investors'
+    round_id = db.Column(db.Integer, db.ForeignKey('funding_rounds.round_id'), primary_key=True)
+    investor_id = db.Column(db.Integer, db.ForeignKey('investors.investor_id'), primary_key=True)
+    amount_invested = db.Column(db.Numeric(15,2), nullable=True)
+    ownership_percent = db.Column(db.Numeric(5,2), nullable=True)
+    committed_on = db.Column(db.Date, nullable=True)
+
+    funding_round = db.relationship('FundingRound', back_populates='investors')
+    investor = db.relationship('Investor', back_populates='rounds')
+
+    def to_dict(self):
+        return {
+            'investor': self.investor.to_dict(),
+            'amount_invested': float(self.amount_invested) if self.amount_invested is not None else None,
+            'ownership_percent': float(self.ownership_percent) if self.ownership_percent is not None else None,
+            'committed_on': self.committed_on.isoformat() if self.committed_on else None,
+        }
+
+class Founder(db.Model):
+    """Represents a founder of a startup, storing their personal and contact details."""
+    __tablename__ = 'founders'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    role = db.Column(db.String(100), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    phone_number = db.Column(db.String(20), nullable=True)
+    linkedin_link = db.Column(db.String(255), nullable=True)
+
+    startup = db.relationship('Startup', back_populates='founders')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'name': self.name,
+            'role': self.role,
+            'email': self.email,
+            'phone_number': self.phone_number,
+            'linkedin_link': self.linkedin_link,
+        }
+
+
+class Submission(db.Model):
+    """Represents a startup submission made by a user, containing initial details and status."""
+    __tablename__ = 'submissions'
     
-    scope = db.relationship('ProductScope', back_populates='features')
-    comments = db.relationship('Comment', back_populates='feature', cascade='all, delete-orphan')
-
-class Comment(db.Model):
-    __tablename__ = 'comments'
     id = db.Column(db.Integer, primary_key=True)
-    feature_id = db.Column(db.Integer, db.ForeignKey('features.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    context = db.Column(db.String(255)) # e.g., 'feature', 'ux_wireframe'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Columns corresponding to chatbot keys
+    startup_name = db.Column(db.String(200), nullable=True)
+    founders_and_inspiration = db.Column(db.Text, nullable=True)
+    problem_statement = db.Column(db.Text, nullable=True)
+    who_experiences_problem = db.Column(db.Text, nullable=True)
+    product_service_idea = db.Column(db.Text, nullable=True)
+    how_solves_problem = db.Column(db.Text, nullable=True)
+    intended_users_customers = db.Column(db.Text, nullable=True)
+    main_competitors_alternatives = db.Column(db.Text, nullable=True)
+    how_stands_out = db.Column(db.Text, nullable=True)
+    startup_type = db.Column(db.String(100), nullable=True)
 
-    feature = db.relationship('Feature', back_populates='comments')
-    user = db.relationship('User', backref='comments')
+    # Metadata
+    status = db.Column(db.Enum(SubmissionStatus), default=SubmissionStatus.PENDING, nullable=False)
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    raw_chat_data = db.Column(db.JSON, nullable=True) # Still useful for auditing
+    
+    user = db.relationship('User', back_populates='submissions')
+    evaluation = db.relationship('Evaluation', back_populates='submission', uselist=False, cascade='all, delete-orphan')
 
-# ============================================================================
-# GTM SCOPE
-# ============================================================================
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'startup_name': self.startup_name,
+            'founders_and_inspiration': self.founders_and_inspiration,
+            'problem_statement': self.problem_statement,
+            'who_experiences_problem': self.who_experiences_problem,
+            'product_service_idea': self.product_service_idea,
+            'how_solves_problem': self.how_solves_problem,
+            'intended_users_customers': self.intended_users_customers,
+            'main_competitors_alternatives': self.main_competitors_alternatives,
+            'how_stands_out': self.how_stands_out,
+            'startup_type': self.startup_type,
+            'status': self.status.value,
+            'submitted_at': self.submitted_at.isoformat()
+        }
 
-class GtmScope(db.Model):
-    __tablename__ = 'gtm_scopes'
+class Evaluation(db.Model):
+    """Stores the detailed evaluation results for a startup submission."""
+    __tablename__ = 'evaluations'
+
     id = db.Column(db.Integer, primary_key=True)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    status = db.Column(db.String(50), default='draft') # draft, in_review, approved, changes_requested
-    version = db.Column(db.Integer, default=1)
-    icp = db.Column(db.Text) # Ideal Customer Profile
-    target_geographies = db.Column(db.Text)
-    channels = db.Column(db.Text)
-    positioning_statement = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    stage_instance = db.relationship('StageInstance', backref=db.backref('gtm_scope', uselist=False))
-
-# ============================================================================
-# UX DESIGN SCOPE
-# ============================================================================
-
-class UxDesignScope(db.Model):
-    __tablename__ = 'ux_design_scopes'
-    id = db.Column(db.Integer, primary_key=True)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    status = db.Column(db.String(50), default='draft') # draft, in_review, approved
-    wireframe_url = db.Column(db.String(1000))
-    wireframe_status = db.Column(db.String(50), default='pending') # pending, in_review, approved
-    mockup_url = db.Column(db.String(1000))
-    mockup_status = db.Column(db.String(50), default='pending')
-    final_ui_url = db.Column(db.String(1000))
-    final_ui_status = db.Column(db.String(50), default='pending')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    stage_instance = db.relationship('StageInstance', backref=db.backref('ux_design_scope', uselist=False))
-
-# ============================================================================
-# BUILD
-# ============================================================================
-
-class Build(db.Model):
-    __tablename__ = 'builds'
-    id = db.Column(db.Integer, primary_key=True)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    version_number = db.Column(db.String(50), nullable=False)
-    changelog = db.Column(db.Text)
-    status = db.Column(db.String(50), default='in_progress') # in_progress, completed, deployed
+    submission_id = db.Column(db.Integer, db.ForeignKey('submissions.id'), unique=True, nullable=False)
+    
+    problem_analysis = db.Column(db.JSON)
+    solution_analysis = db.Column(db.JSON)
+    market_analysis = db.Column(db.JSON)
+    growth_analysis = db.Column(db.JSON)
+    competitor_analysis = db.Column(db.JSON)
+    risks_analysis = db.Column(db.JSON)
+    
+    overall_score = db.Column(db.Float)
+    final_decision = db.Column(db.String(100))
+    overall_summary = db.Column(db.Text)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    stage_instance = db.relationship('StageInstance', backref='builds')
-
-# ============================================================================
-# DEPLOYMENT
-# ============================================================================
-
-class Deployment(db.Model):
-    __tablename__ = 'deployments'
-    id = db.Column(db.Integer, primary_key=True)
-    build_id = db.Column(db.Integer, db.ForeignKey('builds.id'), nullable=False)
-    stage_instance_id = db.Column(db.Integer, db.ForeignKey('stage_instances.id'), nullable=False)
-    environment = db.Column(db.String(50), nullable=False) # staging, production
-    url = db.Column(db.String(1000))
-    status = db.Column(db.String(50), default='pending') # pending, deployed, awaiting_approval, approved_for_release, live
-    feedback_form_url = db.Column(db.String(1000))
-    launch_checklist = db.Column(db.Text) # JSON array of checklist items
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    build = db.relationship('Build', backref='deployments')
-    stage_instance = db.relationship('StageInstance', backref='deployments')
-
-# ============================================================================
-# MONETIZATION
-# ============================================================================
-
-class Monetization(db.Model):
-    __tablename__ = 'monetization'
-    id = db.Column(db.Integer, primary_key=True)
-    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
-    payment_integration_type = db.Column(db.String(100)) # Stripe, Razorpay, etc.
-    payment_integration_config = db.Column(db.Text) # JSON, encrypted
-    revenue_share_percentage = db.Column(db.Float)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    startup = db.relationship('Startup', backref=db.backref('monetization', uselist=False))
-
-class Campaign(db.Model):
-    __tablename__ = 'campaigns'
-    id = db.Column(db.Integer, primary_key=True)
-    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
-    name = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text)
-    channel = db.Column(db.String(100)) # LinkedIn, X, Paid Ads, etc.
-    status = db.Column(db.String(50), default='active') # active, paused, completed
-    start_date = db.Column(db.DateTime)
-    end_date = db.Column(db.DateTime)
-    budget = db.Column(db.Float)
-    roi = db.Column(db.Float)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    startup = db.relationship('Startup', backref='campaigns')
-
-# ============================================================================
-# FUNDRAISING & HANDOVER
-# ============================================================================
-
-class Fundraising(db.Model):
-    __tablename__ = 'fundraising'
-    id = db.Column(db.Integer, primary_key=True)
-    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
-    readiness_score = db.Column(db.Float, default=0.0)
-    pitch_deck_url = db.Column(db.String(1000))
-    investor_connect_status = db.Column(db.String(50), default='pending') # pending, in_progress, completed
-    commission_status = db.Column(db.String(50), default='pending') # pending, paid, waived
-    code_access_status = db.Column(db.String(50), default='locked') # locked, requested, granted
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    startup = db.relationship('Startup', backref=db.backref('fundraising', uselist=False))
+    submission = db.relationship('Submission', back_populates='evaluation')

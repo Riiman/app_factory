@@ -1,28 +1,20 @@
 
 from app import create_app, db
-from app.models import Startup, Document, User, Submission, StageInstance, StageTemplate, Task, Metric, Artifact, Experiment, Integration
+from app.models import User, Submission, Startup, Evaluation
+from app.config import Config # Import the Config class
 import os
 
-app = create_app(os.getenv('FLASK_ENV', 'development'))
+app = create_app(Config) # Pass the Config class directly
 
 @app.shell_context_processor
 def make_shell_context():
     """Make database models available in Flask shell"""
     return {
         'db': db,
-        'Startup': Startup,
-        'Document': Document,
         'User': User, 
         'Submission':Submission, 
         'Startup':Startup, 
-        'StageTemplate':StageTemplate,      # NEW
-        'StageInstance':StageInstance,      # NEW
-        'Task':Task,               # NEW
-        'Metric':Metric,             # NEW
-        'Artifact':Artifact,           # NEW
-        'Experiment':Experiment,         # NEW
-        'Integration':Integration,        # NEW
-        'Document':Document            # Keep if still used
+        'Evaluation':Evaluation
     }
 
 if __name__ == '__main__':

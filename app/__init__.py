@@ -1,122 +1,64 @@
-
-from flask import Flask, jsonify 
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
-from flask_migrate import Migrate
 from flask_cors import CORS
+from .config import Config
+from authlib.integrations.flask_client import OAuth
+from flask_session import Session
+import logging
 import os
-from config import get_config
+from datetime import timedelta
 
-# Initialize extensions
+logging.basicConfig(level=logging.DEBUG)
+
 db = SQLAlchemy()
+migrate = Migrate()
 jwt = JWTManager()
 mail = Mail()
-migrate = Migrate()
+oauth = OAuth()
+sess = Session()
 
-def create_app(config_name=None):
-    """Application factory pattern"""
+def create_app(config_class=Config):
     app = Flask(__name__)
-    
-    # Load configuration
-    if config_name is None:
-        config_name = os.getenv('FLASK_ENV', 'development')
-    
-    config_class = get_config(config_name)
     app.config.from_object(config_class)
     
-    # Initialize extensions
+    # Configure server-side sessions
+    app.config['SESSION_TYPE'] = 'sqlalchemy'
+    app.config['SESSION_SQLALCHEMY'] = db
+    app.config['SESSION_PERMANENT'] = True
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
+
     db.init_app(app)
+    migrate.init_app(app, db)
     jwt.init_app(app)
     mail.init_app(app)
-    migrate.init_app(app, db)
-    
-    # Configure CORS
-    CORS(app, 
-         resources={r"/api/*": {"origins": app.config['CORS_ORIGINS']}},
-         supports_credentials=True)
-    
-    # Create upload folder if it doesn't exist
-    upload_folder = app.config['UPLOAD_FOLDER']
-    if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder)
-    
-    # Register blueprints
-    from app.routes.auth import auth_bp
-    from app.routes.dashboard import dashboard_bp
-    from app.routes.submissions import submissions_bp
-    from app.routes.documents import documents_bp
-    from app.routes.platform import platform_bp
-    from app.routes.product_scope import product_scope_bp
-    from app.routes.gtm_scope import gtm_scope_bp
-    from app.routes.ux_design import ux_design_bp
-    from app.routes.build import build_bp
-    from app.routes.deployment import deployment_bp
-    from app.routes.analytics import analytics_bp
-    from app.routes.monetization import monetization_bp
-    from app.routes.fundraising import fundraising_bp
-    
-    app.register_blueprint(auth_bp, url_prefix='/api')
-    app.register_blueprint(dashboard_bp, url_prefix='/api')
-    app.register_blueprint(submissions_bp, url_prefix='/api')
-    app.register_blueprint(documents_bp, url_prefix='/api')
-    app.register_blueprint(platform_bp, url_prefix='/api')
-    app.register_blueprint(product_scope_bp, url_prefix='/api')
-    app.register_blueprint(gtm_scope_bp, url_prefix='/api')
-    app.register_blueprint(ux_design_bp, url_prefix='/api')
-    app.register_blueprint(build_bp, url_prefix='/api')
-    app.register_blueprint(deployment_bp, url_prefix='/api')
-    app.register_blueprint(analytics_bp, url_prefix='/api')
-    app.register_blueprint(monetization_bp, url_prefix='/api')
-    app.register_blueprint(fundraising_bp, url_prefix='/api')
-    
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found(error):
-        return {'error': 'Resource not found'}, 404
-    
-    @app.errorhandler(500)
-    def internal_error(error):
-        db.session.rollback()
-        return {'error': 'Internal server error'}, 500
-    
-    # Health check endpoint
-    @app.route('/health')
-    def health_check():
-        return {'status': 'healthy', 'version': '1.0.0'}, 200
-    
-    @jwt.invalid_token_loader
-    def invalid_token_callback(error_string):
-        print(f"JWT ERROR: Invalid token - {error_string}")
-        return jsonify({
-            'success': False,
-            'error': 'Invalid token',
-            'details': error_string
-        }), 422
+    oauth.init_app(app)
+    sess.init_app(app)
+    CORS(app, supports_credentials=True)
 
-    @jwt.unauthorized_loader
-    def missing_token_callback(error_string):
-        print(f"JWT ERROR: Missing token - {error_string}")
-        return jsonify({
-            'success': False,
-            'error': 'Missing authorization token',
-            'details': error_string
-        }), 401
+    # Only call db.create_all() if not in a migration context
+    # Flask-Migrate will handle table creation/upgrades
+    with app.app_context():
+        if not app.config.get('ALEMBIC_CONTEXT'):
+            db.create_all() # Create sessions table if it doesn't exist
 
-    @jwt.expired_token_loader
-    def expired_token_callback(jwt_header, jwt_data):
-        print(f"JWT ERROR: Token expired - {jwt_data}")
-        return jsonify({
-            'success': False,
-            'error': 'Token has expired'
-        }), 401
+    @app.before_request
+    def log_request_info():
+        app.logger.debug('Headers: %s', request.headers)
+        app.logger.debug('Body: %s', request.get_data())
 
-    @jwt.revoked_token_loader
-    def revoked_token_callback(jwt_header, jwt_data):
-        print(f"JWT ERROR: Token revoked - {jwt_data}")
-        return jsonify({
-            'success': False,
-            'error': 'Token has been revoked'
-        }), 401
-    
+    with app.app_context():
+        from .routes.auth import auth_bp
+        from .routes.submissions import submissions_bp
+        from .routes.startups import startups_bp
+        
+        # Explicitly import models to ensure they are registered with SQLAlchemy's metadata
+        from .models import User, Submission, Startup, Evaluation, Product, BusinessOverview, MarketingCampaign, MarketingOverview, Fundraise, Founder, Task, Experiment, Artifact, ProductBusinessDetails, BusinessMonthlyData, MarketingContentCalendar, MarketingContentItem
+        
+        app.register_blueprint(auth_bp)
+        app.register_blueprint(submissions_bp)
+        app.register_blueprint(startups_bp)
+
     return app

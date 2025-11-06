@@ -1,0 +1,282 @@
+Design Principles
+
+Modular & Scope-Driven: The dashboard is divided into modules that align with the major pillars of a startup: Product, Business, Fundraising, and Marketing. This mirrors the Scope enum in your models.
+
+Data-Driven: Every piece of information displayed is directly sourced from the database models you've defined.
+
+Action-Oriented: The interface is designed not just to display information but to enable action. "Create," "Add," "Update," and "Link" buttons are placed contextually.
+
+Contextual Actions: Core operational items like Task, Experiment, and Artifact are not just in a separate list; they can be created and viewed in the context of what they relate to (e.g., adding a "Pitch Deck" artifact directly to a "Seed Funding Round").
+
+High-Level Dashboard Structure
+
+The dashboard will have a persistent left-hand sidebar for main navigation and a main content area that updates based on the selection.
+
+Global Elements:
+
+Top Bar: Displays the Startup's name, current stage (Startup.current_stage), and a user profile dropdown (Settings, Logout).
+
+Global "Create" Button: A prominent button (e.g., a + icon) in the top bar that opens a menu to create a new:
+
+Task
+
+Experiment
+
+Artifact
+
+This is for creating unlinked, general items.
+
+Sidebar Menu Architecture
+
+Dashboard (Overview)
+
+Product
+
+Products List
+
+Product Metrics
+
+Issues & Feedback
+
+Business
+
+Overview & Model
+
+Monthly Reporting
+
+Fundraising
+
+Overview
+
+Funding Rounds
+
+Investor CRM
+
+Marketing
+
+Overview
+
+Campaigns
+
+Workspace
+
+Tasks
+
+Experiments
+
+Artifacts
+
+Team
+
+Settings
+
+Detailed View & Action Breakdown
+1. Dashboard (Overview)
+
+This is the landing page after login, providing a "mission control" view.
+
+What it Shows:
+
+KPI Widgets: Key metrics from the latest BusinessMonthlyData (MRR, Net Burn, Total Customers).
+
+Overall Progress: A large progress bar showing Startup.overall_progress.
+
+Next Milestone: A card displaying Startup.next_milestone.
+
+Upcoming Tasks: A list of Tasks due in the next 7 days (Task.due_date, Task.status != 'completed').
+
+Active Experiments: A list of Experiments with status = 'running'.
+
+Recent Activity Feed: A log of recent actions, derived from Startup.recent_activity or generated from recent model creations.
+
+Button Actions:
+
+[Log This Month's Data]: A prominent call-to-action that links to the Business > Monthly Reporting section.
+
+[Update Next Milestone]: An action to quickly edit the Startup.next_milestone field.
+
+2. Product
+
+Submenu: Products List
+
+What it Shows: A view with cards for each Product. Each card displays Product.name, Product.stage, and Product.version.
+
+Button Actions:
+
+[+ Add New Product]: Opens a modal/form to create a new Product instance.
+
+On-Click Action: Clicking a product card navigates to the Product Detail View.
+
+Product Detail View
+
+What it Shows:
+
+Top section with all fields from the Product model (description, launch dates, etc.).
+
+A tabbed interface below:
+
+Features: A list of all associated Features.
+
+Metrics: A list of ProductMetrics associated with this product.
+
+Issues: A list of ProductIssues.
+
+Business Details: Displays data from ProductBusinessDetails (pricing model, cost structure).
+
+Linked Items: Lists all Tasks, Experiments, and Artifacts where linked_to_id is this product's ID.
+
+Button Actions:
+
+[Edit Product Details]
+
+Within the Features tab: [+ Add Feature]
+
+Within the Metrics tab: [+ Add Metric]
+
+Within the Issues tab: [+ Report Issue]
+
+Within the Business Details tab: [Edit Business Details]
+
+Contextual Actions (very important): A dropdown button on the main detail view:
+
+[+ Add Task for this Product]
+
+[+ Create Experiment for this Product]
+
+[+ Upload Artifact for this Product] (e.g., design mockups, PRD document)
+
+3. Business
+
+Submenu: Overview & Model
+
+What it Shows: Displays the fields from the BusinessOverview model (business model, key partners, notes).
+
+Button Actions: [Edit Business Overview]
+
+Submenu: Monthly Reporting
+
+What it Shows:
+
+A table view of all BusinessMonthlyData records, sortable by month_start.
+
+Graphs above the table visualizing key metrics over time (Revenue, MRR, Burn Rate, Customers).
+
+Button Actions: [+ Add New Monthly Report]: Opens a form to create a new BusinessMonthlyData entry.
+
+4. Fundraising
+
+Submenu: Overview
+
+What it Shows:
+
+A summary section from Fundraise (Funding Stage, Total Amount Raised).
+
+A prominent section for the NextFundingGoal (Target Amount, Target Valuation, Target Close Date).
+
+Button Actions: [Edit Funding Goals]
+
+Submenu: Funding Rounds
+
+What it Shows: A list of all FundingRounds. Each item shows round_type, status, and amount_raised / target_amount. Clicking an item goes to the Funding Round Detail View.
+
+Button Actions: [+ Start New Funding Round]
+
+Funding Round Detail View
+
+What it Shows:
+
+All details from the FundingRound model.
+
+A section for Investors in this Round, listing RoundInvestors with their committed amounts.
+
+A section for Linked Artifacts (e.g., Pitch Deck, Financial Model).
+
+A section for Linked Tasks (e.g., "Follow up with Investor X").
+
+Button Actions:
+
+[Edit Round Details]
+
+[+ Add Investor to Round]: Opens a form to create a RoundInvestor link, allowing selection from existing Investors or creating a new one.
+
+Contextual Actions:
+
+[+ Add Artifact]: This is key. A button to upload a file or add a link (ArtifactType). This will create an Artifact record with linked_to_id = this round's ID and linked_to_type = 'FundingRound'. Examples: "Pitch Deck", "Data Room Link".
+
+[+ Add Task]: Creates a Task linked to this funding round.
+
+Submenu: Investor CRM
+
+What it Shows: A table of all Investors with their name, firm, type, and contact info.
+
+Button Actions: [+ Add New Investor]
+
+5. Marketing
+
+Submenu: Overview
+
+What it Shows: The MarketingOverview.positioning_statement.
+
+Button Actions: [Edit Positioning Statement]
+
+Submenu: Campaigns
+
+What it Shows: A list/table of all MarketingCampaigns. Displays key info: campaign_name, channel, status, and performance metrics (spend, clicks, conversions). Clicking a campaign goes to the Campaign Detail View.
+
+Button Actions: [+ Create New Campaign]
+
+Campaign Detail View
+
+What it Shows:
+
+All details from the MarketingCampaign model.
+
+If content_mode is true, it displays the associated MarketingContentCalendar.
+
+Within the calendar view, it lists all MarketingContentItems with their publish_date and status.
+
+Button Actions:
+
+[Edit Campaign]
+
+[+ Add Content Calendar] (if one doesn't exist and content_mode is true).
+
+Within the calendar: [+ Add Content Item]
+
+Contextual Actions:
+
+[+ Add Task for this Campaign] (e.g., "Design ad graphics", "Write blog post").
+
+[+ Add Artifact] (e.g., "Final Ad Copy", "Link to Google Ads report").
+
+6. Workspace
+
+This section provides a global, non-contextual view of all operational items.
+
+Submenu: Tasks
+
+What it Shows: A filterable table or Kanban board (columns: Pending, In Progress, Completed) of all Tasks. Each task entry clearly indicates what it's linked to (e.g., "Product: 'Mobile App'").
+
+Button Actions: [+ Create New Task]
+
+Submenu: Experiments
+
+What it Shows: A filterable list of all Experiments, showing name, status, and the linked entity.
+
+Button Actions: [+ Create New Experiment]
+
+Submenu: Artifacts
+
+What it Shows: A searchable and filterable list/grid of all Artifacts. Displays name, type (with an icon for file/link/text), and linked entity.
+
+Button Actions: [+ Add New Artifact]
+
+7. Team
+
+What it Shows: A simple view with cards for each Founder, displaying name, role, and contact details.
+
+Button Actions:
+
+[+ Add Founder]
+
+[Edit] and [Remove] buttons on each founder card.
