@@ -1,0 +1,153 @@
+
+import React, { useState, useMemo } from 'react';
+import { Submission, Evaluation, User, SubmissionStatus, Startup, Scope } from '../../types/admin-types';
+import Card from '../../components/admin/Card';
+import StatusBadge from '../../components/admin/StatusBadge';
+import { FileClock, FileCheck, FileX, User as UserIcon, PlusCircle, CheckSquare } from 'lucide-react';
+
+interface InReviewViewProps {
+  submissions: Submission[];
+  evaluations: Evaluation[];
+  users: User[];
+  startups: Startup[];
+  onUpdateStatus: (submissionId: number, status: SubmissionStatus) => void;
+  onAddTask: (startupId: number, taskName: string, scope: Scope) => void;
+}
+
+const InReviewView: React.FC<InReviewViewProps> = ({ submissions, evaluations, users, startups, onUpdateStatus, onAddTask }) => {
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [newTaskName, setNewTaskName] = useState('');
+
+  const submissionsWithDetails = useMemo(() => {
+    return submissions.filter(s => s.status === SubmissionStatus.IN_REVIEW).map(sub => ({
+      ...sub,
+      user: users.find(u => u.id === sub.userId),
+      evaluation: evaluations.find(e => e.submissionId === sub.id)
+    })).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+  }, [submissions, users, evaluations]);
+  
+  const handleSelectSubmission = (submission: Submission) => {
+    setSelectedSubmission(submission);
+    setNewTaskName('');
+  };
+
+  const selectedDetails = selectedSubmission ? submissionsWithDetails.find(s => s.id === selectedSubmission.id) : null;
+  const associatedStartup = selectedDetails ? startups.find(s => s.submissionId === selectedDetails.id) : null;
+
+  const handleAddTaskSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newTaskName.trim() && associatedStartup) {
+      onAddTask(associatedStartup.id, newTaskName.trim(), Scope.GENERAL);
+      setNewTaskName('');
+    }
+  };
+
+  return (
+    <div className="flex h-full">
+      <div className="w-1/3 border-r border-slate-200 h-full overflow-y-auto">
+        <div className="p-4 border-b border-slate-200">
+          <h2 className="text-lg font-semibold flex items-center"><FileClock className="mr-2 h-5 w-5" />In Review</h2>
+        </div>
+        <ul>
+          {submissionsWithDetails.map(sub => (
+            <li key={sub.id}>
+              <button
+                onClick={() => handleSelectSubmission(sub)}
+                className={`w-full text-left p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${selectedSubmission?.id === sub.id ? 'bg-brand-primary/5' : ''}`}
+              >
+                <p className="font-semibold text-brand-text-primary">{sub.startupName}</p>
+                <p className="text-sm text-brand-text-secondary mt-1">by {sub.user?.fullName || 'Unknown User'}</p>
+                <p className="text-xs text-slate-500 mt-1 truncate">{sub.user?.email}{sub.user?.mobile && ` • ${sub.user.mobile}`}</p>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="w-2/3 h-full overflow-y-auto p-8">
+        {selectedDetails && associatedStartup ? (
+          <div className="space-y-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-3xl font-bold text-brand-text-primary">{selectedDetails.startupName}</h2>
+                <div className="flex items-center space-x-2 mt-1 flex-wrap">
+                  <StatusBadge status={selectedDetails.status} />
+                  <span className="text-slate-400">&bull;</span>
+                  <div className="flex items-center text-sm text-brand-text-secondary">
+                    <UserIcon className="mr-1.5 h-4 w-4" /> Submitted by <span className="font-semibold ml-1">{selectedDetails.user?.fullName}</span>
+                  </div>
+                  <span className="text-slate-400 mx-2">&bull;</span>
+                  <a href={`mailto:${selectedDetails.user?.email}`} className="text-sm text-brand-primary hover:underline">{selectedDetails.user?.email}</a>
+                  {selectedDetails.user?.mobile && (
+                    <>
+                      <span className="text-slate-400 mx-2">&bull;</span>
+                      <a href={`tel:${selectedDetails.user.mobile}`} className="text-sm text-brand-text-secondary hover:underline">{selectedDetails.user.mobile}</a>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                  <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.REJECTED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+                      <FileX className="mr-2 h-4 w-4" /> Reject
+                  </button>
+                  <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.APPROVED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                      <FileCheck className="mr-2 h-4 w-4" /> Approve
+                  </button>
+              </div>
+            </div>
+
+            <Card title="Onboarding Tasks">
+                <form onSubmit={handleAddTaskSubmit} className="flex items-center space-x-2 mb-4">
+                    <input
+                        type="text"
+                        value={newTaskName}
+                        onChange={(e) => setNewTaskName(e.target.value)}
+                        placeholder="e.g., Complete legal paperwork"
+                        className="flex-grow px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-brand-primary focus:border-brand-primary"
+                    />
+                    <button type="submit" className="flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-brand-primary/90 disabled:opacity-50" disabled={!newTaskName.trim()}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+                    </button>
+                </form>
+                {associatedStartup.tasks.length > 0 ? (
+                    <ul className="space-y-2">
+                        {associatedStartup.tasks.map(task => (
+                            <li key={task.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-md">
+                                <span className="text-sm text-brand-text-primary">{task.name}</span>
+                                <StatusBadge status={task.status} />
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-center text-slate-500 py-4">No tasks assigned yet.</p>
+                )}
+            </Card>
+
+            <Card title="Submission Details">
+                <div className="space-y-4">
+                    <div>
+                        <h4 className="font-semibold text-brand-text-primary">Problem Statement</h4>
+                        <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.problemStatement}</p>
+                    </div>
+                     <div>
+                        <h4 className="font-semibold text-brand-text-primary">Product/Service Idea</h4>
+                        <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.productServiceIdea}</p>
+                    </div>
+                </div>
+            </Card>
+
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <FileClock className="mx-auto h-12 w-12 text-slate-400" />
+              <h2 className="mt-4 text-xl font-semibold">Select a Submission</h2>
+              <p className="text-brand-text-secondary mt-1">Choose a submission from the list to assign tasks and manage its review process.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default InReviewView;

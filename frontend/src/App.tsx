@@ -11,10 +11,13 @@ import SubmissionPage from './pages/SubmissionPage';
 import PendingReviewPage from './pages/PendingReviewPage';
 import RejectedSubmissionPage from './pages/RejectedSubmissionPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 
 import EvaluationPage from './pages/EvaluationPage';
 import ScopePage from './pages/ScopePage';
 import ContractPage from './pages/ContractPage';
+
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 
 const App: FC = () => {
   return (
@@ -33,7 +36,7 @@ const App: FC = () => {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-          {/* Protected Routes */}
+          {/* Protected Routes (User) */}
           <Route element={<ProtectedRoute />}>
             <Route path="/submission" element={<SubmissionPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -42,6 +45,11 @@ const App: FC = () => {
             <Route path="/evaluation" element={<EvaluationPage />} />
             <Route path="/scope" element={<ScopePage />} />
             <Route path="/contract" element={<ContractPage />} />
+          </Route>
+
+          {/* Protected Routes (Admin) */}
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/*" element={<AdminDashboardPage />} />
           </Route>
 
           {/* Redirect any unknown paths to home */}

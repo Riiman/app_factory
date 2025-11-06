@@ -18,6 +18,7 @@ class SubmissionStatus(Enum):
 
 class StartupStatus(Enum):
     """Defines the operational status of a startup within the incubator program."""
+    INACTIVE = "inactive"
     ACTIVE = "active"
     INCUBATING = "incubating"
     GRADUATED = "graduated"
@@ -32,6 +33,27 @@ class StartupStage(Enum):
     SCOPE = "scope"
     CONTRACT = "contract"
     ADMITTED = "admitted"
+    IDEA = "idea"
+    MVP = "mvp"
+    GROWTH = "growth"
+
+    def __str__(self):
+        return self.value
+
+class ScopeStatus(Enum):
+    DRAFT = "DRAFT"
+    PROPOSED = "PROPOSED"
+    IN_DISCUSSION = "IN_DISCUSSION"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+
+    def __str__(self):
+        return self.value
+
+class ContractStatus(Enum):
+    DRAFT = "DRAFT"
+    SENT = "SENT"
+    SIGNED = "SIGNED"
 
     def __str__(self):
         return self.value
@@ -250,7 +272,7 @@ class Startup(db.Model):
     user = db.relationship('User', back_populates='startups')
     submission = db.relationship('Submission', backref='startup', uselist=False)
 
-    # New relationships
+    # Existing relationships
     products = db.relationship('Product', back_populates='startup', lazy=True, cascade='all, delete-orphan')
     business_overview = db.relationship('BusinessOverview', back_populates='startup', uselist=False, cascade='all, delete-orphan')
     monthly_data = db.relationship('BusinessMonthlyData', back_populates='startup', lazy=True, cascade='all, delete-orphan')
@@ -262,6 +284,10 @@ class Startup(db.Model):
     experiments = db.relationship('Experiment', back_populates='startup', lazy=True, cascade='all, delete-orphan')
     artifacts = db.relationship('Artifact', back_populates='startup', lazy=True, cascade='all, delete-orphan')
     marketing_overview = db.relationship('MarketingOverview', back_populates='startup', uselist=False, cascade='all, delete-orphan')
+    
+    # New relationships for pre-admission stages
+    scope_document = db.relationship('ScopeDocument', back_populates='startup', uselist=False, cascade='all, delete-orphan')
+    contract = db.relationship('Contract', back_populates='startup', uselist=False, cascade='all, delete-orphan')
 
     def to_dict(self, include_relations=False):
         """
@@ -297,7 +323,9 @@ class Startup(db.Model):
                 'fundraise_details': self.fundraise_details.to_dict() if self.fundraise_details else None,
                 'marketing_overview': self.marketing_overview.to_dict() if self.marketing_overview else None,
                 'funding_rounds': [round.to_dict() for round in self.funding_rounds],
-                'investors': [investor.to_dict() for investor in Investor.query.all()]
+                'investors': [investor.to_dict() for investor in Investor.query.all()],
+                'scope_document': self.scope_document.to_dict() if self.scope_document else None,
+                'contract': self.contract.to_dict() if self.contract else None,
             })
         return data
 
@@ -840,6 +868,11 @@ class Submission(db.Model):
     
     user = db.relationship('User', back_populates='submissions')
     evaluation = db.relationship('Evaluation', back_populates='submission', uselist=False, cascade='all, delete-orphan')
+    
+    # New relationships for pre-admission stages
+    evaluation_tasks = db.relationship('EvaluationTask', order_by=EvaluationTask.id, back_populates='submission', cascade="all, delete-orphan")
+    scope_document = db.relationship('ScopeDocument', uselist=False, back_populates='submission', cascade="all, delete-orphan")
+    contract = db.relationship('Contract', uselist=False, back_populates='submission', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {

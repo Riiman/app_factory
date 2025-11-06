@@ -187,31 +187,234 @@ class Api {
     return (await response.json()).startup;
   }
 
-  // --- Pre-Admission Stage Endpoints ---
-  async getEvaluationTasks() {
-    const response = await this.fetch('/stages/evaluation/tasks');
-    if (!response.ok) throw new Error('Failed to fetch evaluation tasks');
-    return (await response.json()).tasks;
-  }
+    // --- Pre-Admission Stage Endpoints ---
 
-  async getScopeDocument() {
-    const response = await this.fetch('/stages/scope');
-    if (!response.ok) throw new Error('Failed to fetch scope document');
-    return (await response.json()).scope_document;
-  }
+    async getEvaluationTasks() {
 
-  async addScopeComment(sectionId: string, text: string) {
-    const response = await this.post('/stages/scope/comments', { section_id: sectionId, text });
-    if (!response.ok) throw new Error('Failed to add comment');
-    return (await response.json()).comment;
-  }
+      const response = await this.fetch('/stages/evaluation/tasks');
 
-  async getContractDetails() {
-    const response = await this.fetch('/stages/contract');
-    if (!response.ok) throw new Error('Failed to fetch contract details');
-    return (await response.json()).contract;
-  }
-}
+      if (!response.ok) throw new Error('Failed to fetch evaluation tasks');
 
-const api = new Api();
-export default api;
+      return (await response.json()).tasks;
+
+    }
+
+  
+
+    async getScopeDocument() {
+
+      const response = await this.fetch('/stages/scope');
+
+      if (!response.ok) throw new Error('Failed to fetch scope document');
+
+      return (await response.json()).scope_document;
+
+    }
+
+  
+
+    async addScopeComment(sectionId: string, text: string) {
+
+      const response = await this.post('/stages/scope/comments', { section_id: sectionId, text });
+
+      if (!response.ok) throw new Error('Failed to add comment');
+
+      return (await response.json()).comment;
+
+    }
+
+  
+
+    async getContractDetails() {
+
+      const response = await this.fetch('/stages/contract');
+
+      if (!response.ok) throw new Error('Failed to fetch contract details');
+
+      return (await response.json()).contract;
+
+    }
+
+  
+
+    // --- Admin Endpoints ---
+
+    async getAllSubmissions() {
+
+      const response = await this.fetch('/admin/submissions');
+
+      if (!response.ok) throw new Error('Failed to fetch all submissions');
+
+      return (await response.json()).submissions;
+
+    }
+
+  
+
+    async getAllStartups() {
+
+      const response = await this.fetch('/admin/startups');
+
+      if (!response.ok) throw new Error('Failed to fetch all startups');
+
+      return (await response.json()).startups;
+
+    }
+
+  
+
+    async getStartupDetail(startupId: number) {
+
+      const response = await this.fetch(`/admin/startups/${startupId}`);
+
+      if (!response.ok) throw new Error('Failed to fetch startup detail');
+
+      return (await response.json()).startup;
+
+    }
+
+  
+
+    async updateStartupStage(startupId: number, newStage: string) {
+
+      const response = await this.put(`/admin/startups/${startupId}/stage`, { current_stage: newStage });
+
+      if (!response.ok) throw new Error('Failed to update startup stage');
+
+      return (await response.json()).startup;
+
+    }
+
+  
+
+    async updateSubmissionStatus(submissionId: number, newStatus: string) {
+
+      const response = await this.put(`/admin/submissions/${submissionId}/status`, { status: newStatus });
+
+      if (!response.ok) throw new Error('Failed to update submission status');
+
+      return (await response.json()).submission;
+
+    }
+
+  
+
+    async getAllUsers() {
+
+      const response = await this.fetch('/admin/users');
+
+      if (!response.ok) throw new Error('Failed to fetch all users');
+
+      return (await response.json()).users;
+
+    }
+
+  
+
+      async updateUserRole(userId: number, newRole: string) {
+
+  
+
+        const response = await this.put(`/admin/users/${userId}/role`, { role: newRole });
+
+  
+
+        if (!response.ok) throw new Error('Failed to update user role');
+
+  
+
+        return (await response.json()).user;
+
+  
+
+      }
+
+  
+
+    
+
+  
+
+      async updateScopeDocument(startupId: number, data: { productScope: string; gtmScope: string }) {
+
+  
+
+        const response = await this.put(`/admin/startups/${startupId}/scope`, data);
+
+  
+
+        if (!response.ok) throw new Error('Failed to update scope document');
+
+  
+
+        return (await response.json()).scope_document;
+
+  
+
+      }
+
+  
+
+    
+
+  
+
+      async addAdminScopeComment(startupId: number, text: string) {
+
+  
+
+        const response = await this.post(`/admin/startups/${startupId}/scope/comments`, { text });
+
+  
+
+        if (!response.ok) throw new Error('Failed to add scope comment');
+
+  
+
+        return (await response.json()).comment;
+
+  
+
+      }
+
+  
+
+    
+
+  
+
+      async updateContract(startupId: number, data: { documentUrl: string; status: string }) {
+
+  
+
+        const response = await this.put(`/admin/startups/${startupId}/contract`, data);
+
+  
+
+        if (!response.ok) throw new Error('Failed to update contract');
+
+  
+
+        return (await response.json()).contract;
+
+  
+
+      }
+
+  
+
+    }
+
+  
+
+    
+
+  
+
+    const api = new Api();
+
+  
+
+    export default api;
+
+  
