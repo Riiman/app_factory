@@ -1,5 +1,5 @@
 import React from 'react';
-import { Task, TaskStatus } from '../types';
+import { Task, TaskStatus } from './evaluation-types';
 
 interface TaskListProps {
   tasks: Task[];

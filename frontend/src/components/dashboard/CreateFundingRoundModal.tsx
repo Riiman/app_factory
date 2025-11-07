@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { FundingRound } from '../types';
+import { FundingRound } from '@/types/dashboard-types';
 
 type Status = 'Planned' | 'In Progress' | 'Closed';
 

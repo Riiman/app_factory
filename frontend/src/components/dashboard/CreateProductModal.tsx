@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Product, ProductStage } from '../types';
+import { Product, ProductStage } from '@/types/dashboard-types';
 
 /**
  * Props for the CreateProductModal component.

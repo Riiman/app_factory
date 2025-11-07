@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { MarketingCampaign, MarketingContentItem, MarketingContentStatus } from '../types';
-import Card from '../components/Card';
+import { MarketingCampaign, MarketingContentItem, MarketingContentStatus } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Plus, Calendar } from 'lucide-react';
 
 /**

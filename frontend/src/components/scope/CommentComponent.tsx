@@ -1,14 +1,14 @@
 
 import React from 'react';
-import type { Comment } from '../types';
-import { Role } from '../types';
+import type { Comment } from '@/types/dashboard-types';
+import { UserRole } from '@/types/dashboard-types';
 
 interface CommentProps {
   comment: Comment;
 }
 
 export const CommentComponent: React.FC<CommentProps> = ({ comment }) => {
-  const isAdmin = comment.author.role === Role.ADMIN;
+  const isAdmin = comment.author.role === UserRole.ADMIN;
   
   const bubbleClasses = isAdmin
     ? 'bg-blue-100 text-blue-900'

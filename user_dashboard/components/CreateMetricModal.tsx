@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { ProductMetric, Product } from '../types';
+import { ProductMetric, Product } from '@/types/dashboard-types';
 
 /**
  * Props for the CreateMetricModal component.

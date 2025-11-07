@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { BusinessMonthlyData } from '../types';
+import { BusinessMonthlyData } from '@/types/dashboard-types';
 import Card from './Card';
 import { X, TrendingUp, TrendingDown, Users, DollarSign, Banknote, Star, ShieldAlert, Zap } from 'lucide-react';
 

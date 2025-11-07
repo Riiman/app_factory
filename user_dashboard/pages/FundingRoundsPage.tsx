@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { FundingRound } from '../types';
-import Card from '../components/Card';
+import { FundingRound } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Plus } from 'lucide-react';
 
 /**

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Startup, Submission, SubmissionStatus } from '../../types/admin-types';
+import { Startup, Submission, SubmissionStatus } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatCard from '../../components/admin/StatCard';
 import StartupStagePieChart from '../../components/admin/charts/StartupStagePieChart';

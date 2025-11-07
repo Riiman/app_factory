@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Task, TaskStatus } from '../types';
+import { Task, TaskStatus } from '@/types/dashboard-types';
 import { Plus } from 'lucide-react';
 
 interface TaskCardProps {

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Submission, Evaluation, User, SubmissionStatus, Startup, Scope } from '../../types/admin-types';
+import { Submission, Evaluation, User, SubmissionStatus, Startup, Scope } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { FileClock, FileCheck, FileX, User as UserIcon, PlusCircle, CheckSquare } from 'lucide-react';

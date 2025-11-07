@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { ProductIssue, Product } from '../types';
+import { ProductIssue, Product } from '@/types/dashboard-types';
 
 type Severity = 'Low' | 'Medium' | 'High' | 'Critical';
 type Status = 'Open' | 'In Progress' | 'Resolved';

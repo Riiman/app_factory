@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { Document } from '../types';
+import type { Document } from '@/types/dashboard-types';
 import { ArrowTopRightOnSquareIcon } from './icons';
 
 interface DocumentViewerProps {

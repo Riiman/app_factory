@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Artifact, ArtifactType } from '../types';
+import { Artifact, ArtifactType } from '@/types/dashboard-types';
 import { X, FileText, Link as LinkIcon, MessageSquare, Tag } from 'lucide-react';
 
 /**

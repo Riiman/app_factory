@@ -1,8 +1,10 @@
 from flask import Blueprint, jsonify, request, session
 from app import db
-from app.models import Submission, Startup, User, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole
+from app.models import Submission, Startup, User, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole, ScopeStatus, ContractStatus
 from app.utils.decorators import admin_required
 from sqlalchemy.exc import IntegrityError
+import re
+from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -68,7 +70,7 @@ def update_submission_status(submission_id):
                 user_id=submission.user_id,
                 submission_id=submission.id,
                 name=submission.startup_name,
-                slug=submission.startup_name.lower().replace(' ', '-').replace(/[^a-z0-9-]/g, ''),
+                slug=re.sub(r'[^a-z0-9-]', '', submission.startup_name.lower().replace(' ', '-')),
                 current_stage=StartupStage.EVALUATION # Start at evaluation stage
             )
             db.session.add(startup)

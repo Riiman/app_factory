@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Experiment, Scope, LinkedEntityType } from '../types';
+import { Experiment } from '@/types/dashboard-types';
 
 type LinkableItem = { id: number; name: string };
 

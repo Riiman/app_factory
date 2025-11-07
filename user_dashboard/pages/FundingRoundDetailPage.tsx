@@ -6,8 +6,8 @@
  */
 
 import React from 'react';
-import { FundingRound, Investor, Task, Artifact } from '../types';
-import Card from '../components/Card';
+import { FundingRound, Investor, Task, Artifact } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { ArrowLeft, Edit, Plus, Users, ClipboardList, Paperclip } from 'lucide-react';
 
 /**

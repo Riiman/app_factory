@@ -841,7 +841,31 @@ class Founder(db.Model):
             'linkedin_link': self.linkedin_link,
         }
 
+class EvaluationTask(db.Model):
+    __tablename__ = 'evaluation_tasks'
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('submissions.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(50), default='Pending') # e.g., Pending, Submitted, Approved
+    due_date = db.Column(db.DateTime, nullable=True)
+    file_upload_path = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    submission = db.relationship('Submission', back_populates='evaluation_tasks')
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'submission_id': self.submission_id,
+            'title': self.title,
+            'description': self.description,
+            'status': self.status,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'file_upload_path': self.file_upload_path,
+            'created_at': self.created_at.isoformat(),
+        }
+    
 class Submission(db.Model):
     """Represents a startup submission made by a user, containing initial details and status."""
     __tablename__ = 'submissions'
@@ -890,31 +914,6 @@ class Submission(db.Model):
             'startup_type': self.startup_type,
             'status': self.status.value,
             'submitted_at': self.submitted_at.isoformat()
-        }
-
-class EvaluationTask(db.Model):
-    __tablename__ = 'evaluation_tasks'
-    id = db.Column(db.Integer, primary_key=True)
-    submission_id = db.Column(db.Integer, db.ForeignKey('submissions.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    status = db.Column(db.String(50), default='Pending') # e.g., Pending, Submitted, Approved
-    due_date = db.Column(db.DateTime, nullable=True)
-    file_upload_path = db.Column(db.String(500), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    submission = db.relationship('Submission', back_populates='evaluation_tasks')
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'submission_id': self.submission_id,
-            'title': self.title,
-            'description': self.description,
-            'status': self.status,
-            'due_date': self.due_date.isoformat() if self.due_date else None,
-            'file_upload_path': self.file_upload_path,
-            'created_at': self.created_at.isoformat(),
         }
 
 class ScopeDocument(db.Model):

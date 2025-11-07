@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { Experiment, ExperimentStatus } from '../types';
-import Card from '../components/Card';
+import { Experiment, ExperimentStatus } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Plus, Beaker } from 'lucide-react';
 
 /**

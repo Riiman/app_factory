@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { ScopeDocument } from '../types';
+import type { ScopeDocument } from '@/types/dashboard-types';
 
 interface HeaderProps {
   document: Omit<ScopeDocument, 'sections'>;

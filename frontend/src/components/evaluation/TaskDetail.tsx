@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Task, TaskResult, TaskStatus } from '../types';
+import { Task, TaskResult, TaskStatus } from './evaluation-types';
 import { CheckCircleIcon, LinkIcon, PaperClipIcon, UploadIcon, XCircleIcon } from './icons';
 
 interface TaskDetailProps {

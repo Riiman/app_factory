@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { Startup, StartupStage } from '../../types';
+import { Startup, StartupStage } from '@/types/dashboard-types';
 
 interface StartupStagePieChartProps {
   startups: Startup[];

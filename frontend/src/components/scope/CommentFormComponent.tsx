@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import type { User } from '../types';
+import type { User } from '@/types/dashboard-types';
 
 interface CommentFormProps {
   sectionId: string;

@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { MarketingOverview, MarketingCampaign } from '../types';
-import Card from '../components/Card';
+import { MarketingOverview, MarketingCampaign } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Edit, Target, DollarSign, Eye, Pointer, Goal } from 'lucide-react';
 
 /**

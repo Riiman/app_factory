@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Experiment, ExperimentStatus } from '../types';
+import { Experiment, ExperimentStatus } from '@/types/dashboard-types';
 import { X, Beaker, HelpCircle, ClipboardCheck, CheckCircle, Link as LinkIcon, FileText } from 'lucide-react';
 
 /**

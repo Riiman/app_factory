@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { MarketingCampaign, MarketingCampaignStatus, Product } from '../types';
+import { MarketingCampaign, MarketingCampaignStatus, Product } from '@/types/dashboard-types';
 
 /**
  * Props for the CreateCampaignModal component.

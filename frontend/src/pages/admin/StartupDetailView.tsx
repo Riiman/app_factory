@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Startup, Task, Experiment, Artifact, Product, FundingRound, MarketingCampaign, Scope, ArtifactType } from '../../types/admin-types';
+import { Startup, Task, Experiment, Artifact, Product, FundingRound, MarketingCampaign, Scope, ArtifactType } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatCard from '../../components/admin/StatCard';
 import BusinessPerformanceChart from '../../components/admin/charts/BusinessPerformanceChart';

@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { Founder } from '../types';
-import Card from '../components/Card';
+import { Founder } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Plus, Edit, Trash2, Mail, Phone, Linkedin } from 'lucide-react';
 
 /**

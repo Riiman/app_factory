@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Task, TaskStatus } from '../types';
+import { Task, TaskStatus } from '@/types/dashboard-types';
 import { X, Calendar, Tag, Link as LinkIcon, FileText } from 'lucide-react';
 
 /**

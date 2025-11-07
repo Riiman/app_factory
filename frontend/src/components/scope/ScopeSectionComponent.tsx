@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { ScopeSection, User } from '../types';
+import type { ScopeSection, User } from '@/types/dashboard-types';
 import { CommentComponent } from './CommentComponent';
 import { CommentFormComponent } from './CommentFormComponent';
 

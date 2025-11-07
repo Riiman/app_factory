@@ -6,8 +6,8 @@
  */
 
 import React from 'react';
-import { Startup, TaskStatus, ExperimentStatus } from '../types';
-import Card from '../components/Card';
+import { Startup, TaskStatus, ExperimentStatus } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { TrendingUp, Target, ListTodo, Beaker, Activity, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 

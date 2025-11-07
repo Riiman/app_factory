@@ -80,116 +80,23 @@ const ScopePage: React.FC = () => {
     }
   }, [scopeData]);
 
-  // ... (handleAccept and handleReject will be wired up later) ...
+  // Placeholder for handleAccept and handleReject functions
+  const handleAccept = useCallback(() => {
+    alert('Scope Accepted!');
+    // Implement API call to update scope status
+  }, []);
+
+  const handleReject = useCallback(() => {
+    alert('Scope Rejected!');
+    // Implement API call to update scope status
+  }, []);
 
   if (loading) {
     return <div>Loading Scope Document...</div>;
   }
 
   if (error) {
-    return <div className="text-red-500">Failed to edit, 0 occurrences found for old_string (const ScopePage: React.FC = () => {
-  const [scopeData, setScopeData] = useState<ScopeDocument | null>(null);
-  const [activeUser, setActiveUser] = useState<User>(MOCK_USER); // Assume the user is the founder
-  const [loading, setLoading] = useState(true);
-
-  // In the future, we will fetch this data from the backend
-  useEffect(() => {
-    // const fetchScopeData = async () => {
-    //   try {
-    //     // const data = await api.getScopeDocument();
-    //     // setScopeData(data);
-    //     setScopeData(MOCK_SCOPE_DOCUMENT); // Using mock for now
-    //   } catch (error) {
-    //     console.error("Failed to fetch scope document", error);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-    // fetchScopeData();
-    setScopeData(MOCK_SCOPE_DOCUMENT);
-    setLoading(false);
-  }, []);
-
-  const addComment = useCallback((sectionId: string, text: string) => {
-    if (!text.trim() || !scopeData) return;
-
-    const newComment: ScopeComment = {
-      id: Date.now(),
-      text,
-      author: activeUser,
-      timestamp: 'Just now',
-    };
-
-    // This will later be an API call
-    const newSections = scopeData.sections.map(section => {
-      if (section.id === sectionId) {
-        return { ...section, comments: [...section.comments, newComment] };
-      }
-      return section;
-    });
-    setScopeData({ ...scopeData, sections: newSections });
-  }, [activeUser, scopeData]);
-
-  // ... (handleAccept and handleReject) ...
-
-  if (loading || !scopeData) {
-    return <div>Loading Scope Document...</div>;
-  }
-
-  return (
-    // ... (rest of the JSX remains the same) ...
-  );
-};). Original old_string was (const ScopePage: React.FC = () => {
-  const [scopeData, setScopeData] = useState<ScopeDocument | null>(null);
-  const [activeUser, setActiveUser] = useState<User>(MOCK_USER); // Assume the user is the founder
-  const [loading, setLoading] = useState(true);
-
-  // In the future, we will fetch this data from the backend
-  useEffect(() => {
-    // const fetchScopeData = async () => {
-    //   try {
-    //     // const data = await api.getScopeDocument();
-    //     // setScopeData(data);
-    //     setScopeData(MOCK_SCOPE_DOCUMENT); // Using mock for now
-    //   } catch (error) {
-    //     console.error("Failed to fetch scope document", error);
-    //   }
-    // };
-    // fetchScopeData();
-    setScopeData(MOCK_SCOPE_DOCUMENT);
-    setLoading(false);
-  }, []);
-
-  const addComment = useCallback((sectionId: string, text: string) => {
-    if (!text.trim() || !scopeData) return;
-
-    const newComment: ScopeComment = {
-      id: Date.now(),
-      text,
-      author: activeUser,
-      timestamp: 'Just now',
-    };
-
-    // This will later be an API call
-    const newSections = scopeData.sections.map(section => {
-      if (section.id === sectionId) {
-        return { ...section, comments: [...section.comments, newComment] };
-      }
-      return section;
-    });
-    setScopeData({ ...scopeData, sections: newSections });
-  }, [activeUser, scopeData]);
-
-  // ... (handleAccept and handleReject) ...
-
-  if (loading || !scopeData) {
-    return <div>Loading Scope Document...</div>;
-  }
-
-  return (
-    // ... (rest of the JSX remains the same) ...
-  );
-};) in /home/rimanshu/Desktop/Turning Idea/frontend/src/pages/ScopePage.tsx. No edits made. The exact text in old_string was not found. Ensure you're not escaping content incorrectly and check whitespace, indentation, and context. Use read_file tool to verify.</div>;
+    return <div className="text-red-500">Error: {error}</div>;
   }
 
   if (!scopeData) {

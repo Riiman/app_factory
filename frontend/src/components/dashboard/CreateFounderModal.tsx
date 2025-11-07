@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Founder } from '../types';
+import { Founder } from '@/types/dashboard-types';
 
 /**
  * Props for the CreateFounderModal component.

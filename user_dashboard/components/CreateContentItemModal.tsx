@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { MarketingContentItem, MarketingCampaign, MarketingContentStatus } from '../types';
+import { MarketingContentItem, MarketingCampaign, MarketingContentStatus } from '@/types/dashboard-types';
 
 /**
  * Props for the CreateContentItemModal component.

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Startup } from '../../types/admin-types';
+import { Startup } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { Search, Building2, Bell } from 'lucide-react';

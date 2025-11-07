@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Startup, ContractStatus } from '../../types/admin-types';
+import { Startup, ContractStatus } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { FileText, Save, Send, CheckCircle, Rocket } from 'lucide-react';

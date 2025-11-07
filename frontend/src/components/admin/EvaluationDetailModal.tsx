@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Submission, Evaluation, User } from '../types';
+import { Submission, Evaluation, User } from '@/types/dashboard-types';
 import { X } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 

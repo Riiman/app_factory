@@ -6,8 +6,8 @@
  */
 
 import React from 'react';
-import { BusinessMonthlyData } from '../types';
-import Card from '../components/Card';
+import { BusinessMonthlyData } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Plus } from 'lucide-react';
 
 /**

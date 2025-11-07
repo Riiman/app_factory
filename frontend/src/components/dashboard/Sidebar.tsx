@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { Scope } from '../types';
+import { Scope } from '@/types/dashboard-types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 /**

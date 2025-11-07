@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { Artifact, ArtifactType, LinkedEntityType } from '../types';
-import Card from '../components/Card';
+import { Artifact, ArtifactType, LinkedEntityType } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Plus, FileText, Link as LinkIcon, MessageSquare } from 'lucide-react';
 
 /**

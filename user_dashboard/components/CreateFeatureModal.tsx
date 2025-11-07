@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Feature } from '../types';
+import { Feature } from '@/types/dashboard-types';
 
 /**
  * Props for the CreateFeatureModal component.

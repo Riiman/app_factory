@@ -1,12 +1,11 @@
-import React, 'react';
-import type { Document, Signatory } from '../components/contract/contract-types';
-import { DocumentStatus, SignatoryStatus } from '../components/contract/contract-types';
-import DocumentViewer from '../components/contract/DocumentViewer';
-import StatusTracker from '../components/contract/StatusTracker';
-import SignatoryList from '../components/contract/SignatoryList';
-import { DocumentIcon } from '../components/contract/icons';
-import api from '../utils/api'; // To be used later
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { Document, Signatory } from '@/components/contract/contract-types';
+import { DocumentStatus, SignatoryStatus } from '@/components/contract/contract-types';
+import DocumentViewer from '@/components/contract/DocumentViewer';
+import StatusTracker from '@/components/contract/StatusTracker';
+import SignatoryList from '@/components/contract/SignatoryList';
+import { DocumentIcon } from '@/components/contract/icons';
+import api from '@/utils/api'; // To be used later
 
 // Mock Data - to be replaced by API calls
 const MOCK_DOCUMENT: Document = {
@@ -59,70 +58,25 @@ const ContractPage: React.FC = () => {
     fetchContractData();
   }, []);
 
+  const handleSignDocument = useCallback(async () => {
+    if (!document) return;
+    try {
+      // Simulate API call to sign document
+      await api.signDocument(document.id);
+      setDocument(prevDoc => prevDoc ? { ...prevDoc, status: DocumentStatus.COMPLETED } : null);
+      alert('Document signed successfully!');
+    } catch (err) {
+      console.error('Failed to sign document:', err);
+      alert('Failed to sign document. Please try again.');
+    }
+  }, [document]);
+
   if (loading) {
     return <div>Loading Contract Information...</div>;
   }
 
   if (error) {
-    return <div className="text-red-500">Failed to edit, 0 occurrences found for old_string (const ContractPage: React.FC = () => {
-  const [document, setDocument] = useState<Document | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // In the future, we will fetch this data from the backend
-  useEffect(() => {
-    // const fetchContractData = async () => {
-    //   try {
-    //     // const data = await api.getContractData();
-    //     // setDocument(data);
-    //     setDocument(MOCK_DOCUMENT); // Using mock for now
-    //   } catch (error) {
-    //     console.error("Failed to fetch contract data", error);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-    // fetchContractData();
-    setDocument(MOCK_DOCUMENT);
-    setLoading(false);
-  }, []);
-
-  if (loading || !document) {
-    return <div>Loading Contract Information...</div>;
-  }
-
-  return (
-    // ... (rest of the JSX remains the same) ...
-  );
-};). Original old_string was (const ContractPage: React.FC = () => {
-  const [document, setDocument] = useState<Document | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // In the future, we will fetch this data from the backend
-  useEffect(() => {
-    // const fetchContractData = async () => {
-    //   try {
-    //     // const data = await api.getContractData();
-    //     // setDocument(data);
-    //     setDocument(MOCK_DOCUMENT); // Using mock for now
-    //   } catch (error) {
-    //     console.error("Failed to fetch contract data", error);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-    // fetchContractData();
-    setDocument(MOCK_DOCUMENT);
-    setLoading(false);
-  }, []);
-
-  if (loading || !document) {
-    return <div>Loading Contract Information...</div>;
-  }
-
-  return (
-    // ... (rest of the JSX remains the same) ...
-  );
-};) in /home/rimanshu/Desktop/Turning Idea/frontend/src/pages/ContractPage.tsx. No edits made. The exact text in old_string was not found. Ensure you're not escaping content incorrectly and check whitespace, indentation, and context. Use read_file tool to verify.</div>;
+    return <div className="text-red-500">Error: {error}</div>;
   }
 
   if (!document) {
@@ -130,7 +84,48 @@ const ContractPage: React.FC = () => {
   }
 
   return (
-    // ... (rest of the JSX remains the same) ...
+    <div className="min-h-screen bg-gray-100 p-8">
+      <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+            <DocumentIcon className="w-8 h-8 mr-3 text-indigo-600" />
+            {document.title}
+          </h1>
+          {getStatusPill(document.status)}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Document Details</h2>
+            <p className="text-gray-700 mb-1"><strong>Status:</strong> {document.status}</p>
+            <p className="text-gray-700 mb-1"><strong>Sent On:</strong> {document.sentOn.toLocaleDateString()}</p>
+            <p className="text-gray-700 mb-1">
+              <strong>View Document:</strong> <a href={document.documentUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">Open Link</a>
+            </p>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Signatories</h2>
+            <SignatoryList signatories={document.signatories} />
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-3">Document Preview</h2>
+          <DocumentViewer documentPreviewUrl={document.documentPreviewUrl} />
+        </div>
+
+        <div className="flex justify-end">
+          {document.status === DocumentStatus.OUT_FOR_SIGNATURE && (
+            <button
+              onClick={handleSignDocument}
+              className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              Sign Document
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

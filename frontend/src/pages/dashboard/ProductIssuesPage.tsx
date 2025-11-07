@@ -6,8 +6,8 @@
  */
 
 import React from 'react';
-import { Product } from '../types';
-import Card from '../components/Card';
+import { Product } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Plus } from 'lucide-react';
 
 /**

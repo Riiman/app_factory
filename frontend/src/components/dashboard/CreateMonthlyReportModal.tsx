@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { BusinessMonthlyData } from '../types';
+import { BusinessMonthlyData } from '@/types/dashboard-types';
 
 /**
  * Props for the CreateMonthlyReportModal component.

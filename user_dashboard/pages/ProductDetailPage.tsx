@@ -6,8 +6,8 @@
  */
 
 import React, { useState } from 'react';
-import { Product, Task, Experiment, Artifact } from '../types';
-import Card from '../components/Card';
+import { Product, Task, Experiment, Artifact } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { ArrowLeft, Plus, Edit } from 'lucide-react';
 
 /**

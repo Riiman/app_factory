@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Investor } from '../types';
+import { Investor } from '@/types/dashboard-types';
 
 type InvestorType = 'Angel' | 'VC' | 'Fund' | 'Accelerator';
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Startup, Submission, Evaluation, User, SubmissionStatus, ScopeStatus, Contract, ContractStatus, Scope, ArtifactType, StartupStage } from '../../types/admin-types';
+import { Startup, Submission, Evaluation, User, SubmissionStatus, ScopeStatus, Contract, ContractStatus, Scope, ArtifactType, StartupStage } from '../../types/dashboard-types';
 import api from '../../utils/api';
 import StartupDetailView from './StartupDetailView';
 import StartupListView from './StartupListView';

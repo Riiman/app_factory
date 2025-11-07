@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { Investor } from '../types';
-import Card from '../components/Card';
+import { Investor } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Plus } from 'lucide-react';
 
 /**

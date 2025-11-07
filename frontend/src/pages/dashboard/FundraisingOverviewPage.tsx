@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { FundraiseDetails } from '../types';
-import Card from '../components/Card';
+import { FundraiseDetails } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Target, TrendingUp, Calendar, Edit } from 'lucide-react';
 
 /**

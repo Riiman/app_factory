@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Document } from '../types';
-import { SignatoryStatus } from '../types';
+import type { Document } from './contract-types';
+import { SignatoryStatus } from './contract-types';
 import { CheckCircleIcon, ClockIcon, UserIcon } from './icons';
 
 interface SignatoryListProps {

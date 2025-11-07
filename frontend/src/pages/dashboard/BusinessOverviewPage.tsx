@@ -6,8 +6,8 @@
  */
 
 import React from 'react';
-import { BusinessOverview, BusinessMonthlyData } from '../types';
-import Card from '../components/Card';
+import { BusinessOverview, BusinessMonthlyData } from '@/types/dashboard-types';
+import Card from '@/components/Card';
 import { Edit } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
