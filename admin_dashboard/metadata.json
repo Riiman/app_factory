@@ -1,0 +1,5 @@
+{
+  "name": "StartupOS Admin Dashboard",
+  "description": "An admin dashboard for managing startups, their products, fundraising, and overall business operations. This dashboard provides a comprehensive view of all data within the StartupOS ecosystem.",
+  "requestFramePermissions": []
+}

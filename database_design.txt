@@ -1,0 +1,365 @@
+You are absolutely right to ask for clarification. My previous document provided a high-level architectural overview and, for the sake of brevity, summarized the contents of many tables rather than listing every single column. That was an oversimplification.
+
+A complete database design document should indeed detail every column.
+
+Here is the revised, comprehensive database design document that explicitly lists **all columns** for every table as defined in your `models.py` file. This version serves as a proper technical reference for your schema.
+
+---
+
+## **Revised** Database Design and Architecture Document
+
+### 1. Introduction & Overview
+*(This section remains the same as the previous document, outlining the overall design principles.)*
+
+---
+
+### 2. Core Entities: User and Startup Lifecycle
+
+#### **`users`**
+*   **Purpose:** Stores user account information for authentication and identification.
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `email` | String(120) | Unique, Not Null, Indexed. User's login email. |
+| `password_hash` | String(128) | Nullable. Hashed password. Null for OAuth users. |
+| `full_name` | String(100) | Not Null. User's full name. |
+| `is_verified` | Boolean | Default: `False`. If the user's email is verified. |
+| `role` | Enum(UserRole) | Not Null, Default: `USER`. Role in the system (`USER`, `ADMIN`). |
+| `created_at` | DateTime | Default: `utcnow`. Timestamp of account creation. |
+| `google_id` | String(128) | Unique, Nullable. OAuth ID for Google. |
+| `linkedin_id` | String(128) | Unique, Nullable. OAuth ID for LinkedIn. |
+
+#### **`submissions`**
+*   **Purpose:** Captures the initial application data from a prospective startup.
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `user_id` | Integer | **Foreign Key** to `users.id`. The submitting user. |
+| `startup_name` | String(200) | The name of the proposed startup. |
+| `founders_and_inspiration` | Text | Answer to the relevant application question. |
+| `problem_statement` | Text | Answer to the relevant application question. |
+| `who_experiences_problem` | Text | Answer to the relevant application question. |
+| `product_service_idea` | Text | Answer to the relevant application question. |
+| `how_solves_problem` | Text | Answer to the relevant application question. |
+| `intended_users_customers` | Text | Answer to the relevant application question. |
+| `main_competitors_alternatives` | Text | Answer to the relevant application question. |
+| `how_stands_out` | Text | Answer to the relevant application question. |
+| `startup_type` | String(100) | Answer to the relevant application question. |
+| `status` | Enum(SubmissionStatus) | Not Null, Default: `PENDING`. The application's status. |
+| `submitted_at` | DateTime | Default: `utcnow`. Timestamp of submission. |
+| `raw_chat_data` | JSON | A full log of the application conversation for auditing. |
+
+#### **`evaluations`**
+*   **Purpose:** Stores the detailed, internal analysis of a submission.
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `submission_id` | Integer | **Foreign Key** to `submissions.id`, Unique. |
+| `problem_analysis` | JSON | Structured analysis of the problem. |
+| `solution_analysis` | JSON | Structured analysis of the solution. |
+| `market_analysis` | JSON | Structured analysis of the market. |
+| `growth_analysis` | JSON | Structured analysis of growth potential. |
+| `competitor_analysis` | JSON | Structured analysis of competitors. |
+| `risks_analysis` | JSON | Structured analysis of risks. |
+| `overall_score` | Float | A final numerical score for the submission. |
+| `final_decision` | String(100) | The final decision (e.g., "Approved", "Rejected"). |
+| `overall_summary` | Text | A written summary of the evaluation. |
+| `created_at` | DateTime | Default: `utcnow`. Timestamp of evaluation creation. |
+
+#### **`startups`**
+*   **Purpose:** The central entity representing an active startup in the platform.
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `user_id` | Integer | **Foreign Key** to `users.id`. The startup's owner. |
+| `submission_id` | Integer | **Foreign Key** to `submissions.id`, Unique. The original application. |
+| `name` | String(200) | Not Null. The official name of the startup. |
+| `slug` | String(255) | Unique, Not Null, Indexed. A URL-friendly identifier. |
+| `status` | Enum(StartupStatus) | Not Null, Default: `ACTIVE`. The startup's overall status. |
+| `overall_progress` | Float | Default: `0.0`. A metric for overall progress. |
+| `current_stage` | Enum(StartupStage) | Not Null, Default: `EVALUATION`. The startup's program stage. |
+| `next_milestone` | String(255) | A user-defined next major milestone. |
+| `recent_activity` | JSON | A log of recent activities for the dashboard feed. |
+| `created_at` | DateTime | Default: `utcnow`. Timestamp of creation. |
+| `updated_at` | DateTime | Default: `utcnow`, onupdate: `utcnow`. Timestamp of last update. |
+
+---
+
+### 3. Operational Modules
+
+#### 3.1. Product Management
+
+*   **`products`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`. |
+| `name` | String(255) | Not Null. Name of the product. |
+| `description` | Text | A detailed description. |
+| `stage` | Enum(ProductStage) | Default: `CONCEPT`. The product's development stage. |
+| `version` | String(50) | The current version number (e.g., "1.2.0"). |
+| `targeted_launch_date` | Date | The planned launch date. |
+| `actual_launch_date` | Date | The actual launch date. |
+| `customer_segment` | Text | Description of the target customer. |
+| `unique_value_prop` | Text | The product's unique value proposition. |
+| `tech_stack` | JSON | A list/object describing the technology used. |
+
+*   **`features`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `product_id` | Integer | **Foreign Key** to `products.id`. |
+| `name` | String(255) | Not Null. The name of the feature. |
+| `description` | Text | A description of what the feature does. |
+| `acceptance_criteria` | Text | Criteria to consider the feature complete. |
+
+*   **`product_metrics`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `metric_id` | Integer | **Primary Key** |
+| `product_id` | Integer | **Foreign Key** to `products.id`. |
+| `metric_name` | String(255) | Not Null. Name of the metric (e.g., "MAU"). |
+| `value` | Numeric(15,2) | The recorded value of the metric. |
+| `target_value` | Numeric(15,2) | The goal for this metric. |
+| `unit` | String(50) | Unit of measurement (e.g., "%", "users"). |
+| `period` | String(50) | Time period (e.g., "monthly", "weekly"). |
+| `date_recorded` | Date | The date the metric was recorded. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+*   **`product_issues`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `issue_id` | Integer | **Primary Key** |
+| `product_id` | Integer | **Foreign Key** to `products.id`. |
+| `title` | String(255) | Not Null. A short summary of the issue. |
+| `description` | Text | A detailed description of the issue. |
+| `severity` | String(50) | E.g., "Low", "Medium", "High", "Critical". |
+| `status` | String(50) | E.g., "Open", "In Progress", "Resolved". |
+| `created_by` | Integer | **Foreign Key** to `users.id`. |
+| `created_at` | DateTime | Default: `utcnow`. |
+| `resolved_at` | DateTime | Timestamp when the issue was resolved. |
+
+#### 3.2. Business & Financials
+
+*   **`business_overview`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `business_id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`, Unique. |
+| `business_model` | String(255) | Description of the business model. |
+| `key_partners` | Text | List of key partners. |
+| `notes` | Text | General notes on the business. |
+| `created_at` | DateTime | Default: `utcnow`. |
+| `updated_at` | DateTime | Default: `utcnow`, onupdate: `utcnow`. |
+
+*   **`product_business_details`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `product_business_id` | Integer | **Primary Key** |
+| `product_id` | Integer | **Foreign Key** to `products.id`, Unique. |
+| `pricing_model` | String(255) | The product's pricing model. |
+| `target_customer` | Text | Description of the target customer. |
+| `revenue_streams` | Text | How the product generates revenue. |
+| `distribution_channels` | Text | How the product reaches customers. |
+| `cost_structure` | Text | The main costs associated with the product. |
+| `created_at` | DateTime | Default: `utcnow`. |
+| `updated_at` | DateTime | Default: `utcnow`, onupdate: `utcnow`. |
+
+*   **`business_monthly_data`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `record_id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`. |
+| `month_start` | Date | Not Null. The first day of the month for this record. |
+| `total_revenue` | Numeric(15,2) | Total revenue for the month. |
+| `total_expenses` | Numeric(15,2) | Total expenses for the month. |
+| `net_burn` | Numeric(15,2) | Net cash burn for the month. |
+| `cash_in_bank` | Numeric(15,2) | Cash balance at the end of the month. |
+| `mrr` | Numeric(15,2) | Monthly Recurring Revenue. |
+| `churn_rate` | Numeric(5,2) | Customer churn rate for the month. |
+| `new_customers` | Integer | Number of new customers acquired. |
+| `total_customers` | Integer | Total number of active customers. |
+| `key_highlights` | Text | Major achievements during the month. |
+| `key_challenges` | Text | Major challenges faced during the month. |
+| `next_focus` | Text | Main focus for the upcoming month. |
+| `created_by` | Integer | **Foreign Key** to `users.id`. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+#### 3.3. Fundraising
+
+*   **`fundraise_details`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`, Unique. |
+| `funding_stage` | String(100) | E.g., "Bootstrapped", "Pre-Seed", "Seed". |
+| `amount_raised` | Float | Total amount raised to date. |
+
+*   **`next_funding_goals`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `fundraise_id` | Integer | **Foreign Key** to `fundraise_details.id`, Unique. |
+| `target_amount` | Float | Target amount for the next round. |
+| `target_valuation` | Float | Target valuation for the next round. |
+| `target_close_date` | Date | Planned closing date for the next round. |
+
+*   **`funding_rounds`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `round_id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`. |
+| `round_type` | String(50) | E.g., "Pre-Seed", "Seed", "Series A". |
+| `status` | String(50) | E.g., "Planned", "In Progress", "Closed". |
+| `target_amount` | Numeric(15,2) | The goal amount for this round. |
+| `amount_raised` | Numeric(15,2) | The actual amount raised in this round. |
+| `valuation_pre` | Numeric(15,2) | Pre-money valuation. |
+| `valuation_post` | Numeric(15,2) | Post-money valuation. |
+| `date_opened` | Date | Date the round officially opened. |
+| `date_closed` | Date | Date the round closed. |
+| `lead_investor` | String(255) | Name of the lead investor/firm. |
+| `notes` | Text | General notes about the round. |
+| `pitch_deck_url` | Text | A direct link to the pitch deck. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+*   **`investors`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `investor_id` | Integer | **Primary Key** |
+| `name` | String(255) | Not Null. Investor's name. |
+| `firm_name` | String(255) | The firm the investor belongs to. |
+| `type` | String(50) | E.g., "Angel", "VC", "Fund", "Accelerator". |
+| `email` | String(255) | Contact email. |
+| `website` | Text | Website URL. |
+| `notes` | Text | General CRM-style notes. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+*   **`round_investors`** (Junction Table)
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `round_id` | Integer | **Primary Key**, **Foreign Key** to `funding_rounds.round_id`. |
+| `investor_id` | Integer | **Primary Key**, **Foreign Key** to `investors.investor_id`. |
+| `amount_invested` | Numeric(15,2) | Amount invested by this investor in this round. |
+| `ownership_percent` | Numeric(5,2) | Percentage of ownership gained. |
+| `committed_on` | Date | Date the investment was committed. |
+
+#### 3.4. Marketing
+
+*   **`marketing_overview`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `marketing_id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`, Unique. |
+| `positioning_statement` | Text | The startup's core marketing position statement. |
+
+*   **`marketing_campaigns`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `campaign_id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`. |
+| `scope` | String(50) | Default: `overall`. Can be linked to a product. |
+| `product_id` | Integer | Nullable, **Foreign Key** to `products.id`. |
+| `campaign_name` | String(255) | Not Null. The name of the campaign. |
+| `objective` | Text | The primary goal of the campaign. |
+| `channel` | String(100) | E.g., "Google Ads", "Facebook", "Content Marketing". |
+| `start_date` | Date | |
+| `end_date` | Date | |
+| `spend` | Numeric(15,2) | Total budget spent. |
+| `impressions` | Integer | |
+| `clicks` | Integer | |
+| `conversions` | Integer | |
+| `status` | Enum(MarketingCampaignStatus) | Default: `PLANNED`. |
+| `notes` | Text | General notes. |
+| `content_mode` | Boolean | Default: `False`. If this is a content-driven campaign. |
+| `created_by` | Integer | **Foreign Key** to `users.id`. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+*   **`marketing_content_calendar`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `calendar_id` | Integer | **Primary Key** |
+| `campaign_id` | Integer | **Foreign Key** to `marketing_campaigns.campaign_id`. |
+| `title` | String(255) | Not Null. The name of the content calendar. |
+| `description` | Text | |
+| `start_date` | Date | |
+| `end_date` | Date | |
+| `owner_id` | Integer | **Foreign Key** to `users.id`. The user responsible. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+*   **`marketing_content_items`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `content_id` | Integer | **Primary Key** |
+| `calendar_id` | Integer | **Foreign Key** to `marketing_content_calendar.calendar_id`. |
+| `title` | String(255) | Not Null. Title of the content piece. |
+| `content_type` | String(100) | E.g., "Blog Post", "Tweet", "Video". |
+| `content_body` | Text | The actual content or a link to it. |
+| `channel` | String(100) | Where it will be published. |
+| `publish_date` | Date | |
+| `status` | Enum(MarketingContentStatus) | Default: `PLANNED`. |
+| `performance` | JSON | A place to store performance metrics (likes, shares, etc.). |
+| `created_by` | Integer | **Foreign Key** to `users.id`. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+---
+
+### 4. General Workspace Entities (Polymorphic)
+
+#### **`tasks`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`. |
+| `scope` | Enum(Scope) | Default: `GENERAL`. Categorizes the task. |
+| `name` | String(255) | Not Null. The name of the task. |
+| `description` | Text | A detailed description. |
+| `due_date` | Date | The deadline for the task. |
+| `status` | Enum(TaskStatus) | Default: `PENDING`. |
+| `linked_to_id` | Integer | Polymorphic ID. |
+| `linked_to_type` | String(50) | Polymorphic type (e.g., "FundingRound"). |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+#### **`experiments`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`. |
+| `scope` | Enum(Scope) | Default: `GENERAL`. Categorizes the experiment. |
+| `name` | String(255) | Not Null. The name of the experiment. |
+| `description` | Text | Detailed description of the experiment. |
+| `assumption` | Text | The hypothesis being tested. |
+| `validation_method` | Text | How the assumption will be validated. |
+| `result` | Text | The outcome and learnings. |
+| `status` | Enum(ExperimentStatus) | Default: `PLANNED`. |
+| `linked_to_id` | Integer | Polymorphic ID. |
+| `linked_to_type` | String(50) | Polymorphic type. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+#### **`artifacts`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`. |
+| `scope` | Enum(Scope) | Default: `GENERAL`. Categorizes the artifact. |
+| `name` | String(255) | Not Null. The name of the artifact (e.g., "Pitch Deck V3"). |
+| `description` | Text | A brief description. |
+| `type` | Enum(ArtifactType) | Not Null. (`FILE`, `LINK`, `TEXT`). |
+| `location` | Text | Not Null. The URL, file path, or raw text content. |
+| `linked_to_id` | Integer | Polymorphic ID. |
+| `linked_to_type` | String(50) | Polymorphic type. |
+| `created_at` | DateTime | Default: `utcnow`. |
+
+---
+
+### 5. Other Entities
+
+#### **`founders`**
+| Column | Type | Constraints & Description |
+| :--- | :--- | :--- |
+| `id` | Integer | **Primary Key** |
+| `startup_id` | Integer | **Foreign Key** to `startups.id`. |
+| `name` | String(100) | Not Null. The founder's name. |
+| `role` | String(100) | Their role (e.g., "CEO", "CTO"). |
+| `email` | String(120) | Contact email. |
+| `phone_number` | String(20) | Contact phone number. |
+| `linkedin_link` | String(255) | URL to their LinkedIn profile. |

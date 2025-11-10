@@ -13,11 +13,23 @@ class Config:
     
     # JWT Configuration
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-please-change')
+
+    # OAuth 2.0 Client secrets
+    # IMPORTANT: Replace these with your actual credentials
+    GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', 'your-google-client-id')
+    GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', 'your-google-client-secret')
+    LINKEDIN_CLIENT_ID = os.environ.get('LINKEDIN_CLIENT_ID', 'your-linkedin-client-id')
+    LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET', 'your-linkedin-client-secret')
+    
+    SERVER_NAME = '127.0.0.1:5000'
+
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     JWT_TOKEN_LOCATION = ['headers']
     JWT_HEADER_NAME = 'Authorization'
     JWT_HEADER_TYPE = 'Bearer'
+    JWT_CSRF_IN_COOKIES = False
+    JWT_CSRF_PROTECTION = False
     
     # Mail Configuration
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
@@ -35,6 +47,13 @@ class Config:
     
     # File paths
     DOCUMENTS_DIR = os.path.join(os.path.dirname(basedir), 'generated_documents')
+
+    # Celery Configuration
+    CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+    CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+
+    # Session Configuration
+    SESSION_TYPE = os.getenv('SESSION_TYPE', 'sqlalchemy')
 
 class DevelopmentConfig(Config):
     """Development configuration"""

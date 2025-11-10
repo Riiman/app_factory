@@ -1,0 +1,5 @@
+{
+  "name": "E-Signature Document Tracker",
+  "description": "A web application to view an e-sign document, its link, and track the signing status of all involved parties in a clear, visual timeline.",
+  "requestFramePermissions": []
+}

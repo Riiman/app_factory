@@ -1,429 +1,167 @@
-
-from flask import request, jsonify, url_for, current_app
-from app.routes import auth_bp
-from app import db, mail
-from app.models import User, Startup, Submission # Import Submission
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
-from flask_mail import Message
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from flask import request, jsonify, current_app, redirect, url_for, Blueprint, session
+from app.extensions import db, oauth
+from app.models import User, Submission
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
-import uuid
-import secrets
+from app.utils.decorators import session_required
 
-def generate_verification_token(email):
-    """Generate email verification token"""
-    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-    return serializer.dumps(email, salt='email-verification')
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
-def verify_token(token, expiration=3600):
-    """Verify email verification token"""
-    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-    try:
-        email = serializer.loads(token, salt='email-verification', max_age=expiration)
-        return email
-    except (SignatureExpired, BadSignature):
-        return None
+@auth_bp.route('/status')
+@session_required
+def status():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
 
-def send_verification_email(user_email, token):
-    """Send verification email"""
-    try:
-        verification_url = f"http://localhost:3000/verify-email?token={token}"
-        
-        msg = Message(
-            'Verify Your Email - Turning Ideas App Factory',
-            recipients=[user_email]
-        )
-        
-        msg.body = f"""
-        Welcome to Turning Ideas App Factory!
-        
-        Please verify your email address by clicking the link below:
-        
-        {verification_url}
-        
-        This link will expire in 1 hour.
-        
-        If you didn't create an account, please ignore this email.
-        
-        Best regards,
-        Turning Ideas Team
-        """
-        
-        msg.html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #667eea;">Welcome to Turning Ideas App Factory!</h2>
-                    <p>Thank you for signing up. Please verify your email address to complete your registration.</p>
-                    <div style="margin: 30px 0;">
-                        <a href="{verification_url}" 
-                           style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                  color: white; 
-                                  padding: 12px 30px; 
-                                  text-decoration: none; 
-                                  border-radius: 5px;
-                                  display: inline-block;">
-                            Verify Email Address
-                        </a>
-                    </div>
-                    <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
-                    <p style="color: #666; font-size: 14px;">If you didn't create an account, please ignore this email.</p>
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="color: #999; font-size: 12px;">
-                        Best regards,<br>
-                        Turning Ideas Team
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
-        
-        mail.send(msg)
-        return True
-    except Exception as e:
-        print(f"Error sending email: {str(e)}")
-        return False
+    submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+    
+    startup_stage = None
+    if submission and submission.startup:
+        startup_stage = submission.startup.current_stage.value
 
-def send_password_reset_email(user_email, token):
-    """Send password reset email"""
-    try:
-        reset_url = f"http://localhost:3000/reset-password?token={token}"
-        
-        msg = Message(
-            'Reset Your Password - Turning Ideas App Factory',
-            recipients=[user_email]
-        )
-        
-        msg.body = f"""
-        You requested a password reset for your Turning Ideas App Factory account.
-        
-        Click the link below to reset your password:
-        
-        {reset_url}
-        
-        This link will expire in 1 hour.
-        
-        If you didn't request this, please ignore this email.
-        
-        Best regards,
-        Turning Ideas Team
-        """
-        
-        msg.html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #667eea;">Password Reset Request</h2>
-                    <p>You requested a password reset for your account.</p>
-                    <div style="margin: 30px 0;">
-                        <a href="{reset_url}" 
-                           style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                  color: white; 
-                                  padding: 12px 30px; 
-                                  text-decoration: none; 
-                                  border-radius: 5px;
-                                  display: inline-block;">
-                            Reset Password
-                        </a>
-                    </div>
-                    <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
-                    <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="color: #999; font-size: 12px;">
-                        Best regards,<br>
-                        Turning Ideas Team
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
-        
-        mail.send(msg)
-        return True
-    except Exception as e:
-        print(f"Error sending email: {str(e)}")
-        return False
+    return jsonify({
+        'success': True,
+        'is_logged_in': True,
+        'submission_status': submission.status.value if submission else None,
+        'startup_stage': startup_stage
+    })
+
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
-    """User registration endpoint"""
-    try:
-        data = request.json
-        email = data.get('email')
-        password = data.get('password')
-        full_name = data.get('full_name')
-        mobile = data.get('mobile')
-        
-        # Validation
-        if not email or not password or not full_name:
-            return jsonify({'success': False, 'error': 'Email, password, and full name are required'}), 400
-        
-        # Check if user exists
-        existing_user = User.query.filter_by(email=email).first()
-        if existing_user:
-            return jsonify({'success': False, 'error': 'Email already registered'}), 400
-        
-        # Create new user
-        user = User(
-            email=email,
-            full_name=full_name,
-            mobile=mobile
-        )
-        user.set_password(password)
-        
-        # Generate verification token
-        verification_token = generate_verification_token(email)
-        user.verification_token = verification_token
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        # Send verification email
-        email_sent = send_verification_email(email, verification_token)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Account created successfully. Please check your email to verify your account.',
-            'email_sent': email_sent,
-            'user': user.to_dict()
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+    full_name = data.get('full_name')
 
-@auth_bp.route('/verify-email/<token>', methods=['POST'])
-def verify_email(token):
-    try:
-        if not token:
-            return jsonify({'success': False, 'error': 'Verification token is missing.'}), 400
+    if not all([email, password, full_name]):
+        return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
 
-        email = verify_token(token)
-        if email is None:
-            return jsonify({'success': False, 'error': 'Verification link is invalid or has expired.'}), 400
+    if User.query.filter_by(email=email).first():
+        return jsonify({'success': False, 'error': 'Email already registered.'}), 400
 
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            return jsonify({'success': False, 'error': 'User not found.'}), 404
+    user = User(email=email, full_name=full_name)
+    user.set_password(password)
+    
+    db.session.add(user)
+    db.session.commit()
 
-        if user.is_verified:
-            return jsonify({'success': True, 'message': 'Account already verified.'}), 200
-
-        user.is_verified = True
-        db.session.commit()
-
-        return jsonify({'success': True, 'message': 'Email verified successfully. You can now log in.'}), 200
-    except Exception as e:
-        current_app.logger.error(f"Error during email verification: {e}")
-        return jsonify({'success': False, 'error': 'An internal error occurred.'}), 500
-
-@auth_bp.route('/resend-verification', methods=['POST'])
-def resend_verification():
-    """Resend verification email"""
-    try:
-        data = request.json
-        email = data.get('email')
-        
-        if not email:
-            return jsonify({'success': False, 'error': 'Email is required'}), 400
-        
-        user = User.query.filter_by(email=email).first()
-        
-        if not user:
-            return jsonify({'success': False, 'error': 'User not found'}), 404
-        
-        if user.is_verified:
-            return jsonify({'success': False, 'error': 'Email already verified'}), 400
-        
-        # Generate new token
-        verification_token = generate_verification_token(email)
-        user.verification_token = verification_token
-        db.session.commit()
-        
-        # Send email
-        email_sent = send_verification_email(email, verification_token)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Verification email sent successfully',
-            'email_sent': email_sent
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({
+        'success': True, 
+        'message': 'Account created successfully.',
+        'user': user.to_dict()
+    }), 201
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    try:
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
 
-        if not email or not password:
-            return jsonify({'success': False, 'error': 'Email and password are required.'}), 400
+    if not email or not password:
+        return jsonify({'success': False, 'error': 'Email and password are required.'}), 400
 
-        user = User.query.filter_by(email=email).first()
+    user = User.query.filter_by(email=email).first()
 
-        if not user or not user.check_password(password):
-            return jsonify({'success': False, 'error': 'Invalid credentials.'}), 401
+    if not user or not user.check_password(password):
+        return jsonify({'success': False, 'error': 'Invalid credentials.'}), 401
 
-        if not user.is_verified:
-            return jsonify({'success': False, 'error': 'Please verify your email before logging in.'}), 403
+    # Store user_id in the session
+    session['user_id'] = user.id
 
-        # Check for an existing submission for this user
-        submission = Submission.query.filter_by(user_id=user.id).first()
-        startup_data = None
-        if submission:
-            startup_data = {
-                'submission_id': submission.id,
-                'startup_name': submission.startup_name
-            }
+    # Check the user's most recent submission
+    submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+    
+    submission_status = None
+    if submission:
+        # If submission was rejected over 30 days ago, delete it so the user can start fresh.
+        if submission.status.value == 'rejected' and (datetime.utcnow() - submission.submitted_at) > timedelta(days=30):
+            db.session.delete(submission)
+            db.session.commit()
+            submission_status = None # The submission is gone, so status is null
+        else:
+            submission_status = submission.status.value
 
-        access_token = create_access_token(identity=str(user.id))
-        return jsonify({
-            'success': True,
-            'token': access_token,
-            'user': {
-                'id': user.id,
-                'name': user.full_name,
-                'email': user.email,
-                'is_verified': user.is_verified
-            },
-            'startup': startup_data # Include startup data in the response
-        }), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Login error: {e}")
-        return jsonify({'success': False, 'error': 'An internal error occurred.'}), 500
+    return jsonify({
+        'success': True,
+        'user': user.to_dict(),
+        'submission_status': submission_status
+    }), 200
 
 @auth_bp.route('/logout', methods=['POST'])
-@jwt_required()
+@session_required
 def logout():
-    """User logout endpoint"""
-    try:
-        # In a real implementation, you might want to blacklist the token
-        # For now, we'll just return a success message
-        return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
-    except Exception as e:
-        current_app.logger.error(f"Error during logout: {e}")
-        return jsonify({'success': False, 'error': 'An internal error occurred.'}), 500
+    session.pop('user_id', None)
+    return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
 
-@auth_bp.route('/refresh', methods=['POST'])
-@jwt_required(refresh=True)
-def refresh():
-    """Refresh access token"""
-    try:
-        current_user_id = get_jwt_identity()
-        new_access_token = create_access_token(identity=str(current_user_id))
-        
-        return jsonify({
-            'success': True,
-            'access_token': new_access_token
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+@auth_bp.route('/google/login')
+def google_login():
+    redirect_uri = url_for('auth.google_callback', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
 
-@auth_bp.route('/me', methods=['GET'])
-@jwt_required()
-def get_current_user():
-    """Get current user info"""
-    try:
-        
-        user_id = int(get_jwt_identity())
-        user = User.query.get(user_id)
-        
-        if not user:
-            return jsonify({'success': False, 'error': 'User not found'}), 404
-        
-        # Try serializing step by step to find which field breaks
-        result = {
-            'id': user.id,
-            'email': user.email
-        }
-        print(f"[DEBUG] Basic fields OK: {result}")
-        
-        # Try adding more fields one by one
-        result['username'] = user.full_name if hasattr(user, 'full_name') else None
-        print(f"[DEBUG] Added username: {result}")
-        
-        result['role'] = user.role if hasattr(user, 'role') else 'user'
-        print(f"[DEBUG] Added role: {result}")
-        
-        # If you have a submission relationship:
-        try:
-            result['has_submission'] = user.submission is not None
-        except Exception as e:
-            print(f"[DEBUG] Submission check failed: {e}")
-            result['has_submission'] = False
-        
-        return jsonify({
-            'success': True,
-            'user': result
-        }), 200
-        
-    except Exception as e:
-        print(f"[ERROR in /me] {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+@auth_bp.route('/google/callback')
+def google_callback():
+    token = oauth.google.authorize_access_token()
+    user_info = oauth.google.parse_id_token(token)
+    
+    google_id = user_info['sub']
+    email = user_info['email']
+    full_name = user_info['name']
 
-@auth_bp.route('/forgot-password', methods=['POST'])
-def forgot_password():
-    """Send password reset email"""
-    try:
-        data = request.json
-        email = data.get('email')
-        
-        if not email:
-            return jsonify({'success': False, 'error': 'Email is required'}), 400
-        
+    user = User.query.filter_by(google_id=google_id).first()
+    if not user:
         user = User.query.filter_by(email=email).first()
-        
         if not user:
-            # Don't reveal if user exists or not
-            return jsonify({'success': True, 'message': 'If the email exists, a password reset link has been sent'}), 200
-        
-        # Generate reset token
-        reset_token = secrets.token_urlsafe(32)
-        user.reset_token = reset_token
-        user.reset_token_expiry = datetime.utcnow() + timedelta(hours=1)
-        db.session.commit()
-        
-        # Send reset email
-        send_password_reset_email(user.email, reset_token)
-        
-        return jsonify({'success': True, 'message': 'If the email exists, a password reset link has been sent'}), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+            # Create a new user if one doesn't exist
+            user = User(email=email, full_name=full_name, google_id=google_id, is_verified=True)
+            db.session.add(user)
+        else:
+            # Link the Google ID to an existing user
+            user.google_id = google_id
+    
+    db.session.commit()
+    
+    # Store user_id in the session
+    session['user_id'] = user.id
+    
+    # Redirect to a frontend page that can handle the callback
+    return redirect(f"http://localhost:3000/auth/callback?user={jsonify(user.to_dict()).data.decode('utf-8')}")
 
-@auth_bp.route('/reset-password', methods=['POST'])
-def reset_password():
-    """Reset user password"""
-    try:
-        data = request.json
-        token = data.get('token')
-        new_password = data.get('newPassword')
-        
-        if not token or not new_password:
-            return jsonify({'success': False, 'error': 'Token and new password are required'}), 400
-        
-        user = User.query.filter_by(reset_token=token).first()
-        
-        if not user or user.reset_token_expiry < datetime.utcnow():
-            return jsonify({'success': False, 'error': 'Invalid or expired reset token'}), 400
-        
-        # Update password
-        user.set_password(new_password)
-        user.reset_token = None
-        user.reset_token_expiry = None
-        db.session.commit()
-        
-        return jsonify({'success': True, 'message': 'Password reset successfully'}), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+@auth_bp.route('/linkedin/login')
+def linkedin_login():
+    redirect_uri = url_for('auth.linkedin_callback', _external=True)
+    return oauth.linkedin.authorize_redirect(redirect_uri)
+
+@auth_bp.route('/linkedin/callback')
+def linkedin_callback():
+    token = oauth.linkedin.authorize_access_token()
+    resp = oauth.linkedin.get('me')
+    profile = resp.json()
+    
+    linkedin_id = profile['id']
+    # LinkedIn API for email is a separate call
+    email_resp = oauth.linkedin.get('emailAddress?q=members&projection=(elements*(handle~))')
+    email = email_resp.json()['elements'][0]['handle~']['emailAddress']
+    full_name = f"{profile['firstName']['localized']['en_US']} {profile['lastName']['localized']['en_US']}"
+
+    user = User.query.filter_by(linkedin_id=linkedin_id).first()
+    if not user:
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            # Create a new user if one doesn't exist
+            user = User(email=email, full_name=full_name, linkedin_id=linkedin_id, is_verified=True)
+            db.session.add(user)
+        else:
+            # Link the LinkedIn ID to an existing user
+            user.linkedin_id = linkedin_id
+            
+    db.session.commit()
+    
+    # Store user_id in the session
+    session['user_id'] = user.id
+    
+    return redirect(f"http://localhost:3000/auth/callback?user={jsonify(user.to_dict()).data.decode('utf-8')}")
+

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 # Load environment variables
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
+load_dotenv(os.path.join(basedir, '.env.local'))
 
 class Config:
     """Base configuration"""
@@ -18,12 +19,12 @@ class Config:
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     
     # Mail Configuration
-    MAIL_SERVER = os.getenv('MAIL_SERVER', 'sandbox.smtp.mailtrap.io')
-    MAIL_PORT = int(os.getenv('MAIL_PORT', 2525))
-    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
-    MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'false').lower() == 'true'
-    MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'b12304560ed496')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
+    MAIL_SERVER = 'sandbox.smtp.mailtrap.io'
+    MAIL_PORT = 2525
+    MAIL_USE_TLS = True
+    MAIL_USE_SSL = False
+    MAIL_USERNAME = 'b12304560ed496'
+    MAIL_PASSWORD = '80e66a4227a18e'
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@turningideas.com')
     
     # Upload Configuration
