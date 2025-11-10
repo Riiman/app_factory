@@ -1,11 +1,11 @@
 from flask import request, jsonify, current_app, redirect, url_for, Blueprint, session
-from app import db, oauth
+from app.extensions import db, oauth
 from app.models import User, Submission
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 from app.utils.decorators import session_required
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/status')
 @session_required
@@ -20,7 +20,7 @@ def status():
     
     startup_stage = None
     if submission and submission.startup:
-        startup_stage = submission.startup[0].current_stage.value if submission.startup else None
+        startup_stage = submission.startup.current_stage.value
 
     return jsonify({
         'success': True,
@@ -28,6 +28,7 @@ def status():
         'submission_status': submission.status.value if submission else None,
         'startup_stage': startup_stage
     })
+
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():

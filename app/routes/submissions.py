@@ -3,7 +3,6 @@ from app import db
 from app.models import Submission, User, Evaluation
 from app.utils.decorators import session_required
 from app.services.chatbot_service import StartupAnalyzerChatbot
-from celery_worker import run_evaluation_task
 import traceback
 
 submissions_bp = Blueprint('submissions', __name__, url_prefix='/submissions')
@@ -79,6 +78,7 @@ def chat_submission_message():
         db.session.commit()
         
         # --- Dispatch Background Task for Evaluation ---
+        from celery_worker import run_evaluation_task
         run_evaluation_task.delay(submission.id)
         
         session.pop(f'chatbot_state_{user_id}', None)

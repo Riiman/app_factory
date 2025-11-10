@@ -1,56 +1,95 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from './api';
+import { User } from '../types/dashboard-types';
 
 export const useAuthRedirect = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navigationInProgress = useRef(false);
 
-  const handleNavigation = async (submissionStatus: string | null) => {
-    if (!submissionStatus) {
-      navigate('/submission');
+  const handleNavigation = (user: User | null, submissionStatus: string | null) => {
+    if (navigationInProgress.current) return;
+
+    let targetPath: string;
+
+    if (user && user.role === 'ADMIN') {
+      targetPath = '/admin';
+      if (location.pathname.startsWith(targetPath)) {
+        return; // Already on an admin page, do nothing.
+      }
     } else {
-      switch (submissionStatus) {
-        case 'pending':
-        case 'in_review':
-          navigate('/pending-review');
-          break;
-        case 'approved':
-          navigate('/dashboard');
-          break;
-        case 'rejected':
-          navigate('/rejected-submission');
-          break;
-        default:
-          navigate('/submission'); // Fallback
-          break;
+      if (!submissionStatus) {
+        targetPath = '/submission';
+      } else {
+        switch (submissionStatus) {
+          case 'pending':
+          case 'in_review':
+            targetPath = '/pending-review';
+            break;
+          case 'approved':
+            targetPath = '/dashboard';
+            break;
+          case 'rejected':
+            targetPath = '/rejected-submission';
+            break;
+          default:
+            targetPath = '/submission'; // Fallback
+            break;
+        }
+      }
+      if (location.pathname === targetPath) {
+        return; // Already on the correct page, do nothing.
       }
     }
+    
+    navigationInProgress.current = true;
+    navigate(targetPath);
   };
 
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      const user = localStorage.getItem('user');
-      if (user) {
-        // User is authenticated, fetch their submission status
-        try {
-          const response = await api.fetch('/auth/status');
-          const data = await response.json();
+    navigationInProgress.current = false; // Reset lock on every new location
 
-          if (response.ok && data.success) {
-            handleNavigation(data.submission_status);
-          } else {
-            // If status check fails, redirect to login (api.fetch handles 401)
-            navigate('/login?error=status_check_failed');
+    const checkAuthAndRedirect = async () => {
+      const userStr = localStorage.getItem('user');
+      const isPublicPage = ['/login', '/signup'].includes(location.pathname);
+
+      if (!userStr) {
+        if (!isPublicPage) {
+          if (navigationInProgress.current) return;
+          navigationInProgress.current = true;
+          navigate('/login');
+        }
+        return;
+      }
+
+      try {
+        const user: User = JSON.parse(userStr);
+        const response = await api.fetch('/auth/status');
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          handleNavigation(user, data.submission_status);
+        } else {
+          localStorage.removeItem('user');
+          if (!isPublicPage) {
+            if (navigationInProgress.current) return;
+            navigationInProgress.current = true;
+            navigate('/login?error=session_expired');
           }
-        } catch (error) {
-          // Network error or other issue, redirect to login
+        }
+      } catch (error) {
+        localStorage.removeItem('user');
+        if (!isPublicPage) {
+          if (navigationInProgress.current) return;
+          navigationInProgress.current = true;
           navigate('/login?error=network_error');
         }
       }
     };
 
     checkAuthAndRedirect();
-  }, [navigate]);
+  }, [location.pathname]);
 
   return { handleNavigation };
 };

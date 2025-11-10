@@ -1,8 +1,8 @@
-"""Complete model
+"""chnaged relationship of contract from submission to startup
 
-Revision ID: 0efff68281e7
+Revision ID: 0d4cb6536701
 Revises: 
-Create Date: 2025-11-07 14:54:49.968895
+Create Date: 2025-11-07 18:24:22.347163
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '0efff68281e7'
+revision = '0d4cb6536701'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -65,17 +65,6 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('contracts',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('submission_id', sa.Integer(), nullable=False),
-    sa.Column('title', sa.String(length=200), nullable=False),
-    sa.Column('document_url', sa.String(length=500), nullable=False),
-    sa.Column('status', sa.String(length=50), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['submission_id'], ['submissions.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('submission_id')
-    )
     op.create_table('evaluation_tasks',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('submission_id', sa.Integer(), nullable=False),
@@ -101,19 +90,6 @@ def upgrade():
     sa.Column('final_decision', sa.String(length=100), nullable=True),
     sa.Column('overall_summary', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['submission_id'], ['submissions.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('submission_id')
-    )
-    op.create_table('scope_documents',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('submission_id', sa.Integer(), nullable=False),
-    sa.Column('title', sa.String(length=200), nullable=False),
-    sa.Column('version', sa.String(length=20), nullable=True),
-    sa.Column('status', sa.String(length=50), nullable=True),
-    sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['submission_id'], ['submissions.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('submission_id')
@@ -186,17 +162,16 @@ def upgrade():
     sa.PrimaryKeyConstraint('business_id'),
     sa.UniqueConstraint('startup_id')
     )
-    op.create_table('contract_signatories',
+    op.create_table('contracts',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('contract_id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=True),
-    sa.Column('email', sa.String(length=120), nullable=False),
-    sa.Column('name', sa.String(length=100), nullable=False),
+    sa.Column('startup_id', sa.Integer(), nullable=False),
+    sa.Column('title', sa.String(length=200), nullable=False),
+    sa.Column('document_url', sa.String(length=500), nullable=False),
     sa.Column('status', sa.String(length=50), nullable=True),
-    sa.Column('signed_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('startup_id')
     )
     op.create_table('experiments',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -275,17 +250,18 @@ def upgrade():
     sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('scope_comments',
+    op.create_table('scope_documents',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('document_id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('section_id', sa.String(length=100), nullable=False),
-    sa.Column('text', sa.Text(), nullable=False),
-    sa.Column('is_resolved', sa.Boolean(), nullable=True),
+    sa.Column('startup_id', sa.Integer(), nullable=False),
+    sa.Column('title', sa.String(length=200), nullable=False),
+    sa.Column('version', sa.String(length=20), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('content', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['document_id'], ['scope_documents.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('startup_id')
     )
     op.create_table('tasks',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -299,6 +275,18 @@ def upgrade():
     sa.Column('linked_to_type', sa.String(length=50), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('contract_signatories',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('contract_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('email', sa.String(length=120), nullable=False),
+    sa.Column('name', sa.String(length=100), nullable=False),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('signed_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('features',
@@ -395,6 +383,18 @@ def upgrade():
     sa.ForeignKeyConstraint(['round_id'], ['funding_rounds.round_id'], ),
     sa.PrimaryKeyConstraint('round_id', 'investor_id')
     )
+    op.create_table('scope_comments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('document_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('section_id', sa.String(length=100), nullable=False),
+    sa.Column('text', sa.Text(), nullable=False),
+    sa.Column('is_resolved', sa.Boolean(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['document_id'], ['scope_documents.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('marketing_content_calendar',
     sa.Column('calendar_id', sa.Integer(), nullable=False),
     sa.Column('campaign_id', sa.Integer(), nullable=False),
@@ -431,6 +431,7 @@ def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('marketing_content_items')
     op.drop_table('marketing_content_calendar')
+    op.drop_table('scope_comments')
     op.drop_table('round_investors')
     op.drop_table('product_metrics')
     op.drop_table('product_issues')
@@ -438,15 +439,16 @@ def downgrade():
     op.drop_table('next_funding_goals')
     op.drop_table('marketing_campaigns')
     op.drop_table('features')
+    op.drop_table('contract_signatories')
     op.drop_table('tasks')
-    op.drop_table('scope_comments')
+    op.drop_table('scope_documents')
     op.drop_table('products')
     op.drop_table('marketing_overview')
     op.drop_table('fundraise_details')
     op.drop_table('funding_rounds')
     op.drop_table('founders')
     op.drop_table('experiments')
-    op.drop_table('contract_signatories')
+    op.drop_table('contracts')
     op.drop_table('business_overview')
     op.drop_table('business_monthly_data')
     op.drop_table('artifacts')
@@ -454,10 +456,8 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_startups_slug'))
 
     op.drop_table('startups')
-    op.drop_table('scope_documents')
     op.drop_table('evaluations')
     op.drop_table('evaluation_tasks')
-    op.drop_table('contracts')
     op.drop_table('submissions')
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_users_email'))

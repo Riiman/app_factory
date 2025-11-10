@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Submission, Evaluation, User, SubmissionStatus } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
@@ -8,22 +7,18 @@ import EvaluationDetailModal from '../../components/admin/EvaluationDetailModal'
 
 interface SubmissionsViewProps {
   submissions: Submission[];
-  evaluations: Evaluation[];
-  users: User[];
   onUpdateStatus: (submissionId: number, status: SubmissionStatus) => void;
 }
 
-const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, evaluations, users, onUpdateStatus }) => {
+const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdateStatus }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const submissionsWithDetails = useMemo(() => {
-    return submissions.filter(s => s.status === SubmissionStatus.PENDING).map(sub => ({
+    return submissions.filter(s => s.status === 'PENDING').map(sub => ({
       ...sub,
-      user: users.find(u => u.id === sub.userId),
-      evaluation: evaluations.find(e => e.submissionId === sub.id)
-    })).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [submissions, users, evaluations]);
+    })).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+  }, [submissions]);
   
   const handleSelectSubmission = (submission: Submission) => {
     setSelectedSubmission(submission);
@@ -46,12 +41,12 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, evaluati
                   className={`w-full text-left p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${selectedSubmission?.id === sub.id ? 'bg-brand-primary/5' : ''}`}
                 >
                   <div className="flex justify-between items-center">
-                      <p className="font-semibold text-brand-text-primary">{sub.startupName}</p>
+                      <p className="font-semibold text-brand-text-primary">{sub.startup_name}</p>
                       <StatusBadge status={sub.status} />
                   </div>
-                  <p className="text-sm text-brand-text-secondary mt-1">by {sub.user?.fullName || 'Unknown User'}</p>
+                  <p className="text-sm text-brand-text-secondary mt-1">by {sub.user?.full_name || 'Unknown User'}</p>
                   <p className="text-xs text-slate-500 mt-1 truncate">{sub.user?.email}{sub.user?.mobile && ` • ${sub.user.mobile}`}</p>
-                  <p className="text-xs text-slate-400 mt-2">{new Date(sub.submittedAt).toLocaleString()}</p>
+                  <p className="text-xs text-slate-400 mt-2">{new Date(sub.submitted_at).toLocaleString()}</p>
                 </button>
               </li>
             ))}
@@ -62,12 +57,12 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, evaluati
             <div className="space-y-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-3xl font-bold text-brand-text-primary">{selectedDetails.startupName}</h2>
+                  <h2 className="text-3xl font-bold text-brand-text-primary">{selectedDetails.startup_name}</h2>
                   <div className="flex items-center space-x-2 mt-1 flex-wrap">
                     <StatusBadge status={selectedDetails.status} />
                     <span className="text-slate-400">&bull;</span>
                     <div className="flex items-center text-sm text-brand-text-secondary">
-                      <UserIcon className="mr-1.5 h-4 w-4" /> Submitted by <span className="font-semibold ml-1">{selectedDetails.user?.fullName}</span>
+                      <UserIcon className="mr-1.5 h-4 w-4" /> Submitted by <span className="font-semibold ml-1">{selectedDetails.user?.full_name}</span>
                     </div>
                     <span className="text-slate-400 mx-2">&bull;</span>
                      <a href={`mailto:${selectedDetails.user?.email}`} className="text-sm text-brand-primary hover:underline">{selectedDetails.user?.email}</a>
@@ -79,7 +74,7 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, evaluati
                      )}
                   </div>
                 </div>
-                {selectedDetails.status === SubmissionStatus.PENDING && (
+                {selectedDetails.status === 'PENDING' && (
                     <div className="flex space-x-2">
                         <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.REJECTED)} className="flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
                             <FileX className="mr-2 h-4 w-4" /> Reject
@@ -97,33 +92,43 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, evaluati
               <Card title="Submission Details">
                   <div className="space-y-4">
                       <div>
+                          <h4 className="font-semibold text-brand-text-primary">Founders and Inspiration</h4>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.founders_and_inspiration}</p>
+                      </div>
+                      <div>
                           <h4 className="font-semibold text-brand-text-primary">Problem Statement</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.problemStatement}</p>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.problem_statement}</p>
+                      </div>
+                      <div>
+                          <h4 className="font-semibold text-brand-text-primary">Who Experiences Problem</h4>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.who_experiences_problem}</p>
                       </div>
                        <div>
                           <h4 className="font-semibold text-brand-text-primary">Product/Service Idea</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.productServiceIdea}</p>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.product_service_idea}</p>
+                      </div>
+                      <div>
+                          <h4 className="font-semibold text-brand-text-primary">How Solves Problem</h4>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.how_solves_problem}</p>
+                      </div>
+                      <div>
+                          <h4 className="font-semibold text-brand-text-primary">Intended Users/Customers</h4>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.intended_users_customers}</p>
+                      </div>
+                      <div>
+                          <h4 className="font-semibold text-brand-text-primary">Main Competitors/Alternatives</h4>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.main_competitors_alternatives}</p>
+                      </div>
+                      <div>
+                          <h4 className="font-semibold text-brand-text-primary">How Stands Out</h4>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.how_stands_out}</p>
+                      </div>
+                      <div>
+                          <h4 className="font-semibold text-brand-text-primary">Startup Type</h4>
+                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.startup_type}</p>
                       </div>
                   </div>
               </Card>
-
-              {selectedDetails.evaluation && (
-                   <Card title="Evaluation" actions={
-                    <button onClick={() => setIsModalOpen(true)} className="flex items-center text-sm font-medium text-brand-primary hover:underline">
-                      <Eye className="mr-1 h-4 w-4" /> View Full Evaluation
-                    </button>
-                   }>
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">Evaluation Summary</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.evaluation.overallSummary}</p>
-                           <div className="flex justify-end items-baseline mt-4">
-                              <span className="text-sm text-brand-text-secondary mr-2">Overall Score:</span>
-                              <span className="text-3xl font-bold text-brand-primary">{selectedDetails.evaluation.overallScore}</span>
-                              <span className="text-brand-text-secondary">/10</span>
-                          </div>
-                      </div>
-                   </Card>
-              )}
 
             </div>
           ) : (
@@ -137,13 +142,6 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, evaluati
           )}
         </div>
       </div>
-      {selectedDetails && selectedDetails.evaluation && (
-        <EvaluationDetailModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          submission={selectedDetails}
-        />
-      )}
     </>
   );
 };

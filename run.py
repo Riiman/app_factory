@@ -1,5 +1,6 @@
 
-from app import create_app, db
+from app import create_app
+from app.extensions import db
 from app.models import User, Submission, Startup, Evaluation
 from app.config import Config # Import the Config class
 import os
@@ -19,10 +20,9 @@ def make_shell_context():
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
-    debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
     app.run(
         host='0.0.0.0',
         port=port,
-        debug=debug
+        debug=False
     )

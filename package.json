@@ -39,6 +39,7 @@
     ]
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
     "react-scripts": "^5.0.1"
   }
 }

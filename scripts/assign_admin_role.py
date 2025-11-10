@@ -13,7 +13,7 @@ def assign_admin_role(email):
     with app.app_context():
         user = User.query.filter_by(email=email).first()
         if user:
-            user.role = 'admin'
+            user.role = 'ADMIN'
             db.session.commit()
             print(f"User {email} has been assigned the admin role.")
         else:

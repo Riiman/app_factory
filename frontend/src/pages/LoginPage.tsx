@@ -38,7 +38,7 @@ const LoginPage: FC = () => {
 
       if (data.success) {
         localStorage.setItem('user', JSON.stringify(data.user));
-        handleNavigation(data.submission_status);
+        navigate(0); // Force a reload to trigger the auth hook cleanly.
       } else {
         setError(data.error || 'An unknown error occurred.');
       }

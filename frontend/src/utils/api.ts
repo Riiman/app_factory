@@ -8,13 +8,21 @@ class Api {
       'Content-Type': 'application/json',
       ...options.headers,
     };
-    const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
-    if (response.status === 401) {
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-      throw new Error('Session expired');
+    
+    const fullUrl = `${API_BASE_URL}${url}`;
+
+    try {
+      const response = await fetch(fullUrl, { ...options, headers, credentials: 'include' });
+      
+      if (response.status === 401) {
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        throw new Error('Session expired');
+      }
+      return response;
+    } catch (error) {
+      throw error;
     }
-    return response;
   }
 
   private async post(url: string, body: any, options: RequestInit = {}) {

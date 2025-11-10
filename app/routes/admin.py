@@ -1,10 +1,14 @@
 from flask import Blueprint, jsonify, request, session
-from app import db
+from app.extensions import db
 from app.models import Submission, Startup, User, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole, ScopeStatus, ContractStatus
 from app.utils.decorators import admin_required
 from sqlalchemy.exc import IntegrityError
 import re
 from datetime import datetime
+import json
+from app.tasks import analyze_submission_task
+
+print("--- DEBUG: Importing admin.py ---")
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -12,6 +16,7 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 @admin_required
 def get_all_submissions():
     submissions = Submission.query.all()
+    print(f"--- DEBUG: Found {len(submissions)} submissions in get_all_submissions ---")
     return jsonify({'success': True, 'submissions': [s.to_dict() for s in submissions]}), 200
 
 @admin_bp.route('/startups', methods=['GET'])
@@ -62,7 +67,11 @@ def update_submission_status(submission_id):
 
     submission.status = new_status
     
-    # If submission is approved, create a startup entry and initial evaluation tasks
+    # If submission is moved to review, trigger the analysis task
+    if new_status == SubmissionStatus.IN_REVIEW:
+        analyze_submission_task.delay(submission.id)
+
+    # If submission is approved, create a startup entry
     if new_status == SubmissionStatus.APPROVED:
         if not submission.startup:
             # Create Startup
@@ -76,26 +85,14 @@ def update_submission_status(submission_id):
             db.session.add(startup)
             db.session.flush() # Flush to get startup.id
 
-            # Create initial Evaluation Tasks
-            task1 = EvaluationTask(
-                submission_id=submission.id,
-                title="Submit Pitch Deck",
-                description="Upload your latest pitch deck in PDF format.",
-                due_date=datetime.utcnow().date()
-            )
-            task2 = EvaluationTask(
-                submission_id=submission.id,
-                title="Complete Founder Bio",
-                description="Fill out the founder biography form.",
-                due_date=datetime.utcnow().date()
-            )
-            db.session.add_all([task1, task2])
-
             # Create initial Scope Document
             scope_doc = ScopeDocument(
                 startup_id=startup.id,
-                product_scope="Define initial product features and roadmap for the first 3 months.",
-                gtm_scope="Identify target customer persona and primary acquisition channels.",
+                title=f"Scope Document for {startup.name}",
+                content=json.dumps({
+                    "product_scope": "Define initial product features and roadmap for the first 3 months.",
+                    "gtm_scope": "Identify target customer persona and primary acquisition channels."
+                }),
                 status=ScopeStatus.DRAFT
             )
             db.session.add(scope_doc)
@@ -103,7 +100,7 @@ def update_submission_status(submission_id):
             # Create initial Contract
             contract = Contract(
                 startup_id=startup.id,
-                title="Incubator Agreement",
+                title=f"Incubator Agreement for {startup.name}",
                 document_url="#", # Placeholder for actual document link
                 status=ContractStatus.DRAFT
             )
@@ -114,9 +111,35 @@ def update_submission_status(submission_id):
     except IntegrityError:
         db.session.rollback()
         return jsonify({'success': False, 'error': 'A startup already exists for this submission.'}), 409
-
     return jsonify({'success': True, 'submission': submission.to_dict()}), 200
+    
+    @admin_bp.route('/submissions/<int:submission_id>/tasks', methods=['POST'])
+    @admin_required
+    def create_evaluation_task(submission_id):
+        submission = Submission.query.get_or_404(submission_id)
+        data = request.get_json()
+    
+        title = data.get('title')
+        description = data.get('description')
+        due_date_str = data.get('due_date')
+    
+        if not title:
+            return jsonify({'success': False, 'error': 'Task title is required'}), 400
+    
+        due_date = datetime.fromisoformat(due_date_str) if due_date_str else None
+    
+        task = EvaluationTask(
+            submission_id=submission.id,
+            title=title,
+            description=description,
+            due_date=due_date
+        )
+        db.session.add(task)
+        db.session.commit()
+    
+        return jsonify({'success': True, 'task': task.to_dict()}), 201
 
+print("--- DEBUG: Defining get_all_users route ---")
 @admin_bp.route('/users', methods=['GET'])
 @admin_required
 def get_all_users():
@@ -204,3 +227,4 @@ def update_contract(startup_id):
 
     db.session.commit()
     return jsonify({'success': True, 'contract': startup.contract.to_dict()}), 200
+

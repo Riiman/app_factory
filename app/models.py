@@ -1,4 +1,4 @@
-from app import db
+from app.extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from enum import Enum
@@ -245,7 +245,7 @@ class User(db.Model):
             'email': self.email,
             'full_name': self.full_name,
             'is_verified': self.is_verified,
-            'role': self.role.value,
+            'role': self.role.name,
             'created_at': self.created_at.isoformat(),
             'startup_id': startup.id if startup else None
         }
@@ -869,6 +869,9 @@ class EvaluationTask(db.Model):
 class Submission(db.Model):
     """Represents a startup submission made by a user, containing initial details and status."""
     __tablename__ = 'submissions'
+    __table_args__ = (
+        db.UniqueConstraint('user_id', name='uq_user_submission'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -895,13 +898,12 @@ class Submission(db.Model):
     
     # New relationships for pre-admission stages
     evaluation_tasks = db.relationship('EvaluationTask', order_by=EvaluationTask.id, back_populates='submission', cascade="all, delete-orphan")
-    scope_document = db.relationship('ScopeDocument', uselist=False, back_populates='submission', cascade="all, delete-orphan")
-    contract = db.relationship('Contract', uselist=False, back_populates='submission', cascade="all, delete-orphan")
 
     def to_dict(self):
-        return {
+        data = {
             'id': self.id,
             'user_id': self.user_id,
+            'user': self.user.to_dict(),
             'startup_name': self.startup_name,
             'founders_and_inspiration': self.founders_and_inspiration,
             'problem_statement': self.problem_statement,
@@ -912,14 +914,16 @@ class Submission(db.Model):
             'main_competitors_alternatives': self.main_competitors_alternatives,
             'how_stands_out': self.how_stands_out,
             'startup_type': self.startup_type,
-            'status': self.status.value,
-            'submitted_at': self.submitted_at.isoformat()
+            'status': self.status.name,
+            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
+            'evaluation': self.evaluation.to_dict() if self.evaluation else None
         }
-
+        return data
+    
 class ScopeDocument(db.Model):
     __tablename__ = 'scope_documents'
     id = db.Column(db.Integer, primary_key=True)
-    submission_id = db.Column(db.Integer, db.ForeignKey('submissions.id'), unique=True, nullable=False)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), unique=True, nullable=False)
     title = db.Column(db.String(200), nullable=False)
     version = db.Column(db.String(20), default='1.0')
     status = db.Column(db.String(50), default='Pending Review') # e.g., Pending Review, Accepted, Rejected
@@ -927,13 +931,13 @@ class ScopeDocument(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    submission = db.relationship('Submission', back_populates='scope_document', uselist=False)
+    startup = db.relationship('Startup', back_populates='scope_document')
     comments = db.relationship('ScopeComment', back_populates='document', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
             'id': self.id,
-            'submission_id': self.submission_id,
+            'startup_id': self.startup_id,
             'title': self.title,
             'version': self.version,
             'status': self.status,
@@ -971,19 +975,19 @@ class ScopeComment(db.Model):
 class Contract(db.Model):
     __tablename__ = 'contracts'
     id = db.Column(db.Integer, primary_key=True)
-    submission_id = db.Column(db.Integer, db.ForeignKey('submissions.id'), unique=True, nullable=False)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), unique=True, nullable=False)
     title = db.Column(db.String(200), nullable=False)
     document_url = db.Column(db.String(500), nullable=False) # Link to e-sign platform
     status = db.Column(db.String(50), default='Out for Signature') # e.g., Out for Signature, Partially Signed, Completed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    submission = db.relationship('Submission', back_populates='contract', uselist=False)
+    startup = db.relationship('Startup', back_populates='contract')
     signatories = db.relationship('ContractSignatory', back_populates='contract', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
             'id': self.id,
-            'submission_id': self.submission_id,
+            'startup_id': self.startup_id,
             'title': self.title,
             'document_url': self.document_url,
             'status': self.status,
@@ -1017,8 +1021,6 @@ class ContractSignatory(db.Model):
 
 # Add back-population relationships to Submission model
 Submission.evaluation_tasks = db.relationship('EvaluationTask', order_by=EvaluationTask.id, back_populates='submission', cascade="all, delete-orphan")
-Submission.scope_document = db.relationship('ScopeDocument', uselist=False, back_populates='submission', cascade="all, delete-orphan")
-Submission.contract = db.relationship('Contract', uselist=False, back_populates='submission', cascade="all, delete-orphan")
 
 class Evaluation(db.Model):
     """Stores the detailed evaluation results for a startup submission."""
@@ -1041,3 +1043,19 @@ class Evaluation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     submission = db.relationship('Submission', back_populates='evaluation')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'submission_id': self.submission_id,
+            'problem_analysis': self.problem_analysis,
+            'solution_analysis': self.solution_analysis,
+            'market_analysis': self.market_analysis,
+            'growth_analysis': self.growth_analysis,
+            'competitor_analysis': self.competitor_analysis,
+            'risks_analysis': self.risks_analysis,
+            'overall_score': self.overall_score,
+            'final_decision': self.final_decision,
+            'overall_summary': self.overall_summary,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

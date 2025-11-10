@@ -114,7 +114,7 @@ export interface ScopeOfEngagement {
 export interface User {
   id: number;
   email: string;
-  fullName: string;
+  full_name: string;
   role: UserRole;
   createdAt: string;
   mobile?: string;
@@ -122,12 +122,22 @@ export interface User {
 
 export interface Submission {
   id: number;
-  userId: number;
-  startupName: string;
-  problemStatement: string;
-  productServiceIdea: string;
+  user_id: number;
+  user: User;
+  startup_name: string;
+  founders_and_inspiration: string;
+  problem_statement: string;
+  who_experiences_problem: string;
+  product_service_idea: string;
+  how_solves_problem: string;
+  intended_users_customers: string;
+  main_competitors_alternatives: string;
+  how_stands_out: string;
+  startup_type: string;
   status: SubmissionStatus;
-  submittedAt: string;
+  submitted_at: string;
+  raw_chat_data?: Record<string, any>;
+  evaluation?: Evaluation;
 }
 
 export interface Evaluation {

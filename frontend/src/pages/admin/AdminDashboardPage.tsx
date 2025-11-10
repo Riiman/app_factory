@@ -33,6 +33,7 @@ const AdminDashboardPage: React.FC = () => {
         api.getAllStartups(),
         api.getAllUsers(),
       ]);
+      console.log("Fetched Submissions:", JSON.stringify(fetchedSubmissions, null, 2));
       setSubmissions(fetchedSubmissions);
       setStartups(fetchedStartups);
       setUsers(fetchedUsers);
@@ -182,7 +183,7 @@ const AdminDashboardPage: React.FC = () => {
         case 'overview':
             return <Overview startups={startups} submissions={submissions} />;
         case 'submissions':
-            return <SubmissionsView submissions={submissions} evaluations={evaluations} users={users} onUpdateStatus={handleUpdateSubmissionStatus} />;
+            return <SubmissionsView submissions={submissions} onUpdateStatus={handleUpdateSubmissionStatus} />;
         case 'in-review':
             return <InReviewView submissions={submissions} evaluations={evaluations} users={users} startups={startups} onUpdateStatus={handleUpdateSubmissionStatus} onAddTask={handleAddTask} />;
         case 'scoping':
