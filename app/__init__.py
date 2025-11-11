@@ -42,11 +42,15 @@ def create_app(config_class=Config):
         from .routes.startups import startups_bp
         from .routes.stages import stages_bp
         from .routes.admin import admin_bp
+        from .routes.admin_scope import admin_scope_bp
+        from .routes.admin_contract import admin_contract_bp
         app.register_blueprint(auth_bp)
         app.register_blueprint(submissions_bp)
         app.register_blueprint(startups_bp)
         app.register_blueprint(stages_bp)
         app.register_blueprint(admin_bp)
+        app.register_blueprint(admin_scope_bp)
+        app.register_blueprint(admin_contract_bp)
 
         # Import tasks so that they are registered with Celery
         from . import tasks

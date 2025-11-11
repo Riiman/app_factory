@@ -21,6 +21,7 @@ export enum StartupStage {
   EVALUATION = 'EVALUATION',
   SCOPING = 'SCOPING',
   CONTRACT = 'CONTRACT',
+  ADMITTED = 'ADMITTED',
   IDEA = 'IDEA',
   MVP = 'MVP',
   GROWTH = 'GROWTH',
@@ -86,13 +87,36 @@ export enum ContractStatus {
     SIGNED = 'SIGNED',
 }
 
+export interface ContractComment {
+  id: number;
+  contract_id: number;
+  user_id: number;
+  author_name: string;
+  text: string;
+  created_at: string;
+}
+
+export interface ContractSignatory {
+  id: number;
+  contract_id: number;
+  user_id?: number; // Optional, if it's an external signatory
+  email: string;
+  name: string;
+  status: 'Not Signed' | 'Signed';
+  signed_at?: string;
+}
+
 export interface Contract {
     id: number;
-    startupId: number;
-    documentUrl: string;
+    startup_id: number;
+    title: string;
+    content?: string; // New field for generated contract text
+    document_url?: string; // Made optional as content will be primary
     status: ContractStatus;
-    sentAt?: string;
-    signedAt?: string;
+    sent_at?: string;
+    signed_at?: string;
+    signatories: ContractSignatory[];
+    comments: ContractComment[]; // New field for contract comments
 }
 
 export interface Comment {
@@ -102,13 +126,16 @@ export interface Comment {
   createdAt: string;
 }
 
-export interface ScopeOfEngagement {
+export interface ScopeDocument {
   id: number;
-  startupId: number;
-  productScope: string;
-  gtmScope: string;
+  startup_id: number;
+  title: string;
+  version: string;
   status: ScopeStatus;
+  content: string;
   comments: Comment[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface User {
@@ -142,17 +169,17 @@ export interface Submission {
 
 export interface Evaluation {
   id: number;
-  submissionId: number;
-  problemAnalysis: Record<string, any>;
-  solutionAnalysis: Record<string, any>;
-  marketAnalysis: Record<string, any>;
-  growthAnalysis: Record<string, any>;
-  competitorAnalysis: Record<string, any>;
-  risksAnalysis: Record<string, any>;
-  overallScore: number;
-  finalDecision: string;
-  overallSummary: string;
-  createdAt: string;
+  submission_id: number;
+  problem_analysis: Record<string, any>;
+  solution_analysis: Record<string, any>;
+  market_analysis: Record<string, any>;
+  growth_potential: Record<string, any>;
+  competitor_analysis: Record<string, any>;
+  risk_analysis: Record<string, any>;
+  overall_score: number;
+  final_decision: string;
+  overall_summary: string;
+  created_at: string;
 }
 
 export interface ProductMetric {
@@ -299,20 +326,19 @@ export interface Startup {
   name: string;
   slug: string;
   status: StartupStatus;
-  currentStage: StartupStage;
-  nextMilestone: string;
-  createdAt: string;
-  updatedAt: string;
+  current_stage: StartupStage;
+  next_milestone: string;
+  created_at: string;
+  updated_at: string;
   submission: Submission;
-  evaluation: Evaluation;
   founders: Founder[];
   products: Product[];
-  monthlyData: BusinessMonthlyData[];
-  fundingRounds: FundingRound[];
-  marketingCampaigns: MarketingCampaign[];
+  business_monthly_data: BusinessMonthlyData[];
+  funding_rounds: FundingRound[];
+  marketing_campaigns: MarketingCampaign[];
   tasks: Task[];
   experiments: Experiment[];
   artifacts: Artifact[];
-  scopeOfEngagement?: ScopeOfEngagement;
+  scope_document?: ScopeDocument;
   contract?: Contract;
 }

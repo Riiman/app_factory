@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Submission, Evaluation, User, SubmissionStatus, Startup, Scope } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
@@ -8,20 +8,40 @@ import { FileClock, FileCheck, FileX, User as UserIcon, PlusCircle, CheckSquare 
 interface InReviewViewProps {
   submissions: Submission[];
   users: User[];
+  startups: Startup[];
   onUpdateStatus: (submissionId: number, status: SubmissionStatus) => void;
   onAddTask: (startupId: number, taskName: string, scope: Scope) => void;
 }
 
-const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, onUpdateStatus, onAddTask }) => {
+const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startups, onUpdateStatus, onAddTask }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [newTaskName, setNewTaskName] = useState('');
 
   const submissionsWithDetails = useMemo(() => {
-    return submissions.filter(s => s.status === SubmissionStatus.IN_REVIEW).map(sub => ({
-      ...sub,
-      user: users.find(u => u.id === sub.user_id),
-    })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [submissions, users]);
+    const inReviewSubs = submissions.filter(s => s.status === SubmissionStatus.IN_REVIEW);
+    return inReviewSubs.map(sub => {
+      const user = users.find(u => u.id === sub.user_id);
+      const startup = startups.find(st => st.submission_id === sub.id);
+      return {
+        ...sub,
+        user,
+        startup,
+      };
+    }).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+  }, [submissions, users, startups]);
+
+  useEffect(() => {
+    // If there's no selected submission but there are submissions in the list,
+    // default to selecting the first one.
+    if (!selectedSubmission && submissionsWithDetails.length > 0) {
+      setSelectedSubmission(submissionsWithDetails[0]);
+    }
+    // If a submission was selected, but it's no longer in the list (e.g., status changed),
+    // clear the selection or select the first one again.
+    if (selectedSubmission && !submissionsWithDetails.find(s => s.id === selectedSubmission.id)) {
+      setSelectedSubmission(submissionsWithDetails.length > 0 ? submissionsWithDetails[0] : null);
+    }
+  }, [submissionsWithDetails, selectedSubmission]);
   
   const handleSelectSubmission = (submission: Submission) => {
     setSelectedSubmission(submission);

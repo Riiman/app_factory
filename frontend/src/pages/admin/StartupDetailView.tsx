@@ -28,7 +28,15 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 
 const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, onAddTask, onAddExperiment, onAddArtifact }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const latestMonthData = startup.monthlyData.length > 0 ? startup.monthlyData[startup.monthlyData.length - 1] : null;
+  const latestUpdate = startup.business_monthly_data?.length > 0 
+    ? new Date(Math.max(...startup.business_monthly_data.map(d => new Date(d.month_start).getTime()))).toLocaleDateString()
+    : 'N/A';
+
+  const latestMonthData = startup.business_monthly_data?.length > 0
+    ? startup.business_monthly_data.reduce((latest, current) => {
+        return new Date(current.month_start).getTime() > new Date(latest.month_start).getTime() ? current : latest;
+      })
+    : null;
 
   const renderContent = () => {
     switch (activeTab) {
@@ -37,11 +45,11 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
       case 'products':
         return <ProductsTab products={startup.products} />;
       case 'business':
-        return <BusinessTab monthlyData={startup.monthlyData} />;
+        return <BusinessTab monthlyData={startup.business_monthly_data} />;
       case 'fundraising':
-        return <FundraisingTab fundingRounds={startup.fundingRounds} />;
+        return <FundraisingTab fundingRounds={startup.funding_rounds} />;
       case 'marketing':
-        return <MarketingTab campaigns={startup.marketingCampaigns} />;
+        return <MarketingTab campaigns={startup.marketing_campaigns} />;
       case 'workspace':
         return <WorkspaceTab startupId={startup.id} tasks={startup.tasks} experiments={startup.experiments} artifacts={startup.artifacts} onAddTask={onAddTask} onAddExperiment={onAddExperiment} onAddArtifact={onAddArtifact} />;
       default:
@@ -64,12 +72,12 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
             <div className="flex items-center space-x-2 mt-1">
                 <StatusBadge status={startup.status} />
                 <span className="text-slate-400">&bull;</span>
-                <span className="text-sm text-brand-text-secondary">Stage: <span className="font-semibold">{startup.currentStage}</span></span>
+                <span className="text-sm text-brand-text-secondary">Stage: <span className="font-semibold">{startup.current_stage}</span></span>
             </div>
         </div>
         <div className="text-right">
             <p className="text-sm text-brand-text-secondary">Next Milestone</p>
-            <p className="font-semibold text-brand-primary">{startup.nextMilestone}</p>
+            <p className="font-semibold text-brand-primary">{startup.next_milestone}</p>
         </div>
       </div>
       
@@ -91,23 +99,23 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
 
 const OverviewTab: React.FC<{ startup: Startup, latestMonthData: any }> = ({ startup, latestMonthData }) => (
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="lg-col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard icon={<DollarSign size={20} />} label="Latest MRR" value={`$${latestMonthData?.mrr.toLocaleString() || 0}`} />
-        <StatCard icon={<Users size={20} />} label="Total Customers" value={latestMonthData?.totalCustomers || 0} />
-        <StatCard icon={<TrendingDown size={20} />} label="Latest Net Burn" value={`$${latestMonthData?.netBurn.toLocaleString() || 0}`} />
+        <StatCard icon={<Users size={20} />} label="Total Customers" value={latestMonthData?.total_customers || 0} />
+        <StatCard icon={<TrendingDown size={20} />} label="Latest Net Burn" value={`$${latestMonthData?.net_burn.toLocaleString() || 0}`} />
     </div>
     <Card title="Business Performance" className="lg:col-span-3">
-        <BusinessPerformanceChart data={startup.monthlyData} />
+        <BusinessPerformanceChart data={startup.business_monthly_data} />
     </Card>
     <Card title="Submission & Evaluation" className="lg:col-span-2">
         <h4 className="font-semibold text-brand-text-primary">Submission</h4>
-        <p className="text-sm text-brand-text-secondary mt-1">{startup.submission.problemStatement}</p>
+        <p className="text-sm text-brand-text-secondary mt-1">{startup.submission.problem_statement}</p>
         <div className="my-4 border-t border-slate-200"></div>
         <h4 className="font-semibold text-brand-text-primary">Evaluation Summary</h4>
-        <p className="text-sm text-brand-text-secondary mt-1">{startup.evaluation.overallSummary}</p>
+        <p className="text-sm text-brand-text-secondary mt-1">{startup.submission.evaluation.overall_summary}</p>
         <div className="flex justify-end items-baseline mt-2">
             <span className="text-sm text-brand-text-secondary mr-2">Overall Score:</span>
-            <span className="text-2xl font-bold text-brand-primary">{startup.evaluation.overallScore}</span>
+            <span className="text-2xl font-bold text-brand-primary">{startup.submission.evaluation.overall_score}</span>
             <span className="text-brand-text-secondary">/10</span>
         </div>
     </Card>

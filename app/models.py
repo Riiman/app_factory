@@ -29,13 +29,13 @@ class StartupStatus(Enum):
 
 class StartupStage(Enum):
     """Represents the current stage of a startup in its lifecycle within the program."""
-    EVALUATION = "evaluation"
-    SCOPE = "scope"
-    CONTRACT = "contract"
-    ADMITTED = "admitted"
-    IDEA = "idea"
-    MVP = "mvp"
-    GROWTH = "growth"
+    EVALUATION = "EVALUATION"
+    SCOPING = "SCOPING"
+    CONTRACT = "CONTRACT"
+    ADMITTED = "ADMITTED"
+    IDEA = "IDEA"
+    MVP = "MVP"
+    GROWTH = "GROWTH"
 
     def __str__(self):
         return self.value
@@ -270,7 +270,7 @@ class Startup(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = db.relationship('User', back_populates='startups')
-    submission = db.relationship('Submission', backref='startup', uselist=False)
+    submission = db.relationship('Submission', back_populates='startup', uselist=False)
 
     # Existing relationships
     products = db.relationship('Product', back_populates='startup', lazy=True, cascade='all, delete-orphan')
@@ -304,7 +304,7 @@ class Startup(db.Model):
             'slug': self.slug,
             'status': str(self.status),
             'overall_progress': self.overall_progress,
-            'current_stage': str(self.current_stage),
+            'current_stage': self.current_stage.value if self.current_stage else None,
             'next_milestone': self.next_milestone,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -312,6 +312,7 @@ class Startup(db.Model):
         }
         if include_relations:
             data.update({
+                'submission': self.submission.to_dict() if self.submission else None,
                 'founders': [founder.to_dict() for founder in self.founders],
                 'products': [product.to_dict() for product in self.products],
                 'tasks': [task.to_dict() for task in self.tasks],
@@ -896,6 +897,9 @@ class Submission(db.Model):
     user = db.relationship('User', back_populates='submissions')
     evaluation = db.relationship('Evaluation', back_populates='submission', uselist=False, cascade='all, delete-orphan')
     
+    # In Submission model
+    startup = db.relationship('Startup', back_populates='submission', uselist=False)
+    
     # New relationships for pre-admission stages
     evaluation_tasks = db.relationship('EvaluationTask', order_by=EvaluationTask.id, back_populates='submission', cascade="all, delete-orphan")
 
@@ -977,21 +981,50 @@ class Contract(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), unique=True, nullable=False)
     title = db.Column(db.String(200), nullable=False)
-    document_url = db.Column(db.String(500), nullable=False) # Link to e-sign platform
-    status = db.Column(db.String(50), default='Out for Signature') # e.g., Out for Signature, Partially Signed, Completed
+    content = db.Column(db.Text, nullable=True) # To store the generated contract
+    document_url = db.Column(db.String(500), nullable=True) # Link to e-sign platform
+    status = db.Column(db.Enum(ContractStatus), default=ContractStatus.DRAFT)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_at = db.Column(db.DateTime, nullable=True)
+    signed_at = db.Column(db.DateTime, nullable=True)
     
     startup = db.relationship('Startup', back_populates='contract')
     signatories = db.relationship('ContractSignatory', back_populates='contract', cascade="all, delete-orphan")
+    comments = db.relationship('ContractComment', back_populates='contract', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
             'id': self.id,
             'startup_id': self.startup_id,
             'title': self.title,
+            'content': self.content,
             'document_url': self.document_url,
-            'status': self.status,
+            'status': self.status.name,
             'signatories': [s.to_dict() for s in self.signatories],
+            'comments': [c.to_dict() for c in self.comments],
+            'created_at': self.created_at.isoformat(),
+            'sent_at': self.sent_at.isoformat() if self.sent_at else None,
+            'signed_at': self.signed_at.isoformat() if self.signed_at else None,
+        }
+
+class ContractComment(db.Model):
+    __tablename__ = 'contract_comments'
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    contract = db.relationship('Contract', back_populates='comments')
+    author = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'contract_id': self.contract_id,
+            'user_id': self.user_id,
+            'author_name': self.author.full_name,
+            'text': self.text,
             'created_at': self.created_at.isoformat(),
         }
 

@@ -34,6 +34,7 @@ const AdminDashboardPage: React.FC = () => {
         api.getAllUsers(),
       ]);
       console.log("Fetched Submissions:", JSON.stringify(fetchedSubmissions, null, 2));
+      console.log("Fetched Startups:", JSON.stringify(fetchedStartups, null, 2)); // Add this line
       setSubmissions(fetchedSubmissions);
       setStartups(fetchedStartups);
       setUsers(fetchedUsers);
@@ -134,9 +135,7 @@ const AdminDashboardPage: React.FC = () => {
 
   const handleUpdateScopeStatus = useCallback(async (startupId: number, status: ScopeStatus) => {
     try {
-      // This endpoint needs to be created on the backend to update just the status of the scope document
-      // For now, re-using the stage update endpoint as a placeholder
-      // await api.updateScopeStatus(startupId, status.valueOf());
+      await api.updateScopeStatus(startupId, status.valueOf());
       await fetchData();
     } catch (err) {
       console.error("Failed to update scope status:", err);
@@ -154,6 +153,16 @@ const AdminDashboardPage: React.FC = () => {
     }
   }, [fetchData]);
 
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+      window.location.href = '/login';
+    } catch (err) {
+      console.error("Logout failed:", err);
+      // Optionally, show an error message to the user
+    }
+  };
+
   const handleActivateStartup = useCallback(async (startupId: number) => {
     try {
       await api.updateStartupStage(startupId, StartupStage.ADMITTED.valueOf()); // Move to ADMITTED stage
@@ -166,13 +175,13 @@ const AdminDashboardPage: React.FC = () => {
 
   const pendingSubmissionsCount = submissions.filter(s => s.status === SubmissionStatus.PENDING).length;
   const inReviewSubmissionsCount = submissions.filter(s => s.status === SubmissionStatus.IN_REVIEW).length;
-  const scopingStartupsCount = startups.filter(s => s.currentStage === StartupStage.SCOPE).length;
-  const contractStartupsCount = startups.filter(s => s.currentStage === StartupStage.CONTRACT).length;
+  const scopingStartupsCount = startups.filter(s => s.current_stage === StartupStage.SCOPING || s.current_stage === StartupStage.CONTRACT).length;
+  const contractStartupsCount = startups.filter(s => s.current_stage === StartupStage.CONTRACT).length;
   const activeStartups = startups.filter(s => 
-    s.currentStage !== StartupStage.EVALUATION && 
-    s.currentStage !== StartupStage.SCOPE && 
-    s.currentStage !== StartupStage.CONTRACT && 
-    s.submission.status === SubmissionStatus.APPROVED
+    s.current_stage !== StartupStage.EVALUATION && 
+    s.current_stage !== StartupStage.SCOPING && 
+    s.current_stage !== StartupStage.CONTRACT && 
+    s.submission && s.submission.status === SubmissionStatus.APPROVED
   );
 
   const renderContent = () => {
@@ -187,9 +196,9 @@ const AdminDashboardPage: React.FC = () => {
         case 'in-review':
             return <InReviewView submissions={submissions} evaluations={evaluations} users={users} startups={startups} onUpdateStatus={handleUpdateSubmissionStatus} onAddTask={handleAddTask} />;
         case 'scoping':
-            return <ScopingView startupsInScoping={startups.filter(s => s.currentStage === StartupStage.SCOPE)} onUpdateScope={handleUpdateScope} onAddComment={handleAddScopeComment} onUpdateStatus={handleUpdateScopeStatus} />;
+            return <ScopingView startupsInScoping={startups.filter(s => s.current_stage === StartupStage.SCOPING || s.current_stage === StartupStage.CONTRACT)} onUpdateScope={handleUpdateScope} onAddComment={handleAddScopeComment} onUpdateStatus={handleUpdateScopeStatus} />;
         case 'contract':
-            return <ContractView startupsInContract={startups.filter(s => s.currentStage === StartupStage.CONTRACT)} onUpdateContract={handleUpdateContract} onActivateStartup={handleActivateStartup} />;
+            return <ContractView startupsInContract={startups.filter(s => s.current_stage === StartupStage.CONTRACT)} onUpdateContract={handleUpdateContract} onActivateStartup={handleActivateStartup} fetchData={fetchData} />;
         case 'startups':
             if (selectedStartup) {
                 return <StartupDetailView startup={selectedStartup} onBack={handleClearSelectedStartup} onAddTask={handleAddTask} onAddExperiment={handleAddExperiment} onAddArtifact={handleAddArtifact} />;
@@ -231,7 +240,7 @@ const AdminDashboardPage: React.FC = () => {
           </div>
         </nav>
         <div className="p-2">
-            <button className="w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center text-brand-text-secondary hover:bg-slate-100 transition-colors">
+            <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center text-brand-text-secondary hover:bg-slate-100 transition-colors">
                 <LogOut className="mr-3 h-4 w-4" />
                 Logout
             </button>

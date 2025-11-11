@@ -1,39 +1,90 @@
-
-import React, { useState, useEffect } from 'react';
-import { Startup, ContractStatus } from '../../types/dashboard-types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Startup, ContractStatus, ContractComment, ContractSignatory } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
-import { FileText, Save, Send, CheckCircle, Rocket } from 'lucide-react';
+import { FileText, Send, CheckCircle, UserPlus, MessageSquare } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import api from '../../utils/api';
 
 interface ContractViewProps {
   startupsInContract: Startup[];
   onUpdateContract: (startupId: number, url: string, status: ContractStatus) => void;
   onActivateStartup: (startupId: number) => void;
+  fetchData: () => Promise<void>; // Add fetchData to props
 }
 
-const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdateContract, onActivateStartup }) => {
+const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdateContract, onActivateStartup, fetchData }) => {
   const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
-  const [documentUrl, setDocumentUrl] = useState('');
+  const [newSignatoryName, setNewSignatoryName] = useState('');
+  const [newSignatoryEmail, setNewSignatoryEmail] = useState('');
+  const [newComment, setNewComment] = useState('');
 
   useEffect(() => {
-    if (selectedStartup?.contract) {
-      setDocumentUrl(selectedStartup.contract.documentUrl);
-    } else {
-      setDocumentUrl('');
+    // When startupsInContract changes, try to keep the selected startup if it still exists
+    if (selectedStartup) {
+      const updatedSelected = startupsInContract.find(s => s.id === selectedStartup.id);
+      setSelectedStartup(updatedSelected || null);
     }
-  }, [selectedStartup]);
-  
+  }, [startupsInContract]);
+
   const handleSelectStartup = (startup: Startup) => {
     setSelectedStartup(startup);
-  };
-
-  const handleStatusUpdate = (status: ContractStatus) => {
-    if (selectedStartup) {
-      onUpdateContract(selectedStartup.id, documentUrl, status);
+    if (startup.contract) {
+      console.log(`--- [FRONTEND LOG] Selected Startup Contract Status: ${startup.contract.status} ---`);
     }
   };
 
-  const isSigned = selectedStartup?.contract?.status === ContractStatus.SIGNED;
+  const handleAddSignatory = useCallback(async () => {
+    if (selectedStartup && newSignatoryName.trim() && newSignatoryEmail.trim()) {
+      try {
+        await api.addContractSignatory(selectedStartup.id, newSignatoryName.trim(), newSignatoryEmail.trim());
+        setNewSignatoryName('');
+        setNewSignatoryEmail('');
+        fetchData(); // Re-fetch data to update the selected startup with new signatory
+      } catch (error) {
+        console.error("Failed to add signatory:", error);
+        alert("Failed to add signatory.");
+      }
+    }
+  }, [selectedStartup, newSignatoryName, newSignatoryEmail, fetchData]);
+
+  const handleAddComment = useCallback(async () => {
+    if (selectedStartup && newComment.trim()) {
+      try {
+        await api.addContractComment(selectedStartup.id, newComment.trim());
+        setNewComment('');
+        fetchData(); // Re-fetch data to update the selected startup with new comment
+      } catch (error) {
+        console.error("Failed to add comment:", error);
+        alert("Failed to add comment.");
+      }
+    }
+  }, [selectedStartup, newComment, fetchData]);
+
+  const handleSendContract = useCallback(async () => {
+    if (selectedStartup) {
+      try {
+        await api.updateContractStatus(selectedStartup.id, ContractStatus.SENT.valueOf());
+        fetchData(); // Re-fetch data to update contract status
+      } catch (error) {
+        console.error("Failed to send contract:", error);
+        alert("Failed to send contract.");
+      }
+    }
+  }, [selectedStartup, fetchData]);
+
+  const handleMarkAsSigned = useCallback(async () => {
+    if (selectedStartup) {
+      try {
+        await api.updateContractStatus(selectedStartup.id, ContractStatus.SIGNED.valueOf());
+        fetchData(); // Re-fetch data to update contract status
+        onActivateStartup(selectedStartup.id); // Move startup to ADMITTED stage
+      } catch (error) {
+        console.error("Failed to mark contract as signed:", error);
+        alert("Failed to mark contract as signed.");
+      }
+    }
+  }, [selectedStartup, onActivateStartup, fetchData]);
 
   return (
     <div className="flex h-full">
@@ -48,7 +99,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
                 onClick={() => handleSelectStartup(startup)}
                 className={`w-full text-left p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${selectedStartup?.id === startup.id ? 'bg-brand-primary/5' : ''}`}
               >
-                 <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center">
                     <p className="font-semibold text-brand-text-primary">{startup.name}</p>
                     {startup.contract && <StatusBadge status={startup.contract.status} />}
                 </div>
@@ -61,80 +112,116 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
       </div>
       <div className="w-2/3 h-full overflow-y-auto p-8">
         {selectedStartup && selectedStartup.contract ? (
-            <div className="space-y-6">
-                 <div>
-                    <h2 className="text-3xl font-bold text-brand-text-primary">{selectedStartup.name}</h2>
-                    <p className="text-brand-text-secondary mt-1">Manage contract and activate startup.</p>
+          <div className="space-y-6">
+            <div>
+                <h2 className="text-3xl font-bold text-brand-text-primary">{selectedStartup.name}</h2>
+                <p className="text-brand-text-secondary mt-1">Review and finalize the incubator contract.</p>
+            </div>
+
+            <Card title="Contract Document">
+                <div className="prose max-w-none p-4 border border-slate-300 rounded-md bg-slate-50">
+                    {selectedStartup.contract.content ? (
+                        <ReactMarkdown>{selectedStartup.contract.content}</ReactMarkdown>
+                    ) : (
+                        <p className="text-slate-500">No contract content generated yet. Accept the scope to generate the contract.</p>
+                    )}
                 </div>
-
-                <Card title="Founders">
-                  <ul>
-                  {selectedStartup.founders.map(founder => (
-                    <li key={founder.id} className="flex items-center space-x-3 py-2 border-b last:border-0 border-slate-100">
-                        <div className="w-10 h-10 rounded-full bg-brand-secondary/20 text-brand-secondary flex items-center justify-center font-bold">
-                            {founder.name.charAt(0)}
-                        </div>
-                        <div>
-                            <p className="font-semibold text-brand-text-primary">{founder.name} <span className="text-sm font-normal text-slate-500">- {founder.role}</span></p>
-                            <a href={`mailto:${founder.email}`} className="text-sm text-brand-primary hover:underline">{founder.email}</a>
-                            {founder.mobile && <a href={`tel:${founder.mobile}`} className="text-sm text-brand-text-secondary hover:underline block">{founder.mobile}</a>}
-                        </div>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-
-                <Card title="Contract Details">
-                     <div>
-                        <label className="text-sm font-medium text-brand-text-primary" htmlFor="contract-url">Contract Document URL</label>
-                        <input
-                            id="contract-url"
-                            type="text"
-                            value={documentUrl}
-                            onChange={(e) => setDocumentUrl(e.target.value)}
-                            className="mt-1 w-full p-2 border border-slate-300 rounded-md text-sm"
-                            placeholder="https://example.com/contract.pdf"
-                        />
-                    </div>
-                    <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                        <div>
-                            <span className="text-sm font-medium mr-2">Status:</span>
-                            <StatusBadge status={selectedStartup.contract.status} />
-                        </div>
-                        <div className="flex space-x-2">
-                             <button onClick={() => handleStatusUpdate(ContractStatus.DRAFT)} className="flex items-center px-4 py-2 text-sm font-medium text-brand-text-primary bg-white border border-slate-300 rounded-md hover:bg-slate-50">
-                                <Save className="mr-2 h-4 w-4" /> Save as Draft
-                            </button>
-                            <button onClick={() => handleStatusUpdate(ContractStatus.SENT)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                <Send className="mr-2 h-4 w-4" /> Mark as Sent
-                            </button>
-                            <button onClick={() => handleStatusUpdate(ContractStatus.SIGNED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-                                <CheckCircle className="mr-2 h-4 w-4" /> Mark as Signed
-                            </button>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card title="Activation">
-                    <p className="text-sm text-brand-text-secondary mb-4">Once the contract is signed, you can activate the startup. This will move them into the main directory and begin the active program.</p>
+                <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
                     <button 
-                        onClick={() => onActivateStartup(selectedStartup.id)}
-                        disabled={!isSigned}
-                        className="w-full flex items-center justify-center px-4 py-3 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-brand-primary/90 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                        onClick={handleSendContract} 
+                        disabled={selectedStartup.contract.status !== ContractStatus.DRAFT}
+                        className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
                     >
-                        <Rocket className="mr-2 h-5 w-5" /> Activate Startup
+                        <Send className="mr-2 h-4 w-4" /> Send Contract
                     </button>
-                    {!isSigned && <p className="text-xs text-center text-red-500 mt-2">Activation requires the contract to be marked as 'SIGNED'.</p>}
-                </Card>
-            </div>
-        ) : (
-             <div className="h-full flex items-center justify-center">
-                <div className="text-center">
-                    <FileText className="mx-auto h-12 w-12 text-slate-400" />
-                    <h2 className="mt-4 text-xl font-semibold">Select a Startup for Contract</h2>
-                    <p className="text-brand-text-secondary mt-1">Choose a startup from the list to manage its contract.</p>
+                    <button 
+                        onClick={handleMarkAsSigned} 
+                        disabled={selectedStartup.contract.status !== ContractStatus.SENT}
+                        className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                    >
+                        <CheckCircle className="mr-2 h-4 w-4" /> Mark as Signed
+                    </button>
                 </div>
+            </Card>
+
+            <Card title="Signatories">
+                <div className="space-y-3">
+                    {selectedStartup.contract.signatories.length > 0 ? (
+                        selectedStartup.contract.signatories.map(signatory => (
+                            <div key={signatory.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-md">
+                                <div>
+                                    <p className="font-semibold text-brand-text-primary">{signatory.name}</p>
+                                    <p className="text-sm text-brand-text-secondary">{signatory.email}</p>
+                                </div>
+                                <StatusBadge status={signatory.status} />
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-sm text-slate-500">No signatories added yet.</p>
+                    )}
+                </div>
+                <div className="mt-4 pt-4 border-t flex flex-col space-y-3">
+                    <h3 className="font-semibold flex items-center text-md"><UserPlus className="mr-2 h-5 w-5" /> Add New Signatory</h3>
+                    <input
+                        type="text"
+                        value={newSignatoryName}
+                        onChange={e => setNewSignatoryName(e.target.value)}
+                        placeholder="Signatory Name"
+                        className="w-full p-2 border border-slate-300 rounded-md text-sm"
+                    />
+                    <input
+                        type="email"
+                        value={newSignatoryEmail}
+                        onChange={e => setNewSignatoryEmail(e.target.value)}
+                        placeholder="Signatory Email"
+                        className="w-full p-2 border border-slate-300 rounded-md text-sm"
+                    />
+                    <button onClick={handleAddSignatory} className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-brand-secondary rounded-md hover:bg-brand-secondary/90">
+                        <UserPlus className="mr-2 h-4 w-4" /> Add Signatory
+                    </button>
+                </div>
+            </Card>
+
+            <Card title="Discussion">
+                <div className="space-y-4">
+                    <h3 className="font-semibold flex items-center text-md"><MessageSquare className="mr-2 h-5 w-5" /> Comments</h3>
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                        {selectedStartup.contract.comments.length > 0 ? (
+                            selectedStartup.contract.comments.map(comment => (
+                                <div key={comment.id} className={`flex ${comment.user_id === 1 ? 'justify-end' : ''}`}> {/* Assuming admin user_id is 1 for now */}
+                                    <div className={`p-3 rounded-lg max-w-md ${comment.user_id === 1 ? 'bg-brand-primary/10 text-brand-text-primary' : 'bg-slate-100 text-brand-text-secondary'}`}>
+                                        <p className="text-sm font-semibold">{comment.author_name}</p>
+                                        <p className="text-sm">{comment.text}</p>
+                                        <p className="text-xs text-slate-400 mt-1 text-right">{new Date(comment.created_at).toLocaleTimeString()}</p>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-slate-500">No comments yet.</p>
+                        )}
+                    </div>
+                    <div className="flex items-center space-x-2 pt-2 border-t">
+                         <input
+                            type="text"
+                            value={newComment}
+                            onChange={e => setNewComment(e.target.value)}
+                            placeholder="Add a comment..."
+                            className="flex-grow px-3 py-2 text-sm border border-slate-300 rounded-md"
+                        />
+                        <button onClick={handleAddComment} className="px-3 py-2 text-sm font-medium text-brand-primary rounded-md border border-brand-primary/50 hover:bg-brand-primary/5">Add Comment</button>
+                    </div>
+                </div>
+            </Card>
+
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <FileText className="mx-auto h-12 w-12 text-slate-400" />
+              <h2 className="mt-4 text-xl font-semibold">Select a Startup for Contract Management</h2>
+              <p className="text-brand-text-secondary mt-1">Choose a startup from the list to manage its incubator contract.</p>
             </div>
+          </div>
         )}
       </div>
     </div>
