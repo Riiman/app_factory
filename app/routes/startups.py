@@ -3,7 +3,7 @@ from app.utils.decorators import session_required
 from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem
 from app import db
 
-startups_bp = Blueprint('startups', __name__, url_prefix='/startups')
+startups_bp = Blueprint('startups', __name__, url_prefix='/api/startups')
 
 @startups_bp.route('/<int:startup_id>', methods=['GET'])
 @session_required
