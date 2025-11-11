@@ -47,7 +47,7 @@ type CreateModalType = 'task' | 'experiment' | 'artifact';
 
 const DashboardPage: React.FC = () => {
     // --- State Management ---
-    const [startupData, setStartupData] = useState<Omit<Startup, 'tasks' | 'products' | 'experiments' | 'artifacts' | 'business_monthly_data' | 'funding_rounds' | 'investors' | 'marketing_campaigns' | 'founders'> | null>(null);
+    const [startupData, setStartupData] = useState<Startup | null>(null);
     const [tasks, setTasks] = useState<Task[] | null>(null);
     const [experiments, setExperiments] = useState<Experiment[] | null>(null);
     const [artifacts, setArtifacts] = useState<Artifact[] | null>(null);
@@ -499,38 +499,34 @@ const DashboardPage: React.FC = () => {
                             onAddIssue={() => setIsCreateIssueModalOpen(true)}
                         />;
                     }
-                    return <ProductListPage startupId={startupData.id} products={products} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} />;
+                    return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} />;
                 }
                 if (activeSubPage === 'Product Metrics') {
-                    return <ProductMetricsPage startupId={startupData.id} products={products} setProducts={setProducts} onAddNewMetric={() => setIsCreateMetricModalOpen(true)} />;
+                    return <ProductMetricsPage startupId={startupData.id} products={products || []} setProducts={setProducts} onAddNewMetric={() => setIsCreateMetricModalOpen(true)} />;
                 }
                 if (activeSubPage === 'Issues & Feedback') {
                     return <ProductIssuesPage startupId={startupData.id} products={products} setProducts={setProducts} onAddNewIssue={() => setIsCreateIssueModalOpen(true)} />;
                 }
-                return <ProductListPage startupId={startupData.id} products={products} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} />;
+                return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} />;
 
             case Scope.BUSINESS:
-                 if (activeSubPage === 'Overview & Model') {
-                    return <BusinessOverviewPage 
-                                businessOverview={startupData.business_overview} 
-                                monthlyData={monthlyReports} 
-                           />;
-                }
-                 if (activeSubPage === 'Monthly Reporting') {
-                    return <BusinessMonthlyReportingPage 
-                                startupId={startupData.id}
-                                monthlyData={monthlyReports}
-                                setMonthlyData={setMonthlyReports}
-                                onRowClick={handleOpenReportModal}
-                                onAddNewReport={() => setIsCreateReportModalOpen(true)}
-                           />;
-                }
-                return <BusinessOverviewPage 
-                            businessOverview={startupData.business_overview}
-                            monthlyData={monthlyReports}
-                       />;
-            
-            case Scope.FUNDRAISING:
+                                  if (activeSubPage === 'Overview & Model') {
+                                     return <BusinessOverviewPage 
+                                                 businessOverview={startupData.business_overview || {} as BusinessOverview} 
+                                                 monthlyData={monthlyReports || []} 
+                                            />;
+                                 }                 if (activeSubPage === 'Monthly Reporting') {
+                                    return <BusinessMonthlyReportingPage 
+                                                startupId={startupData.id}
+                                                monthlyData={monthlyReports || []}
+                                                setMonthlyData={setMonthlyReports}
+                                                onRowClick={handleOpenReportModal}
+                                                onAddNewReport={() => setIsCreateReportModalOpen(true)}
+                                           />;                }
+                                        return <BusinessOverviewPage 
+                                                    businessOverview={startupData.business_overview || {} as BusinessOverview}
+                                                    monthlyData={monthlyReports || []}
+                                               />;            case Scope.FUNDRAISING:
                 if (activeSubPage === 'Overview') {
                     return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details} />;
                 }

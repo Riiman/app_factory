@@ -71,6 +71,10 @@ export enum Scope {
   FUNDRAISING = 'FUNDRAISING',
   MARKETING = 'MARKETING',
   BUSINESS = 'BUSINESS',
+  DASHBOARD = 'Dashboard', // UI specific Scope
+  WORKSPACE = 'Workspace', // UI specific Scope
+  TEAM = 'Team', // UI specific Scope
+  SETTINGS = 'Settings', // UI specific Scope
 }
 
 export enum ScopeStatus {
