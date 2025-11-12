@@ -7,7 +7,9 @@ from sqlalchemy.exc import IntegrityError
 import re
 from datetime import datetime
 import json
-from app.tasks import analyze_submission_task, generate_scope_document_task
+from app.tasks import analyze_submission_task, generate_scope_document_task, generate_product_task
+from app.services.product_generator_service import generate_product_from_scope
+from app.models import Product, Feature
 
 print("--- DEBUG: Importing admin.py ---")
 
@@ -220,3 +222,19 @@ def update_contract(startup_id):
     db.session.commit()
     return jsonify({'success': True, 'contract': startup.contract.to_dict()}), 200
 
+@admin_bp.route('/startups/<int:startup_id>/generate-product', methods=['POST'])
+@admin_required
+def generate_product_for_startup(startup_id):
+    """
+    Triggers the asynchronous Celery task to generate a product and its features
+    from the startup's scope document.
+    """
+    startup = Startup.query.get_or_404(startup_id)
+    
+    # Dispatch the background task
+    generate_product_task.delay(startup.id)
+    
+    return jsonify({
+        'success': True,
+        'message': 'Product generation has been queued and will start shortly.'
+    }), 202

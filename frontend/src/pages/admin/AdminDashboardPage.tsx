@@ -61,7 +61,10 @@ const AdminDashboardPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    fetchData(); // Fetch data on initial load
+    const intervalId = setInterval(fetchData, 15000); // Refetch data every 15 seconds
+
+    return () => clearInterval(intervalId); // Cleanup interval on component unmount
   }, [fetchData]);
 
   const handleSelectStartup = useCallback((startup: Startup) => {

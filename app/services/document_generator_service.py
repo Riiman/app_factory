@@ -62,7 +62,7 @@ def generate_scope_document(submission_id):
     gtm_strategy_content = gtm_strategy_chain.invoke({"data": formatted_data}).content
 
     # --- Create and save ScopeDocument ---
-    scope_document_content = f"# Product Scope\n\n{product_scope_content}\n\n# Go-to-Market Strategy\n\n{gtm_strategy_content}"
+    scope_document_content = f"\n\n{product_scope_content}\n\n{gtm_strategy_content}"
     
     scope_document = ScopeDocument(
         startup_id=startup.id,

@@ -519,7 +519,7 @@ const DashboardPage: React.FC = () => {
 
         switch (activeScope) {
             case Scope.DASHBOARD:
-                return <DashboardOverview startupData={startupData} />;
+                return <DashboardOverview startupData={{...startupData, business_monthly_data: monthlyReports || []}} />;
             
             case Scope.PRODUCT:
                 if (activeSubPage === 'Products List') {
