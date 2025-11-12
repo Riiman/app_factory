@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, LinkedEntityType, Product, Feature, ProductMetric, ProductIssue, ExperimentStatus, Investor, MarketingCampaign, MarketingCampaignStatus, MarketingContentStatus, MarketingContentItem, Founder } from '@/types/dashboard-types';
+import { useLocation } from 'react-router-dom';
+import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, LinkedEntityType, Product, Feature, ProductMetric, ProductIssue, ExperimentStatus, Investor, MarketingCampaign, MarketingCampaignStatus, MarketingContentStatus, MarketingContentItem, Founder, BusinessOverview } from '@/types/dashboard-types';
 import api from '@/utils/api'; // Import the api utility
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
@@ -46,6 +47,7 @@ import CreateFounderModal from '@/components/dashboard/CreateFounderModal';
 type CreateModalType = 'task' | 'experiment' | 'artifact';
 
 const DashboardPage: React.FC = () => {
+    const location = useLocation();
     // --- State Management ---
     const [startupData, setStartupData] = useState<Startup | null>(null);
     const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -55,8 +57,8 @@ const DashboardPage: React.FC = () => {
     const [monthlyReports, setMonthlyReports] = useState<BusinessMonthlyData[] | null>(null);
     const [fundingRounds, setFundingRounds] = useState<FundingRound[] | null>(null);
     const [investors, setInvestors] = useState<Investor[] | null>(null);
-    const [campaigns, setCampaigns] = useState<MarketingCampaign[] | null>(null);
     const [founders, setFounders] = useState<Founder[] | null>(null);
+    const [marketingCampaigns, setMarketingCampaigns] = useState<MarketingCampaign[] | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     
@@ -76,6 +78,14 @@ const DashboardPage: React.FC = () => {
 
                 const data = await api.getStartupData(startupId);
                 setStartupData(data);
+                setMarketingCampaigns(data.marketing_campaigns || []);
+                setInvestors(data.investors || []);
+                setFundingRounds(data.funding_rounds || []);
+                setMonthlyReports(data.monthly_data || []);
+                setProducts(data.products || []);
+                setTasks(data.tasks || []);
+                setArtifacts(data.artifacts || []);
+                setFounders(data.founders || []);
             } catch (err: any) {
                 setError(err.message);
             } finally {
@@ -84,7 +94,22 @@ const DashboardPage: React.FC = () => {
         };
 
         fetchStartupData();
-    }, []);
+    }, [location]);
+
+    useEffect(() => {
+        const fetchMarketingOverview = async () => {
+            if (startupData?.id) {
+                try {
+                    const marketingOverview = await api.getMarketingOverview(startupData.id);
+                    setStartupData(prev => prev ? ({ ...prev, marketing_overview: marketingOverview }) : null);
+                } catch (error) {
+                    console.error("Failed to fetch marketing overview:", error);
+                }
+            }
+        };
+
+        fetchMarketingOverview();
+    }, [startupData?.id]);
 
     // --- Navigation State ---
     /** The currently active main section/scope from the sidebar (e.g., Dashboard, Product). */
@@ -224,7 +249,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newTask = await api.createTask(startupData.id, newTaskData);
-            setStartupData(prev => prev ? ({ ...prev, tasks: [...prev.tasks, newTask] }) : null);
+            setTasks(prev => [...(prev || []), newTask]);
             setIsCreateTaskModalOpen(false);
         } catch (error) {
             console.error("Failed to create task:", error);
@@ -247,7 +272,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newArtifact = await api.createArtifact(startupData.id, newArtifactData);
-            setStartupData(prev => prev ? ({ ...prev, artifacts: [...prev.artifacts, newArtifact] }) : null);
+            setArtifacts(prev => [...(prev || []), newArtifact]);
             setIsCreateArtifactModalOpen(false);
         } catch (error) {
             console.error("Failed to create artifact:", error);
@@ -258,7 +283,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newProduct = await api.createProduct(startupData.id, newProductData);
-            setStartupData(prev => prev ? ({ ...prev, products: [...prev.products, newProduct] }) : null);
+            setProducts(prev => [...(prev || []), newProduct]);
             setIsCreateProductModalOpen(false);
         } catch (error) {
             console.error("Failed to create product:", error);
@@ -268,25 +293,33 @@ const DashboardPage: React.FC = () => {
     const handleCreateFeature = async (newFeatureData: Omit<Feature, 'id' | 'product_id'>, productId: number) => {
         if (!startupData) return;
         try {
-            const newFeature = await api.createFeature(startupData.id, { ...newFeatureData, productId });
-            setStartupData(prev => prev ? ({
-                ...prev,
-                products: prev.products.map(p => p.id === productId ? { ...p, features: [...p.features, newFeature] } : p)
-            }) : null);
+            const newFeature = await api.createFeature(startupData.id, productId, newFeatureData);
+            setProducts(prev => {
+                if (!prev) return null;
+                return prev.map(p => 
+                    p.id === productId 
+                        ? { ...p, features: [...p.features, newFeature] } 
+                        : p
+                );
+            });
             setIsCreateFeatureModalOpen(false);
         } catch (error) {
             console.error("Failed to create feature:", error);
         }
     };
 
-    const handleCreateMetric = async (newMetricData: Omit<ProductMetric, 'metric_id' | 'product_id' | 'created_at'>, productId: number) => {
+    const handleCreateMetric = async (newMetricData: Omit<ProductMetric, 'metric_id' | 'product_id'>, productId: number) => {
         if (!startupData) return;
         try {
             const newMetric = await api.createMetric(startupData.id, productId, newMetricData);
-            setStartupData(prev => prev ? ({
-                ...prev,
-                products: prev.products.map(p => p.id === productId ? { ...p, metrics: [...p.metrics, newMetric] } : p)
-            }) : null);
+            setProducts(prev => {
+                if (!prev) return null;
+                return prev.map(p => 
+                    p.id === productId 
+                        ? { ...p, product_metrics: [...p.product_metrics, newMetric] } 
+                        : p
+                );
+            });
             setIsCreateMetricModalOpen(false);
         } catch (error) {
             console.error("Failed to create metric:", error);
@@ -297,10 +330,14 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newIssue = await api.createIssue(startupData.id, productId, newIssueData);
-            setStartupData(prev => prev ? ({
-                ...prev,
-                products: prev.products.map(p => p.id === productId ? { ...p, issues: [...p.issues, newIssue] } : p)
-            }) : null);
+            setProducts(prev => {
+                if (!prev) return null;
+                return prev.map(p => 
+                    p.id === productId 
+                        ? { ...p, product_issues: [...p.product_issues, newIssue] } 
+                        : p
+                );
+            });
             setIsCreateIssueModalOpen(false);
         } catch (error) {
             console.error("Failed to create issue:", error);
@@ -316,10 +353,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newReport = await api.createMonthlyReport(startupData.id, newReportData);
-            setStartupData(prev => prev ? ({
-                ...prev,
-                business_monthly_data: [...prev.business_monthly_data, newReport]
-            }) : null);
+            setMonthlyReports(prev => [...(prev || []), newReport]);
             setIsCreateReportModalOpen(false);
         } catch (error) {
             console.error("Failed to create monthly report:", error);
@@ -331,14 +365,11 @@ const DashboardPage: React.FC = () => {
      * @param {Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'round_investors'>} newRoundData - Data from the creation modal.
      * @backend This function should be replaced with a POST API call to the backend.
      */
-    const handleCreateFundingRound = async (newRoundData: Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'round_investors'>) => {
+    const handleCreateFundingRound = async (newRoundData: Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'investors'>) => {
         if (!startupData) return;
         try {
             const newRound = await api.createFundingRound(startupData.id, newRoundData);
-            setStartupData(prev => prev ? ({
-                ...prev,
-                funding_rounds: [...prev.funding_rounds, newRound]
-            }) : null);
+            setFundingRounds(prev => [...(prev || []), newRound]);
             setIsCreateFundingRoundModalOpen(false);
         } catch (error) {
             console.error("Failed to create funding round:", error);
@@ -354,10 +385,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newInvestor = await api.createInvestor(startupData.id, newInvestorData);
-            setStartupData(prev => prev ? ({
-                ...prev,
-                investors: [...prev.investors, newInvestor]
-            }) : null);
+            setInvestors(prev => [...(prev || []), newInvestor]);
             setIsCreateInvestorModalOpen(false);
         } catch (error) {
             console.error("Failed to create investor:", error);
@@ -373,10 +401,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newCampaign = await api.createCampaign(startupData.id, newCampaignData);
-            setStartupData(prev => prev ? ({
-                ...prev,
-                marketing_campaigns: [...prev.marketing_campaigns, newCampaign]
-            }) : null);
+            setMarketingCampaigns(prev => [...(prev || []), { ...newCampaign, content_mode: newCampaignData.content_mode }]);
             setIsCreateCampaignModalOpen(false);
         } catch (error) {
             console.error("Failed to create campaign:", error);
@@ -393,19 +418,24 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newItem = await api.createContentItem(startupData.id, campaignId, newContentData);
-            setStartupData(prev => {
+            setMarketingCampaigns(prev => {
                 if (!prev) return null;
-                const campaigns = prev.marketing_campaigns.map(c => {
-                    if (c.campaign_id === campaignId && c.content_calendar) {
-                        const updatedCalendar = {
-                            ...c.content_calendar,
-                            content_items: [...c.content_calendar.content_items, newItem]
-                        };
-                        return { ...c, content_calendar: updatedCalendar };
+                return prev.map(c => {
+                    if (c.campaign_id === campaignId && c.content_calendars && c.content_calendars.length > 0) {
+                        // Assuming there's always at least one content calendar if content_mode is true
+                        const updatedContentCalendars = c.content_calendars.map((calendar, index) => {
+                            if (index === 0) { // Update the first content calendar
+                                return {
+                                    ...calendar,
+                                    content_items: [...calendar.content_items, newItem]
+                                };
+                            }
+                            return calendar;
+                        });
+                        return { ...c, content_calendars: updatedContentCalendars };
                     }
                     return c;
                 });
-                return { ...prev, marketing_campaigns: campaigns };
             });
             setIsCreateContentItemModalOpen(false);
         } catch (error) {
@@ -422,10 +452,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newFounder = await api.createFounder(startupData.id, newFounderData);
-            setStartupData(prev => prev ? ({
-                ...prev,
-                founders: [...prev.founders, newFounder]
-            }) : null);
+            setFounders(prev => [...(prev || []), newFounder]);
             setIsCreateFounderModalOpen(false);
         } catch (error) {
             console.error("Failed to create founder:", error);
@@ -472,6 +499,16 @@ const DashboardPage: React.FC = () => {
         }
     };
 
+
+    const handlePositioningStatementUpdate = (newStatement: string) => {
+        setStartupData(prev => {
+            if (!prev) return null;
+            const newMarketingOverview = prev.marketing_overview 
+                ? { ...prev.marketing_overview, positioning_statement: newStatement }
+                : { marketing_id: 0, startup_id: prev.id, positioning_statement: newStatement };
+            return { ...prev, marketing_overview: newMarketingOverview };
+        });
+    };
 
     /**
      * Main content router for the application.
@@ -560,14 +597,17 @@ const DashboardPage: React.FC = () => {
                 return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details} />;
 
             case Scope.MARKETING:
+                console.log('Marketing Campaigns in DashboardPage:', marketingCampaigns);
                 if (activeSubPage === 'Overview') {
                     return <MarketingOverviewPage 
                                 marketingOverview={startupData.marketing_overview} 
-                                campaigns={campaigns}
+                                campaigns={marketingCampaigns || []}
+                                startupId={startupData.id}
+                                onPositioningStatementUpdate={handlePositioningStatementUpdate}
                             />;
                 }
                 if (activeSubPage === 'Campaigns') {
-                    const selectedCampaign = campaigns?.find(c => c.campaign_id === selectedCampaignId);
+                    const selectedCampaign = (marketingCampaigns || []).find(c => c.campaign_id === selectedCampaignId);
                      if (selectedCampaign) {
                         return <MarketingCampaignDetailPage 
                                     campaign={selectedCampaign}
@@ -579,8 +619,8 @@ const DashboardPage: React.FC = () => {
                     }
                     return <MarketingCampaignsPage 
                                 startupId={startupData.id}
-                                campaigns={campaigns}
-                                setCampaigns={setCampaigns}
+                                campaigns={marketingCampaigns || []}
+                                setCampaigns={setMarketingCampaigns}
                                 onSelectCampaign={handleSelectCampaign} 
                                 onAddNewCampaign={() => setIsCreateCampaignModalOpen(true)}
                            />;
@@ -588,14 +628,16 @@ const DashboardPage: React.FC = () => {
                 if (activeSubPage === 'Content Calendar') {
                     return <MarketingContentCalendarPage 
                                 startupId={startupData.id}
-                                campaigns={campaigns}
-                                setCampaigns={setCampaigns}
+                                campaigns={marketingCampaigns || []}
+                                setCampaigns={setMarketingCampaigns}
                                 onAddNewContentItem={() => handleOpenCreateContentItemModal()}
                             />;
                 }
                 return <MarketingOverviewPage 
                             marketingOverview={startupData.marketing_overview} 
-                            campaigns={campaigns} 
+                            campaigns={marketingCampaigns || []} 
+                            startupId={startupData.id}
+                            onPositioningStatementUpdate={handlePositioningStatementUpdate}
                        />;
 
             case Scope.WORKSPACE:
@@ -655,6 +697,7 @@ const DashboardPage: React.FC = () => {
     return (
         <div className="flex h-screen bg-gray-50 text-gray-800">
             <Sidebar 
+                location={location}
                 menuItems={menuItems}
                 activeScope={activeScope}
                 activeSubPage={activeSubPage}
@@ -708,11 +751,10 @@ const DashboardPage: React.FC = () => {
                 <CreateTaskModal
                     onClose={() => setIsCreateTaskModalOpen(false)}
                     onCreate={handleCreateTask}
-                    // FIX: Added missing keys from the Scope enum to satisfy the Record<Scope, LinkableItem[]> type.
                     linkableItems={{
-                        [Scope.PRODUCT]: startupData.products.map(p => ({ id: p.id, name: p.name })),
-                        [Scope.FUNDRAISING]: startupData.funding_rounds.map(r => ({ id: r.round_id, name: `${r.round_type} Round` })),
-                        [Scope.MARKETING]: startupData.marketing_campaigns.map(c => ({ id: c.campaign_id, name: c.campaign_name })),
+                        [Scope.PRODUCT]: (startupData.products || []).map(p => ({ id: p.id, name: p.name })),
+                        [Scope.FUNDRAISING]: (startupData.funding_rounds || []).map(r => ({ id: r.round_id, name: `${r.round_type} Round` })),
+                        [Scope.MARKETING]: (marketingCampaigns || []).map(c => ({ id: c.campaign_id, name: c.campaign_name })),
                         [Scope.GENERAL]: [],
                         [Scope.BUSINESS]: [],
                         [Scope.DASHBOARD]: [],
@@ -728,9 +770,9 @@ const DashboardPage: React.FC = () => {
                     onCreate={handleCreateExperiment}
                      // FIX: Added missing keys from the Scope enum to satisfy the Record<Scope, LinkableItem[]> type.
                      linkableItems={{
-                        [Scope.PRODUCT]: startupData.products.map(p => ({ id: p.id, name: p.name })),
-                        [Scope.FUNDRAISING]: startupData.funding_rounds.map(r => ({ id: r.round_id, name: `${r.round_type} Round` })),
-                        [Scope.MARKETING]: startupData.marketing_campaigns.map(c => ({ id: c.campaign_id, name: c.campaign_name })),
+                        [Scope.PRODUCT]: (startupData.products || []).map(p => ({ id: p.id, name: p.name })),
+                        [Scope.FUNDRAISING]: (startupData.funding_rounds || []).map(r => ({ id: r.round_id, name: `${r.round_type} Round` })),
+                        [Scope.MARKETING]: (marketingCampaigns || []).map(c => ({ id: c.campaign_id, name: c.campaign_name })),
                         [Scope.GENERAL]: [],
                         [Scope.BUSINESS]: [],
                         [Scope.DASHBOARD]: [],
@@ -746,9 +788,9 @@ const DashboardPage: React.FC = () => {
                     onCreate={handleCreateArtifact}
                     // FIX: Added missing keys from the Scope enum to satisfy the Record<Scope, LinkableItem[]> type.
                     linkableItems={{
-                        [Scope.PRODUCT]: startupData.products.map(p => ({ id: p.id, name: p.name })),
-                        [Scope.FUNDRAISING]: startupData.funding_rounds.map(r => ({ id: r.round_id, name: `${r.round_type} Round` })),
-                        [Scope.MARKETING]: startupData.marketing_campaigns.map(c => ({ id: c.campaign_id, name: c.campaign_name })),
+                        [Scope.PRODUCT]: (startupData.products || []).map(p => ({ id: p.id, name: p.name })),
+                        [Scope.FUNDRAISING]: (startupData.funding_rounds || []).map(r => ({ id: r.round_id, name: `${r.round_type} Round` })),
+                        [Scope.MARKETING]: (marketingCampaigns || []).map(c => ({ id: c.campaign_id, name: c.campaign_name })),
                         [Scope.GENERAL]: [],
                         [Scope.BUSINESS]: [],
                         [Scope.DASHBOARD]: [],
@@ -815,7 +857,7 @@ const DashboardPage: React.FC = () => {
                 <CreateContentItemModal
                     onClose={() => setIsCreateContentItemModalOpen(false)}
                     onCreate={handleCreateContentItem}
-                    campaigns={startupData.marketing_campaigns.filter(c => c.content_mode)}
+                    campaigns={(marketingCampaigns || []).filter(c => c.content_mode)}
                     defaultCampaignId={selectedCampaignForContent}
                 />
             )}

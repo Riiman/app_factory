@@ -53,13 +53,6 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ onClose, onCr
         });
     };
 
-    const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
-        <div>
-            <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
-            <div className="mt-1">{children}</div>
-        </div>
-    );
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
@@ -92,7 +85,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ onClose, onCr
                              <FormField label="Link to Product (Optional)" id="campaign-product">
                                 <select id="campaign-product" value={productId} onChange={e => setProductId(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                                     <option value="">None (Overall Campaign)</option>
-                                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                    {(products || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </FormField>
                         </div>
@@ -112,5 +105,12 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ onClose, onCr
         </div>
     );
 };
+
+const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <div className="mt-1">{children}</div>
+    </div>
+);
 
 export default CreateCampaignModal;

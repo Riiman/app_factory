@@ -15,7 +15,7 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdate
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const submissionsWithDetails = useMemo(() => {
-    return submissions.filter(s => s.status === 'PENDING').map(sub => ({
+    return submissions.filter(s => s.status === SubmissionStatus.PENDING).map(sub => ({
       ...sub,
     })).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
   }, [submissions]);
@@ -74,7 +74,7 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdate
                      )}
                   </div>
                 </div>
-                {selectedDetails.status === 'PENDING' && (
+                {selectedDetails.status === SubmissionStatus.PENDING && (
                     <div className="flex space-x-2">
                         <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.REJECTED)} className="flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
                             <FileX className="mr-2 h-4 w-4" /> Reject

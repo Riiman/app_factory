@@ -8,8 +8,6 @@ import api from '../../utils/api';
 
 interface ContractViewProps {
   startupsInContract: Startup[];
-  onUpdateContract: (startupId: number, url: string, status: ContractStatus) => void;
-  onActivateStartup: (startupId: number) => void;
   fetchData: () => Promise<void>; // Add fetchData to props
 }
 
@@ -77,14 +75,14 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
     if (selectedStartup) {
       try {
         await api.updateContractStatus(selectedStartup.id, ContractStatus.SIGNED.valueOf());
+        await api.updateStartupStage(selectedStartup.id, StartupStage.ADMITTED.valueOf());
         fetchData(); // Re-fetch data to update contract status
-        onActivateStartup(selectedStartup.id); // Move startup to ADMITTED stage
       } catch (error) {
         console.error("Failed to mark contract as signed:", error);
         alert("Failed to mark contract as signed.");
       }
     }
-  }, [selectedStartup, onActivateStartup, fetchData]);
+  }, [selectedStartup, fetchData]);
 
   return (
     <div className="flex h-full">

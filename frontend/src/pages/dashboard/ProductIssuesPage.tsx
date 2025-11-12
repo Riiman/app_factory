@@ -42,8 +42,8 @@ const getStatusColor = (status: 'Open' | 'In Progress' | 'Resolved') => {
 
 const ProductIssuesPage: React.FC<ProductIssuesPageProps> = ({ products, onAddNewIssue }) => {
     // Flatten all issues from all products and add product name for context
-    const allIssues = products.flatMap(product =>
-        product.issues.map(issue => ({
+    const allIssues = (products || []).flatMap(product =>
+        product.product_issues.map(issue => ({
             ...issue,
             productName: product.name,
         }))

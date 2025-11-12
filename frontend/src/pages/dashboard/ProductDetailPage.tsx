@@ -68,7 +68,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                  return (
                     <Card title="Metrics" actions={<button onClick={onAddMetric} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Metric</button>}>
                        <div className="grid grid-cols-2 gap-4">
-                        {product.metrics.map(metric => (
+                        {product.product_metrics.map(metric => (
                             <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg">
                                 <p className="text-sm text-gray-500">{metric.metric_name}</p>
                                 <p className="text-2xl font-bold text-gray-900">{metric.value.toLocaleString()} <span className="text-base font-normal text-gray-600">{metric.unit}</span></p>
@@ -81,11 +81,11 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 return (
                      <Card title="Issues & Feedback" actions={<button onClick={onAddIssue} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Report Issue</button>}>
                         <ul className="divide-y divide-gray-200">
-                           {product.issues.map(issue => (
+                           {product.product_issues.map(issue => (
                                <li key={issue.issue_id} className="py-4">
                                    <div className="flex justify-between items-center">
                                        <h4 className="font-semibold text-gray-800">{issue.title}</h4>
-                                       <span className={`text-xs px-2 py-0.5 rounded-full ${issue.severity === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{issue.severity}</span>
+                                       <span className={`text-xs px-2 py-0.5 rounded-full ${issue.severity === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{issue.status}</span>
                                    </div>
                                    <p className="text-sm text-gray-600 mt-1">{issue.description}</p>
                                </li>
@@ -99,15 +99,15 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         <div className="space-y-4">
                            <div>
                                 <h4 className="font-medium text-sm text-gray-500">Pricing Model</h4>
-                                <p className="text-gray-800">{product.business_details.pricing_model}</p>
+                                <p className="text-gray-800">{product.business_details?.pricing_model || 'N/A'}</p>
                            </div>
                            <div>
                                 <h4 className="font-medium text-sm text-gray-500">Target Customer</h4>
-                                <p className="text-gray-800">{product.business_details.target_customer}</p>
+                                <p className="text-gray-800">{product.business_details?.target_customer || 'N/A'}</p>
                            </div>
                            <div>
                                 <h4 className="font-medium text-sm text-gray-500">Distribution Channels</h4>
-                                <p className="text-gray-800">{product.business_details.distribution_channels}</p>
+                                <p className="text-gray-800">{product.business_details?.distribution_channels || 'N/A'}</p>
                            </div>
                         </div>
                     </Card>

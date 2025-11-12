@@ -44,7 +44,7 @@ const InvestorCrmPage: React.FC<InvestorCrmPageProps> = ({ investors, onAddNewIn
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {investors.map((investor) => (
+                            {(investors || []).map((investor) => (
                                 <tr key={investor.investor_id}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{investor.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{investor.firm_name || 'N/A'}</td>

@@ -28,12 +28,12 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 
 const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, onAddTask, onAddExperiment, onAddArtifact }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const latestUpdate = startup.business_monthly_data?.length > 0 
-    ? new Date(Math.max(...startup.business_monthly_data.map(d => new Date(d.month_start).getTime()))).toLocaleDateString()
+  const latestUpdate = startup.monthly_data?.length > 0 
+    ? new Date(Math.max(...startup.monthly_data.map(d => new Date(d.month_start).getTime()))).toLocaleDateString()
     : 'N/A';
 
-  const latestMonthData = startup.business_monthly_data?.length > 0
-    ? startup.business_monthly_data.reduce((latest, current) => {
+  const latestMonthData = startup.monthly_data?.length > 0
+    ? startup.monthly_data.reduce((latest, current) => {
         return new Date(current.month_start).getTime() > new Date(latest.month_start).getTime() ? current : latest;
       })
     : null;
@@ -45,7 +45,7 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
       case 'products':
         return <ProductsTab products={startup.products} />;
       case 'business':
-        return <BusinessTab monthlyData={startup.business_monthly_data} />;
+        return <BusinessTab monthlyData={startup.monthly_data} />;
       case 'fundraising':
         return <FundraisingTab fundingRounds={startup.funding_rounds} />;
       case 'marketing':
@@ -105,7 +105,7 @@ const OverviewTab: React.FC<{ startup: Startup, latestMonthData: any }> = ({ sta
         <StatCard icon={<TrendingDown size={20} />} label="Latest Net Burn" value={`$${latestMonthData?.net_burn.toLocaleString() || 0}`} />
     </div>
     <Card title="Business Performance" className="lg:col-span-3">
-        <BusinessPerformanceChart data={startup.business_monthly_data} />
+        <BusinessPerformanceChart data={startup.monthly_data} />
     </Card>
     <Card title="Submission & Evaluation" className="lg:col-span-2">
         <h4 className="font-semibold text-brand-text-primary">Submission</h4>
@@ -166,23 +166,27 @@ const renderTable = (headers: string[], rows: (string | React.ReactNode)[][], em
 
 const ProductsTab: React.FC<{ products: Product[] }> = ({ products }) => (
     <div className="space-y-6">
-        {products.map(product => (
-            <Card key={product.id} title={product.name}>
-                <p className="text-sm text-brand-text-secondary mb-4">{product.description}</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div><span className="font-semibold">Stage:</span> <StatusBadge status={product.stage} /></div>
-                    <div><span className="font-semibold">Version:</span> {product.version}</div>
-                </div>
-                <div className="space-y-4">
-                    <h4 className="font-semibold">Features</h4>
-                    {renderTable(['Name', 'Description'], product.features.map(f => [f.name, f.description]), "No features defined.")}
-                    <h4 className="font-semibold mt-4">Metrics</h4>
-                    {renderTable(['Name', 'Value', 'Unit', 'Period'], product.metrics.map(m => [m.metricName, m.value.toLocaleString(), m.unit, m.period]), "No metrics recorded.")}
-                    <h4 className="font-semibold mt-4">Issues</h4>
-                    {renderTable(['Title', 'Severity', 'Status'], product.issues.map(i => [i.title, <StatusBadge status={i.severity} />, <StatusBadge status={i.status} />]), "No issues reported.")}
-                </div>
-            </Card>
-        ))}
+        {products.length > 0 ? (
+            products.map(product => (
+                <Card key={product.id} title={product.name}>
+                    <p className="text-sm text-brand-text-secondary mb-4">{product.description}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div><span className="font-semibold">Stage:</span> <StatusBadge status={product.stage} /></div>
+                        <div><span className="font-semibold">Version:</span> {product.version}</div>
+                    </div>
+                    <div className="space-y-4">
+                        <h4 className="font-semibold">Features</h4>
+                        {renderTable(['Name', 'Description'], product.features.map(f => [f.name, f.description]), "No features defined.")}
+                        <h4 className="font-semibold mt-4">Metrics</h4>
+                        {renderTable(['Name', 'Value', 'Unit', 'Period'], product.product_metrics.map(m => [m.metric_name, m.value.toLocaleString(), m.unit, m.period]), "No metrics recorded.")}
+                        <h4 className="font-semibold mt-4">Issues</h4>
+                        {renderTable(['Title', 'Severity', 'Status'], product.product_issues.map(i => [i.title, <StatusBadge status={i.severity} />, <StatusBadge status={i.status} />]), "No issues reported.")}
+                    </div>
+                </Card>
+            ))
+        ) : (
+            <p>No products defined.</p>
+        )}
     </div>
 );
 
@@ -191,13 +195,13 @@ const BusinessTab: React.FC<{ monthlyData: any[] }> = ({ monthlyData }) => (
       {renderTable(
           ['Month', 'Revenue', 'Expenses', 'Net Burn', 'MRR', 'New Customers', 'Total Customers'],
           monthlyData.map(d => [
-              new Date(d.monthStart).toLocaleString('default', { month: 'long', year: 'numeric' }),
-              `$${d.totalRevenue.toLocaleString()}`,
-              `$${d.totalExpenses.toLocaleString()}`,
-              `$${d.netBurn.toLocaleString()}`,
+              new Date(d.month_start).toLocaleString('default', { month: 'long', year: 'numeric' }),
+              `$${d.total_revenue.toLocaleString()}`,
+              `$${d.total_expenses.toLocaleString()}`,
+              `$${d.net_burn.toLocaleString()}`,
               `$${d.mrr.toLocaleString()}`,
-              d.newCustomers,
-              d.totalCustomers
+              d.new_customers,
+              d.total_customers
           ]).reverse()
       )}
   </Card>
@@ -206,23 +210,23 @@ const BusinessTab: React.FC<{ monthlyData: any[] }> = ({ monthlyData }) => (
 const FundraisingTab: React.FC<{ fundingRounds: FundingRound[] }> = ({ fundingRounds }) => (
     <div className="space-y-6">
         {fundingRounds.map(round => (
-            <Card key={round.roundId} title={`${round.roundType} Round`}>
+            <Card key={round.round_id} title={`${round.round_type} Round`}>
                 <div className="mb-4">
                     <div className="flex justify-between mb-1">
-                        <span className="text-base font-medium text-brand-primary">$ {round.amountRaised.toLocaleString()} raised</span>
-                        <span className="text-sm font-medium text-brand-text-secondary">$ {round.targetAmount.toLocaleString()} target</span>
+                        <span className="text-base font-medium text-brand-primary">$ {(round.amount_raised ?? 0).toLocaleString()} raised</span>
+                        <span className="text-sm font-medium text-brand-text-secondary">$ {(round.target_amount ?? 0).toLocaleString()} target</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div className="bg-brand-primary h-2.5 rounded-full" style={{ width: `${(round.amountRaised / round.targetAmount) * 100}%` }}></div>
+                        <div className="bg-brand-primary h-2.5 rounded-full" style={{ width: `${((round.amount_raised ?? 0) / (round.target_amount ?? 1)) * 100}%` }}></div>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div><span className="font-semibold">Status:</span> <StatusBadge status={round.status} /></div>
-                    <div><span className="font-semibold">Opened:</span> {round.dateOpened ? new Date(round.dateOpened).toLocaleDateString() : 'N/A'}</div>
-                    <div><span className="font-semibold">Closed:</span> {round.dateClosed ? new Date(round.dateClosed).toLocaleDateString() : 'N/A'}</div>
+                    <div><span className="font-semibold">Opened:</span> {round.date_opened ? new Date(round.date_opened).toLocaleDateString() : 'N/A'}</div>
+                    <div><span className="font-semibold">Closed:</span> {round.date_closed ? new Date(round.date_closed).toLocaleDateString() : 'N/A'}</div>
                 </div>
                 <h4 className="font-semibold mt-4">Investors</h4>
-                {renderTable(['Name', 'Firm', 'Type', 'Amount Invested'], round.investors.map(i => [i.investor.name, i.investor.firmName || 'N/A', i.investor.type, `$${i.amountInvested.toLocaleString()}`]), "No investors for this round.")}
+                {renderTable(['Name', 'Firm', 'Type', 'Amount Invested'], round.investors.map(i => [i.investor.name, i.investor.firm_name || 'N/A', i.investor.type, `$${i.amount_invested.toLocaleString()}`]), "No investors for this round.")}
             </Card>
         ))}
     </div>
@@ -232,7 +236,7 @@ const MarketingTab: React.FC<{ campaigns: MarketingCampaign[] }> = ({ campaigns 
     <Card title="Marketing Campaigns">
       {renderTable(
         ['Name', 'Channel', 'Status', 'Spend', 'Clicks', 'Conversions'],
-        campaigns.map(c => [c.campaignName, c.channel, <StatusBadge status={c.status} />, `$${c.spend.toLocaleString()}`, c.clicks, c.conversions]),
+        campaigns.map(c => [c.campaign_name, c.channel, <StatusBadge status={c.status} />, `$${(c.spend ?? 0).toLocaleString()}`, (c.clicks ?? 0).toLocaleString(), (c.conversions ?? 0).toLocaleString()]),
         "No marketing campaigns found."
       )}
     </Card>

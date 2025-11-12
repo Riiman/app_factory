@@ -318,7 +318,7 @@ class Startup(db.Model):
                 'tasks': [task.to_dict() for task in self.tasks],
                 'experiments': [experiment.to_dict() for experiment in self.experiments],
                 'artifacts': [artifact.to_dict() for artifact in self.artifacts],
-                'business_monthly_data': [data.to_dict() for data in self.monthly_data],
+                'monthly_data': [data.to_dict() for data in self.monthly_data],
                 'marketing_campaigns': [campaign.to_dict() for campaign in self.marketing_campaigns],
                 'business_overview': self.business_overview.to_dict() if self.business_overview else None,
                 'fundraise_details': self.fundraise_details.to_dict() if self.fundraise_details else None,
@@ -562,18 +562,18 @@ class MarketingOverview(db.Model):
 
 class MarketingCampaignStatus(Enum):
     """Defines the status of a marketing campaign."""
-    PLANNED = "planned"
-    ACTIVE = "active"
-    COMPLETED = "completed"
+    PLANNED = "PLANNED"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
 
     def __str__(self):
         return self.value
 
 class MarketingContentStatus(Enum):
     """Defines the status of a marketing content item."""
-    PLANNED = "planned"
-    PUBLISHED = "published"
-    CANCELLED = "cancelled"
+    PLANNED = "PLANNED"
+    PUBLISHED = "PUBLISHED"
+    CANCELLED = "CANCELLED"
 
     def __str__(self):
         return self.value

@@ -36,7 +36,7 @@ const HomePage: FC = () => {
             Turn Your <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-pink-500">Vision</span> into a Venture.
           </h1>
           <p className="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-gray-600">
-            IdeaSpark is the ultimate platform to validate, build, and fund your next big idea. We're your co-founder from day one.
+            StartupOS is the ultimate platform to validate, build, and fund your next big idea. We're your co-founder from day one.
           </p>
           <div className="mt-10">
             <Link to="/signup">
@@ -72,10 +72,10 @@ const HomePage: FC = () => {
       {/* Testimonial Section */}
       <section className="py-20 bg-gray-800 text-white">
         <div className="container mx-auto px-4 text-center">
-            <img src="https://i.pravatar.cc/100?u=sarahj" alt="Sarah J" className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-blue-500" />
+            <img src="https://media.licdn.com/dms/image/v2/C4E03AQG1GCzMhKzS4g/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1602611251385?e=2147483647&v=beta&t=6N-VTumO4LzNOmQ03HO-CcXwEHoNuCAZQf9GvHFRsl4" alt="Hitanshu G" className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-blue-500" />
             <blockquote className="max-w-3xl mx-auto">
-                <p className="text-xl md:text-2xl italic">"IdeaSpark was instrumental in our seed round. They're more than a platform; they're a partner. The guidance and network access were invaluable."</p>
-                <footer className="mt-4 text-lg font-semibold text-pink-400">- Sarah J, CEO of FinTech Innovators</footer>
+                <p className="text-xl md:text-2xl italic">"StartupOS was instrumental in our seed round. They're more than a platform; they're a partner. The guidance and network access were invaluable."</p>
+                <footer className="mt-4 text-lg font-semibold text-pink-400">- Hitanshu Goyal, CEO of BidYourStay</footer>
             </blockquote>
         </div>
       </section>
@@ -84,7 +84,7 @@ const HomePage: FC = () => {
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-gray-900">Ready to ignite your idea?</h2>
-          <p className="mt-2 text-lg text-gray-600">Join hundreds of founders building the future on IdeaSpark.</p>
+          <p className="mt-2 text-lg text-gray-600">Join hundreds of founders building the future on StartupOS.</p>
           <div className="mt-8">
             <Link to="/signup">
               <Button className="px-8 py-4 text-lg">

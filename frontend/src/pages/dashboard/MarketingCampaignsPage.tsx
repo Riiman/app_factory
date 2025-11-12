@@ -45,7 +45,7 @@ const MarketingCampaignsPage: React.FC<MarketingCampaignsPageProps> = ({ campaig
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {campaigns.map(campaign => (
+                {(campaigns || []).map(campaign => (
                     <div key={campaign.campaign_id} onClick={() => onSelectCampaign(campaign.campaign_id)} className="cursor-pointer">
                         <Card>
                             <div className="flex justify-between items-start">

@@ -64,19 +64,23 @@ const MarketingCampaignDetailPage: React.FC<MarketingCampaignDetailPageProps> = 
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    {campaign.content_mode && campaign.content_calendar && (
+                    {campaign.content_mode && campaign.content_calendars && campaign.content_calendars.length > 0 && (
                         <Card title="Content Calendar" actions={<button onClick={onAddContentItem} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Content</button>}>
                             <div className="space-y-4">
-                                {campaign.content_calendar.content_items.map(item => (
-                                    <div key={item.content_id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                                        <div>
-                                            <p className="font-medium text-gray-800">{item.title}</p>
-                                            <p className="text-sm text-gray-500">{item.content_type} on {item.channel}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getContentStatusColor(item.status)}`}>{item.status}</span>
-                                            <p className="text-xs text-gray-500 mt-1">Due: {new Date(item.publish_date).toLocaleDateString()}</p>
-                                        </div>
+                                {campaign.content_calendars.map(calendar => (
+                                    <div key={calendar.calendar_id}>
+                                        {calendar.content_items.map(item => (
+                                            <div key={item.content_id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center mb-2">
+                                                <div>
+                                                    <p className="font-medium text-gray-800">{item.title}</p>
+                                                    <p className="text-sm text-gray-500">{item.content_type} on {item.channel}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getContentStatusColor(item.status)}`}>{item.status}</span>
+                                                    <p className="text-xs text-gray-500 mt-1">Due: {new Date(item.publish_date).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 ))}
                             </div>

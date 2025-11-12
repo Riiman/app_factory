@@ -1,7 +1,6 @@
-
 export enum UserRole {
-  USER = 'USER',
-  ADMIN = 'ADMIN',
+  USER = 'user',
+  ADMIN = 'admin',
 }
 
 export enum SubmissionStatus {
@@ -12,9 +11,11 @@ export enum SubmissionStatus {
 }
 
 export enum StartupStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  ARCHIVED = 'ARCHIVED',
+  INACTIVE = 'inactive',
+  ACTIVE = 'active',
+  INCUBATING = 'incubating',
+  GRADUATED = 'graduated',
+  ARCHIVED = 'archived',
 }
 
 export enum StartupStage {
@@ -28,49 +29,48 @@ export enum StartupStage {
 }
 
 export enum ProductStage {
-  CONCEPT = 'CONCEPT',
-  DEVELOPMENT = 'DEVELOPMENT',
-  BETA = 'BETA',
-  LIVE = 'LIVE',
+  CONCEPT = 'concept',
+  DEVELOPMENT = 'development',
+  BETA = 'beta',
+  LIVE = 'live',
 }
 
 export enum MarketingCampaignStatus {
-  PLANNED = 'PLANNED',
-  ACTIVE = 'ACTIVE',
-  COMPLETED = 'COMPLETED',
-  ARCHIVED = 'ARCHIVED',
+  PLANNED = 'planned',
+  ACTIVE = 'active',
+  COMPLETED = 'completed',
 }
 
 export enum MarketingContentStatus {
-  PLANNED = 'PLANNED',
-  DRAFT = 'DRAFT',
-  PUBLISHED = 'PUBLISHED',
+  PLANNED = 'planned',
+  PUBLISHED = 'published',
+  CANCELLED = 'cancelled',
 }
 
 export enum TaskStatus {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
+  PENDING = 'pending',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
 }
 
 export enum ExperimentStatus {
-  PLANNED = 'PLANNED',
-  RUNNING = 'RUNNING',
-  COMPLETED = 'COMPLETED',
+  PLANNED = 'planned',
+  RUNNING = 'running',
+  COMPLETED = 'completed',
 }
 
 export enum ArtifactType {
-  FILE = 'FILE',
-  LINK = 'LINK',
-  TEXT = 'TEXT',
+  FILE = 'file',
+  LINK = 'link',
+  TEXT = 'text',
 }
 
 export enum Scope {
-  GENERAL = 'GENERAL',
-  PRODUCT = 'PRODUCT',
-  FUNDRAISING = 'FUNDRAISING',
-  MARKETING = 'MARKETING',
-  BUSINESS = 'BUSINESS',
+  GENERAL = 'general',
+  PRODUCT = 'product',
+  FUNDRAISING = 'fundraise',
+  MARKETING = 'marketing',
+  BUSINESS = 'business',
   DASHBOARD = 'Dashboard', // UI specific Scope
   WORKSPACE = 'Workspace', // UI specific Scope
   TEAM = 'Team', // UI specific Scope
@@ -187,118 +187,137 @@ export interface Evaluation {
 }
 
 export interface ProductMetric {
-  metricId: number;
-  productId: number;
-  metricName: string;
+  metric_id: number;
+  product_id: number;
+  metric_name: string;
   value: number;
-  targetValue?: number;
+  target_value?: number;
   unit: string;
   period: string;
-  dateRecorded: string;
+  date_recorded: string;
 }
 
 export interface ProductIssue {
-  issueId: number;
-  productId: number;
+  issue_id: number;
+  product_id: number;
   title: string;
   description: string;
   severity: 'Low' | 'Medium' | 'High' | 'Critical';
   status: 'Open' | 'In Progress' | 'Resolved';
-  createdById: number;
-  createdAt: string;
-  resolvedAt?: string;
+  created_by: number;
+  created_at: string;
+  resolved_at?: string;
 }
 
 export interface Feature {
   id: number;
-  productId: number;
+  product_id: number;
   name: string;
   description: string;
 }
 
 export interface Product {
   id: number;
-  startupId: number;
+  startup_id: number;
   name: string;
   description: string;
   stage: ProductStage;
   version: string;
   features: Feature[];
-  metrics: ProductMetric[];
-  issues: ProductIssue[];
+  product_metrics: ProductMetric[];
+  product_issues: ProductIssue[];
 }
 
 export interface BusinessMonthlyData {
-  recordId: number;
-  startupId: number;
-  monthStart: string;
-  totalRevenue: number;
-  totalExpenses: number;
-  netBurn: number;
+  record_id: number;
+  startup_id: number;
+  month_start: string;
+  total_revenue: number;
+  total_expenses: number;
+  net_burn: number;
   mrr: number;
-  newCustomers: number;
-  totalCustomers: number;
-  keyHighlights: string;
+  new_customers: number;
+  total_customers: number;
+  key_highlights: string;
 }
 
 export interface Investor {
-  investorId: number;
+  investor_id: number;
   name: string;
-  firmName?: string;
+  firm_name?: string;
   type: 'Angel' | 'VC' | 'Fund' | 'Accelerator';
   email?: string;
+  website?: string;
+  notes?: string;
+  created_at?: string;
 }
 
 export interface RoundInvestor {
   investor: Investor;
-  amountInvested: number;
+  amount_invested: number;
+  ownership_percent?: number; // Added missing field
+  committed_on?: string; // Added missing field
 }
 
 export interface FundingRound {
-  roundId: number;
-  startupId: number;
-  roundType: 'Pre-Seed' | 'Seed' | 'Series A';
+  round_id: number;
+  startup_id: number;
+  round_type: 'Pre-Seed' | 'Seed' | 'Series A';
   status: 'Planned' | 'In Progress' | 'Closed';
-  targetAmount: number;
-  amountRaised: number;
-  dateOpened?: string;
-  dateClosed?: string;
+  target_amount: number;
+  amount_raised: number;
+  valuation_pre?: number;
+  lead_investor?: string;
+  date_opened?: string;
+  date_closed?: string;
   investors: RoundInvestor[];
 }
 
 export interface MarketingContentItem {
-  contentId: number;
+  content_id: number;
   title: string;
-  contentType: string;
+  content_type: string;
   channel: string;
-  publishDate: string;
+  publish_date: string;
   status: MarketingContentStatus;
 }
 
+export interface MarketingContentCalendar {
+  calendar_id: number;
+  campaign_id: number;
+  title: string;
+  description?: string;
+  owner_id: number;
+  start_date?: string;
+  end_date?: string;
+  content_items: MarketingContentItem[];
+}
+
 export interface MarketingCampaign {
-  campaignId: number;
-  startupId: number;
-  campaignName: string;
+  campaign_id: number;
+  startup_id: number;
+  campaign_name: string;
   channel: string;
-  spend: number;
-  clicks: number;
-  conversions: number;
+  spend?: number; // Made optional as it might not always be present
+  clicks?: number; // Made optional
+  conversions?: number; // Made optional
   status: MarketingCampaignStatus;
-  contentItems: MarketingContentItem[];
+  content_mode: boolean; // Added content_mode to the type
+  content_calendars?: MarketingContentCalendar[]; // Changed from content_items to content_calendars
 }
 
 export interface Task {
   id: number;
-  startupId: number;
+  startup_id: number;
   scope: Scope;
   name: string;
-  dueDate?: string;
+  due_date?: string;
   status: TaskStatus;
 }
 
 export interface Experiment {
   id: number;
-  startupId: number;
+  startup_id: number;
   scope: Scope;
   name:string;
   assumption: string;
@@ -307,7 +326,7 @@ export interface Experiment {
 
 export interface Artifact {
   id: number;
-  startupId: number;
+  startup_id: number;
   scope: Scope;
   name: string;
   type: ArtifactType;
@@ -316,17 +335,18 @@ export interface Artifact {
 
 export interface Founder {
   id: number;
-  startupId: number;
+  startup_id: number;
   name: string;
   role: string;
   email: string;
-  mobile?: string;
+  phone_number?: string;
+  linkedin_link?: string;
 }
 
 export interface Startup {
   id: number;
-  userId: number;
-  submissionId: number;
+  user_id: number;
+  submission_id: number;
   name: string;
   slug: string;
   status: StartupStatus;
@@ -337,7 +357,7 @@ export interface Startup {
   submission: Submission;
   founders: Founder[];
   products: Product[];
-  business_monthly_data: BusinessMonthlyData[];
+  monthly_data: BusinessMonthlyData[];
   funding_rounds: FundingRound[];
   marketing_campaigns: MarketingCampaign[];
   tasks: Task[];

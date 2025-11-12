@@ -86,9 +86,9 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
                                 </tr>
                             </thead>
                             <tbody>
-                                {round.round_investors.map(ri => (
-                                    <tr key={ri.investor_id} className="border-b">
-                                        <td className="py-3 text-sm text-gray-800">{getInvestorName(ri.investor_id)}</td>
+                                {round.investors.map(ri => (
+                                    <tr key={ri.investor.investor_id} className="border-b">
+                                        <td className="py-3 text-sm text-gray-800">{getInvestorName(ri.investor.investor_id)}</td>
                                         <td className="py-3 text-sm text-gray-600 text-right">{formatCurrency(ri.amount_invested)}</td>
                                     </tr>
                                 ))}

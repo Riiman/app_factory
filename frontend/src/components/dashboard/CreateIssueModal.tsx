@@ -76,7 +76,7 @@ const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ onClose, onCreate, 
                                 <label htmlFor="issue-product" className="block text-sm font-medium text-gray-700">Product</label>
                                 <select id="issue-product" value={localProductId} onChange={e => setLocalProductId(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                                     <option value="">Select a product...</option>
-                                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                    {(products || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
                         )}

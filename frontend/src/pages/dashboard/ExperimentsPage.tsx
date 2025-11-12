@@ -44,7 +44,7 @@ const ExperimentsPage: React.FC<ExperimentsPageProps> = ({ experiments, onExperi
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {experiments.map(experiment => (
+                {(experiments || []).map(experiment => (
                     <div key={experiment.id} onClick={() => onExperimentClick(experiment)} className="cursor-pointer">
                         <Card>
                             <div className="flex justify-between items-start">

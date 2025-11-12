@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Task, TaskStatus, TaskResult } from '../components/evaluation/evaluation-types';
+import { Task, TaskStatus } from '@/types/dashboard-types';
 import TaskList from '../components/evaluation/TaskList';
 import TaskDetail from '../components/evaluation/TaskDetail';
 import api from '../utils/api'; // To be used later for backend integration
@@ -12,7 +12,6 @@ const initialTasks: Task[] = [
       description: 'Upload your latest pitch deck in PDF format. It should cover the problem, solution, market size, and your team.',
       status: TaskStatus.PENDING,
       dueDate: '2024-08-15',
-      results: [],
     },
     {
       id: '2',
@@ -20,7 +19,6 @@ const initialTasks: Task[] = [
       description: 'Fill out the founder biography form. Include your background, experience, and motivation for this startup.',
       status: TaskStatus.PENDING,
       dueDate: '2024-08-18',
-      results: [],
     },
 ];
 
@@ -53,8 +51,32 @@ const EvaluationPage: React.FC = () => {
     () => tasks?.find((task) => task.id === selectedTaskId) || null,
     [tasks, selectedTaskId]
   );
-  
-  // ... (handler functions remain the same for now, will be wired up later) ...
+
+  const handleSelectTask = (taskId: string) => {
+    setSelectedTaskId(taskId);
+  };
+
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    // This would eventually be an API call
+    setTasks(
+      (prevTasks) =>
+        prevTasks?.map((task) =>
+          task.id === taskId ? { ...task, ...updates } : task
+        ) || null
+    );
+  };
+
+
+
+  const handleSetTaskStatus = async (taskId: string, status: TaskStatus) => {
+    // This would eventually be an API call
+    setTasks(
+      (prevTasks) =>
+        prevTasks?.map((task) =>
+          task.id === taskId ? { ...task, status } : task
+        ) || null
+    );
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center h-full">Loading tasks...</div>;
@@ -81,7 +103,6 @@ const EvaluationPage: React.FC = () => {
         <TaskDetail
           task={selectedTask}
           onUpdateTask={handleUpdateTask}
-          onAddTaskResult={handleAddTaskResult}
           onSetTaskStatus={handleSetTaskStatus}
         />
       </main>

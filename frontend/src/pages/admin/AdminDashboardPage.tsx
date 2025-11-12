@@ -35,8 +35,15 @@ const AdminDashboardPage: React.FC = () => {
       ]);
       console.log("Fetched Submissions:", JSON.stringify(fetchedSubmissions, null, 2));
       console.log("Fetched Startups:", JSON.stringify(fetchedStartups, null, 2)); // Add this line
+      
+      // Manually link submissions to startups since the backend might not be nesting them
+      const startupsWithData = fetchedStartups.map((startup: Startup) => ({
+        ...startup,
+        submission: fetchedSubmissions.find((s: Submission) => s.id === startup.submission_id),
+      }));
+
       setSubmissions(fetchedSubmissions);
-      setStartups(fetchedStartups);
+      setStartups(startupsWithData);
       setUsers(fetchedUsers);
 
       // Extract evaluations from submissions for now, if needed separately
@@ -184,6 +191,9 @@ const AdminDashboardPage: React.FC = () => {
     s.submission && s.submission.status === SubmissionStatus.APPROVED
   );
 
+  console.log("Final Startups with linked data:", startups);
+  console.log("Filtered Active Startups:", activeStartups);
+
   const renderContent = () => {
     if (loading) return <div className="flex items-center justify-center h-full">Loading admin dashboard...</div>;
     if (error) return <div className="flex items-center justify-center h-full text-red-500">Error: {error}</div>;
@@ -198,7 +208,7 @@ const AdminDashboardPage: React.FC = () => {
         case 'scoping':
             return <ScopingView startupsInScoping={startups.filter(s => s.current_stage === StartupStage.SCOPING || s.current_stage === StartupStage.CONTRACT)} onUpdateScope={handleUpdateScope} onAddComment={handleAddScopeComment} onUpdateStatus={handleUpdateScopeStatus} />;
         case 'contract':
-            return <ContractView startupsInContract={startups.filter(s => s.current_stage === StartupStage.CONTRACT)} onUpdateContract={handleUpdateContract} onActivateStartup={handleActivateStartup} fetchData={fetchData} />;
+            return <ContractView startupsInContract={startups.filter(s => s.current_stage === StartupStage.CONTRACT)} fetchData={fetchData} />;
         case 'startups':
             if (selectedStartup) {
                 return <StartupDetailView startup={selectedStartup} onBack={handleClearSelectedStartup} onAddTask={handleAddTask} onAddExperiment={handleAddExperiment} onAddArtifact={handleAddArtifact} />;
