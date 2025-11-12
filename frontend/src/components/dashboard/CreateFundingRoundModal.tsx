@@ -24,6 +24,13 @@ interface CreateFundingRoundModalProps {
     onCreate: (roundData: Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'round_investors'>) => void;
 }
 
+const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <div className="mt-1">{children}</div>
+    </div>
+);
+
 const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClose, onCreate }) => {
     // Form state
     const [roundType, setRoundType] = useState('Seed');
@@ -51,13 +58,6 @@ const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClo
             notes: notes || undefined,
         });
     };
-
-    const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
-        <div>
-            <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
-            <div className="mt-1">{children}</div>
-        </div>
-    );
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>

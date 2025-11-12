@@ -11,6 +11,7 @@ interface StartupListViewProps {
 }
 
 const StartupListView: React.FC<StartupListViewProps> = ({ startups, onSelectStartup }) => {
+  console.log("Startups received in StartupListView:", startups);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredStartups = useMemo(() => {
@@ -75,7 +76,7 @@ const StartupListView: React.FC<StartupListViewProps> = ({ startups, onSelectSta
                       <StatusBadge status={startup.currentStage} />
                     </td>
                     <td className="px-6 py-4">
-                      {new Date(startup.createdAt).toLocaleDateString()}
+                      {new Date(startup.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center">

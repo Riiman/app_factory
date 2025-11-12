@@ -24,6 +24,13 @@ interface CreateInvestorModalProps {
     onCreate: (investorData: Omit<Investor, 'investor_id' | 'created_at'>) => void;
 }
 
+const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <div className="mt-1">{children}</div>
+    </div>
+);
+
 const CreateInvestorModal: React.FC<CreateInvestorModalProps> = ({ onClose, onCreate }) => {
     // Form state
     const [name, setName] = useState('');
@@ -50,12 +57,6 @@ const CreateInvestorModal: React.FC<CreateInvestorModalProps> = ({ onClose, onCr
         });
     };
 
-    const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
-        <div>
-            <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
-            <div className="mt-1">{children}</div>
-        </div>
-    );
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>

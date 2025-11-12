@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ScopeDocument, Comment as ScopeComment, User, Role } from '../components/scope/scope-types';
+import { ScopeDocument, Comment as ScopeComment, User, UserRole as Role } from '@/types/dashboard-types';
 import { Header } from '../components/scope/Header';
 import { ScopeSectionComponent } from '../components/scope/ScopeSectionComponent';
 import { ActionBar } from '../components/scope/ActionBar';

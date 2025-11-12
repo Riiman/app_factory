@@ -28,7 +28,8 @@ const formatCurrency = (value: number) => {
 };
 
 const FundraisingOverviewPage: React.FC<FundraisingOverviewPageProps> = ({ fundraiseDetails }) => {
-    const { funding_stage, amount_raised, next_funding_goals } = fundraiseDetails;
+    const { funding_stage, amount_raised, next_funding_goals } = fundraiseDetails || {};
+    const { target_amount, target_valuation, target_close_date } = next_funding_goals || {};
 
     return (
         <div className="space-y-6">
@@ -60,21 +61,21 @@ const FundraisingOverviewPage: React.FC<FundraisingOverviewPageProps> = ({ fundr
                             <Target className="h-6 w-6 text-brand-primary mr-4" />
                             <div>
                                 <p className="text-sm font-medium text-gray-500">Target Amount</p>
-                                <p className="text-xl font-bold text-gray-900">{formatCurrency(next_funding_goals.target_amount)}</p>
+                                <p className="text-xl font-bold text-gray-900">{formatCurrency(target_amount)}</p>
                             </div>
                         </div>
                         <div className="flex items-center">
                             <TrendingUp className="h-6 w-6 text-brand-primary mr-4" />
                             <div>
                                 <p className="text-sm font-medium text-gray-500">Target Valuation</p>
-                                <p className="text-xl font-bold text-gray-900">{formatCurrency(next_funding_goals.target_valuation)}</p>
+                                <p className="text-xl font-bold text-gray-900">{formatCurrency(target_valuation)}</p>
                             </div>
                         </div>
                          <div className="flex items-center">
                             <Calendar className="h-6 w-6 text-brand-primary mr-4" />
                             <div>
                                 <p className="text-sm font-medium text-gray-500">Target Close Date</p>
-                                <p className="text-xl font-bold text-gray-900">{new Date(next_funding_goals.target_close_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                <p className="text-xl font-bold text-gray-900">{new Date(target_close_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                             </div>
                         </div>
                     </div>

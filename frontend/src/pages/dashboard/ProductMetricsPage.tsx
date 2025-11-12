@@ -24,7 +24,7 @@ interface ProductMetricsPageProps {
 const ProductMetricsPage: React.FC<ProductMetricsPageProps> = ({ products, onAddNewMetric }) => {
     // Flatten all metrics from all products and add product name for context
     const allMetrics = products.flatMap(product => 
-        product.metrics.map(metric => ({
+        product.product_metrics.map(metric => ({
             ...metric,
             productName: product.name,
         }))

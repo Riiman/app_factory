@@ -42,7 +42,7 @@ const KpiCard: React.FC<{ title: string; value: string; icon: React.ElementType 
 );
 
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupData }) => {
-    const { business_monthly_data, tasks, experiments, next_milestone, overall_progress } = startupData;
+    const { business_monthly_data = [], tasks = [], experiments = [], next_milestone, overall_progress } = startupData;
     // FIX: Provide a default object shape for latestData to prevent type errors when business_monthly_data is empty.
     const latestData = business_monthly_data[business_monthly_data.length - 1] || { mrr: 0, net_burn: 0, total_customers: 0 };
     const upcomingTasks = tasks.filter(t => t.status !== TaskStatus.COMPLETED).slice(0, 5);

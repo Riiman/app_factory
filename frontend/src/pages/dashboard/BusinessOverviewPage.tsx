@@ -31,7 +31,7 @@ const formatCurrency = (value: number) => {
     }).format(value);
 };
 
-const BusinessOverviewPage: React.FC<BusinessOverviewPageProps> = ({ businessOverview, monthlyData }) => {
+const BusinessOverviewPage: React.FC<BusinessOverviewPageProps> = ({ businessOverview, monthlyData = [] }) => {
     const sortedData = [...monthlyData].sort((a, b) => new Date(a.month_start).getTime() - new Date(b.month_start).getTime());
     
     return (

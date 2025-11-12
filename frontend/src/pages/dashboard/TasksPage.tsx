@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Task, TaskStatus } from '../../dashboard/types';
+import { Task, TaskStatus } from '@/types/dashboard-types';
 import { Plus } from 'lucide-react';
 import api from '../../utils/api';
 

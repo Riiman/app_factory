@@ -21,6 +21,13 @@ interface CreateFounderModalProps {
     onCreate: (founderData: Omit<Founder, 'id' | 'startup_id'>) => void;
 }
 
+const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <div className="mt-1">{children}</div>
+    </div>
+);
+
 const CreateFounderModal: React.FC<CreateFounderModalProps> = ({ onClose, onCreate }) => {
     // Form state
     const [name, setName] = useState('');
@@ -45,13 +52,6 @@ const CreateFounderModal: React.FC<CreateFounderModalProps> = ({ onClose, onCrea
         });
     };
     
-    const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
-        <div>
-            <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
-            <div className="mt-1">{children}</div>
-        </div>
-    );
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>

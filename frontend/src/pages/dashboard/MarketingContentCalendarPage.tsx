@@ -34,13 +34,15 @@ interface EnrichedContentItem extends MarketingContentItem {
 
 const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> = ({ campaigns, onAddNewContentItem }) => {
     
-    const allContentItems: EnrichedContentItem[] = campaigns
-        .filter(c => c.content_mode && c.content_calendar)
+    const allContentItems: EnrichedContentItem[] = (campaigns || [])
+        .filter(c => c.content_mode && c.content_calendars && c.content_calendars.length > 0)
         .flatMap(campaign => 
-            campaign.content_calendar!.content_items.map(item => ({
-                ...item,
-                campaignName: campaign.campaign_name
-            }))
+            campaign.content_calendars!.flatMap(calendar => 
+                calendar.content_items.map(item => ({
+                    ...item,
+                    campaignName: campaign.campaign_name
+                }))
+            )
         )
         .sort((a, b) => new Date(a.publish_date).getTime() - new Date(b.publish_date).getTime());
 

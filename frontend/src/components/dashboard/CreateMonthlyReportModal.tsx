@@ -22,6 +22,14 @@ interface CreateMonthlyReportModalProps {
     onCreate: (reportData: Omit<BusinessMonthlyData, 'record_id' | 'startup_id' | 'created_by' | 'created_at'>) => void;
 }
 
+const FormRow = ({ children }: { children: React.ReactNode }) => <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>;
+const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <div className="mt-1">{children}</div>
+    </div>
+);
+
 const CreateMonthlyReportModal: React.FC<CreateMonthlyReportModalProps> = ({ onClose, onCreate }) => {
     
     // Helper to get the first day of the current month in YYYY-MM-DD format
@@ -72,14 +80,6 @@ const CreateMonthlyReportModal: React.FC<CreateMonthlyReportModalProps> = ({ onC
             next_focus: nextFocus,
         });
     };
-
-    const FormRow = ({ children }: { children: React.ReactNode }) => <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>;
-    const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
-        <div>
-            <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
-            <div className="mt-1">{children}</div>
-        </div>
-    );
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>

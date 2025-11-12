@@ -1,24 +1,21 @@
 import React from 'react';
-import type { Document } from './contract-types';
-import { SignatoryStatus } from './contract-types';
+import type { Contract, ContractSignatory } from '@/types/dashboard-types';
 import { CheckCircleIcon, ClockIcon, UserIcon } from './icons';
 
 interface SignatoryListProps {
-  document: Document;
+  document: Contract;
 }
 
-const getStatusBadge = (status: SignatoryStatus) => {
+const getStatusBadge = (status: 'Not Signed' | 'Signed') => {
   switch (status) {
-    case SignatoryStatus.SIGNED:
+    case 'Signed':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
           <CheckCircleIcon className="w-4 h-4 mr-1.5" />
           Signed
         </span>
       );
-    // Fix: Replaced `SignatoryStatus.AWAITING_SIGNATURE` with `SignatoryStatus.NOT_SIGNED` to match the enum definition in types.ts.
-    case SignatoryStatus.NOT_SIGNED:
-    case SignatoryStatus.VIEWED:
+    case 'Not Signed':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
           <ClockIcon className="w-4 h-4 mr-1.5" />
@@ -35,7 +32,7 @@ const SignatoryList: React.FC<SignatoryListProps> = ({ document }) => {
     <div className="bg-white p-6 rounded-xl shadow-md border border-slate-200">
       <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Signatories</h2>
       <ul className="space-y-4">
-        {document.signatories.map((signatory) => (
+        {document.signatories.map((signatory: ContractSignatory) => (
           <li key={signatory.id} className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="flex-shrink-0 h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">

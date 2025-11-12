@@ -2,11 +2,12 @@ from flask import Blueprint, jsonify, request, session
 from app.extensions import db
 from app.models import Submission, Startup, User, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole, ScopeStatus, ContractStatus
 from app.utils.decorators import admin_required
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 import re
 from datetime import datetime
 import json
-from app.tasks import analyze_submission_task
+from app.tasks import analyze_submission_task, generate_scope_document_task
 
 print("--- DEBUG: Importing admin.py ---")
 
@@ -22,7 +23,7 @@ def get_all_submissions():
 @admin_bp.route('/startups', methods=['GET'])
 @admin_required
 def get_all_startups():
-    startups = Startup.query.all()
+    startups = Startup.query.options(joinedload(Startup.submission)).all()
     return jsonify({'success': True, 'startups': [s.to_dict(include_relations=True) for s in startups]}), 200
 
 @admin_bp.route('/startups/<int:startup_id>', methods=['GET'])
@@ -71,7 +72,7 @@ def update_submission_status(submission_id):
     if new_status == SubmissionStatus.IN_REVIEW:
         analyze_submission_task.delay(submission.id)
 
-    # If submission is approved, create a startup entry
+    # If submission is approved, create a startup entry and trigger scope document generation
     if new_status == SubmissionStatus.APPROVED:
         if not submission.startup:
             # Create Startup
@@ -80,29 +81,20 @@ def update_submission_status(submission_id):
                 submission_id=submission.id,
                 name=submission.startup_name,
                 slug=re.sub(r'[^a-z0-9-]', '', submission.startup_name.lower().replace(' ', '-')),
-                current_stage=StartupStage.EVALUATION # Start at evaluation stage
+                current_stage=StartupStage.SCOPING.value # Convert Enum to its uppercase value
             )
             db.session.add(startup)
             db.session.flush() # Flush to get startup.id
 
-            # Create initial Scope Document
-            scope_doc = ScopeDocument(
-                startup_id=startup.id,
-                title=f"Scope Document for {startup.name}",
-                content=json.dumps({
-                    "product_scope": "Define initial product features and roadmap for the first 3 months.",
-                    "gtm_scope": "Identify target customer persona and primary acquisition channels."
-                }),
-                status=ScopeStatus.DRAFT
-            )
-            db.session.add(scope_doc)
+            # Trigger async scope document generation
+            generate_scope_document_task.delay(submission.id)
 
             # Create initial Contract
             contract = Contract(
                 startup_id=startup.id,
                 title=f"Incubator Agreement for {startup.name}",
                 document_url="#", # Placeholder for actual document link
-                status=ContractStatus.DRAFT
+                status=ContractStatus.DRAFT.name # Convert Enum to string
             )
             db.session.add(contract)
 

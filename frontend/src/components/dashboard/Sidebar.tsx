@@ -39,7 +39,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage, onNavClick }) => {
     /** Internal state to manage which collapsible sections are currently open. */
-    const [openScopes, setOpenScopes] = useState<Set<string>>(new Set([activeScope.toString(), Scope.WORKSPACE.toString()]));
+    const [openScopes, setOpenScopes] = useState<Set<string>>(new Set(activeScope ? [activeScope.toString(), Scope.WORKSPACE.toString()] : [Scope.WORKSPACE.toString()]));
 
     /**
      * Toggles the open/closed state of a collapsible menu section.
@@ -63,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
      * @returns {boolean} True if the scope is active.
      */
     const isScopeActive = (scopeName: string) => {
-        return activeScope.toString().toLowerCase() === scopeName.toLowerCase();
+        return activeScope?.toString().toLowerCase() === scopeName.toLowerCase();
     }
 
 

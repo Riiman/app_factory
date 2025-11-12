@@ -19,6 +19,14 @@ class Api {
         window.location.href = '/login';
         throw new Error('Session expired');
       }
+
+      // Clone the response to log it
+      if (response.ok) {
+        response.clone().json().then(data => {
+          console.log('Data from backend:', data);
+        });
+      }
+
       return response;
     } catch (error) {
       throw error;
@@ -123,6 +131,15 @@ class Api {
     return (await response.json()).founders;
   }
 
+  async getMarketingOverview(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/marketing-overview`);
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch marketing overview');
+    }
+    return (await response.json()).marketing_overview;
+  }
+
   // --- Create/Update Endpoints ---
   async createTask(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/tasks`, data);
@@ -144,8 +161,8 @@ class Api {
     if (!response.ok) throw new Error('Failed to create product');
     return (await response.json()).product;
   }
-  async createFeature(startupId: number, data: any) {
-    const response = await this.post(`/startups/${startupId}/products/features`, data);
+  async createFeature(startupId: number, productId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/products/${productId}/features`, data);
     if (!response.ok) throw new Error('Failed to create feature');
     return (await response.json()).feature;
   }
@@ -180,7 +197,7 @@ class Api {
     return (await response.json()).campaign;
   }
   async createContentItem(startupId: number, campaignId: number, data: any) {
-    const response = await this.post(`/startups/${startupId}/campaigns/${campaignId}/content`, data);
+    const response = await this.post(`/startups/${startupId}/campaigns/${campaignId}/content-items`, data);
     if (!response.ok) throw new Error('Failed to create content item');
     return (await response.json()).item;
   }
@@ -391,23 +408,471 @@ class Api {
 
   
 
-      async updateContract(startupId: number, data: { documentUrl: string; status: string }) {
+            async updateScopeStatus(startupId: number, newStatus: string) {
 
   
 
-        const response = await this.put(`/admin/startups/${startupId}/contract`, data);
+    
 
   
 
-        if (!response.ok) throw new Error('Failed to update contract');
+              const response = await this.put(`/admin/scope/${startupId}/status`, { status: newStatus });
 
   
 
-        return (await response.json()).contract;
+    
 
   
 
-      }
+              if (!response.ok) throw new Error('Failed to update scope status');
+
+  
+
+    
+
+  
+
+              return (await response.json()).startup;
+
+  
+
+    
+
+  
+
+            }
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                  async addContractComment(startupId: number, text: string) {
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    const response = await this.post(`/admin/contract/${startupId}/comments`, { text });
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    if (!response.ok) throw new Error('Failed to add contract comment');
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    return (await response.json()).comment;
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                  }
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+            
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                  async addContractSignatory(startupId: number, name: string, email: string) {
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    const response = await this.post(`/admin/contract/${startupId}/signatories`, { name, email });
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    if (!response.ok) throw new Error('Failed to add contract signatory');
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    return (await response.json()).signatory;
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                  }
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+            
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                  async updateContractStatus(startupId: number, newStatus: string) {
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    const response = await this.put(`/admin/contract/${startupId}/status`, { status: newStatus });
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    if (!response.ok) throw new Error('Failed to update contract status');
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    return (await response.json()).contract;
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                  }
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+            
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                  async updateContract(startupId: number, data: { documentUrl: string; status: string }) {
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+              
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    const response = await this.put(`/admin/startups/${startupId}/contract`, data);
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+              
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    if (!response.ok) throw new Error('Failed to update contract');
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+              
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                    return (await response.json()).contract;
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+              
+
+  
+
+    
+
+  
+
+      
+
+  
+
+    
+
+  
+
+                  }
 
   
 

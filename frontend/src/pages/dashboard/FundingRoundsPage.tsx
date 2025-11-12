@@ -54,7 +54,7 @@ const FundingRoundsPage: React.FC<FundingRoundsPageProps> = ({ fundingRounds, on
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {fundingRounds.map(round => {
+                {(fundingRounds || []).map(round => {
                     const progress = round.target_amount > 0 ? (round.amount_raised / round.target_amount) * 100 : 0;
                     return (
                         <div key={round.round_id} onClick={() => onSelectRound(round.round_id)} className="cursor-pointer">

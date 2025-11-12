@@ -4,6 +4,7 @@ import { Startup, ScopeStatus } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { FileSignature, Send, Save, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface ScopingViewProps {
   startupsInScoping: Startup[];
@@ -19,9 +20,12 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
   const [newComment, setNewComment] = useState('');
 
   useEffect(() => {
-    if (selectedStartup?.scopeOfEngagement) {
-      setProductScope(selectedStartup.scopeOfEngagement.productScope);
-      setGtmScope(selectedStartup.scopeOfEngagement.gtmScope);
+    if (selectedStartup?.scope_document) {
+      // The entire document content is now in a single field.
+      // Splitting it for display is no longer necessary.
+      // We will render the raw markdown content directly.
+      setProductScope(selectedStartup.scope_document.content);
+      setGtmScope(''); // Clear this as it's no longer a separate field
     } else {
         setProductScope('');
         setGtmScope('');
@@ -60,7 +64,7 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
               >
                 <div className="flex justify-between items-center">
                     <p className="font-semibold text-brand-text-primary">{startup.name}</p>
-                    {startup.scopeOfEngagement && <StatusBadge status={startup.scopeOfEngagement.status} />}
+                    {startup.scope_document && <StatusBadge status={startup.scope_document.status} />}
                 </div>
                 <p className="text-sm text-brand-text-secondary mt-1 truncate">{startup.founders[0]?.name || 'N/A'}</p>
                 <p className="text-xs text-slate-500 truncate">{startup.founders[0]?.email}{startup.founders[0]?.mobile && ` • ${startup.founders[0]?.mobile}`}</p>
@@ -70,11 +74,11 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
         </ul>
       </div>
       <div className="w-2/3 h-full overflow-y-auto p-8">
-        {selectedStartup && selectedStartup.scopeOfEngagement ? (
+        {selectedStartup && selectedStartup.scope_document ? (
           <div className="space-y-6">
             <div>
                 <h2 className="text-3xl font-bold text-brand-text-primary">{selectedStartup.name}</h2>
-                <p className="text-brand-text-secondary mt-1">Define the initial scope of engagement.</p>
+                <p className="text-brand-text-secondary mt-1">{selectedStartup.scope_document.title}</p>
             </div>
 
             <Card title="Founders">
@@ -95,37 +99,8 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
             </Card>
             
             <Card title="Scope of Engagement">
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-brand-text-primary" htmlFor="product-scope">Product Scope</label>
-                        <textarea
-                            id="product-scope"
-                            value={productScope}
-                            onChange={e => setProductScope(e.target.value)}
-                            rows={6}
-                            className="mt-1 w-full p-2 border border-slate-300 rounded-md text-sm"
-                            placeholder="Detail the product vision, key features for MVP, target user, and success metrics..."
-                        />
-                    </div>
-                     <div>
-                        <label className="text-sm font-medium text-brand-text-primary" htmlFor="gtm-scope">Go-To-Market (GTM) Scope</label>
-                        <textarea
-                            id="gtm-scope"
-                            value={gtmScope}
-                            onChange={e => setGtmScope(e.target.value)}
-                            rows={6}
-                            className="mt-1 w-full p-2 border border-slate-300 rounded-md text-sm"
-                            placeholder="Outline the initial marketing strategy, customer acquisition channels, pricing model, and sales process..."
-                        />
-                    </div>
-                </div>
-                <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
-                    <button onClick={handleSaveDraft} className="flex items-center px-4 py-2 text-sm font-medium text-brand-text-primary bg-white border border-slate-300 rounded-md hover:bg-slate-50">
-                        <Save className="mr-2 h-4 w-4" /> Save Draft
-                    </button>
-                    <button onClick={() => onUpdateStatus(selectedStartup.id, ScopeStatus.PROPOSED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-brand-primary/90">
-                       <Send className="mr-2 h-4 w-4" /> Propose to Founder
-                    </button>
+                <div className="space-y-4 prose max-w-none">
+                    <ReactMarkdown>{selectedStartup.scope_document.content}</ReactMarkdown>
                 </div>
             </Card>
 
@@ -133,7 +108,7 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
                 <div className="space-y-4">
                     <h3 className="font-semibold flex items-center text-md"><MessageSquare className="mr-2 h-5 w-5" /> Comments</h3>
                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                        {selectedStartup.scopeOfEngagement.comments.map(comment => (
+                        {selectedStartup.scope_document.comments.map(comment => (
                             <div key={comment.id} className={`flex ${comment.author === 'Admin' ? 'justify-end' : ''}`}>
                                 <div className={`p-3 rounded-lg max-w-md ${comment.author === 'Admin' ? 'bg-brand-primary/10 text-brand-text-primary' : 'bg-slate-100 text-brand-text-secondary'}`}>
                                     <p className="text-sm">{comment.text}</p>
