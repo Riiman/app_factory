@@ -5,7 +5,7 @@ from app.utils.decorators import session_required
 from app.services.chatbot_service import StartupAnalyzerChatbot
 import traceback
 
-submissions_bp = Blueprint('submissions', __name__, url_prefix='/submissions')
+submissions_bp = Blueprint('submissions', __name__, url_prefix='/api/submissions')
 
 def _get_latest_answer(data, key):
     """Safely gets the last answer for a given key from the chatbot data."""
