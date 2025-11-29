@@ -86,6 +86,80 @@ class Api {
     return this.put(`/submissions/${submissionId}`, data);
   }
 
+  // --- Pre-Admission Stage Endpoints ---
+  async getEvaluationTasks() {
+    const response = await this.fetch('/stages/evaluation/tasks');
+    if (!response.ok) throw new Error('Failed to fetch evaluation tasks');
+    return (await response.json()).tasks;
+  }
+
+  async getScopeDocument() {
+    const response = await this.fetch('/stages/scope');
+    if (!response.ok) throw new Error('Failed to fetch scope document');
+    return (await response.json()).scope_document;
+  }
+
+  async addScopeComment(sectionId: string, text: string) {
+    const response = await this.post('/stages/scope/comments', { section_id: sectionId, text });
+    if (!response.ok) throw new Error('Failed to add comment');
+    return (await response.json()).comment;
+  }
+
+  async getContractDetails() {
+    const response = await this.fetch('/stages/contract');
+    if (!response.ok) throw new Error('Failed to fetch contract details');
+    return (await response.json()).contract;
+  }
+  
+  // --- Admin Endpoints ---
+
+  async getAllSubmissions() {
+    const data = await this.get('/admin/submissions');
+    return data.submissions;
+  }
+
+  async getAllStartups() {
+    const data = await this.get('/admin/startups');
+    return data.startups;
+  }
+
+  async getStartupDetail(startupId: number) {
+    return this.get(`/admin/startups/${startupId}`);
+  }
+
+  async updateStartupStage(startupId: number, newStage: string) {
+    return this.put(`/admin/startups/${startupId}/stage`, { current_stage: newStage });
+  }
+
+  async updateSubmissionStatus(submissionId: number, newStatus: string) {
+    return this.put(`/admin/submissions/${submissionId}/status`, { status: newStatus });
+  }
+
+  async getAllUsers() {
+    const data = await this.get('/admin/users');
+    return data.users;
+  }
+
+  async updateUserRole(userId: number, newRole: string) {
+    return this.put(`/admin/users/${userId}/role`, { role: newRole });
+  }
+
+  async updateScopeDocument(startupId: number, data: { productScope: string; gtmScope: string }) {
+    return this.put(`/admin/startups/${startupId}/scope`, data);
+  }
+
+  async addAdminScopeComment(startupId: number, text: string) {
+    return this.post(`/admin/startups/${startupId}/scope/comments`, { text });
+  }
+
+  async updateScopeStatus(startupId: number, status: string) {
+    return this.put(`/admin/scope/${startupId}/status`, { status });
+  }
+
+  async updateContract(startupId: number, data: { documentUrl: string; status: string }) {
+    return this.put(`/admin/startups/${startupId}/contract`, data);
+  }
+
   // Other methods...
 }
 

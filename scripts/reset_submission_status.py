@@ -9,35 +9,32 @@ from app import create_app, db
 from app.models import Submission, SubmissionStatus
 from app.config import Config
 
-def reset_submission_status(submission_id: int):
+def reset_all_submissions_to_pending():
     app = create_app(Config)
     with app.app_context():
-        print(f"--- Attempting to reset status for Submission ID: {submission_id} ---")
+        print("--- Resetting ALL Submission statuses to PENDING ---")
         
-        submission = Submission.query.get(submission_id)
-        
-        if not submission:
-            print(f"Error: Submission with ID {submission_id} not found.")
+        confirm = input("Are you sure you want to reset ALL submission statuses to PENDING? (yes/no): ")
+        if confirm.lower() != 'yes':
+            print("Operation cancelled.")
             return
 
-        current_status = submission.status.name
-        if current_status == SubmissionStatus.PENDING.name:
-            print(f"Submission ID {submission_id} is already PENDING. No change needed.")
-        else:
-            submission.status = SubmissionStatus.PENDING
-            db.session.commit()
-            print(f"Successfully changed status of Submission ID {submission_id} from {current_status} to {SubmissionStatus.PENDING.name}.")
+        submissions = Submission.query.all()
+        
+        if not submissions:
+            print("No submissions found to reset.")
+            return
 
-        print("\n--- Script Complete ---")
+        for submission in submissions:
+            current_status = submission.status.name
+            if current_status == SubmissionStatus.PENDING.name:
+                print(f"Submission ID {submission.id} is already PENDING. No change needed.")
+            else:
+                submission.status = SubmissionStatus.PENDING
+                db.session.commit()
+                print(f"Successfully changed status of Submission ID {submission.id} from {current_status} to {SubmissionStatus.PENDING.name}.")
+
+        print("\n--- All Submissions Reset to PENDING ---")
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print("Usage: python scripts/reset_submission_status.py <submission_id>")
-        sys.exit(1)
-    
-    try:
-        sub_id = int(sys.argv[1])
-        reset_submission_status(sub_id)
-    except ValueError:
-        print("Error: Submission ID must be an integer.")
-        sys.exit(1)
+    reset_all_submissions_to_pending()

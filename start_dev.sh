@@ -12,6 +12,7 @@ fi
 
 # Start the Flask server in the background
 echo "Starting Flask server..."
+export FLASK_ENV=development
 python3 run.py &
 FLASK_PID=$!
 

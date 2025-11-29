@@ -1,13 +1,15 @@
 from flask import Blueprint, jsonify, request, session
 from app.extensions import db
-from app.models import Submission, Startup, User, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole, ScopeStatus, ContractStatus
+from app.models import Submission, Startup, User, Founder, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole, ScopeStatus, ContractStatus
 from app.utils.decorators import admin_required
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 import re
 from datetime import datetime
 import json
-from app.tasks import analyze_submission_task, generate_scope_document_task, generate_product_task
+from app.services.analyzer_service import run_analysis
+from app.services.document_generator_service import generate_scope_document
+from app.tasks import generate_product_task
 from app.services.product_generator_service import generate_product_from_scope
 from app.models import Product, Feature
 
@@ -72,24 +74,43 @@ def update_submission_status(submission_id):
     
     # If submission is moved to review, trigger the analysis task
     if new_status == SubmissionStatus.IN_REVIEW:
-        analyze_submission_task.delay(submission.id)
+        run_analysis(submission.id)
 
     # If submission is approved, create a startup entry and trigger scope document generation
     if new_status == SubmissionStatus.APPROVED:
+        print(f"--- DEBUG: Checking if submission {submission.id} has a startup: {submission.startup} ---")
         if not submission.startup:
+            base_slug = re.sub(r'[^a-z0-9-]', '', submission.startup_name.lower().replace(' ', '-'))
+            slug = base_slug
+            counter = 1
+            while Startup.query.filter_by(slug=slug).first():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
             # Create Startup
             startup = Startup(
                 user_id=submission.user_id,
                 submission_id=submission.id,
                 name=submission.startup_name,
-                slug=re.sub(r'[^a-z0-9-]', '', submission.startup_name.lower().replace(' ', '-')),
-                current_stage=StartupStage.SCOPING.value # Convert Enum to its uppercase value
+                slug=slug,
+                current_stage=StartupStage.SCOPING.value
             )
             db.session.add(startup)
             db.session.flush() # Flush to get startup.id
 
+            # Create a Founder record for the submitting user
+            submitting_user = User.query.get(submission.user_id)
+            if submitting_user:
+                founder = Founder(
+                    startup_id=startup.id,
+                    name=submitting_user.full_name,
+                    email=submitting_user.email,
+                    role="Founder" # Default role, can be updated later
+                )
+                db.session.add(founder)
+
             # Trigger async scope document generation
-            generate_scope_document_task.delay(submission.id)
+            generate_scope_document(startup)
 
             # Create initial Contract
             contract = Contract(
@@ -188,7 +209,7 @@ def add_scope_comment(startup_id):
     admin_user_id = session.get('user_id')
     
     comment = ScopeComment(
-        scope_document_id=startup.scope_document.id,
+        document_id=startup.scope_document.id,
         user_id=admin_user_id,
         text=text
     )

@@ -49,8 +49,6 @@ class ChatbotOrchestrator:
         # Step 4: Determine the outcome and commit to the database.
         if not next_question:
             self.submission.chat_progress_step = 'completed'
-            self.submission.status = 'IN_REVIEW' 
-            print(f"ORCHESTRATOR: State before commit: chat_progress_step='completed', status='IN_REVIEW'")
             db.session.commit()
             db.session.refresh(self.submission) # Refresh to get the latest data
             return {

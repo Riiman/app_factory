@@ -19,19 +19,19 @@ def format_data_for_scope_generator(submission, evaluation):
     
     return formatted_data
 
-def generate_scope_document(submission_id):
+def generate_scope_document(startup):
     """
-    Celery task to generate a scope document for a startup submission using Azure OpenAI.
+    Generates a scope document for a startup submission using Azure OpenAI.
     """
-    print(f"--- [Celery Task] Starting scope document generation for submission ID: {submission_id} ---")
-    submission = Submission.query.get(submission_id)
-    if not submission or not submission.evaluation:
-        print(f"--- [Celery Task] Error: Submission or evaluation not found for ID {submission_id}. ---")
+    print(f"--- [Celery Task] Starting scope document generation for startup ID: {startup.id} ---")
+    
+    submission = startup.submission
+    if not submission:
+        print(f"--- [Celery Task] Error: No submission associated with startup ID {startup.id}. ---")
         return
-
-    startup = submission.startup
-    if not startup:
-        print(f"--- [Celery Task] Error: No startup associated with submission ID {submission_id}. ---")
+        
+    if not submission.evaluation:
+        print(f"--- [Celery Task] Error: No evaluation associated with submission ID {submission.id}. ---")
         return
 
     formatted_data = format_data_for_scope_generator(submission, submission.evaluation)

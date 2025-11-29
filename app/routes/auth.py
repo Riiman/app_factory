@@ -4,7 +4,7 @@ from app.models import User, Submission
 from app.services.chatbot_orchestrator import SUBMISSION_FIELDS
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
-from app.utils.decorators import session_required
+from app.utils.decorators import jwt_session_required
 from firebase_admin import auth # Added Firebase Auth import
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
