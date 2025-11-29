@@ -178,7 +178,7 @@ const ProductsTab: React.FC<{ products: Product[] }> = ({ products }) => (
                         <h4 className="font-semibold">Features</h4>
                         {renderTable(['Name', 'Description'], product.features.map(f => [f.name, f.description]), "No features defined.")}
                         <h4 className="font-semibold mt-4">Metrics</h4>
-                        {renderTable(['Name', 'Value', 'Unit', 'Period'], product.product_metrics.map(m => [m.metric_name, m.value.toLocaleString(), m.unit, m.period]), "No metrics recorded.")}
+                        {renderTable(['Name', 'Value', 'Unit', 'Period'], product.product_metrics.map(m => [m.metric_name, m.value?.toLocaleString() ?? 'N/A', m.unit, m.period]), "No metrics recorded.")}
                         <h4 className="font-semibold mt-4">Issues</h4>
                         {renderTable(['Title', 'Severity', 'Status'], product.product_issues.map(i => [i.title, <StatusBadge status={i.severity} />, <StatusBadge status={i.status} />]), "No issues reported.")}
                     </div>

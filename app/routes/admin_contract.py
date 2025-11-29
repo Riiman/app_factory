@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, session
 from app.extensions import db
 from app.models import Startup, Contract, ContractComment, ContractSignatory, ContractStatus, StartupStage # Import ContractStatus
 from app.utils.decorators import admin_required
+from app.tasks import generate_startup_assets_task
 from datetime import datetime
 
 admin_contract_bp = Blueprint('admin_contract', __name__, url_prefix='/api/admin/contract')
@@ -87,8 +88,14 @@ def update_contract_status(startup_id):
 
     if new_status == ContractStatus.SENT and not contract.sent_at:
         contract.sent_at = datetime.utcnow()
-    elif new_status == ContractStatus.SIGNED and not contract.signed_at:
-        contract.signed_at = datetime.utcnow()
+    elif new_status == ContractStatus.SIGNED:
+        if not contract.signed_at:
+            contract.signed_at = datetime.utcnow()
+        # Update startup stage to ADMITTED
+        startup.current_stage = StartupStage.ADMITTED
+        # Trigger the generation of startup assets
+        generate_startup_assets_task.delay(startup.id)
+        print(f"--- [API] Triggered startup asset generation for startup ID: {startup.id} ---")
 
     db.session.commit()
     return jsonify({'success': True, 'contract': contract.to_dict()}), 200

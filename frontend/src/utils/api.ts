@@ -86,6 +86,17 @@ class Api {
     return this.put(`/submissions/${submissionId}`, data);
   }
 
+  // --- Startup Data ---
+  async getStartupData(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to fetch startup data');
+    }
+    const data = await response.json();
+    return data.startup;
+  }
+
   // --- Pre-Admission Stage Endpoints ---
   async getEvaluationTasks() {
     const response = await this.fetch('/stages/evaluation/tasks');
@@ -158,6 +169,10 @@ class Api {
 
   async updateContract(startupId: number, data: { documentUrl: string; status: string }) {
     return this.put(`/admin/startups/${startupId}/contract`, data);
+  }
+
+  async updateContractStatus(startupId: number, newStatus: string) {
+    return this.put(`/admin/contract/${startupId}/status`, { status: newStatus });
   }
 
   // Other methods...

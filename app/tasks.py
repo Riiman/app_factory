@@ -3,7 +3,15 @@ from app.services.analyzer_service import run_analysis
 from app.services.document_generator_service import generate_scope_document
 from app.services.contract_generator_service import generate_contract_document
 from app.services.product_generator_service import generate_product_from_scope
+from app.services.generation_service import generate_startup_assets
 from app.models import Product, Feature
+
+@celery.task(name='app.tasks.generate_startup_assets_task')
+def generate_startup_assets_task(startup_id):
+    """Celery task to trigger the generation of all startup assets."""
+    print(f"--- [Celery Task] Starting asset generation for startup ID: {startup_id} ---")
+    generate_startup_assets(startup_id)
+
 
 @celery.task(name='app.tasks.analyze_submission_task')
 def analyze_submission_task(submission_id):

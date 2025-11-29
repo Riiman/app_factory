@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem, MarketingOverview, MarketingContentCalendar, Feature
+from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem, MarketingOverview, MarketingContentCalendar, Feature, User, UserRole
 from app import db
 from datetime import datetime
 
@@ -10,7 +10,20 @@ startups_bp = Blueprint('startups', __name__, url_prefix='/api/startups')
 @jwt_required()
 def get_startup(startup_id):
     startup = Startup.query.get_or_404(startup_id)
-    if startup.user_id != get_jwt_identity():
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)  # Cast to integer
+    user = User.query.get(user_id)
+
+    print(f"--- DEBUG: get_startup ---")
+    print(f"--- DEBUG: startup.user_id = {startup.user_id} ---")
+    print(f"--- DEBUG: user_id (from JWT) = {user_id} ---")
+    if user:
+        print(f"--- DEBUG: user.role = {user.role} ---")
+        print(f"--- DEBUG: user.role == UserRole.ADMIN = {user.role == UserRole.ADMIN} ---")
+    else:
+        print(f"--- DEBUG: user is None ---")
+
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
         return jsonify({'success': False, 'error': 'Unauthorized access to startup data.'}), 403
     # Return lean startup data - relations will be fetched by specific endpoints
     return jsonify({'success': True, 'startup': startup.to_dict(include_relations=['monthly_data', 'marketing_campaigns'])}), 200
