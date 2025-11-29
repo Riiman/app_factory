@@ -1,33 +1,51 @@
 from flask import request, jsonify, current_app, redirect, url_for, Blueprint, session
 from app.extensions import db, oauth
 from app.models import User, Submission
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.services.chatbot_orchestrator import SUBMISSION_FIELDS
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 from app.utils.decorators import session_required
+from firebase_admin import auth # Added Firebase Auth import
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/status')
-@session_required
+@jwt_required(optional=True)
 def status():
-    user_id = session.get('user_id')
+    user_id = get_jwt_identity()
+    if not user_id:
+        return jsonify({"is_logged_in": False})
+
     user = User.query.get(user_id)
-    
     if not user:
-        return jsonify({'success': False, 'error': 'User not found'}), 404
+        return jsonify({"is_logged_in": False, "error": "User not found"}), 404
 
     submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+    submission_status = submission.status.value if submission else "not_started"
     
-    startup_stage = None
-    if submission and submission.startup:
-        startup_stage = submission.startup.current_stage.value
+    response = {
+        "is_logged_in": True,
+        "user": user.to_dict(),
+        "submission_status": submission_status,
+        "submission_data": submission.to_dict() if submission else None,
+    }
 
-    return jsonify({
-        'success': True,
-        'is_logged_in': True,
-        'submission_status': submission.status.value if submission else None,
-        'startup_stage': startup_stage
-    })
+    if submission and submission_status == 'PENDING':
+        # Determine the next question for the frontend
+        current_step_key = submission.chat_progress_step
+        if current_step_key == 'start':
+            response["next_question"] = SUBMISSION_FIELDS[0]['question']
+        elif current_step_key == 'completed':
+             response["next_question"] = "Your submission is complete. We will get back to you shortly."
+        else:
+            try:
+                current_step_index = [i for i, f in enumerate(SUBMISSION_FIELDS) if f['key'] == current_step_key][0]
+                response["next_question"] = SUBMISSION_FIELDS[current_step_index]['question']
+            except (IndexError, TypeError):
+                 # Default to the first question if the step is invalid or not found
+                response["next_question"] = SUBMISSION_FIELDS[0]['question']
+
+    return jsonify(response)
 
 
 @auth_bp.route('/signup', methods=['POST'])
@@ -36,132 +54,169 @@ def signup():
     email = data.get('email')
     password = data.get('password')
     full_name = data.get('full_name')
+    phone_number = data.get('phone_number') # New field
 
     if not all([email, password, full_name]):
         return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
 
-    if User.query.filter_by(email=email).first():
-        return jsonify({'success': False, 'error': 'Email already registered.'}), 400
+    try:
+        # 1. Create user in Firebase Authentication
+        firebase_user = auth.create_user(
+            email=email,
+            password=password,
+            display_name=full_name,
+            phone_number=phone_number, # Pass phone number to Firebase
+            email_verified=False, # Firebase will handle actual verification
+            disabled=False
+        )
+        firebase_uid = firebase_user.uid
 
-    user = User(email=email, full_name=full_name)
-    user.set_password(password)
-    
-    db.session.add(user)
-    db.session.commit()
+        # 2. Check if user already exists in our local database via Firebase UID
+        user = User.query.filter_by(firebase_uid=firebase_uid).first()
 
-    return jsonify({
-        'success': True, 
-        'message': 'Account created successfully.',
-        'user': user.to_dict()
-    }), 201
+        if not user:
+            # If not, create a new local user record
+            user = User(
+                firebase_uid=firebase_uid,
+                email=email,
+                full_name=full_name,
+                phone_number=phone_number,
+                email_verified=firebase_user.email_verified,
+                phone_verified=firebase_user.phone_number is not None # Basic check, Firebase client-side SMS verification will update this
+            )
+            db.session.add(user)
+        else:
+            # If user exists, update their details
+            user.email = email
+            user.full_name = full_name
+            user.phone_number = phone_number
+            user.email_verified = firebase_user.email_verified
+            user.phone_verified = firebase_user.phone_number is not None
+            
+        db.session.commit()
+
+        # 3. Generate internal JWT
+        access_token = create_access_token(identity=str(user.id))
+
+        return jsonify({
+            'success': True, 
+            'message': 'Account created successfully.',
+            'user': user.to_dict(),
+            'access_token': access_token
+        }), 201
+
+    except auth.EmailAlreadyExistsError:
+        return jsonify({'success': False, 'error': 'Email already registered with Firebase.'}), 400
+    except auth.PhoneNumberAlreadyExistsError:
+        return jsonify({'success': False, 'error': 'Phone number already registered with Firebase.'}), 400
+    except Exception as e:
+        current_app.logger.error(f"Firebase signup error: {e}")
+        return jsonify({'success': False, 'error': 'Failed to create user account.'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+    firebase_id_token = data.get('firebase_id_token')
 
-    if not email or not password:
-        return jsonify({'success': False, 'error': 'Email and password are required.'}), 400
+    if not firebase_id_token:
+        return jsonify({'success': False, 'error': 'Firebase ID token is required.'}), 400
 
-    user = User.query.filter_by(email=email).first()
+    try:
+        # 1. Verify the Firebase ID token
+        decoded_token = auth.verify_id_token(firebase_id_token)
+        firebase_uid = decoded_token['uid']
+        email = decoded_token['email']
+        phone_number = decoded_token.get('phone_number')
 
-    if not user or not user.check_password(password):
-        return jsonify({'success': False, 'error': 'Invalid credentials.'}), 401
+        # 2. Get Firebase user record to check verification status
+        firebase_user = auth.get_user(firebase_uid)
 
-    # Store user_id in the session
-    session['user_id'] = user.id
+        # 3. Find or create user in our local database
+        user = User.query.filter_by(firebase_uid=firebase_uid).first()
 
-    # Check the user's most recent submission
-    submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
-    
-    submission_status = None
-    if submission:
-        # If submission was rejected over 30 days ago, delete it so the user can start fresh.
-        if submission.status.value == 'rejected' and (datetime.utcnow() - submission.submitted_at) > timedelta(days=30):
-            db.session.delete(submission)
-            db.session.commit()
-            submission_status = None # The submission is gone, so status is null
+        if not user:
+            # If user doesn't exist locally, create a new record
+            user = User(
+                firebase_uid=firebase_uid,
+                email=email,
+                full_name=firebase_user.display_name or email,
+                phone_number=phone_number,
+                email_verified=firebase_user.email_verified,
+                phone_verified=firebase_user.phone_number is not None # Check if phone number exists
+            )
+            db.session.add(user)
         else:
-            submission_status = submission.status.value
+            # Update existing user's details and verification status
+            user.email = email
+            user.full_name = firebase_user.display_name or email
+            user.phone_number = phone_number
+            user.email_verified = firebase_user.email_verified # Removed trailing comma
+            user.phone_verified = firebase_user.phone_number is not None # Removed trailing comma
+            
+        db.session.commit()
 
-    return jsonify({
-        'success': True,
-        'user': user.to_dict(),
-        'submission_status': submission_status
-    }), 200
+        # 4. Create our internal JWT
+        access_token = create_access_token(identity=str(user.id))
+
+        # Check the user's most recent submission (existing logic)
+        submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+        submission_status = submission.status.value if submission else "not_started"
+
+        response = {
+            'success': True,
+            'is_logged_in': True, # For consistency with useAuth hook
+            'access_token': access_token,
+            'user': user.to_dict(),
+            'submission_status': submission_status,
+            'submission_data': submission.to_dict() if submission else None,
+        }
+
+        if submission and submission_status == 'PENDING':
+            current_step_key = submission.chat_progress_step
+            if current_step_key == 'start':
+                response["next_question"] = SUBMISSION_FIELDS[0]['question']
+            elif current_step_key == 'completed':
+                response["next_question"] = "Your submission is complete. We will get back to you shortly."
+            else:
+                try:
+                    current_step_index = [i for i, f in enumerate(SUBMISSION_FIELDS) if f['key'] == current_step_key][0]
+                    response["next_question"] = SUBMISSION_FIELDS[current_step_index]['question']
+                except (IndexError, TypeError):
+                    response["next_question"] = SUBMISSION_FIELDS[0]['question']
+
+        return jsonify(response), 200
+
+    except auth.InvalidIdTokenError:
+        return jsonify({'success': False, 'error': 'Invalid Firebase ID token.'}), 401
+    except Exception as e:
+        current_app.logger.error(f"Firebase login error: {e}")
+        return jsonify({'success': False, 'error': 'Authentication failed.'}), 500
 
 @auth_bp.route('/logout', methods=['POST'])
-@session_required
+@jwt_required()
 def logout():
-    session.pop('user_id', None)
+    # With JWT, logout is handled on the client by deleting the token.
+    # We can optionally implement a token blocklist if we need true server-side logout.
+    # For now, a simple success message is sufficient.
     return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
 
-@auth_bp.route('/google/login')
-def google_login():
-    redirect_uri = url_for('auth.google_callback', _external=True)
-    return oauth.google.authorize_redirect(redirect_uri)
+@auth_bp.route('/debug-routes')
+def debug_routes():
+    import urllib
+    from flask import current_app
+    output = []
+    for rule in current_app.url_map.iter_rules():
+        options = {}
+        for arg in rule.arguments:
+            options[arg] = f"[{arg}]"
 
-@auth_bp.route('/google/callback')
-def google_callback():
-    token = oauth.google.authorize_access_token()
-    user_info = oauth.google.parse_id_token(token)
+        methods = ','.join(rule.methods)
+        url = urllib.parse.unquote(rule.rule)
+        line = f"{url:50s} {methods:20s} {rule.endpoint}"
+        output.append(line)
     
-    google_id = user_info['sub']
-    email = user_info['email']
-    full_name = user_info['name']
+    for line in sorted(output):
+        print(line)
 
-    user = User.query.filter_by(google_id=google_id).first()
-    if not user:
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            # Create a new user if one doesn't exist
-            user = User(email=email, full_name=full_name, google_id=google_id, is_verified=True)
-            db.session.add(user)
-        else:
-            # Link the Google ID to an existing user
-            user.google_id = google_id
-    
-    db.session.commit()
-    
-    # Store user_id in the session
-    session['user_id'] = user.id
-    
-    # Redirect to a frontend page that can handle the callback
-    return redirect(f"http://localhost:3000/auth/callback?user={jsonify(user.to_dict()).data.decode('utf-8')}")
-
-@auth_bp.route('/linkedin/login')
-def linkedin_login():
-    redirect_uri = url_for('auth.linkedin_callback', _external=True)
-    return oauth.linkedin.authorize_redirect(redirect_uri)
-
-@auth_bp.route('/linkedin/callback')
-def linkedin_callback():
-    token = oauth.linkedin.authorize_access_token()
-    resp = oauth.linkedin.get('me')
-    profile = resp.json()
-    
-    linkedin_id = profile['id']
-    # LinkedIn API for email is a separate call
-    email_resp = oauth.linkedin.get('emailAddress?q=members&projection=(elements*(handle~))')
-    email = email_resp.json()['elements'][0]['handle~']['emailAddress']
-    full_name = f"{profile['firstName']['localized']['en_US']} {profile['lastName']['localized']['en_US']}"
-
-    user = User.query.filter_by(linkedin_id=linkedin_id).first()
-    if not user:
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            # Create a new user if one doesn't exist
-            user = User(email=email, full_name=full_name, linkedin_id=linkedin_id, is_verified=True)
-            db.session.add(user)
-        else:
-            # Link the LinkedIn ID to an existing user
-            user.linkedin_id = linkedin_id
-            
-    db.session.commit()
-    
-    # Store user_id in the session
-    session['user_id'] = user.id
-    
-    return redirect(f"http://localhost:3000/auth/callback?user={jsonify(user.to_dict()).data.decode('utf-8')}")
+    return jsonify({"message": "Routes printed to backend console"}), 200
 

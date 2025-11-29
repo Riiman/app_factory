@@ -1,13 +1,13 @@
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request
 from app import db
 from app.models import User, Submission, EvaluationTask, ScopeDocument, ScopeComment, Contract
-from app.utils.decorators import session_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 stages_bp = Blueprint('stages', __name__, url_prefix='/api/stages')
 
 # Helper function to get user and submission
 def get_user_and_submission():
-    user_id = session.get('user_id')
+    user_id = get_jwt_identity()
     if not user_id:
         return None, None, jsonify({'success': False, 'error': 'Unauthorized'}), 401
     
@@ -25,7 +25,7 @@ def get_user_and_submission():
 # --- Evaluation Stage Endpoints ---
 
 @stages_bp.route('/evaluation/tasks', methods=['GET'])
-@session_required
+@jwt_required()
 def get_evaluation_tasks():
     user, submission, error_response, status_code = get_user_and_submission()
     if error_response:
@@ -37,7 +37,7 @@ def get_evaluation_tasks():
 # --- Scope Stage Endpoints ---
 
 @stages_bp.route('/scope', methods=['GET'])
-@session_required
+@jwt_required()
 def get_scope_document():
     user, submission, error_response, status_code = get_user_and_submission()
     if error_response:
@@ -50,7 +50,7 @@ def get_scope_document():
     return jsonify({'success': True, 'scope_document': scope_doc.to_dict()}), 200
 
 @stages_bp.route('/scope/comments', methods=['POST'])
-@session_required
+@jwt_required()
 def add_scope_comment():
     data = request.get_json()
     user, submission, error_response, status_code = get_user_and_submission()
@@ -75,7 +75,7 @@ def add_scope_comment():
 # --- Contract Stage Endpoints ---
 
 @stages_bp.route('/contract', methods=['GET'])
-@session_required
+@jwt_required()
 def get_contract_details():
     user, submission, error_response, status_code = get_user_and_submission()
     if error_response:

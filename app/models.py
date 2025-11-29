@@ -2,19 +2,17 @@ from app.extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from enum import Enum
-import json # Import json for JSON fields
-
 class UserRole(Enum):
     """Defines the roles a user can have within the application."""
     USER = "user"
     ADMIN = "admin"
 
 class SubmissionStatus(Enum):
-    """Represents the various states of a startup submission."""
-    PENDING = "pending"
-    IN_REVIEW = "in_review"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    PENDING = 'PENDING'
+    IN_REVIEW = 'IN_REVIEW'
+    APPROVED = 'APPROVED'
+    REJECTED = 'REJECTED'
+    COMPLETED = 'COMPLETED'
 
 class StartupStatus(Enum):
     """Defines the operational status of a startup within the incubator program."""
@@ -214,14 +212,17 @@ class User(db.Model):
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
+    firebase_uid = db.Column(db.String(128), unique=True, nullable=True) # Firebase User UID
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(128), nullable=True) # Nullable for OAuth users
+    phone_number = db.Column(db.String(20), nullable=True) # New field for phone number
+    email_verified = db.Column(db.Boolean, default=False) # New field for email verification status
+    phone_verified = db.Column(db.Boolean, default=False) # New field for phone verification status
     full_name = db.Column(db.String(100), nullable=False)
-    is_verified = db.Column(db.Boolean, default=False)
+    is_verified = db.Column(db.Boolean, default=False) # This will primarily be driven by email_verified/phone_verified
     role = db.Column(db.Enum(UserRole), default=UserRole.USER, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # OAuth provider IDs
+    # OAuth provider IDs (kept for now, can be linked to Firebase in future)
     google_id = db.Column(db.String(128), unique=True, nullable=True)
     linkedin_id = db.Column(db.String(128), unique=True, nullable=True)
     
@@ -232,17 +233,15 @@ class User(db.Model):
     owned_content_calendars = db.relationship('MarketingContentCalendar', back_populates='owner', lazy=True)
     created_content_items = db.relationship('MarketingContentItem', back_populates='creator', lazy=True)
 
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-    
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
     def to_dict(self):
         startup = self.startups[0] if self.startups else None
         return {
             'id': self.id,
+            'firebase_uid': self.firebase_uid,
             'email': self.email,
+            'phone_number': self.phone_number,
+            'email_verified': self.email_verified,
+            'phone_verified': self.phone_verified,
             'full_name': self.full_name,
             'is_verified': self.is_verified,
             'role': self.role.name,
@@ -892,11 +891,11 @@ class Submission(db.Model):
     # Metadata
     status = db.Column(db.Enum(SubmissionStatus), default=SubmissionStatus.PENDING, nullable=False)
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
-    raw_chat_data = db.Column(db.JSON, nullable=True) # Still useful for auditing
-    
+    raw_chat_data = db.Column(db.JSON, nullable=True)  # Still useful for auditing
+    chat_progress_step = db.Column(db.String(100), nullable=True, default='start')  # Tracks the current question
+
     user = db.relationship('User', back_populates='submissions')
     evaluation = db.relationship('Evaluation', back_populates='submission', uselist=False, cascade='all, delete-orphan')
-    
     # In Submission model
     startup = db.relationship('Startup', back_populates='submission', uselist=False)
     

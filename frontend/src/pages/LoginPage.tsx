@@ -1,49 +1,56 @@
-import React, { FC, useState, useEffect } from 'react';
+import React, { FC, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthFormWrapper from '../components/AuthFormWrapper';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { GoogleIcon, LinkedInIcon } from '../components/Icons';
 import api from '../utils/api';
-import { useAuthRedirect } from '../utils/useAuthRedirect';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const LoginPage: FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
-  const { handleNavigation } = useAuthRedirect();
 
-  // If user is already authenticated, redirect them
-  useEffect(() => {
-    if (localStorage.getItem('user')) {
-      // The useAuthRedirect hook will handle the actual redirection logic
-      // We just need to ensure this page doesn't render if already logged in
-      // The hook's useEffect will trigger the navigation.
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      // After a successful popup sign-in, the onAuthStateChanged listener
+      // in useAuth will handle everything. We just need to trigger a reload
+      // to ensure the app re-initializes and the listener fires.
+      window.location.reload();
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Google.');
     }
-  }, []);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     try {
-      const response = await api.fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Send cookies with the request
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-
-      if (data.success) {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      const idToken = await firebaseUser.getIdToken();
+      
+      const data = await api.post('/auth/login', { firebase_id_token: idToken });
+      
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        navigate(0); // Force a reload to trigger the auth hook cleanly.
+        navigate('/'); // Use navigate to stay within SPA
       } else {
         setError(data.error || 'An unknown error occurred.');
       }
-    } catch (err) {
-      setError('Failed to connect to the server.');
+    } catch (err: any) {
+      if (err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password.');
+      } else {
+        console.error("Firebase login error:", err);
+        setError(err.message || 'Failed to connect to the server.');
+      }
     }
   };
 
@@ -60,6 +67,31 @@ const LoginPage: FC = () => {
           <Button type="submit" className="w-full justify-center">Sign in</Button>
         </div>
       </form>
+      <div className="mt-6">
+        <div className="relative">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
+            <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500">Or sign in with</span></div>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-3">
+            <div>
+                <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                >
+                    <span className="sr-only">Sign in with Google</span>
+                    <GoogleIcon />
+                </button>
+            </div>
+            <div>
+                {/* LinkedIn still uses the server-side flow for now */}
+                <a href="http://127.0.0.1:5000/api/auth/linkedin/login" className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span className="sr-only">Sign in with LinkedIn</span>
+                    <LinkedInIcon />
+                </a>
+            </div>
+        </div>
+      </div>
     </AuthFormWrapper>
   );
 };

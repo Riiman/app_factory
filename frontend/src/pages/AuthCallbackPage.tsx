@@ -1,47 +1,27 @@
-import React, { FC, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../utils/api';
-import { useStageRedirect } from '../utils/useStageRedirect';
+import React, { useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
-const AuthCallbackPage: FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { handleNavigation } = useStageRedirect();
+const AuthCallbackPage = () => {
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
 
-  useEffect(() => {
-    const handleAuth = async () => {
-      const params = new URLSearchParams(location.search);
-      const user = params.get('user');
-
-      if (user) {
-        localStorage.setItem('user', user);
-
-        // Now, get the submission and startup status
-        try {
-          const response = await api.fetch('/auth/status');
-          const data = await response.json();
-
-          if (response.ok && data.success) {
-            handleNavigation(data.startup_stage, data.submission_status);
-          } else {
-            navigate('/login?error=status_check_failed');
-          }
-        } catch (error) {
-          navigate('/login?error=status_check_failed');
+    useEffect(() => {
+        const token = searchParams.get('token');
+        if (token) {
+            localStorage.setItem('access_token', token);
+            // We don't have the user object here, but the useAuth hook will fetch it.
+            navigate('/'); // Use navigate to stay within SPA
+        } else {
+            // Handle error, maybe redirect to login with an error message
+            navigate('/login?error=oauth_failed');
         }
-      } else {
-        navigate('/login?error=oauth_failed');
-      }
-    };
+    }, [searchParams, navigate]);
 
-    handleAuth();
-  }, [location, navigate, handleNavigation]);
-
-  return (
-    <div className="flex items-center justify-center h-screen">
-      <p>Finalizing authentication...</p>
-    </div>
-  );
+    return (
+        <div className="flex justify-center items-center h-screen">
+            <div>Loading, please wait...</div>
+        </div>
+    );
 };
 
 export default AuthCallbackPage;
