@@ -25,27 +25,38 @@ interface CreateArtifactModalProps {
     onCreate: (artifactData: Omit<Artifact, 'id' | 'startup_id' | 'created_at'>) => void;
     /** An object containing lists of items that the artifact can be linked to, keyed by scope. */
     linkableItems: Record<Scope, LinkableItem[]>;
+    /** Optional default scope to pre-select. */
+    defaultScope?: Scope;
+    /** Optional default linked entity ID to pre-select. */
+    defaultLinkedToId?: number;
 }
 
-const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCreate, linkableItems }) => {
+const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCreate, linkableItems, defaultScope, defaultLinkedToId }) => {
     // Form state
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [type, setType] = useState<ArtifactType>(ArtifactType.LINK);
     const [location, setLocation] = useState('');
-    const [scope, setScope] = useState<Scope>(Scope.GENERAL);
-    const [linkedToId, setLinkedToId] = useState<string>('');
+    const [scope, setScope] = useState<Scope>(defaultScope || Scope.GENERAL);
+    const [linkedToId, setLinkedToId] = useState<string>(defaultLinkedToId?.toString() || '');
     const [availableLinks, setAvailableLinks] = useState<LinkableItem[]>([]);
 
-    /** Effect to update linkable items when scope changes. */
+    /** Effect to update linkable items when scope changes or defaults are provided. */
     useEffect(() => {
-        setLinkedToId('');
-        if (scope === Scope.GENERAL) {
-            setAvailableLinks([]);
+        if (defaultScope && defaultLinkedToId) {
+            setScope(defaultScope);
+            setLinkedToId(defaultLinkedToId.toString());
+            setAvailableLinks(linkableItems[defaultScope] || []);
         } else {
-            setAvailableLinks(linkableItems[scope] || []);
+            setLinkedToId('');
+            if (scope === Scope.GENERAL) {
+                setAvailableLinks([]);
+            } else {
+                setAvailableLinks(linkableItems[scope] || []);
+            }
         }
-    }, [scope, linkableItems]);
+    }, [scope, linkableItems, defaultScope, defaultLinkedToId]);
+
 
     /**
      * Handles form submission, packages the data, and calls the onCreate prop.

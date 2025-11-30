@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem, MarketingOverview, MarketingContentCalendar, Feature, User, UserRole
+from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem, MarketingOverview, MarketingContentCalendar, Feature, User, UserRole, Fundraise, NextFundingGoal
 from app import db
 from datetime import datetime
 
@@ -628,7 +628,177 @@ def create_founder(startup_id):
         'founder': new_founder.to_dict()
     }), 201
 
-# ... (previous routes) ...
+@startups_bp.route('/<int:startup_id>/founders/<int:founder_id>', methods=['PUT'])
+@jwt_required()
+def update_founder(startup_id, founder_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    founder = Founder.query.get_or_404(founder_id)
+    if founder.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Founder does not belong to this startup.'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    founder.name = data.get('name', founder.name)
+    founder.role = data.get('role', founder.role).upper() if data.get('role') else founder.role
+    founder.email = data.get('email', founder.email)
+    founder.phone_number = data.get('phone_number', founder.phone_number)
+    founder.linkedin_link = data.get('linkedin_link', founder.linkedin_link)
+
+    db.session.commit()
+    db.session.refresh(founder)
+
+    return jsonify({'success': True, 'founder': founder.to_dict()}), 200
+
+@startups_bp.route('/<int:startup_id>/founders/<int:founder_id>', methods=['DELETE'])
+@jwt_required()
+def delete_founder(startup_id, founder_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    founder = Founder.query.get_or_404(founder_id)
+    if founder.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Founder does not belong to this startup.'}), 400
+
+    db.session.delete(founder)
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'Founder deleted successfully.'}), 200
+
+@startups_bp.route('/<int:startup_id>/products/<int:product_id>', methods=['PUT'])
+@jwt_required()
+def update_product(startup_id, product_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    product = Product.query.get_or_404(product_id)
+    if product.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Product does not belong to this startup.'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    product.name = data.get('name', product.name)
+    product.description = data.get('description', product.description)
+    product.version = data.get('version', product.version)
+    product.customer_segment = data.get('customer_segment', product.customer_segment)
+    product.unique_value_prop = data.get('unique_value_prop', product.unique_value_prop)
+    
+    stage_str = data.get('stage')
+    if stage_str:
+        product.stage = stage_str.upper() # Ensure stage is uppercase for Enum
+
+    targeted_launch_date_str = data.get('targeted_launch_date')
+    if targeted_launch_date_str:
+        product.targeted_launch_date = datetime.strptime(targeted_launch_date_str, '%Y-%m-%d').date()
+    else:
+        product.targeted_launch_date = None
+
+    db.session.commit()
+    db.session.refresh(product)
+
+    return jsonify({'success': True, 'product': product.to_dict()}), 200
+
+@startups_bp.route('/<int:startup_id>/products/<int:product_id>/business-details', methods=['PUT'])
+@jwt_required()
+def update_product_business_details(startup_id, product_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    product = Product.query.get_or_404(product_id)
+    if product.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Product does not belong to this startup.'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    product_business_details = product.business_details
+    if not product_business_details:
+        # If business_details doesn't exist, create it
+        product_business_details = ProductBusinessDetails(product_id=product_id)
+        db.session.add(product_business_details)
+        db.session.flush() # Flush to assign an ID if new
+
+    product_business_details.pricing_model = data.get('pricing_model', product_business_details.pricing_model)
+    product_business_details.target_customer = data.get('target_customer', product_business_details.target_customer)
+    product_business_details.revenue_streams = data.get('revenue_streams', product_business_details.revenue_streams)
+    product_business_details.distribution_channels = data.get('distribution_channels', product_business_details.distribution_channels)
+    product_business_details.cost_structure = data.get('cost_structure', product_business_details.cost_structure)
+    
+    db.session.commit()
+    db.session.refresh(product_business_details)
+
+    return jsonify({'success': True, 'product_business_details': product_business_details.to_dict()}), 200
+
+@startups_bp.route('/<int:startup_id>/funding-rounds/<int:round_id>', methods=['PUT'])
+@jwt_required()
+def update_funding_round(startup_id, round_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    funding_round = FundingRound.query.get_or_404(round_id)
+    if funding_round.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Funding round does not belong to this startup.'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    funding_round.round_type = data.get('round_type', funding_round.round_type)
+    funding_round.target_amount = data.get('target_amount', funding_round.target_amount)
+    funding_round.amount_raised = data.get('amount_raised', funding_round.amount_raised)
+    funding_round.valuation_pre = data.get('valuation_pre', funding_round.valuation_pre)
+    funding_round.valuation_post = data.get('valuation_post', funding_round.valuation_post)
+    funding_round.lead_investor = data.get('lead_investor', funding_round.lead_investor)
+    funding_round.notes = data.get('notes', funding_round.notes)
+    funding_round.pitch_deck_url = data.get('pitch_deck_url', funding_round.pitch_deck_url)
+
+    status_str = data.get('status')
+    if status_str:
+        funding_round.status = status_str.upper() # Ensure status is uppercase for Enum
+
+    date_opened_str = data.get('date_opened')
+    if date_opened_str:
+        funding_round.date_opened = datetime.strptime(date_opened_str, '%Y-%m-%d').date()
+    else:
+        funding_round.date_opened = None
+
+    date_closed_str = data.get('date_closed')
+    if date_closed_str:
+        funding_round.date_closed = datetime.strptime(date_closed_str, '%Y-%m-%d').date()
+    else:
+        funding_round.date_closed = None
+
+    db.session.commit()
+    db.session.refresh(funding_round)
+
+    return jsonify({'success': True, 'round': funding_round.to_dict()}), 200
+
 @startups_bp.route('/<int:startup_id>/settings', methods=['PUT'])
 @jwt_required()
 def update_startup_settings(startup_id):
@@ -654,7 +824,85 @@ def update_startup_settings(startup_id):
         'startup': startup.to_dict()
     }), 200
 
-# ... (placeholder for other routes) ...
+@startups_bp.route('/<int:startup_id>/business-overview', methods=['PUT'])
+@jwt_required()
+def update_business_overview(startup_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    business_overview = startup.business_overview
+    if not business_overview:
+        business_overview = BusinessOverview(startup_id=startup_id)
+        startup.business_overview = business_overview
+        db.session.add(business_overview)
+
+    business_overview.business_model = data.get('business_model', business_overview.business_model)
+    business_overview.key_partners = data.get('key_partners', business_overview.key_partners)
+    business_overview.notes = data.get('notes', business_overview.notes)
+    
+    db.session.commit()
+    db.session.refresh(business_overview)
+
+    return jsonify({'success': True, 'business_overview': business_overview.to_dict()}), 200
+
+@startups_bp.route('/<int:startup_id>/fundraise-details', methods=['PUT'])
+@jwt_required()
+def update_fundraise_details(startup_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    fundraise_data = data.get('fundraise', {})
+    next_funding_goal_data = data.get('next_funding_goal', {})
+
+    # Update/Create Fundraise
+    fundraise = startup.fundraise_details
+    if not fundraise:
+        fundraise = Fundraise(startup_id=startup_id)
+        db.session.add(fundraise)
+        db.session.flush() # Flush to get fundraise.id if newly created
+
+    fundraise.funding_stage = fundraise_data.get('funding_stage', fundraise.funding_stage)
+    fundraise.amount_raised = fundraise_data.get('amount_raised', fundraise.amount_raised)
+
+    # Update/Create NextFundingGoal
+    next_funding_goal = fundraise.next_funding_goal
+    if not next_funding_goal:
+        next_funding_goal = NextFundingGoal(fundraise_id=fundraise.id)
+        db.session.add(next_funding_goal)
+
+    next_funding_goal.target_amount = next_funding_goal_data.get('target_amount', next_funding_goal.target_amount)
+    next_funding_goal.target_valuation = next_funding_goal_data.get('target_valuation', next_funding_goal.target_valuation)
+    
+    target_close_date_str = next_funding_goal_data.get('target_close_date')
+    if target_close_date_str:
+        next_funding_goal.target_close_date = datetime.strptime(target_close_date_str, '%Y-%m-%d').date()
+    else:
+        next_funding_goal.target_close_date = None # Allow clearing the date
+
+    db.session.commit()
+    db.session.refresh(fundraise) # Refresh to get updated next_funding_goal if it was created/updated
+
+    return jsonify({
+        'success': True,
+        'fundraise_details': fundraise.to_dict(),
+        'next_funding_goal': fundraise.next_funding_goal.to_dict() # Return the nested object
+    }), 200
 
 @startups_bp.route('/<int:startup_id>/marketing-overview', methods=['GET'])
 @jwt_required()

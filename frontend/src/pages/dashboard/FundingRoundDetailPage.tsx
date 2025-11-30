@@ -25,6 +25,14 @@ interface FundingRoundDetailPageProps {
     linkedArtifacts: Artifact[];
     /** Callback function to navigate back to the funding rounds list. */
     onBack: () => void;
+    /** Callback function to open the "Edit Round" modal for this funding round. */
+    onEditRound: (round: FundingRound) => void;
+    /** Callback function to open the "Add Investor" modal, pre-linking to this funding round. */
+    onAddInvestor: (roundId: number) => void;
+    /** Callback function to open the "Create Task" modal, pre-linking to this funding round. */
+    onAddTask: (roundId: number) => void;
+    /** Callback function to open the "Create Artifact" modal, pre-linking to this funding round. */
+    onAddArtifact: (roundId: number) => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -43,7 +51,7 @@ const DetailItem: React.FC<{ label: string; value: string | number | undefined }
     </div>
 );
 
-const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, investors, linkedTasks, linkedArtifacts, onBack }) => {
+const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, investors, linkedTasks, linkedArtifacts, onBack, onEditRound, onAddInvestor, onAddTask, onAddArtifact }) => {
     
     const getInvestorName = (investorId: number) => {
         return investors.find(i => i.investor_id === investorId)?.name || 'Unknown Investor';
@@ -62,7 +70,7 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
                         <h1 className="text-2xl font-bold text-gray-900">{round.round_type} Round</h1>
                         <p className="text-gray-600">Status: {round.status}</p>
                     </div>
-                    <button className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit Round</button>
+                    <button onClick={() => onEditRound(round)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit Round</button>
                 </div>
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                     <DetailItem label="Amount Raised" value={formatCurrency(round.amount_raised)} />
@@ -75,7 +83,7 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card 
                     title="Investors in this Round"
-                    actions={<button className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Investor</button>}
+                    actions={<button onClick={() => onAddInvestor(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Investor</button>}
                 >
                     <div className="overflow-x-auto">
                         <table className="min-w-full">
@@ -89,7 +97,7 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
                                 {round.investors.map(ri => (
                                     <tr key={ri.investor.investor_id} className="border-b">
                                         <td className="py-3 text-sm text-gray-800">{getInvestorName(ri.investor.investor_id)}</td>
-                                        <td className="py-3 text-sm text-gray-600 text-right">{formatCurrency(ri.amount_invested)}</td>
+                                        <td className="py-3 text-sm text-gray-600 text-right">{formatCurrency(ri.investor.amount_invested)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -100,7 +108,7 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
                 <div className="space-y-6">
                     <Card 
                         title="Linked Tasks"
-                        actions={<button className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Task</button>}
+                        actions={<button onClick={() => onAddTask(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Task</button>}
                     >
                          <ul className="space-y-2">
                             {linkedTasks.map(task => (
@@ -112,7 +120,7 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
                     </Card>
                     <Card 
                         title="Linked Artifacts"
-                        actions={<button className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Artifact</button>}
+                        actions={<button onClick={() => onAddArtifact(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Artifact</button>}
                     >
                         <ul className="space-y-2">
                             {linkedArtifacts.map(artifact => (

@@ -234,6 +234,38 @@ class Api {
     return this.post(`/startups/${startupId}/campaigns`, data);
   }
 
+  async updateCampaign(startupId: number, campaignId: number, data: Partial<MarketingCampaign>) {
+    const response = await this.put(`/startups/${startupId}/campaigns/${campaignId}`, data);
+    return response.campaign;
+  }
+
+  async updateFounder(startupId: number, founderId: number, data: Partial<Founder>) {
+    const response = await this.put(`/startups/${startupId}/founders/${founderId}`, data);
+    return response.founder; // Assuming backend returns updated founder directly
+  }
+
+  async deleteFounder(startupId: number, founderId: number) {
+    const response = await this.fetch(`/startups/${startupId}/founders/${founderId}`, {
+        method: 'DELETE',
+    });
+    return response.json(); // Assuming backend returns a success message
+  }
+
+  async updateProduct(startupId: number, productId: number, data: Partial<Product>) {
+    const response = await this.put(`/startups/${startupId}/products/${productId}`, data);
+    return response.product; // Assuming backend returns updated product directly
+  }
+
+  async updateProductBusinessDetails(startupId: number, productId: number, data: Partial<ProductBusinessDetails>) {
+    const response = await this.put(`/startups/${startupId}/products/${productId}/business-details`, data);
+    return response.product_business_details; // Assuming backend returns updated product_business_details directly
+  }
+
+  async updateFundingRound(startupId: number, roundId: number, data: Partial<FundingRound>) {
+    const response = await this.put(`/startups/${startupId}/funding-rounds/${roundId}`, data);
+    return response.round; // Assuming backend returns updated round directly
+  }
+
   async createContentItem(startupId: number, campaignId: number, data: any) {
     return this.post(`/startups/${startupId}/campaigns/${campaignId}/content-items`, data);
   }
@@ -244,6 +276,23 @@ class Api {
 
   async updateStartupSettings(startupId: number, data: any) {
     return this.put(`/startups/${startupId}/settings`, data);
+  }
+
+  async updateBusinessOverview(startupId: number, data: Partial<BusinessOverview>) {
+    const response = await this.put(`/startups/${startupId}/business-overview`, data);
+    return response.business_overview; // Assuming backend returns updated business_overview directly
+  }
+
+  async updateFundraisingGoals(
+    startupId: number, 
+    fundraiseData: Partial<Fundraise>, 
+    nextFundingGoalData: Partial<NextFundingGoal>
+  ) {
+    const response = await this.put(`/startups/${startupId}/fundraise-details`, { 
+        fundraise: fundraiseData, 
+        next_funding_goal: nextFundingGoalData 
+    });
+    return response; // Assuming backend returns both updated fundraise and next_funding_goal
   }
 
   // Other methods...

@@ -16,6 +16,8 @@ import { Target, TrendingUp, Calendar, Edit } from 'lucide-react';
 interface FundraisingOverviewPageProps {
     /** The fundraising details object, including next goals. The backend should provide an object conforming to the `FundraiseDetails` interface. */
     fundraiseDetails: FundraiseDetails;
+    /** Callback function to open the edit modal. */
+    onEdit: () => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -27,7 +29,7 @@ const formatCurrency = (value: number) => {
     }).format(value);
 };
 
-const FundraisingOverviewPage: React.FC<FundraisingOverviewPageProps> = ({ fundraiseDetails }) => {
+const FundraisingOverviewPage: React.FC<FundraisingOverviewPageProps> = ({ fundraiseDetails, onEdit }) => {
     const { funding_stage, amount_raised, next_funding_goals } = fundraiseDetails || {};
     const { target_amount, target_valuation, target_close_date } = next_funding_goals || {};
 
@@ -35,7 +37,7 @@ const FundraisingOverviewPage: React.FC<FundraisingOverviewPageProps> = ({ fundr
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Fundraising Overview</h1>
-                <button className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
+                <button onClick={onEdit} className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
                     <Edit className="h-4 w-4 mr-2" />
                     <span className="text-sm font-medium">Edit Goals</span>
                 </button>

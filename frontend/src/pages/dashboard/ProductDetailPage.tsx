@@ -31,6 +31,10 @@ interface ProductDetailPageProps {
     onAddMetric: () => void;
     /** Callback function to open the "Create Issue" modal. */
     onAddIssue: () => void;
+    /** Callback function to open the "Edit Product" modal. */
+    onEditProduct: (product: Product) => void;
+    /** Callback function to open the "Edit Product Business Details" modal. */
+    onEditProductBusinessDetails: (productId: number, businessDetails: ProductBusinessDetails) => void;
 }
 
 type Tab = 'Features' | 'Metrics' | 'Issues' | 'Business Details' | 'Linked Items';
@@ -43,7 +47,9 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     onBack,
     onAddFeature,
     onAddMetric,
-    onAddIssue
+    onAddIssue,
+    onEditProduct,
+    onEditProductBusinessDetails
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('Features');
     
@@ -95,7 +101,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 );
             case 'Business Details':
                 return (
-                    <Card title="Business Details" actions={<button className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit</button>}>
+                    <Card title="Business Details" actions={<button onClick={() => product.business_details && onEditProductBusinessDetails(product.id, product.business_details)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit</button>}>
                         <div className="space-y-4">
                            <div>
                                 <h4 className="font-medium text-sm text-gray-500">Pricing Model</h4>

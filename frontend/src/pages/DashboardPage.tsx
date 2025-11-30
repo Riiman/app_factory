@@ -43,6 +43,13 @@ import CreateInvestorModal from '@/components/dashboard/CreateInvestorModal';
 import CreateCampaignModal from '@/components/dashboard/CreateCampaignModal';
 import CreateContentItemModal from '@/components/dashboard/CreateContentItemModal';
 import CreateFounderModal from '@/components/dashboard/CreateFounderModal';
+import EditBusinessOverviewModal from '@/components/dashboard/EditBusinessOverviewModal';
+import EditFundraisingGoalsModal from '@/components/dashboard/EditFundraisingGoalsModal';
+import EditCampaignModal from '@/components/dashboard/EditCampaignModal';
+import EditFounderModal from '@/components/dashboard/EditFounderModal';
+import EditProductModal from '@/components/dashboard/EditProductModal';
+import EditProductBusinessDetailsModal from '@/components/dashboard/EditProductBusinessDetailsModal';
+import EditFundingRoundModal from '@/components/dashboard/EditFundingRoundModal';
 
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -180,6 +187,21 @@ const DashboardPage: React.FC = () => {
     const [selectedCampaignForContent, setSelectedCampaignForContent] = useState<number | null>(null);
     /** Visibility state for the "Create Founder" modal. */
     const [isCreateFounderModalOpen, setIsCreateFounderModalOpen] = useState(false);
+    const [isEditBusinessOverviewModalOpen, setIsEditBusinessOverviewModalOpen] = useState(false);
+    const [isEditFundraisingGoalsModalOpen, setIsEditFundraisingGoalsModalOpen] = useState(false);
+    const [isEditCampaignModalOpen, setIsEditCampaignModalOpen] = useState(false);
+    const [selectedCampaignToEdit, setSelectedCampaignToEdit] = useState<MarketingCampaign | null>(null);
+    const [selectedLinkedScope, setSelectedLinkedScope] = useState<Scope | null>(null);
+    const [selectedLinkedId, setSelectedLinkedId] = useState<number | null>(null);
+    const [isEditFounderModalOpen, setIsEditFounderModalOpen] = useState(false);
+    const [selectedFounderToEdit, setSelectedFounderToEdit] = useState<Founder | null>(null);
+    const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false);
+    const [selectedProductToEdit, setSelectedProductToEdit] = useState<Product | null>(null);
+    const [isEditProductBusinessDetailsModalOpen, setIsEditProductBusinessDetailsModalOpen] = useState(false);
+    const [selectedProductBusinessDetailsToEdit, setSelectedProductBusinessDetailsToEdit] = useState<ProductBusinessDetails | null>(null);
+    const [productIdForBusinessDetailsEdit, setProductIdForBusinessDetailsEdit] = useState<number | null>(null);
+    const [isEditFundingRoundModalOpen, setIsEditFundingRoundModalOpen] = useState(false);
+    const [selectedFundingRoundToEdit, setSelectedFundingRoundToEdit] = useState<FundingRound | null>(null);
 
 
     /**
@@ -479,6 +501,114 @@ const DashboardPage: React.FC = () => {
         }
     };
 
+    const handleUpdateBusinessOverview = async (updatedData: Partial<BusinessOverview>) => {
+        if (!startupData) return;
+        try {
+            const updatedBusinessOverview = await api.updateBusinessOverview(startupData.id, updatedData);
+            setStartupData(prev => prev ? ({ ...prev, business_overview: updatedBusinessOverview }) : null);
+            setIsEditBusinessOverviewModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update business overview:", error);
+        }
+    };
+
+    const handleUpdateFundraisingGoals = async (
+        updatedFundraiseData: Partial<Fundraise>, 
+        updatedNextFundingGoalData: Partial<NextFundingGoal>
+    ) => {
+        if (!startupData) return;
+        try {
+            const response = await api.updateFundraisingGoals(
+                startupData.id, 
+                updatedFundraiseData, 
+                updatedNextFundingGoalData
+            );
+            setStartupData(prev => prev ? ({ 
+                ...prev, 
+                fundraise_details: response.fundraise_details, 
+                // Assuming next_funding_goal is nested within fundraise_details
+                // If it's returned separately, handle it accordingly.
+                // For now, let's assume fundraise_details will contain the updated next_funding_goal
+                // if it was updated, or if next_funding_goal is a top-level property on startupData.
+                // Based on Startup type, fundraise_details contains next_funding_goal
+            }) : null);
+            setIsEditFundraisingGoalsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update fundraising goals:", error);
+        }
+    };
+
+    const handleUpdateCampaign = async (campaignId: number, updatedData: Partial<MarketingCampaign>) => {
+        if (!startupData) return;
+        try {
+            const response = await api.updateCampaign(startupData.id, campaignId, updatedData);
+            setMarketingCampaigns(prev => prev ? prev.map(c => c.campaign_id === campaignId ? response.campaign : c) : null);
+            setIsEditCampaignModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update campaign:", error);
+        }
+    };
+
+    const handleUpdateFounder = async (founderId: number, updatedData: Partial<Founder>) => {
+        if (!startupData) return;
+        try {
+            const response = await api.updateFounder(startupData.id, founderId, updatedData);
+            setFounders(prev => prev ? prev.map(f => f.id === founderId ? response.founder : f) : null);
+            setIsEditFounderModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update founder:", error);
+        }
+    };
+
+    const handleDeleteFounder = async (founderId: number) => {
+        if (!startupData) return;
+        try {
+            await api.deleteFounder(startupData.id, founderId);
+            setFounders(prev => prev ? prev.filter(f => f.id !== founderId) : null);
+            // Optionally, show a success message
+        } catch (error) {
+            console.error("Failed to delete founder:", error);
+            // Optionally, show an error message
+        }
+    };
+
+    const handleUpdateProduct = async (productId: number, updatedData: Partial<Product>) => {
+        if (!startupData) return;
+        try {
+            const response = await api.updateProduct(startupData.id, productId, updatedData);
+            setProducts(prev => prev ? prev.map(p => p.id === productId ? response.product : p) : null);
+            setIsEditProductModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update product:", error);
+        }
+    };
+
+    const handleUpdateProductBusinessDetails = async (productId: number, updatedData: Partial<ProductBusinessDetails>) => {
+        if (!startupData) return;
+        try {
+            const response = await api.updateProductBusinessDetails(startupData.id, productId, updatedData);
+            setProducts(prev => prev ? prev.map(p => 
+                p.id === productId 
+                    ? { ...p, business_details: response.product_business_details } 
+                    : p
+            ) : null);
+            setIsEditProductBusinessDetailsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update product business details:", error);
+        }
+    };
+
+    const handleUpdateFundingRound = async (roundId: number, updatedData: Partial<FundingRound>) => {
+        if (!startupData) return;
+        try {
+            const response = await api.updateFundingRound(startupData.id, roundId, updatedData);
+            setFundingRounds(prev => prev ? prev.map(r => r.round_id === roundId ? response.round : r) : null);
+            setIsEditFundingRoundModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update funding round:", error);
+        }
+    };
+
 
     const handleBackToList = () => setSelectedProductId(null);
     const handleBackToRoundsList = () => setSelectedFundingRoundId(null);
@@ -537,6 +667,12 @@ const DashboardPage: React.FC = () => {
                             onAddFeature={() => setIsCreateFeatureModalOpen(true)}
                             onAddMetric={() => setIsCreateMetricModalOpen(true)}
                             onAddIssue={() => setIsCreateIssueModalOpen(true)}
+                            onEditProduct={(product) => { setSelectedProductToEdit(product); setIsEditProductModalOpen(true); }}
+                            onEditProductBusinessDetails={(productId, businessDetails) => { 
+                                setProductIdForBusinessDetailsEdit(productId);
+                                setSelectedProductBusinessDetailsToEdit(businessDetails); 
+                                setIsEditProductBusinessDetailsModalOpen(true); 
+                            }}
                         />;
                     }
                     return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} />;
@@ -553,7 +689,8 @@ const DashboardPage: React.FC = () => {
                                   if (activeSubPage === 'Overview & Model') {
                                      return <BusinessOverviewPage 
                                                  businessOverview={startupData.business_overview || {} as BusinessOverview} 
-                                                 monthlyData={monthlyReports || []} 
+                                                 monthlyData={monthlyReports || []}
+                                                 onEdit={() => setIsEditBusinessOverviewModalOpen(true)}
                                             />;
                                  }                 if (activeSubPage === 'Monthly Reporting') {
                                     return <BusinessMonthlyReportingPage 
@@ -566,9 +703,13 @@ const DashboardPage: React.FC = () => {
                                         return <BusinessOverviewPage 
                                                     businessOverview={startupData.business_overview || {} as BusinessOverview}
                                                     monthlyData={monthlyReports || []}
+                                                    onEdit={() => setIsEditBusinessOverviewModalOpen(true)}
                                                />;            case Scope.FUNDRAISING:
                 if (activeSubPage === 'Overview') {
-                    return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details} />;
+                    return <FundraisingOverviewPage 
+                                fundraiseDetails={startupData.fundraise_details}
+                                onEdit={() => setIsEditFundraisingGoalsModalOpen(true)}
+                           />;
                 }
                 if (activeSubPage === 'Funding Rounds') {
                     const selectedRound = fundingRounds?.find(r => r.round_id === selectedFundingRoundId);
@@ -579,6 +720,27 @@ const DashboardPage: React.FC = () => {
                                     linkedTasks={tasks?.filter(t => t.linked_to_type === 'FundingRound' && t.linked_to_id === selectedRound.round_id) || []}
                                     linkedArtifacts={artifacts?.filter(a => a.linked_to_type === 'FundingRound' && a.linked_to_id === selectedRound.round_id) || []}
                                     onBack={handleBackToRoundsList}
+                                    onEditRound={(round) => { setSelectedFundingRoundToEdit(round); setIsEditFundingRoundModalOpen(true); }}
+                                    onAddInvestor={(roundId) => {
+                                        // No specific modal for Add Investor from here, it's usually managed in InvestorCrmPage
+                                        // For now, we'll just open the generic CreateInvestorModal without pre-linking
+                                        // Or, if linking is desired, we'd need a way to pass the roundId to the modal
+                                        // For now, let's open the CreateInvestorModal
+                                        setIsCreateInvestorModalOpen(true);
+                                        // If we wanted to link it to the round, we would need to pass these:
+                                        // setSelectedLinkedScope(Scope.FUNDRAISING);
+                                        // setSelectedLinkedId(roundId);
+                                    }}
+                                    onAddTask={(roundId) => {
+                                        setSelectedLinkedScope(Scope.FUNDRAISING);
+                                        setSelectedLinkedId(roundId);
+                                        setIsCreateTaskModalOpen(true);
+                                    }}
+                                    onAddArtifact={(roundId) => {
+                                        setSelectedLinkedScope(Scope.FUNDRAISING);
+                                        setSelectedLinkedId(roundId);
+                                        setIsCreateArtifactModalOpen(true);
+                                    }}
                                />
                     }
                     return <FundingRoundsPage 
@@ -618,6 +780,17 @@ const DashboardPage: React.FC = () => {
                                     linkedArtifacts={artifacts?.filter(a => a.linked_to_type === 'MarketingCampaign' && a.linked_to_id === selectedCampaign.campaign_id) || []}
                                     onBack={handleBackToCampaignsList}
                                     onAddContentItem={() => handleOpenCreateContentItemModal(selectedCampaign.campaign_id)}
+                                    onEditCampaign={(campaign) => { setSelectedCampaignToEdit(campaign); setIsEditCampaignModalOpen(true); }}
+                                    onAddTask={(campaignId) => {
+                                        setSelectedLinkedScope(Scope.MARKETING);
+                                        setSelectedLinkedId(campaignId);
+                                        setIsCreateTaskModalOpen(true);
+                                    }}
+                                    onAddArtifact={(campaignId) => {
+                                        setSelectedLinkedScope(Scope.MARKETING);
+                                        setSelectedLinkedId(campaignId);
+                                        setIsCreateArtifactModalOpen(true);
+                                    }}
                                />
                     }
                     return <MarketingCampaignsPage
@@ -650,7 +823,13 @@ const DashboardPage: React.FC = () => {
                 return <TasksPage tasks={tasks} startupId={startupData.id} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
              
             case Scope.TEAM:
-                return <TeamPage startupId={startupData.id} founders={founders} setFounders={setFounders} onAddNewFounder={() => setIsCreateFounderModalOpen(true)} />;
+                return <TeamPage 
+                            startupId={startupData.id} 
+                            founders={founders} 
+                            setFounders={setFounders} 
+                            onAddNewFounder={() => setIsCreateFounderModalOpen(true)} 
+                            onEditFounder={(founder) => { setSelectedFounderToEdit(founder); setIsEditFounderModalOpen(true); }}
+                        />;
             case Scope.SETTINGS:
                 return <SettingsPage
                             startupName={startupData.name}
@@ -751,7 +930,11 @@ const DashboardPage: React.FC = () => {
             {isCreateModalOpen && <CreateModal onClose={handleCloseCreateModal} onSelectCreateType={handleSelectCreateType} />}
             {isCreateTaskModalOpen && (
                 <CreateTaskModal
-                    onClose={() => setIsCreateTaskModalOpen(false)}
+                    onClose={() => {
+                        setIsCreateTaskModalOpen(false);
+                        setSelectedLinkedScope(null); // Reset
+                        setSelectedLinkedId(null); // Reset
+                    }}
                     onCreate={handleCreateTask}
                     linkableItems={{
                         [Scope.PRODUCT]: (startupData.products || []).map(p => ({ id: p.id, name: p.name })),
@@ -764,6 +947,8 @@ const DashboardPage: React.FC = () => {
                         [Scope.TEAM]: [],
                         [Scope.SETTINGS]: [],
                     }}
+                    defaultScope={selectedLinkedScope || undefined}
+                    defaultLinkedToId={selectedLinkedId || undefined}
                 />
             )}
             {isCreateExperimentModalOpen && (
@@ -786,7 +971,11 @@ const DashboardPage: React.FC = () => {
             )}
             {isCreateArtifactModalOpen && (
                 <CreateArtifactModal
-                    onClose={() => setIsCreateArtifactModalOpen(false)}
+                    onClose={() => {
+                        setIsCreateArtifactModalOpen(false);
+                        setSelectedLinkedScope(null); // Reset
+                        setSelectedLinkedId(null); // Reset
+                    }}
                     onCreate={handleCreateArtifact}
                     // FIX: Added missing keys from the Scope enum to satisfy the Record<Scope, LinkableItem[]> type.
                     linkableItems={{
@@ -800,6 +989,8 @@ const DashboardPage: React.FC = () => {
                         [Scope.TEAM]: [],
                         [Scope.SETTINGS]: [],
                     }}
+                    defaultScope={selectedLinkedScope || undefined}
+                    defaultLinkedToId={selectedLinkedId || undefined}
                 />
             )}
             {isCreateProductModalOpen && (
@@ -867,6 +1058,57 @@ const DashboardPage: React.FC = () => {
                 <CreateFounderModal
                     onClose={() => setIsCreateFounderModalOpen(false)}
                     onCreate={handleCreateFounder}
+                />
+            )}
+            {isEditBusinessOverviewModalOpen && startupData?.business_overview && (
+                <EditBusinessOverviewModal
+                    businessOverview={startupData.business_overview}
+                    onClose={() => setIsEditBusinessOverviewModalOpen(false)}
+                    onUpdate={handleUpdateBusinessOverview}
+                />
+            )}
+            {isEditFundraisingGoalsModalOpen && startupData?.fundraise_details && (
+                <EditFundraisingGoalsModal
+                    fundraiseDetails={startupData.fundraise_details}
+                    nextFundingGoal={startupData.fundraise_details.next_funding_goal}
+                    onClose={() => setIsEditFundraisingGoalsModalOpen(false)}
+                    onUpdate={handleUpdateFundraisingGoals}
+                />
+            )}
+            {isEditCampaignModalOpen && selectedCampaignToEdit && startupData?.products && (
+                <EditCampaignModal
+                    campaign={selectedCampaignToEdit}
+                    onClose={() => setIsEditCampaignModalOpen(false)}
+                    onUpdate={(updatedData) => handleUpdateCampaign(selectedCampaignToEdit.campaign_id, updatedData)}
+                    products={startupData.products}
+                />
+            )}
+            {isEditFounderModalOpen && selectedFounderToEdit && (
+                <EditFounderModal
+                    founder={selectedFounderToEdit}
+                    onClose={() => setIsEditFounderModalOpen(false)}
+                    onUpdate={(updatedData) => handleUpdateFounder(selectedFounderToEdit.id, updatedData)}
+                />
+            )}
+            {isEditProductModalOpen && selectedProductToEdit && (
+                <EditProductModal
+                    product={selectedProductToEdit}
+                    onClose={() => setIsEditProductModalOpen(false)}
+                    onUpdate={(updatedData) => handleUpdateProduct(selectedProductToEdit.id, updatedData)}
+                />
+            )}
+            {isEditProductBusinessDetailsModalOpen && selectedProductBusinessDetailsToEdit && productIdForBusinessDetailsEdit && (
+                <EditProductBusinessDetailsModal
+                    productBusinessDetails={selectedProductBusinessDetailsToEdit}
+                    onClose={() => setIsEditProductBusinessDetailsModalOpen(false)}
+                    onUpdate={(updatedData) => handleUpdateProductBusinessDetails(productIdForBusinessDetailsEdit, updatedData)}
+                />
+            )}
+            {isEditFundingRoundModalOpen && selectedFundingRoundToEdit && (
+                <EditFundingRoundModal
+                    round={selectedFundingRoundToEdit}
+                    onClose={() => setIsEditFundingRoundModalOpen(false)}
+                    onUpdate={(updatedData) => handleUpdateFundingRound(selectedFundingRoundToEdit.round_id, updatedData)}
                 />
             )}
         </div>
