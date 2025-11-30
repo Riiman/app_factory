@@ -20,6 +20,8 @@ interface BusinessOverviewPageProps {
     businessOverview: BusinessOverview;
     /** An array of monthly financial data points to be displayed in the chart. The backend should provide an array of `BusinessMonthlyData` objects. */
     monthlyData: BusinessMonthlyData[];
+    /** Callback function to open the edit modal. */
+    onEdit: () => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -31,14 +33,14 @@ const formatCurrency = (value: number) => {
     }).format(value);
 };
 
-const BusinessOverviewPage: React.FC<BusinessOverviewPageProps> = ({ businessOverview, monthlyData = [] }) => {
+const BusinessOverviewPage: React.FC<BusinessOverviewPageProps> = ({ businessOverview, monthlyData = [], onEdit }) => {
     const sortedData = [...monthlyData].sort((a, b) => new Date(a.month_start).getTime() - new Date(b.month_start).getTime());
     
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-900">Business Overview & Model</h1>
-                <button className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
+                <button onClick={onEdit} className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
                     <Edit className="h-4 w-4 mr-2" />
                     <span className="text-sm font-medium">Edit Overview</span>
                 </button>

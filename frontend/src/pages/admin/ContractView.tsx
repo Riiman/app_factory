@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Startup, ContractStatus, ContractComment, ContractSignatory } from '../../types/dashboard-types';
+import { Startup, ContractStatus, ContractComment, ContractSignatory,StartupStage } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { FileText, Send, CheckCircle, UserPlus, MessageSquare } from 'lucide-react';
@@ -28,7 +28,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
   const handleSelectStartup = (startup: Startup) => {
     setSelectedStartup(startup);
     if (startup.contract) {
-      console.log(`--- [FRONTEND LOG] Selected Startup Contract Status: ${startup.contract.status} ---`);
+      
     }
   };
 
@@ -102,7 +102,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
                     {startup.contract && <StatusBadge status={startup.contract.status} />}
                 </div>
                 <p className="text-sm text-brand-text-secondary mt-1 truncate">{startup.founders[0]?.name || 'N/A'}</p>
-                <p className="text-xs text-slate-500 truncate">{startup.founders[0]?.email}{startup.founders[0]?.mobile && ` • ${startup.founders[0]?.mobile}`}</p>
+                <p className="text-xs text-slate-500 truncate">{startup.founders[0]?.email}{startup.founders[0]?.phone_number && ` • ${startup.founders[0]?.mobile}`}</p>
               </button>
             </li>
           ))}

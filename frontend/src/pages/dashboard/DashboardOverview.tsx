@@ -6,8 +6,9 @@
  */
 
 import React from 'react';
-import { Startup, TaskStatus, ExperimentStatus } from '@/types/dashboard-types';
+import { Startup, TaskStatus, ExperimentStatus, ActivityLog } from '@/types/dashboard-types';
 import Card from '@/components/Card';
+import RecentActivityFeed from '@/components/dashboard/RecentActivityFeed';
 import { TrendingUp, Target, ListTodo, Beaker, Activity, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -18,6 +19,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 interface DashboardOverviewProps {
     /** The main startup data object containing all information needed for the dashboard. The backend should provide an object conforming to the `Startup` interface. */
     startupData: Startup;
+    recentActivity: ActivityLog[];
 }
 
 /**
@@ -41,7 +43,7 @@ const KpiCard: React.FC<{ title: string; value: string; icon: React.ElementType 
     </Card>
 );
 
-const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupData }) => {
+const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupData, recentActivity }) => {
     const { business_monthly_data = [], tasks = [], experiments = [], next_milestone, overall_progress } = startupData;
     // FIX: Provide a default object shape for latestData to prevent type errors when business_monthly_data is empty.
     const latestData = business_monthly_data[business_monthly_data.length - 1] || { mrr: 0, net_burn: 0, total_customers: 0 };
@@ -58,13 +60,13 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupData }) =>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                     <Card title="Business Performance">
+                    <Card title="Business Performance">
                         <div style={{ height: 300 }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={business_monthly_data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="month_start" tickFormatter={(date) => new Date(date).toLocaleString('default', { month: 'short' })} />
-                                    <YAxis tickFormatter={(value) => `$${(value/1000)}k`} />
+                                    <YAxis tickFormatter={(value) => `$${(value / 1000)}k`} />
                                     <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
                                     <Legend />
                                     <Bar dataKey="mrr" fill="#4F46E5" name="MRR" />
@@ -77,7 +79,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupData }) =>
 
                 <div className="space-y-6">
                     <Card title="Next Milestone" actions={<button className="text-sm text-brand-primary font-medium">Update</button>}>
-                         <div className="flex items-center">
+                        <div className="flex items-center">
                             <Target className="h-8 w-8 text-brand-secondary mr-4" />
                             <div>
                                 <p className="font-semibold text-gray-800">{next_milestone}</p>
@@ -86,7 +88,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupData }) =>
                         </div>
                     </Card>
                     <Card title="Overall Progress">
-                         <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div className="w-full bg-gray-200 rounded-full h-4">
                             <div className="bg-brand-primary h-4 rounded-full" style={{ width: `${overall_progress}%` }}></div>
                         </div>
                         <p className="text-right text-sm font-medium mt-2">{overall_progress}% Complete</p>
@@ -107,9 +109,9 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupData }) =>
                     </ul>
                 </Card>
                 <Card title="Active Experiments">
-                     <ul className="space-y-3">
+                    <ul className="space-y-3">
                         {activeExperiments.map(exp => (
-                             <li key={exp.id} className="flex items-start text-sm">
+                            <li key={exp.id} className="flex items-start text-sm">
                                 <Beaker className="h-4 w-4 text-gray-400 mr-3 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1">
                                     <p className="font-medium text-gray-800">{exp.name}</p>
@@ -120,20 +122,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupData }) =>
                     </ul>
                 </Card>
                 <Card title="Recent Activity">
-                    <ul className="space-y-3">
-                        <li className="flex items-center text-sm">
-                            <Activity className="h-4 w-4 text-gray-400 mr-3 flex-shrink-0" />
-                            <span><span className="font-medium">Maria G.</span> completed task <span className="font-medium text-brand-primary">"Finalize pitch deck"</span>.</span>
-                        </li>
-                         <li className="flex items-center text-sm">
-                            <Activity className="h-4 w-4 text-gray-400 mr-3 flex-shrink-0" />
-                            <span><span className="font-medium">Alex J.</span> added new monthly data for July.</span>
-                        </li>
-                         <li className="flex items-center text-sm">
-                            <Activity className="h-4 w-4 text-gray-400 mr-3 flex-shrink-0" />
-                            <span>New investor <span className="font-medium">"John Smith"</span> added to CRM.</span>
-                        </li>
-                    </ul>
+                    <RecentActivityFeed activities={recentActivity} />
                 </Card>
             </div>
 

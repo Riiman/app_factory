@@ -14,8 +14,10 @@ import { Plus, Calendar } from 'lucide-react';
  * @interface MarketingContentCalendarPageProps
  */
 interface MarketingContentCalendarPageProps {
+    startupId: number;
     /** An array of all marketing campaigns. The page filters for content-driven campaigns. The backend should provide all campaigns that have `content_mode: true`. */
     campaigns: MarketingCampaign[];
+    setCampaigns: React.Dispatch<React.SetStateAction<MarketingCampaign[]>>;
     /** Callback function triggered when the "Add Content Item" button is clicked. */
     onAddNewContentItem: () => void;
 }

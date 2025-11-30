@@ -15,8 +15,10 @@ import { Plus } from 'lucide-react';
  * @interface ProductIssuesPageProps
  */
 interface ProductIssuesPageProps {
+    startupId: number;
     /** An array of all product objects. The component will flatten the issues from these products. The backend should provide a list of products with their nested issues. */
     products: Product[];
+    setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
     /** Callback function triggered when the "Report New Issue" button is clicked. */
     onAddNewIssue: () => void;
 }

@@ -26,27 +26,38 @@ interface CreateTaskModalProps {
     onCreate: (taskData: Omit<Task, 'id' | 'startup_id' | 'created_at'>) => void;
     /** An object containing lists of items that the task can be linked to, keyed by scope. */
     linkableItems: Record<Scope, LinkableItem[]>;
+    /** Optional default scope to pre-select. */
+    defaultScope?: Scope;
+    /** Optional default linked entity ID to pre-select. */
+    defaultLinkedToId?: number;
 }
 
-const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, linkableItems }) => {
+const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, linkableItems, defaultScope, defaultLinkedToId }) => {
     // Form state
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [status, setStatus] = useState<TaskStatus>(TaskStatus.PENDING);
-    const [scope, setScope] = useState<Scope>(Scope.GENERAL);
-    const [linkedToId, setLinkedToId] = useState<string>(''); // Use string to handle select value
+    const [scope, setScope] = useState<Scope>(defaultScope || Scope.GENERAL);
+    const [linkedToId, setLinkedToId] = useState<string>(defaultLinkedToId?.toString() || ''); // Use string to handle select value
     const [availableLinks, setAvailableLinks] = useState<LinkableItem[]>([]);
 
-    /** Effect to update the available linkable items when the scope changes. */
+    /** Effect to update the available linkable items when the scope changes or defaults are provided. */
     useEffect(() => {
-        setLinkedToId(''); // Reset linked item when scope changes
-        if (scope === Scope.GENERAL) {
-            setAvailableLinks([]);
+        if (defaultScope && defaultLinkedToId) {
+            setScope(defaultScope);
+            setLinkedToId(defaultLinkedToId.toString());
+            setAvailableLinks(linkableItems[defaultScope] || []);
         } else {
-            setAvailableLinks(linkableItems[scope] || []);
+            setLinkedToId(''); // Reset linked item when scope changes
+            if (scope === Scope.GENERAL) {
+                setAvailableLinks([]);
+            } else {
+                setAvailableLinks(linkableItems[scope] || []);
+            }
         }
-    }, [scope, linkableItems]);
+    }, [scope, linkableItems, defaultScope, defaultLinkedToId]);
+
 
     /**
      * Handles the form submission.

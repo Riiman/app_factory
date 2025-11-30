@@ -446,3 +446,4 @@ progress_tracking/*
 
 uploads/*
 !uploads/.gitkeep
+sfv-backend-firebase-adminsdk-fbsvc-beefdc2d12.json

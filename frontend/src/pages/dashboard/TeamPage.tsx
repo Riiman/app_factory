@@ -14,13 +14,19 @@ import { Plus, Edit, Trash2, Mail, Phone, Linkedin } from 'lucide-react';
  * @interface TeamPageProps
  */
 interface TeamPageProps {
+    startupId: number;
     /** An array of founder objects to be displayed. The backend should provide an array of `Founder` objects. */
     founders: Founder[];
+    setFounders: React.Dispatch<React.SetStateAction<Founder[]>>;
     /** Callback function triggered when the "Add Founder" button is clicked. */
     onAddNewFounder: () => void;
+    /** Callback function triggered when the "Edit" button for a founder is clicked. */
+    onEditFounder: (founder: Founder) => void;
+    /** Callback function triggered when the "Delete" button for a founder is clicked. */
+    onDeleteFounder: (founderId: number) => void;
 }
 
-const TeamPage: React.FC<TeamPageProps> = ({ founders, onAddNewFounder }) => {
+const TeamPage: React.FC<TeamPageProps> = ({ founders, onAddNewFounder, onEditFounder, onDeleteFounder }) => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -62,10 +68,10 @@ const TeamPage: React.FC<TeamPageProps> = ({ founders, onAddNewFounder }) => {
                             </div>
                         </div>
                         <div className="border-t mt-4 pt-4 flex justify-end space-x-2">
-                            <button className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md">
+                            <button onClick={() => onEditFounder(founder)} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md">
                                 <Edit size={18} />
                             </button>
-                            <button className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md">
+                            <button onClick={() => onDeleteFounder(founder.id)} className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md">
                                 <Trash2 size={18} />
                             </button>
                         </div>

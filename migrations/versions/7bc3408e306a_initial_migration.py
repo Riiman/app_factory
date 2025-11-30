@@ -1,8 +1,8 @@
-"""chnaged relationship of contract from submission to startup
+"""Initial migration
 
-Revision ID: 0d4cb6536701
+Revision ID: 7bc3408e306a
 Revises: 
-Create Date: 2025-11-07 18:24:22.347163
+Create Date: 2025-11-29 01:55:31.785088
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '0d4cb6536701'
+revision = '7bc3408e306a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -63,7 +63,8 @@ def upgrade():
     sa.Column('submitted_at', sa.DateTime(), nullable=True),
     sa.Column('raw_chat_data', sa.JSON(), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', name='uq_user_submission')
     )
     op.create_table('evaluation_tasks',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -102,7 +103,7 @@ def upgrade():
     sa.Column('slug', sa.String(length=255), nullable=False),
     sa.Column('status', sa.Enum('INACTIVE', 'ACTIVE', 'INCUBATING', 'GRADUATED', 'ARCHIVED', name='startupstatus'), nullable=False),
     sa.Column('overall_progress', sa.Float(), nullable=True),
-    sa.Column('current_stage', sa.Enum('EVALUATION', 'SCOPE', 'CONTRACT', 'ADMITTED', 'IDEA', 'MVP', 'GROWTH', name='startupstage'), nullable=False),
+    sa.Column('current_stage', sa.Enum('EVALUATION', 'SCOPING', 'CONTRACT', 'ADMITTED', 'IDEA', 'MVP', 'GROWTH', name='startupstage'), nullable=False),
     sa.Column('next_milestone', sa.String(length=255), nullable=True),
     sa.Column('recent_activity', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
@@ -166,9 +167,12 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('startup_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=200), nullable=False),
-    sa.Column('document_url', sa.String(length=500), nullable=False),
-    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('content', sa.Text(), nullable=True),
+    sa.Column('document_url', sa.String(length=500), nullable=True),
+    sa.Column('status', sa.Enum('DRAFT', 'SENT', 'SIGNED', name='contractstatus'), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('sent_at', sa.DateTime(), nullable=True),
+    sa.Column('signed_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('startup_id')
@@ -275,6 +279,16 @@ def upgrade():
     sa.Column('linked_to_type', sa.String(length=50), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['startup_id'], ['startups.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('contract_comments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('contract_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('text', sa.Text(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('contract_signatories',
@@ -440,6 +454,7 @@ def downgrade():
     op.drop_table('marketing_campaigns')
     op.drop_table('features')
     op.drop_table('contract_signatories')
+    op.drop_table('contract_comments')
     op.drop_table('tasks')
     op.drop_table('scope_documents')
     op.drop_table('products')

@@ -1,30 +1,45 @@
 // src/utils/api.ts
+import { MarketingCampaign, Founder, Product, ProductBusinessDetails, FundingRound, ProductMetric, BusinessOverview, Fundraise, NextFundingGoal, ActivityLog, DashboardNotification } from '../types/dashboard-types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 class Api {
+
   private async fetch(url: string, options: RequestInit = {}) {
+    const token = localStorage.getItem('access_token');
+
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
-    
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const fullUrl = `${API_BASE_URL}${url}`;
 
     try {
-      const response = await fetch(fullUrl, { ...options, headers, credentials: 'include' });
-      
+      const response = await fetch(fullUrl, { ...options, headers });
+
       if (response.status === 401) {
         localStorage.removeItem('user');
+        localStorage.removeItem('access_token');
         window.location.href = '/login';
         throw new Error('Session expired');
       }
 
-      // Clone the response to log it
-      if (response.ok) {
-        response.clone().json().then(data => {
-          console.log('Data from backend:', data);
-        });
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.indexOf('application/json') !== -1) {
+          const errorData = await response.json();
+          console.error('Error from backend:', errorData);
+          throw new Error(errorData.msg || 'An API error occurred');
+        } else {
+          const errorText = await response.text();
+          console.error('Non-JSON error from backend:', errorText);
+          throw new Error(`Server returned an error: ${response.status} ${response.statusText}`);
+        }
       }
 
       return response;
@@ -33,44 +48,51 @@ class Api {
     }
   }
 
-  private async post(url: string, body: any, options: RequestInit = {}) {
-    return this.fetch(url, {
+  async get(url: string, options: RequestInit = {}) {
+    const response = await this.fetch(url, options);
+    return response.json();
+  }
+
+  async post(url: string, body: any, options: RequestInit = {}) {
+    const response = await this.fetch(url, {
       method: 'POST',
       body: JSON.stringify(body),
       ...options,
     });
+    return response.json();
   }
 
-  private async put(url: string, body: any, options: RequestInit = {}) {
-    return this.fetch(url, {
-        method: 'PUT',
-        body: JSON.stringify(body),
-        ...options,
+  async put(url: string, body: any, options: RequestInit = {}) {
+    const response = await this.fetch(url, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+      ...options,
     });
+    return response.json();
   }
 
   // --- Auth ---
   async login(credentials: any) {
-    const response = await this.post('/auth/login', credentials);
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Login failed');
-    }
-    return response.json();
+    return this.post('/auth/login', credentials);
   }
 
   async signup(userInfo: any) {
-    const response = await this.post('/auth/signup', userInfo);
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Signup failed');
-    }
-    return response.json();
+    return this.post('/auth/signup', userInfo);
   }
 
   async logout() {
     await this.post('/auth/logout', {});
     localStorage.removeItem('user');
+  }
+
+  // --- Chat ---
+  async chat(message: string) {
+    return this.post('/submissions/chat', { message });
+  }
+
+  // --- Submissions ---
+  async updateSubmission(submissionId: number, data: any) {
+    return this.put(`/submissions/${submissionId}`, data);
   }
 
   // --- Startup Data ---
@@ -84,810 +106,416 @@ class Api {
     return data.startup;
   }
 
-  // --- Lazy Loading Endpoints ---
-  async getTasks(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/tasks`);
-    if (!response.ok) throw new Error('Failed to fetch tasks');
+  // --- Pre-Admission Stage Endpoints ---
+  async getEvaluationTasks() {
+    const response = await this.fetch('/stages/evaluation/tasks');
+    if (!response.ok) throw new Error('Failed to fetch evaluation tasks');
     return (await response.json()).tasks;
   }
-  async getExperiments(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/experiments`);
-    if (!response.ok) throw new Error('Failed to fetch experiments');
-    return (await response.json()).experiments;
+
+  async getScopeDocument() {
+    const response = await this.fetch('/stages/scope');
+    if (!response.ok) throw new Error('Failed to fetch scope document');
+    return (await response.json()).scope_document;
   }
-  async getArtifacts(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/artifacts`);
-    if (!response.ok) throw new Error('Failed to fetch artifacts');
-    return (await response.json()).artifacts;
+
+  async addScopeComment(sectionId: string, text: string) {
+    const response = await this.post('/stages/scope/comments', { section_id: sectionId, text });
+    if (!response.ok) throw new Error('Failed to add comment');
+    return (await response.json()).comment;
   }
-  async getProducts(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/products`);
-    if (!response.ok) throw new Error('Failed to fetch products');
-    return (await response.json()).products;
-  }
-  async getMonthlyReports(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/monthly-reports`);
-    if (!response.ok) throw new Error('Failed to fetch monthly reports');
-    return (await response.json()).reports;
-  }
-  async getFundingRounds(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/funding-rounds`);
-    if (!response.ok) throw new Error('Failed to fetch funding rounds');
-    return (await response.json()).rounds;
-  }
-  async getInvestors(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/investors`);
-    if (!response.ok) throw new Error('Failed to fetch investors');
-    return (await response.json()).investors;
-  }
-  async getCampaigns(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/campaigns`);
-    if (!response.ok) throw new Error('Failed to fetch campaigns');
-    return (await response.json()).campaigns;
-  }
-  async getFounders(startupId: number) {
-    const response = await this.fetch(`/startups/${startupId}/founders`);
-    if (!response.ok) throw new Error('Failed to fetch founders');
-    return (await response.json()).founders;
+
+  async getContractDetails() {
+    const response = await this.fetch('/stages/contract');
+    if (!response.ok) throw new Error('Failed to fetch contract details');
+    return (await response.json()).contract;
   }
 
   async getMarketingOverview(startupId: number) {
     const response = await this.fetch(`/startups/${startupId}/marketing-overview`);
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch marketing overview');
-    }
+    if (!response.ok) throw new Error('Failed to fetch marketing overview');
     return (await response.json()).marketing_overview;
   }
 
-  // --- Create/Update Endpoints ---
+  // --- Admin Endpoints ---
+
+  async getAllSubmissions() {
+    const data = await this.get('/admin/submissions');
+    return data.submissions;
+  }
+
+  async getAllStartups() {
+    const data = await this.get('/admin/startups');
+    return data.startups;
+  }
+
+  async getStartupDetail(startupId: number) {
+    return this.get(`/admin/startups/${startupId}`);
+  }
+
+  async updateStartupStage(startupId: number, newStage: string) {
+    return this.put(`/admin/startups/${startupId}/stage`, { current_stage: newStage });
+  }
+
+  async updateSubmissionStatus(submissionId: number, newStatus: string) {
+    const response = await this.put(`/admin/submissions/${submissionId}/status`, { status: newStatus });
+    await this.createActivity({
+      user_id: 1, // Admin
+      startup_id: response.submission.startup_id,
+      action: 'updated status for',
+      target_type: 'Submission',
+      target_id: submissionId,
+      details: `Status updated to ${newStatus}`
+    });
+    await this.createNotification({
+      user_id: response.submission.user_id,
+      title: 'Submission Status Updated',
+      message: `Your submission status has been updated to ${newStatus}.`,
+      type: 'info'
+    });
+    return response;
+  }
+
+  async getAllUsers() {
+    const data = await this.get('/admin/users');
+    return data.users;
+  }
+
+  async updateUserRole(userId: number, newRole: string) {
+    return this.put(`/admin/users/${userId}/role`, { role: newRole });
+  }
+
+  async updateScopeDocument(startupId: number, data: { productScope: string; gtmScope: string }) {
+    const response = await this.put(`/admin/startups/${startupId}/scope`, data);
+    await this.createActivity({
+      user_id: 1, // Admin
+      startup_id: startupId,
+      action: 'updated',
+      target_type: 'Scope',
+      target_id: startupId,
+      details: 'Scope document updated'
+    });
+    return response;
+  }
+
+  async addAdminScopeComment(startupId: number, text: string) {
+    return this.post(`/admin/startups/${startupId}/scope/comments`, { text });
+  }
+
+  async updateScopeStatus(startupId: number, status: string) {
+    const response = await this.put(`/admin/scope/${startupId}/status`, { status });
+    await this.createActivity({
+      user_id: 1, // Admin
+      startup_id: startupId,
+      action: 'updated status for',
+      target_type: 'Scope',
+      target_id: startupId,
+      details: `Scope status updated to ${status}`
+    });
+    return response;
+  }
+
+  async updateContract(startupId: number, data: { documentUrl: string; status: string }) {
+    const response = await this.put(`/admin/startups/${startupId}/contract`, data);
+    await this.createActivity({
+      user_id: 1, // Admin
+      startup_id: startupId,
+      action: 'updated',
+      target_type: 'Contract',
+      target_id: startupId,
+      details: `Contract updated (Status: ${data.status})`
+    });
+    return response;
+  }
+
+  async updateContractStatus(startupId: number, newStatus: string) {
+    return this.put(`/admin/contract/${startupId}/status`, { status: newStatus });
+  }
+
+  // --- Startup Dashboard Create/Update Endpoints ---
+
   async createTask(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/tasks`, data);
-    if (!response.ok) throw new Error('Failed to create task');
-    return (await response.json()).task;
+    await this.createActivity({
+      user_id: 1, // Admin or Founder
+      startup_id: startupId,
+      action: 'created',
+      target_type: 'Task',
+      target_id: response.task.id,
+      details: data.name
+    });
+    return response;
   }
+
   async createExperiment(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/experiments`, data);
-    if (!response.ok) throw new Error('Failed to create experiment');
-    return (await response.json()).experiment;
+    await this.createActivity({
+      user_id: 1, // Admin or Founder
+      startup_id: startupId,
+      action: 'created',
+      target_type: 'Experiment',
+      target_id: response.experiment.id,
+      details: data.name
+    });
+    return response;
   }
+
   async createArtifact(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/artifacts`, data);
-    if (!response.ok) throw new Error('Failed to create artifact');
-    return (await response.json()).artifact;
+    await this.createActivity({
+      user_id: 1, // Admin or Founder
+      startup_id: startupId,
+      action: 'created',
+      target_type: 'Artifact',
+      target_id: response.artifact.id,
+      details: data.name
+    });
+    return response;
   }
+
   async createProduct(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products`, data);
-    if (!response.ok) throw new Error('Failed to create product');
-    return (await response.json()).product;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'created',
+      target_type: 'Product',
+      target_id: response.product.id,
+      details: data.name
+    });
+    return response;
   }
+
   async createFeature(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/features`, data);
-    if (!response.ok) throw new Error('Failed to create feature');
-    return (await response.json()).feature;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'added',
+      target_type: 'Feature',
+      target_id: response.feature.id,
+      details: data.name
+    });
+    return response;
   }
+
   async createMetric(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/metrics`, data);
-    if (!response.ok) throw new Error('Failed to create metric');
-    return (await response.json()).metric;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'added',
+      target_type: 'Metric',
+      target_id: response.metric.id,
+      details: data.name
+    });
+    return response;
   }
+
   async createIssue(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/issues`, data);
-    if (!response.ok) throw new Error('Failed to create issue');
-    return (await response.json()).issue;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'reported',
+      target_type: 'Issue',
+      target_id: response.issue.id,
+      details: data.title
+    });
+    return response;
   }
+
   async createMonthlyReport(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/monthly-reports`, data);
-    if (!response.ok) throw new Error('Failed to create monthly report');
-    return (await response.json()).report;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'submitted',
+      target_type: 'Report',
+      target_id: response.report.id,
+      details: `Report for ${data.month}`
+    });
+    await this.createNotification({
+      user_id: 1, // Admin
+      title: 'Monthly Report Submitted',
+      message: `Startup has submitted a monthly report for ${data.month}.`,
+      type: 'info'
+    });
+    return response;
   }
+
   async createFundingRound(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/funding-rounds`, data);
-    if (!response.ok) throw new Error('Failed to create funding round');
-    return (await response.json()).round;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'added',
+      target_type: 'Funding',
+      target_id: response.round.id,
+      details: `${data.round_type} Round`
+    });
+    return response;
   }
+
   async createInvestor(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/investors`, data);
-    if (!response.ok) throw new Error('Failed to create investor');
-    return (await response.json()).investor;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'added',
+      target_type: 'Investor',
+      target_id: response.investor.id,
+      details: data.name
+    });
+    return response;
   }
+
   async createCampaign(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/campaigns`, data);
-    if (!response.ok) throw new Error('Failed to create campaign');
-    return (await response.json()).campaign;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'created',
+      target_type: 'Campaign',
+      target_id: response.campaign.id,
+      details: data.campaign_name
+    });
+    return response;
   }
+
+  async updateCampaign(startupId: number, campaignId: number, data: Partial<MarketingCampaign>) {
+    const response = await this.put(`/startups/${startupId}/campaigns/${campaignId}`, data);
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'updated',
+      target_type: 'Campaign',
+      target_id: campaignId,
+      details: `Campaign updated`
+    });
+    return response.campaign;
+  }
+
+  async updateFounder(startupId: number, founderId: number, data: Partial<Founder>) {
+    const response = await this.put(`/startups/${startupId}/founders/${founderId}`, data);
+    return response.founder; // Assuming backend returns updated founder directly
+  }
+
+  async deleteFounder(startupId: number, founderId: number) {
+    const response = await this.fetch(`/startups/${startupId}/founders/${founderId}`, {
+      method: 'DELETE',
+    });
+    return response.json(); // Assuming backend returns a success message
+  }
+
+  async updateProduct(startupId: number, productId: number, data: Partial<Product>) {
+    const response = await this.put(`/startups/${startupId}/products/${productId}`, data);
+    return response.product; // Assuming backend returns updated product directly
+  }
+
+  async updateProductBusinessDetails(startupId: number, productId: number, data: Partial<ProductBusinessDetails>) {
+    const response = await this.put(`/startups/${startupId}/products/${productId}/business-details`, data);
+    return response.product_business_details; // Assuming backend returns updated product_business_details directly
+  }
+
+  async updateFundingRound(startupId: number, roundId: number, data: Partial<FundingRound>) {
+    const response = await this.put(`/startups/${startupId}/funding-rounds/${roundId}`, data);
+    return response.round; // Assuming backend returns updated round directly
+  }
+
+  async updateMetric(startupId: number, productId: number, metricId: number, data: Partial<ProductMetric>) {
+    const response = await this.put(`/startups/${startupId}/products/${productId}/metrics/${metricId}`, data);
+    return response.metric; // Assuming backend returns updated metric directly
+  }
+
   async createContentItem(startupId: number, campaignId: number, data: any) {
-    const response = await this.post(`/startups/${startupId}/campaigns/${campaignId}/content-items`, data);
-    if (!response.ok) throw new Error('Failed to create content item');
-    return (await response.json()).item;
+    return this.post(`/startups/${startupId}/campaigns/${campaignId}/content-items`, data);
   }
+
   async createFounder(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/founders`, data);
-    if (!response.ok) throw new Error('Failed to create founder');
-    return (await response.json()).founder;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'added',
+      target_type: 'Founder',
+      target_id: response.founder.id,
+      details: `${data.first_name} ${data.last_name}`
+    });
+    return response;
   }
+
   async updateStartupSettings(startupId: number, data: any) {
     const response = await this.put(`/startups/${startupId}/settings`, data);
-    if (!response.ok) throw new Error('Failed to update settings');
-    return (await response.json()).startup;
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'updated',
+      target_type: 'Settings',
+      target_id: startupId,
+      details: 'Startup settings updated'
+    });
+    return response;
   }
 
-    // --- Pre-Admission Stage Endpoints ---
-
-    async getEvaluationTasks() {
-
-      const response = await this.fetch('/stages/evaluation/tasks');
-
-      if (!response.ok) throw new Error('Failed to fetch evaluation tasks');
-
-      return (await response.json()).tasks;
-
-    }
-
-  
-
-    async getScopeDocument() {
-
-      const response = await this.fetch('/stages/scope');
-
-      if (!response.ok) throw new Error('Failed to fetch scope document');
-
-      return (await response.json()).scope_document;
-
-    }
-
-  
-
-    async addScopeComment(sectionId: string, text: string) {
-
-      const response = await this.post('/stages/scope/comments', { section_id: sectionId, text });
-
-      if (!response.ok) throw new Error('Failed to add comment');
-
-      return (await response.json()).comment;
-
-    }
-
-  
-
-    async getContractDetails() {
-
-      const response = await this.fetch('/stages/contract');
-
-      if (!response.ok) throw new Error('Failed to fetch contract details');
-
-      return (await response.json()).contract;
-
-    }
-
-  
-
-    // --- Admin Endpoints ---
-
-    async getAllSubmissions() {
-
-      const response = await this.fetch('/admin/submissions');
-
-      if (!response.ok) throw new Error('Failed to fetch all submissions');
-
-      return (await response.json()).submissions;
-
-    }
-
-  
-
-    async getAllStartups() {
-
-      const response = await this.fetch('/admin/startups');
-
-      if (!response.ok) throw new Error('Failed to fetch all startups');
-
-      return (await response.json()).startups;
-
-    }
-
-  
-
-    async getStartupDetail(startupId: number) {
-
-      const response = await this.fetch(`/admin/startups/${startupId}`);
-
-      if (!response.ok) throw new Error('Failed to fetch startup detail');
-
-      return (await response.json()).startup;
-
-    }
-
-  
-
-    async updateStartupStage(startupId: number, newStage: string) {
-
-      const response = await this.put(`/admin/startups/${startupId}/stage`, { current_stage: newStage });
-
-      if (!response.ok) throw new Error('Failed to update startup stage');
-
-      return (await response.json()).startup;
-
-    }
-
-  
-
-    async updateSubmissionStatus(submissionId: number, newStatus: string) {
-
-      const response = await this.put(`/admin/submissions/${submissionId}/status`, { status: newStatus });
-
-      if (!response.ok) throw new Error('Failed to update submission status');
-
-      return (await response.json()).submission;
-
-    }
-
-  
-
-    async getAllUsers() {
-
-      const response = await this.fetch('/admin/users');
-
-      if (!response.ok) throw new Error('Failed to fetch all users');
-
-      return (await response.json()).users;
-
-    }
-
-  
-
-      async updateUserRole(userId: number, newRole: string) {
-
-  
-
-        const response = await this.put(`/admin/users/${userId}/role`, { role: newRole });
-
-  
-
-        if (!response.ok) throw new Error('Failed to update user role');
-
-  
-
-        return (await response.json()).user;
-
-  
-
-      }
-
-  
-
-    
-
-  
-
-      async updateScopeDocument(startupId: number, data: { productScope: string; gtmScope: string }) {
-
-  
-
-        const response = await this.put(`/admin/startups/${startupId}/scope`, data);
-
-  
-
-        if (!response.ok) throw new Error('Failed to update scope document');
-
-  
-
-        return (await response.json()).scope_document;
-
-  
-
-      }
-
-  
-
-    
-
-  
-
-      async addAdminScopeComment(startupId: number, text: string) {
-
-  
-
-        const response = await this.post(`/admin/startups/${startupId}/scope/comments`, { text });
-
-  
-
-        if (!response.ok) throw new Error('Failed to add scope comment');
-
-  
-
-        return (await response.json()).comment;
-
-  
-
-      }
-
-  
-
-    
-
-  
-
-            async updateScopeStatus(startupId: number, newStatus: string) {
-
-  
-
-    
-
-  
-
-              const response = await this.put(`/admin/scope/${startupId}/status`, { status: newStatus });
-
-  
-
-    
-
-  
-
-              if (!response.ok) throw new Error('Failed to update scope status');
-
-  
-
-    
-
-  
-
-              return (await response.json()).startup;
-
-  
-
-    
-
-  
-
-            }
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                  async addContractComment(startupId: number, text: string) {
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    const response = await this.post(`/admin/contract/${startupId}/comments`, { text });
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    if (!response.ok) throw new Error('Failed to add contract comment');
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    return (await response.json()).comment;
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                  }
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-            
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                  async addContractSignatory(startupId: number, name: string, email: string) {
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    const response = await this.post(`/admin/contract/${startupId}/signatories`, { name, email });
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    if (!response.ok) throw new Error('Failed to add contract signatory');
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    return (await response.json()).signatory;
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                  }
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-            
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                  async updateContractStatus(startupId: number, newStatus: string) {
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    const response = await this.put(`/admin/contract/${startupId}/status`, { status: newStatus });
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    if (!response.ok) throw new Error('Failed to update contract status');
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    return (await response.json()).contract;
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                  }
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-            
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                  async updateContract(startupId: number, data: { documentUrl: string; status: string }) {
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-              
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    const response = await this.put(`/admin/startups/${startupId}/contract`, data);
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-              
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    if (!response.ok) throw new Error('Failed to update contract');
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-              
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                    return (await response.json()).contract;
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-              
-
-  
-
-    
-
-  
-
-      
-
-  
-
-    
-
-  
-
-                  }
-
-  
-
-    }
-
-  
-
-    
-
-  
-
-    const api = new Api();
-
-  
-
-    export default api;
-
-  
+  async updateBusinessOverview(startupId: number, data: Partial<BusinessOverview>) {
+    const response = await this.put(`/startups/${startupId}/business-overview`, data);
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'updated',
+      target_type: 'Overview',
+      target_id: startupId,
+      details: 'Business overview updated'
+    });
+    return response.business_overview; // Assuming backend returns updated business_overview directly
+  }
+
+  async updateFundraisingGoals(
+    startupId: number,
+    fundraiseData: Partial<Fundraise>,
+    nextFundingGoalData: Partial<NextFundingGoal>
+  ) {
+    const response = await this.put(`/startups/${startupId}/fundraise-details`, {
+      fundraise: fundraiseData,
+      next_funding_goal: nextFundingGoalData
+    });
+    await this.createActivity({
+      user_id: 2, // Founder
+      startup_id: startupId,
+      action: 'updated',
+      target_type: 'Fundraising',
+      target_id: startupId,
+      details: 'Fundraising goals updated'
+    });
+    return response;
+  }
+
+  // Other methods...
+  // --- Activity and Notifications (Mocked) ---
+  async getRecentActivity(startupId?: number) {
+    const url = startupId ? `/startups/${startupId}/activity` : '/admin/activity';
+    const data = await this.get(url);
+    return data.activity;
+  }
+
+  async getNotifications() {
+    const data = await this.get('/notifications');
+    return data.notifications;
+  }
+
+  async markNotificationAsRead(id: number) {
+    return this.put(`/notifications/${id}/read`, {});
+  }
+
+  async createActivity(data: Omit<ActivityLog, 'id' | 'created_at'>) {
+    return this.post('/admin/activity', data);
+  }
+
+  async createNotification(data: Omit<DashboardNotification, 'id' | 'created_at' | 'read'>) {
+    return this.post('/notifications', data);
+  }
+}
+
+const api = new Api();
+export default api;

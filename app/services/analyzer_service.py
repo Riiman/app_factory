@@ -7,8 +7,12 @@ from langchain_openai import AzureChatOpenAI
 
 def format_startup_data_for_analyzer(startup_data):
     """Formats the raw JSON chat data into a readable string for the LLM."""
+    if not startup_data:
+        return ""
     formatted_data = ""
     for key, value in startup_data.items():
+        if key in ["id", "user_id", "status", "submitted_at", "raw_chat_data", "chat_progress_step", "user", "evaluation", "startup"]:
+            continue
         if key == "startup_type":
             formatted_data += f"Startup Type: {value}\n\n"
         else:
@@ -43,7 +47,7 @@ def run_analysis(submission_id):
     print(f"--- [Celery Task] Evaluation status set to 'in_progress' for submission ID: {submission_id} ---")
 
     try:
-        formatted_startup_data = format_startup_data_for_analyzer(submission.raw_chat_data)
+        formatted_startup_data = format_startup_data_for_analyzer(submission.to_dict())
         print(f"--- [Celery Task] Formatted startup data for submission ID: {submission_id} ---")
 
         llm = AzureChatOpenAI(

@@ -14,8 +14,10 @@ import { Plus } from 'lucide-react';
  * @interface FundingRoundsPageProps
  */
 interface FundingRoundsPageProps {
+    startupId: number;
     /** An array of all funding round objects. The backend should provide an array of `FundingRound` objects. */
     fundingRounds: FundingRound[];
+    setFundingRounds: React.Dispatch<React.SetStateAction<FundingRound[]>>;
     /** Callback function triggered when a round card is clicked, passing the round's ID. */
     onSelectRound: (roundId: number) => void;
     /** Callback function triggered when the "Start New Round" button is clicked. */

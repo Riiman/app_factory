@@ -24,6 +24,12 @@ interface MarketingCampaignDetailPageProps {
     onBack: () => void;
     /** Callback function to open the "Create Content Item" modal for this campaign. */
     onAddContentItem: () => void;
+    /** Callback function to open the "Edit Campaign" modal for this campaign. */
+    onEditCampaign: (campaign: MarketingCampaign) => void;
+    /** Callback function to open the "Create Task" modal, pre-linking to this campaign. */
+    onAddTask: (campaignId: number) => void;
+    /** Callback function to open the "Create Artifact" modal, pre-linking to this campaign. */
+    onAddArtifact: (campaignId: number) => void;
 }
 
 const formatNumber = (value: number | undefined) => (value || 0).toLocaleString();
@@ -44,7 +50,7 @@ const getContentStatusColor = (status: MarketingContentStatus) => {
 }
 
 
-const MarketingCampaignDetailPage: React.FC<MarketingCampaignDetailPageProps> = ({ campaign, linkedTasks, linkedArtifacts, onBack, onAddContentItem }) => {
+const MarketingCampaignDetailPage: React.FC<MarketingCampaignDetailPageProps> = ({ campaign, linkedTasks, linkedArtifacts, onBack, onAddContentItem, onEditCampaign, onAddTask, onAddArtifact }) => {
     return (
         <div className="space-y-6">
             <button onClick={onBack} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
@@ -58,7 +64,7 @@ const MarketingCampaignDetailPage: React.FC<MarketingCampaignDetailPageProps> = 
                         <h1 className="text-2xl font-bold text-gray-900">{campaign.campaign_name}</h1>
                         <p className="text-gray-600">{campaign.objective}</p>
                     </div>
-                    <button className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit Campaign</button>
+                    <button onClick={() => onEditCampaign(campaign)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit Campaign</button>
                 </div>
             </Card>
 
@@ -111,7 +117,7 @@ const MarketingCampaignDetailPage: React.FC<MarketingCampaignDetailPageProps> = 
                 <div className="space-y-6">
                     <Card 
                         title="Linked Tasks"
-                        actions={<button className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Task</button>}
+                        actions={<button onClick={() => onAddTask(campaign.campaign_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Task</button>}
                     >
                          <ul className="space-y-2">
                             {linkedTasks.map(task => (
@@ -123,7 +129,7 @@ const MarketingCampaignDetailPage: React.FC<MarketingCampaignDetailPageProps> = 
                     </Card>
                     <Card 
                         title="Linked Artifacts"
-                        actions={<button className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Artifact</button>}
+                        actions={<button onClick={() => onAddArtifact(campaign.campaign_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Artifact</button>}
                     >
                         <ul className="space-y-2">
                             {linkedArtifacts.map(artifact => (

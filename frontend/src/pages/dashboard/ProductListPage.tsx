@@ -15,8 +15,10 @@ import { Plus } from 'lucide-react';
  * @interface ProductListPageProps
  */
 interface ProductListPageProps {
+    startupId: number;
     /** An array of all product objects to be displayed. The backend should provide an array of objects conforming to the `Product` interface. */
     products: Product[];
+    setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
     /** Callback function triggered when a product card is clicked. Navigates to the detail view. */
     onSelectProduct: (productId: number) => void;
     /** Callback function triggered when the "Add New Product" button is clicked. Opens the creation modal. */

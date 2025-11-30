@@ -15,8 +15,10 @@ import { Plus } from 'lucide-react';
  * @interface BusinessMonthlyReportingPageProps
  */
 interface BusinessMonthlyReportingPageProps {
+    startupId: number;
     /** An array of all monthly data records. The backend should provide an array of `BusinessMonthlyData` objects. */
     monthlyData: BusinessMonthlyData[];
+    setMonthlyData: React.Dispatch<React.SetStateAction<BusinessMonthlyData[]>>;
     /** Callback function triggered when a table row is clicked, passing the corresponding report data. */
     onRowClick: (report: BusinessMonthlyData) => void;
     /** Callback function triggered when the "Add New Monthly Report" button is clicked. */

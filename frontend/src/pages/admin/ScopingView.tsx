@@ -14,6 +14,7 @@ interface ScopingViewProps {
 }
 
 const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateScope, onAddComment, onUpdateStatus }) => {
+  
   const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
   const [productScope, setProductScope] = useState('');
   const [gtmScope, setGtmScope] = useState('');
@@ -31,6 +32,12 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
         setGtmScope('');
     }
   }, [selectedStartup]);
+
+  useEffect(() => {
+    if (!selectedStartup && startupsInScoping.length > 0) {
+      setSelectedStartup(startupsInScoping[0]);
+    }
+  }, [startupsInScoping, selectedStartup]);
 
   const handleSelectStartup = (startup: Startup) => {
     setSelectedStartup(startup);

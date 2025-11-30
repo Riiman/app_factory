@@ -13,25 +13,28 @@ def format_data_for_scope_generator(submission, evaluation):
     
     formatted_data += """--- Evaluation Summary ---""" + "\n"
     formatted_data += f"Overall Summary: {evaluation.overall_summary}\n"
-    formatted_data += f"Problem Analysis: {evaluation.problem_analysis['summary']}\n"
-    formatted_data += f"Solution Analysis: {evaluation.solution_analysis['summary']}\n"
-    formatted_data += f"Market Analysis: {evaluation.market_analysis['summary']}\n"
+    if evaluation.problem_analysis and 'summary' in evaluation.problem_analysis:
+        formatted_data += f"Problem Analysis: {evaluation.problem_analysis['summary']}\n"
+    if evaluation.solution_analysis and 'summary' in evaluation.solution_analysis:
+        formatted_data += f"Solution Analysis: {evaluation.solution_analysis['summary']}\n"
+    if evaluation.market_analysis and 'summary' in evaluation.market_analysis:
+        formatted_data += f"Market Analysis: {evaluation.market_analysis['summary']}\n"
     
     return formatted_data
 
-def generate_scope_document(submission_id):
+def generate_scope_document(startup):
     """
-    Celery task to generate a scope document for a startup submission using Azure OpenAI.
+    Generates a scope document for a startup submission using Azure OpenAI.
     """
-    print(f"--- [Celery Task] Starting scope document generation for submission ID: {submission_id} ---")
-    submission = Submission.query.get(submission_id)
-    if not submission or not submission.evaluation:
-        print(f"--- [Celery Task] Error: Submission or evaluation not found for ID {submission_id}. ---")
+    print(f"--- [Celery Task] Starting scope document generation for startup ID: {startup.id} ---")
+    
+    submission = startup.submission
+    if not submission:
+        print(f"--- [Celery Task] Error: No submission associated with startup ID {startup.id}. ---")
         return
-
-    startup = submission.startup
-    if not startup:
-        print(f"--- [Celery Task] Error: No startup associated with submission ID {submission_id}. ---")
+        
+    if not submission.evaluation:
+        print(f"--- [Celery Task] Error: No evaluation associated with submission ID {submission.id}. ---")
         return
 
     formatted_data = format_data_for_scope_generator(submission, submission.evaluation)
@@ -62,7 +65,7 @@ def generate_scope_document(submission_id):
     gtm_strategy_content = gtm_strategy_chain.invoke({"data": formatted_data}).content
 
     # --- Create and save ScopeDocument ---
-    scope_document_content = f"# Product Scope\n\n{product_scope_content}\n\n# Go-to-Market Strategy\n\n{gtm_strategy_content}"
+    scope_document_content = f"\n\n{product_scope_content}\n\n{gtm_strategy_content}"
     
     scope_document = ScopeDocument(
         startup_id=startup.id,
