@@ -14,6 +14,7 @@ const LoginPage: FC = () => {
   const [error, setError] = useState('');
 
   const handleGoogleSignIn = async () => {
+    console.log("handleGoogleSignIn called");
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
@@ -22,6 +23,7 @@ const LoginPage: FC = () => {
       // to ensure the app re-initializes and the listener fires.
       window.location.reload();
     } catch (err: any) {
+      console.error("Google Sign-In Error:", err);
       setError(err.message || 'Failed to sign in with Google.');
     }
   };

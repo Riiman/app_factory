@@ -78,6 +78,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     <Card title="Metrics" actions={<button onClick={onAddMetric} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Metric</button>}>
                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {product.product_metrics.map(metric => (
+                            metric && (
                             <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg relative">
                                 <p className="text-sm text-gray-500">{metric.metric_name}</p>
                                 <p className="text-2xl font-bold text-gray-900">{metric.value?.toLocaleString() ?? 'N/A'} <span className="text-base font-normal text-gray-600">{metric.unit}</span></p>
@@ -85,6 +86,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                                     <Edit size={16} />
                                 </button>
                             </div>
+                            )
                         ))}
                        </div>
                     </Card>
