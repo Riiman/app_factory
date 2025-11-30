@@ -44,9 +44,12 @@ import CreateCampaignModal from '@/components/dashboard/CreateCampaignModal';
 import CreateContentItemModal from '@/components/dashboard/CreateContentItemModal';
 import CreateFounderModal from '@/components/dashboard/CreateFounderModal';
 
+import { useAuth } from '@/contexts/AuthContext';
+
 type CreateModalType = 'task' | 'experiment' | 'artifact';
 
 const DashboardPage: React.FC = () => {
+    const { handleLogout } = useAuth();
     const location = useLocation();
     // --- State Management ---
     const [startupData, setStartupData] = useState<Startup | null>(null);
@@ -77,6 +80,7 @@ const DashboardPage: React.FC = () => {
                 }
 
                 const data = await api.getStartupData(startupId);
+                console.log("Backend data received:", data);
                 setStartupData(data);
                 setMarketingCampaigns(data.marketing_campaigns || []);
                 setInvestors(data.investors || []);
@@ -191,8 +195,8 @@ const DashboardPage: React.FC = () => {
     };
 
     /** Placeholder for a user logout action. In a real app, this would involve an API call and session clearing. */
-    const handleLogout = () => {
-        alert("Logout action triggered. In a real app, this would clear the user session.");
+    const handleSelectCampaign = (campaignId: number) => {
+        setSelectedCampaignId(campaignId);
     };
 
     const handleSelectProduct = (productId: number) => {
@@ -205,11 +209,9 @@ const DashboardPage: React.FC = () => {
         setSelectedFundingRoundId(roundId);
     };
 
-    const handleSelectCampaign = (campaignId: number) => {
-        setSelectedCampaignId(campaignId);
-    };
-
-    // --- Open/Close Detail Modals ---
+    //const handleBackToList = () => setSelectedProductId(null);
+    //const handleBackToRoundsList = () => setSelectedFundingRoundId(null);
+    //const handleBackToCampaignsList = () => setSelectedCampaignId(null);
     const handleOpenReportModal = (report: BusinessMonthlyData) => { setSelectedReport(report); setIsReportModalOpen(true); };
     const handleCloseReportModal = () => { setIsReportModalOpen(false); setSelectedReport(null); };
 
@@ -470,7 +472,7 @@ const DashboardPage: React.FC = () => {
             const updatedStartup = await api.updateStartupSettings(startupData.id, updatedSettings);
             setStartupData(updatedStartup);
             // Here you would typically show a success notification
-            console.log('Startup settings updated:', updatedSettings);
+            
         } catch (error) {
             console.error("Failed to update startup settings:", error);
         }
@@ -597,7 +599,7 @@ const DashboardPage: React.FC = () => {
                 return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details} />;
 
             case Scope.MARKETING:
-                console.log('Marketing Campaigns in DashboardPage:', marketingCampaigns);
+                
                 if (activeSubPage === 'Overview') {
                     return <MarketingOverviewPage 
                                 marketingOverview={startupData.marketing_overview} 

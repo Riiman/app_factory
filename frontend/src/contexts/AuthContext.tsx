@@ -22,30 +22,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [nextQuestion, setNextQuestion] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const handleLogout = useCallback(() => {
-        console.log("AUTH: handleLogout called.");
-        signOut(auth);
+    const handleLogout = useCallback(async () => {
+        
+        await signOut(auth);
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
         setUser(null);
         setSubmissionStatus(null);
         setSubmissionData(null);
         setNextQuestion(null);
+        window.location.href = '/login';
     }, []);
 
     useEffect(() => {
-        console.log("AUTH: onAuthStateChanged listener SETUP.");
+        
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            console.log("AUTH: onAuthStateChanged event FIRED. Firebase user:", firebaseUser);
+            
             if (firebaseUser) {
-                console.log("AUTH: Firebase user found. Attempting to sync with Flask backend.");
+                
                 try {
                     const idToken = await firebaseUser.getIdToken();
                     const data = await api.post('/auth/login', { firebase_id_token: idToken });
-                    console.log("AUTH: Backend response received:", data);
+                    
                     
                     if (data.success) {
-                        console.log("AUTH: Backend login successful. Setting AuthContext state.");
+                        
                         localStorage.setItem('access_token', data.access_token);
                         localStorage.setItem('user', JSON.stringify(data.user));
                         setUser(data.user);
@@ -53,18 +54,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         setSubmissionData(data.submission_data);
                         setNextQuestion(data.next_question);
                     } else {
-                        console.log("AUTH: Backend login failed (data.success is false). Calling handleLogout.");
+                        
                         handleLogout();
                     }
                 } catch (error) {
                     console.error("AUTH: Error syncing with Flask backend:", error);
                     handleLogout();
                 } finally {
-                    console.log("AUTH: Finished auth check. Setting isLoading to false.");
+                    
                     setIsLoading(false);
                 }
             } else {
-                console.log("AUTH: No Firebase user. Clearing state and setting isLoading to false.");
+                
                 // We don't call handleLogout() here because that could cause a navigation loop.
                 // We just clear the state. ProtectedRoute will handle navigation.
                 localStorage.removeItem('access_token');
@@ -78,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         return () => {
-            console.log("AUTH: Cleaning up onAuthStateChanged listener.");
+            
             unsubscribe();
         };
     }, [handleLogout]);

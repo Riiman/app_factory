@@ -56,7 +56,7 @@ const ProductMetricsPage: React.FC<ProductMetricsPageProps> = ({ products, onAdd
                             {allMetrics.map((metric) => (
                                 <tr key={metric.metric_id}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{metric.metric_name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{metric.value.toLocaleString()} {metric.unit}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{metric.value?.toLocaleString() ?? 'N/A'} {metric.unit}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{metric.productName}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(metric.date_recorded).toLocaleDateString()}</td>
                                 </tr>

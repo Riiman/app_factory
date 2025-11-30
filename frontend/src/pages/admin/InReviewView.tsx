@@ -51,10 +51,10 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
   const selectedDetails = selectedSubmission ? submissionsWithDetails.find(s => s.id === selectedSubmission.id) : null;
   const associatedStartup = selectedDetails?.startup;
 
-  console.log('--- Frontend InReviewView Selected Details ---', selectedDetails);
+  
   if (selectedDetails) {
-    console.log('--- Frontend InReviewView Evaluation Data ---', selectedDetails.evaluation);
-    console.log('--- Frontend InReviewView Startup Data ---', associatedStartup);
+    
+    
   }
 
   const handleAddTaskSubmit = (e: React.FormEvent) => {

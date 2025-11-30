@@ -28,7 +28,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
   const handleSelectStartup = (startup: Startup) => {
     setSelectedStartup(startup);
     if (startup.contract) {
-      console.log(`--- [FRONTEND LOG] Selected Startup Contract Status: ${startup.contract.status} ---`);
+      
     }
   };
 

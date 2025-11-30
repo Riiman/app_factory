@@ -11,9 +11,12 @@ import ContractView from './ContractView';
 import Overview from './Overview';
 import { Building2, LayoutDashboard, Inbox, FileClock, FileSignature, FileText, Briefcase, LogOut } from 'lucide-react';
 
+import { useAuth } from '../../contexts/AuthContext';
+
 type ActiveView = 'overview' | 'submissions' | 'in-review' | 'scoping' | 'contract' | 'startups';
 
 const AdminDashboardPage: React.FC = () => {
+  const { handleLogout } = useAuth();
   const [startups, setStartups] = useState<Startup[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]); // Evaluations are part of submission detail
@@ -33,8 +36,8 @@ const AdminDashboardPage: React.FC = () => {
         api.getAllStartups(),
         api.getAllUsers(),
       ]);
-      console.log("Fetched Submissions:", JSON.stringify(fetchedSubmissions, null, 2));
-      console.log("Fetched Startups:", JSON.stringify(fetchedStartups, null, 2)); // Add this line
+      
+      
       
       // Manually link submissions to startups since the backend might not be nesting them
       const startupsWithData = fetchedStartups.map((startup: Startup) => ({
@@ -163,16 +166,6 @@ const AdminDashboardPage: React.FC = () => {
     }
   }, [fetchData]);
 
-  const handleLogout = async () => {
-    try {
-      await api.logout();
-      window.location.href = '/login';
-    } catch (err) {
-      console.error("Logout failed:", err);
-      // Optionally, show an error message to the user
-    }
-  };
-
   const handleActivateStartup = useCallback(async (startupId: number) => {
     try {
       await api.updateStartupStage(startupId, StartupStage.ADMITTED.valueOf()); // Move to ADMITTED stage
@@ -194,8 +187,8 @@ const AdminDashboardPage: React.FC = () => {
     s.submission && s.submission.status === SubmissionStatus.APPROVED
   );
 
-  console.log("Final Startups with linked data:", startups);
-  console.log("Filtered Active Startups:", activeStartups);
+  
+  
 
   const renderContent = () => {
     if (loading) return <div className="flex items-center justify-center h-full">Loading admin dashboard...</div>;

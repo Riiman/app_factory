@@ -71,7 +71,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         {product.product_metrics.map(metric => (
                             <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg">
                                 <p className="text-sm text-gray-500">{metric.metric_name}</p>
-                                <p className="text-2xl font-bold text-gray-900">{metric.value.toLocaleString()} <span className="text-base font-normal text-gray-600">{metric.unit}</span></p>
+                                <p className="text-2xl font-bold text-gray-900">{metric.value?.toLocaleString() ?? 'N/A'} <span className="text-base font-normal text-gray-600">{metric.unit}</span></p>
                             </div>
                         ))}
                        </div>

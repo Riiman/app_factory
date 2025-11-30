@@ -28,9 +28,16 @@ class Api {
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error from backend:', errorData);
-        throw new Error(errorData.msg || 'An API error occurred');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.indexOf('application/json') !== -1) {
+            const errorData = await response.json();
+            console.error('Error from backend:', errorData);
+            throw new Error(errorData.msg || 'An API error occurred');
+        } else {
+            const errorText = await response.text();
+            console.error('Non-JSON error from backend:', errorText);
+            throw new Error(`Server returned an error: ${response.status} ${response.statusText}`);
+        }
       }
 
       return response;
@@ -120,6 +127,12 @@ class Api {
     const response = await this.fetch('/stages/contract');
     if (!response.ok) throw new Error('Failed to fetch contract details');
     return (await response.json()).contract;
+  }
+
+  async getMarketingOverview(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/marketing-overview`);
+    if (!response.ok) throw new Error('Failed to fetch marketing overview');
+    return (await response.json()).marketing_overview;
   }
   
   // --- Admin Endpoints ---

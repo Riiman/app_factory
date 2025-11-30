@@ -13,9 +13,12 @@ def format_data_for_scope_generator(submission, evaluation):
     
     formatted_data += """--- Evaluation Summary ---""" + "\n"
     formatted_data += f"Overall Summary: {evaluation.overall_summary}\n"
-    formatted_data += f"Problem Analysis: {evaluation.problem_analysis['summary']}\n"
-    formatted_data += f"Solution Analysis: {evaluation.solution_analysis['summary']}\n"
-    formatted_data += f"Market Analysis: {evaluation.market_analysis['summary']}\n"
+    if evaluation.problem_analysis and 'summary' in evaluation.problem_analysis:
+        formatted_data += f"Problem Analysis: {evaluation.problem_analysis['summary']}\n"
+    if evaluation.solution_analysis and 'summary' in evaluation.solution_analysis:
+        formatted_data += f"Solution Analysis: {evaluation.solution_analysis['summary']}\n"
+    if evaluation.market_analysis and 'summary' in evaluation.market_analysis:
+        formatted_data += f"Market Analysis: {evaluation.market_analysis['summary']}\n"
     
     return formatted_data
 

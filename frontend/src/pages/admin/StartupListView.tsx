@@ -11,7 +11,7 @@ interface StartupListViewProps {
 }
 
 const StartupListView: React.FC<StartupListViewProps> = ({ startups, onSelectStartup }) => {
-  console.log("Startups received in StartupListView:", startups);
+  
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredStartups = useMemo(() => {

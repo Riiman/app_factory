@@ -4,15 +4,15 @@ import { useAuth } from '../contexts/AuthContext';
 
 const PublicRoute: React.FC = () => {
   const { user, isLoading, submissionStatus } = useAuth();
-  console.log(`PUBLIC_ROUTE: Rendering. isLoading: ${isLoading}, user:`, user);
+  
 
   if (isLoading) {
-    console.log("PUBLIC_ROUTE: isLoading is true, showing loading screen.");
+    
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
   if (user) {
-    console.log("PUBLIC_ROUTE: User is authenticated. Determining redirect path.");
+    
     let targetPath: string;
     if (user.role === 'ADMIN') {
         targetPath = '/admin';
@@ -38,10 +38,10 @@ const PublicRoute: React.FC = () => {
                 break;
         }
     }
-    console.log(`PUBLIC_ROUTE: Redirecting to ${targetPath}.`);
+    
     return <Navigate to={targetPath} />;
   } else {
-    console.log("PUBLIC_ROUTE: No user, rendering Outlet (e.g., Login/Signup page).");
+    
     return <Outlet />;
   }
 };

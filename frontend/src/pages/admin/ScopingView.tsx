@@ -14,7 +14,7 @@ interface ScopingViewProps {
 }
 
 const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateScope, onAddComment, onUpdateStatus }) => {
-  console.log("Startups in Scoping:", startupsInScoping);
+  
   const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
   const [productScope, setProductScope] = useState('');
   const [gtmScope, setGtmScope] = useState('');
