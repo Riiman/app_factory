@@ -144,7 +144,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                             <p className="text-gray-600">{product.description}</p>
                         </div>
                         <div className="flex items-center space-x-2">
-                             <button className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit Product</button>
+                             <button onClick={() => onEditProduct(product)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit Product</button>
                         </div>
                     </div>
                 </Card>
