@@ -1,5 +1,6 @@
-import React, { FC } from 'react';
+import React, { FC, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -21,6 +22,46 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const AppRoutes: FC = () => {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    // Establish WebSocket connection for dashboard notifications
+    const ws = new WebSocket("ws://localhost:8000/ws/dashboard-notifications");
+
+    ws.onopen = () => {
+      console.log("Connected to dashboard notifications WebSocket.");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'dashboard_update') {
+          console.log("Received dashboard update, invalidating startupData query:", message);
+          // This tells React Query to refetch the data for the dashboard
+          queryClient.invalidateQueries({ queryKey: ['startupData'] });
+          queryClient.invalidateQueries({ queryKey: ['adminData'] });
+        }
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("Disconnected from dashboard notifications WebSocket.");
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    // Cleanup function: Close WebSocket connection when component unmounts
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [queryClient]); // Add queryClient to the dependency array
+
   return (
     <Routes>
       {/* Public Routes */}
@@ -31,13 +72,13 @@ const AppRoutes: FC = () => {
           <Footer />
         </>
       } />
-      
+
       {/* Routes for logged-out users only */}
       <Route element={<PublicRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
       </Route>
-      
+
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       {/* Protected Routes (User) */}

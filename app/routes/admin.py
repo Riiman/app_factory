@@ -11,7 +11,8 @@ from app.services.analyzer_service import run_analysis
 from app.services.document_generator_service import generate_scope_document
 from app.tasks import generate_product_task
 from app.services.product_generator_service import generate_product_from_scope
-from app.models import Product, Feature
+from app.models import Product, Feature, ActivityLog
+
 
 print("--- DEBUG: Importing admin.py ---")
 
@@ -259,3 +260,35 @@ def generate_product_for_startup(startup_id):
         'success': True,
         'message': 'Product generation has been queued and will start shortly.'
     }), 202
+
+@admin_bp.route('/activity', methods=['GET'])
+@admin_required
+def get_recent_activity():
+    activities = ActivityLog.query.order_by(ActivityLog.created_at.desc()).limit(50).all()
+    return jsonify({'success': True, 'activity': [a.to_dict() for a in activities]}), 200
+
+@admin_bp.route('/activity', methods=['POST'])
+@admin_required
+def create_activity():
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['user_id', 'action', 'target_type']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+
+    activity = ActivityLog(
+        user_id=data['user_id'],
+        startup_id=data.get('startup_id'),
+        action=data['action'],
+        target_type=data['target_type'],
+        target_id=data.get('target_id'),
+        details=data.get('details')
+    )
+    
+    db.session.add(activity)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'activity': activity.to_dict()}), 201
+

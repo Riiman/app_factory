@@ -86,9 +86,9 @@ export enum ScopeStatus {
 }
 
 export enum ContractStatus {
-    DRAFT = 'DRAFT',
-    SENT = 'SENT',
-    SIGNED = 'SIGNED',
+  DRAFT = 'DRAFT',
+  SENT = 'SENT',
+  SIGNED = 'SIGNED',
 }
 
 export type LinkedEntityType = 'Product' | 'FundingRound' | 'MarketingCampaign';
@@ -113,16 +113,16 @@ export interface ContractSignatory {
 }
 
 export interface Contract {
-    id: number;
-    startup_id: number;
-    title: string;
-    content?: string; // New field for generated contract text
-    document_url?: string; // Made optional as content will be primary
-    status: ContractStatus;
-    sent_at?: string;
-    signed_at?: string;
-    signatories: ContractSignatory[];
-    comments: ContractComment[]; // New field for contract comments
+  id: number;
+  startup_id: number;
+  title: string;
+  content?: string; // New field for generated contract text
+  document_url?: string; // Made optional as content will be primary
+  status: ContractStatus;
+  sent_at?: string;
+  signed_at?: string;
+  signatories: ContractSignatory[];
+  comments: ContractComment[]; // New field for contract comments
 }
 
 export interface Comment {
@@ -257,13 +257,13 @@ export interface Product {
 }
 
 export interface BusinessOverview {
-    business_id: number;
-    startup_id: number;
-    business_model?: string;
-    key_partners?: string;
-    notes?: string;
-    created_at: string;
-    updated_at: string;
+  business_id: number;
+  startup_id: number;
+  business_model?: string;
+  key_partners?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BusinessMonthlyData {
@@ -286,9 +286,9 @@ export interface BusinessMonthlyData {
 }
 
 export interface MarketingOverview {
-    marketing_id: number;
-    startup_id: number;
-    positioning_statement?: string;
+  marketing_id: number;
+  startup_id: number;
+  positioning_statement?: string;
 }
 
 export interface Investor {
@@ -392,7 +392,7 @@ export interface Experiment {
   id: number;
   startup_id: number;
   scope: Scope;
-  name:string;
+  name: string;
   description?: string;
   assumption: string;
   validation_method?: string;
@@ -468,4 +468,27 @@ export interface Startup {
   fundraise_details?: Fundraise;
   scope_document?: ScopeDocument;
   contract?: Contract;
+  activity?: ActivityLog[];
+  notifications?: DashboardNotification[];
+}
+
+export interface ActivityLog {
+  id: number;
+  user_id: number;
+  startup_id: number;
+  action: string;
+  target_type: string;
+  target_id: number;
+  details: string;
+  created_at: string;
+}
+
+export interface DashboardNotification {
+  id: number;
+  user_id: number;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  read: boolean;
+  created_at: string;
 }

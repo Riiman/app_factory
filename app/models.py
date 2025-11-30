@@ -798,24 +798,78 @@ class Investor(db.Model):
         }
 
 class RoundInvestor(db.Model):
-    """Represents the many-to-many relationship between funding rounds and investors."""
+    """Link table between FundingRound and Investor."""
     __tablename__ = 'round_investors'
     round_id = db.Column(db.Integer, db.ForeignKey('funding_rounds.round_id'), primary_key=True)
     investor_id = db.Column(db.Integer, db.ForeignKey('investors.investor_id'), primary_key=True)
     amount_invested = db.Column(db.Numeric(15,2), nullable=True)
-    ownership_percent = db.Column(db.Numeric(5,2), nullable=True)
-    committed_on = db.Column(db.Date, nullable=True)
-
+    
     funding_round = db.relationship('FundingRound', back_populates='investors')
     investor = db.relationship('Investor', back_populates='rounds')
 
     def to_dict(self):
         return {
-            'investor': self.investor.to_dict(),
+            'round_id': self.round_id,
+            'investor_id': self.investor_id,
             'amount_invested': float(self.amount_invested) if self.amount_invested is not None else None,
-            'ownership_percent': float(self.ownership_percent) if self.ownership_percent is not None else None,
-            'committed_on': self.committed_on.isoformat() if self.committed_on else None,
+            'investor_name': self.investor.name,
+            'firm_name': self.investor.firm_name
         }
+
+class ActivityLog(db.Model):
+    """Logs activities for the dashboard feed."""
+    __tablename__ = 'activity_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=True)
+    action = db.Column(db.String(50), nullable=False)
+    target_type = db.Column(db.String(50), nullable=False)
+    target_id = db.Column(db.Integer, nullable=True)
+    details = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='activities')
+    startup = db.relationship('Startup', backref='activities')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'startup_id': self.startup_id,
+            'action': self.action,
+            'target_type': self.target_type,
+            'target_id': self.target_id,
+            'details': self.details,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'user_name': self.user.full_name if self.user else 'Unknown',
+            'startup_name': self.startup.name if self.startup else None
+        }
+
+class DashboardNotification(db.Model):
+    """Stores notifications for users."""
+    __tablename__ = 'dashboard_notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    type = db.Column(db.String(50), default='info') # info, success, warning, error
+    read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='notifications')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'title': self.title,
+            'message': self.message,
+            'type': self.type,
+            'read': self.read,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 
 class Founder(db.Model):
     """Represents a founder of a startup, storing their personal and contact details."""

@@ -10,12 +10,11 @@ interface InReviewViewProps {
   users: User[];
   startups: Startup[];
   onUpdateStatus: (submissionId: number, status: SubmissionStatus) => void;
-  onAddTask: (startupId: number, taskName: string, scope: Scope) => void;
+  onOpenCreateTaskModal: (startupId: number) => void;
 }
 
-const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startups, onUpdateStatus, onAddTask }) => {
+const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startups, onUpdateStatus, onOpenCreateTaskModal }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  const [newTaskName, setNewTaskName] = useState('');
 
   const submissionsWithDetails = useMemo(() => {
     const inReviewSubs = submissions.filter(s => s.status === SubmissionStatus.IN_REVIEW);
@@ -42,28 +41,13 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
       setSelectedSubmission(submissionsWithDetails.length > 0 ? submissionsWithDetails[0] : null);
     }
   }, [submissionsWithDetails, selectedSubmission]);
-  
+
   const handleSelectSubmission = (submission: Submission) => {
     setSelectedSubmission(submission);
-    setNewTaskName('');
   };
 
   const selectedDetails = selectedSubmission ? submissionsWithDetails.find(s => s.id === selectedSubmission.id) : null;
   const associatedStartup = selectedDetails?.startup;
-
-  
-  if (selectedDetails) {
-    
-    
-  }
-
-  const handleAddTaskSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newTaskName.trim() && associatedStartup) {
-      onAddTask(associatedStartup.id, newTaskName.trim(), Scope.GENERAL);
-      setNewTaskName('');
-    }
-  };
 
   return (
     <div className="flex h-full">
@@ -109,55 +93,51 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
                 </div>
               </div>
               <div className="flex space-x-2">
-                  <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.REJECTED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-                      <FileX className="mr-2 h-4 w-4" /> Reject
-                  </button>
-                  <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.APPROVED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-                      <FileCheck className="mr-2 h-4 w-4" /> Approve
-                  </button>
+                <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.REJECTED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+                  <FileX className="mr-2 h-4 w-4" /> Reject
+                </button>
+                <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.APPROVED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                  <FileCheck className="mr-2 h-4 w-4" /> Approve
+                </button>
               </div>
             </div>
 
             {associatedStartup && (
               <Card title="Onboarding Tasks">
-                  <form onSubmit={handleAddTaskSubmit} className="flex items-center space-x-2 mb-4">
-                      <input
-                          type="text"
-                          value={newTaskName}
-                          onChange={(e) => setNewTaskName(e.target.value)}
-                          placeholder="e.g., Complete legal paperwork"
-                          className="flex-grow px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-brand-primary focus:border-brand-primary"
-                      />
-                      <button type="submit" className="flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-brand-primary/90 disabled:opacity-50" disabled={!newTaskName.trim()}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Task
-                      </button>
-                  </form>
-                  {associatedStartup.tasks.length > 0 ? (
-                      <ul className="space-y-2">
-                          {associatedStartup.tasks.map(task => (
-                              <li key={task.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-md">
-                                  <span className="text-sm text-brand-text-primary">{task.name}</span>
-                                  <StatusBadge status={task.status} />
-                              </li>
-                          ))}
-                      </ul>
-                  ) : (
-                      <p className="text-sm text-center text-slate-500 py-4">No tasks assigned yet.</p>
-                  )}
+                <div className="flex justify-end mb-4">
+                  <button
+                    onClick={() => onOpenCreateTaskModal(associatedStartup.id)}
+                    className="flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-brand-primary/90"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+                  </button>
+                </div>
+                {associatedStartup.tasks.length > 0 ? (
+                  <ul className="space-y-2">
+                    {associatedStartup.tasks.map(task => (
+                      <li key={task.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-md">
+                        <span className="text-sm text-brand-text-primary">{task.name}</span>
+                        <StatusBadge status={task.status} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-center text-slate-500 py-4">No tasks assigned yet.</p>
+                )}
               </Card>
             )}
 
             <Card title="Submission Details">
-                <div className="space-y-4">
-                    <div>
-                        <h4 className="font-semibold text-brand-text-primary">Problem Statement</h4>
-                        <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.problem_statement}</p>
-                    </div>
-                     <div>
-                        <h4 className="font-semibold text-brand-text-primary">Product/Service Idea</h4>
-                        <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.product_service_idea}</p>
-                    </div>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold text-brand-text-primary">Problem Statement</h4>
+                  <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.problem_statement}</p>
                 </div>
+                <div>
+                  <h4 className="font-semibold text-brand-text-primary">Product/Service Idea</h4>
+                  <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.product_service_idea}</p>
+                </div>
+              </div>
             </Card>
 
             {selectedDetails.evaluation && (

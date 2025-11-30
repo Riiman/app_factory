@@ -27,9 +27,11 @@ interface HeaderProps {
     onSettingsClick: () => void;
     /** Callback function triggered when the "Logout" menu item is clicked. */
     onLogout: () => void;
+    /** The notification center component to render. */
+    notificationCenter?: React.ReactNode;
 }
 
-const Header: React.FC<HeaderProps> = ({ startupName, currentStage, user, onCreateClick, onSettingsClick, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ startupName, currentStage, user, onCreateClick, onSettingsClick, onLogout, notificationCenter }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -56,21 +58,22 @@ const Header: React.FC<HeaderProps> = ({ startupName, currentStage, user, onCrea
                 <p className="text-xs text-gray-500">{currentStage}</p>
             </div>
             <div className="flex items-center space-x-4">
-                <button 
+                <button
                     onClick={onCreateClick}
                     className="flex items-center px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
                     <PlusCircle className="h-5 w-5 mr-2" />
                     <span className="text-sm font-medium">Create</span>
                 </button>
+                {notificationCenter}
                 <div className="relative" ref={menuRef}>
-                    <button 
+                    <button
                         onClick={() => setIsMenuOpen(prev => !prev)}
                         className="p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary"
                     >
                         <UserIcon className="h-6 w-6 text-gray-600" />
                     </button>
                     {isMenuOpen && (
-                        <UserProfileMenu 
+                        <UserProfileMenu
                             user={user}
                             onSettingsClick={() => {
                                 onSettingsClick();
