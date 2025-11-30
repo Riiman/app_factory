@@ -50,6 +50,7 @@ import EditFounderModal from '@/components/dashboard/EditFounderModal';
 import EditProductModal from '@/components/dashboard/EditProductModal';
 import EditProductBusinessDetailsModal from '@/components/dashboard/EditProductBusinessDetailsModal';
 import EditFundingRoundModal from '@/components/dashboard/EditFundingRoundModal';
+import EditMetricModal from '@/components/dashboard/EditMetricModal';
 
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -202,6 +203,9 @@ const DashboardPage: React.FC = () => {
     const [productIdForBusinessDetailsEdit, setProductIdForBusinessDetailsEdit] = useState<number | null>(null);
     const [isEditFundingRoundModalOpen, setIsEditFundingRoundModalOpen] = useState(false);
     const [selectedFundingRoundToEdit, setSelectedFundingRoundToEdit] = useState<FundingRound | null>(null);
+    const [isEditMetricModalOpen, setIsEditMetricModalOpen] = useState(false);
+    const [selectedMetricToEdit, setSelectedMetricToEdit] = useState<ProductMetric | null>(null);
+    const [productIdForMetricEdit, setProductIdForMetricEdit] = useState<number | null>(null);
 
 
     /**
@@ -609,6 +613,21 @@ const DashboardPage: React.FC = () => {
         }
     };
 
+    const handleUpdateMetric = async (productId: number, metricId: number, updatedData: Partial<ProductMetric>) => {
+        if (!startupData) return;
+        try {
+            const response = await api.updateMetric(startupData.id, productId, metricId, updatedData);
+            setProducts(prev => prev ? prev.map(p => 
+                p.id === productId 
+                    ? { ...p, product_metrics: p.product_metrics.map(m => m.metric_id === metricId ? response.metric : m) } 
+                    : p
+            ) : null);
+            setIsEditMetricModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update metric:", error);
+        }
+    };
+
 
     const handleBackToList = () => setSelectedProductId(null);
     const handleBackToRoundsList = () => setSelectedFundingRoundId(null);
@@ -672,6 +691,11 @@ const DashboardPage: React.FC = () => {
                                 setProductIdForBusinessDetailsEdit(productId);
                                 setSelectedProductBusinessDetailsToEdit(businessDetails); 
                                 setIsEditProductBusinessDetailsModalOpen(true); 
+                            }}
+                            onEditMetric={(productId, metric) => {
+                                setProductIdForMetricEdit(productId);
+                                setSelectedMetricToEdit(metric);
+                                setIsEditMetricModalOpen(true);
                             }}
                         />;
                     }
@@ -1109,6 +1133,13 @@ const DashboardPage: React.FC = () => {
                     round={selectedFundingRoundToEdit}
                     onClose={() => setIsEditFundingRoundModalOpen(false)}
                     onUpdate={(updatedData) => handleUpdateFundingRound(selectedFundingRoundToEdit.round_id, updatedData)}
+                />
+            )}
+            {isEditMetricModalOpen && selectedMetricToEdit && productIdForMetricEdit && (
+                <EditMetricModal
+                    metric={selectedMetricToEdit}
+                    onClose={() => setIsEditMetricModalOpen(false)}
+                    onUpdate={(updatedData) => handleUpdateMetric(productIdForMetricEdit, selectedMetricToEdit.metric_id, updatedData)}
                 />
             )}
         </div>

@@ -799,6 +799,45 @@ def update_funding_round(startup_id, round_id):
 
     return jsonify({'success': True, 'round': funding_round.to_dict()}), 200
 
+@startups_bp.route('/<int:startup_id>/products/<int:product_id>/metrics/<int:metric_id>', methods=['PUT'])
+@jwt_required()
+def update_metric(startup_id, product_id, metric_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    product = Product.query.get_or_404(product_id)
+    if product.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Product does not belong to this startup.'}), 400
+
+    metric = ProductMetric.query.get_or_404(metric_id)
+    if metric.product_id != product_id:
+        return jsonify({'success': False, 'error': 'Metric does not belong to this product.'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    metric.metric_name = data.get('metric_name', metric.metric_name)
+    metric.value = data.get('value', metric.value)
+    metric.target_value = data.get('target_value', metric.target_value)
+    metric.unit = data.get('unit', metric.unit)
+    metric.period = data.get('period', metric.period)
+
+    date_recorded_str = data.get('date_recorded')
+    if date_recorded_str:
+        metric.date_recorded = datetime.strptime(date_recorded_str, '%Y-%m-%d').date()
+    else:
+        metric.date_recorded = None
+    
+    db.session.commit()
+    db.session.refresh(metric)
+
+    return jsonify({'success': True, 'metric': metric.to_dict()}), 200
+
 @startups_bp.route('/<int:startup_id>/settings', methods=['PUT'])
 @jwt_required()
 def update_startup_settings(startup_id):

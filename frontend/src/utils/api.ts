@@ -266,6 +266,11 @@ class Api {
     return response.round; // Assuming backend returns updated round directly
   }
 
+  async updateMetric(startupId: number, productId: number, metricId: number, data: Partial<ProductMetric>) {
+    const response = await this.put(`/startups/${startupId}/products/${productId}/metrics/${metricId}`, data);
+    return response.metric; // Assuming backend returns updated metric directly
+  }
+
   async createContentItem(startupId: number, campaignId: number, data: any) {
     return this.post(`/startups/${startupId}/campaigns/${campaignId}/content-items`, data);
   }

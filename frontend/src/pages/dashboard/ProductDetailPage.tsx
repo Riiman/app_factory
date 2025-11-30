@@ -35,6 +35,8 @@ interface ProductDetailPageProps {
     onEditProduct: (product: Product) => void;
     /** Callback function to open the "Edit Product Business Details" modal. */
     onEditProductBusinessDetails: (productId: number, businessDetails: ProductBusinessDetails) => void;
+    /** Callback function to open the "Edit Metric" modal. */
+    onEditMetric: (productId: number, metric: ProductMetric) => void;
 }
 
 type Tab = 'Features' | 'Metrics' | 'Issues' | 'Business Details' | 'Linked Items';
@@ -49,7 +51,8 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     onAddMetric,
     onAddIssue,
     onEditProduct,
-    onEditProductBusinessDetails
+    onEditProductBusinessDetails,
+    onEditMetric
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('Features');
     
@@ -73,11 +76,14 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             case 'Metrics':
                  return (
                     <Card title="Metrics" actions={<button onClick={onAddMetric} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Metric</button>}>
-                       <div className="grid grid-cols-2 gap-4">
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {product.product_metrics.map(metric => (
-                            <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg">
+                            <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg relative">
                                 <p className="text-sm text-gray-500">{metric.metric_name}</p>
                                 <p className="text-2xl font-bold text-gray-900">{metric.value?.toLocaleString() ?? 'N/A'} <span className="text-base font-normal text-gray-600">{metric.unit}</span></p>
+                                <button onClick={() => onEditMetric(product.id, metric)} className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 rounded-md">
+                                    <Edit size={16} />
+                                </button>
                             </div>
                         ))}
                        </div>
