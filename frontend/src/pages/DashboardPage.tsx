@@ -88,6 +88,7 @@ const DashboardPage: React.FC = () => {
                 setMonthlyReports(data.monthly_data || []);
                 setProducts(data.products || []);
                 setTasks(data.tasks || []);
+                setExperiments(data.experiments || []);
                 setArtifacts(data.artifacts || []);
                 setFounders(data.founders || []);
             } catch (err: any) {
@@ -263,7 +264,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const newExperiment = await api.createExperiment(startupData.id, newExperimentData);
-            setStartupData(prev => prev ? ({ ...prev, experiments: [...prev.experiments, newExperiment] }) : null);
+            setExperiments(prev => [...(prev || []), newExperiment]);
             setIsCreateExperimentModalOpen(false);
         } catch (error) {
             console.error("Failed to create experiment:", error);
@@ -453,8 +454,8 @@ const DashboardPage: React.FC = () => {
     const handleCreateFounder = async (newFounderData: Omit<Founder, 'id' | 'startup_id'>) => {
         if (!startupData) return;
         try {
-            const newFounder = await api.createFounder(startupData.id, newFounderData);
-            setFounders(prev => [...(prev || []), newFounder]);
+            const response = await api.createFounder(startupData.id, newFounderData);
+            setFounders(prev => [...(prev || []), response.founder]);
             setIsCreateFounderModalOpen(false);
         } catch (error) {
             console.error("Failed to create founder:", error);
@@ -487,7 +488,7 @@ const DashboardPage: React.FC = () => {
      * Finds the name of a linked entity (Product, FundingRound, etc.) by its type and ID.
      * Used to provide context in detail modals.
      */
-    const getLinkedEntityName = (type?: LinkedEntityType, id?: number): string | null => {
+    const getLinkedEntityName = (type?: string, id?: number): string | null => {
         if (!type || !id || !startupData) return null;
         switch (type) {
             case 'Product':
@@ -521,7 +522,7 @@ const DashboardPage: React.FC = () => {
 
         switch (activeScope) {
             case Scope.DASHBOARD:
-                return <DashboardOverview startupData={{...startupData, business_monthly_data: monthlyReports || []}} />;
+                return <DashboardOverview startupData={{...startupData, monthly_data: monthlyReports || []}} />;
             
             case Scope.PRODUCT:
                 if (activeSubPage === 'Products List') {
@@ -589,8 +590,8 @@ const DashboardPage: React.FC = () => {
                            />;
                 }
                 if (activeSubPage === 'Investor CRM') {
-                    return <InvestorCrmPage 
-                                startupId={startupData.id}
+                    return <InvestorCrmPage
+                                startupId={startupData.id} 
                                 investors={investors}
                                 setInvestors={setInvestors}
                                 onAddNewInvestor={() => setIsCreateInvestorModalOpen(true)} 
@@ -619,8 +620,8 @@ const DashboardPage: React.FC = () => {
                                     onAddContentItem={() => handleOpenCreateContentItemModal(selectedCampaign.campaign_id)}
                                />
                     }
-                    return <MarketingCampaignsPage 
-                                startupId={startupData.id}
+                    return <MarketingCampaignsPage
+                                startupId={startupData.id} 
                                 campaigns={marketingCampaigns || []}
                                 setCampaigns={setMarketingCampaigns}
                                 onSelectCampaign={handleSelectCampaign} 
@@ -628,8 +629,8 @@ const DashboardPage: React.FC = () => {
                            />;
                 }
                 if (activeSubPage === 'Content Calendar') {
-                    return <MarketingContentCalendarPage 
-                                startupId={startupData.id}
+                    return <MarketingContentCalendarPage
+                                startupId={startupData.id} 
                                 campaigns={marketingCampaigns || []}
                                 setCampaigns={setMarketingCampaigns}
                                 onAddNewContentItem={() => handleOpenCreateContentItemModal()}
@@ -643,10 +644,10 @@ const DashboardPage: React.FC = () => {
                        />;
 
             case Scope.WORKSPACE:
-                if (activeSubPage === 'Tasks') return <TasksPage startupId={startupData.id} tasks={tasks} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
-                if (activeSubPage === 'Experiments') return <ExperimentsPage startupId={startupData.id} experiments={experiments} setExperiments={setExperiments} onExperimentClick={handleOpenExperimentModal} onAddNewExperiment={() => setIsCreateExperimentModalOpen(true)} />;
-                if (activeSubPage === 'Artifacts') return <ArtifactsPage startupId={startupData.id} artifacts={artifacts} setArtifacts={setArtifacts} onArtifactClick={handleOpenArtifactModal} getLinkedEntityName={getLinkedEntityName} onAddNewArtifact={() => setIsCreateArtifactModalOpen(true)} />;
-                return <TasksPage startupId={startupData.id} tasks={tasks} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
+                if (activeSubPage === 'Tasks') return <TasksPage tasks={tasks} startupId={startupData.id} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
+                if (activeSubPage === 'Experiments') return <ExperimentsPage startupId={startupData.id} experiments={experiments || []} setExperiments={setExperiments} onExperimentClick={handleOpenExperimentModal} onAddNewExperiment={() => setIsCreateExperimentModalOpen(true)} />;
+                if (activeSubPage === 'Artifacts') return <ArtifactsPage artifacts={artifacts} startupId={startupData.id} setArtifacts={setArtifacts} onArtifactClick={handleOpenArtifactModal} getLinkedEntityName={getLinkedEntityName} onAddNewArtifact={() => setIsCreateArtifactModalOpen(true)} />;
+                return <TasksPage tasks={tasks} startupId={startupData.id} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
              
             case Scope.TEAM:
                 return <TeamPage startupId={startupData.id} founders={founders} setFounders={setFounders} onAddNewFounder={() => setIsCreateFounderModalOpen(true)} />;
@@ -699,7 +700,6 @@ const DashboardPage: React.FC = () => {
     return (
         <div className="flex h-screen bg-gray-50 text-gray-800">
             <Sidebar 
-                location={location}
                 menuItems={menuItems}
                 activeScope={activeScope}
                 activeSubPage={activeSubPage}

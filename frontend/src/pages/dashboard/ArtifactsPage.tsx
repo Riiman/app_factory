@@ -14,8 +14,10 @@ import { Plus, FileText, Link as LinkIcon, MessageSquare } from 'lucide-react';
  * @interface ArtifactsPageProps
  */
 interface ArtifactsPageProps {
+    startupId: number;
     /** An array of all artifact objects to be displayed. The backend should provide an array of `Artifact` objects. */
     artifacts: Artifact[];
+    setArtifacts: React.Dispatch<React.SetStateAction<Artifact[]>>;
     /** Callback function triggered when an artifact row is clicked. */
     onArtifactClick: (artifact: Artifact) => void;
     /** A utility function passed from the parent to resolve the name of a linked entity. */

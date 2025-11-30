@@ -14,8 +14,10 @@ import { Plus, Beaker } from 'lucide-react';
  * @interface ExperimentsPageProps
  */
 interface ExperimentsPageProps {
+    startupId: number;
     /** An array of all experiment objects to be displayed. The backend should provide an array of `Experiment` objects. */
     experiments: Experiment[];
+    setExperiments: React.Dispatch<React.SetStateAction<Experiment[]>>;
     /** Callback function triggered when an experiment card is clicked. */
     onExperimentClick: (experiment: Experiment) => void;
     /** Callback function triggered when the "Create New Experiment" button is clicked. */

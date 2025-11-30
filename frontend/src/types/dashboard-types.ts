@@ -91,6 +91,8 @@ export enum ContractStatus {
     SIGNED = 'SIGNED',
 }
 
+export type LinkedEntityType = 'Product' | 'FundingRound' | 'MarketingCampaign';
+
 export interface ContractComment {
   id: number;
   contract_id: number;
@@ -144,11 +146,16 @@ export interface ScopeDocument {
 
 export interface User {
   id: number;
+  firebase_uid?: string;
   email: string;
+  phone_number?: string;
+  email_verified: boolean;
+  phone_verified: boolean;
   full_name: string;
+  is_verified: boolean;
   role: UserRole;
-  createdAt: string;
-  mobile?: string;
+  created_at: string;
+  startup_id?: number;
 }
 
 export interface Submission {
@@ -195,6 +202,7 @@ export interface ProductMetric {
   unit: string;
   period: string;
   date_recorded: string;
+  created_at: string;
 }
 
 export interface ProductIssue {
@@ -214,6 +222,19 @@ export interface Feature {
   product_id: number;
   name: string;
   description: string;
+  acceptance_criteria?: string;
+}
+
+export interface ProductBusinessDetails {
+  product_business_id: number;
+  product_id: number;
+  pricing_model?: string;
+  target_customer?: string;
+  revenue_streams?: string;
+  distribution_channels?: string;
+  cost_structure?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Product {
@@ -223,9 +244,26 @@ export interface Product {
   description: string;
   stage: ProductStage;
   version: string;
+  targeted_launch_date?: string;
+  actual_launch_date?: string;
+  customer_segment?: string;
+  unique_value_prop?: string;
+  tech_stack?: string[];
   features: Feature[];
   product_metrics: ProductMetric[];
   product_issues: ProductIssue[];
+  business_details?: ProductBusinessDetails;
+  marketing_campaigns: MarketingCampaign[];
+}
+
+export interface BusinessOverview {
+    business_id: number;
+    startup_id: number;
+    business_model?: string;
+    key_partners?: string;
+    notes?: string;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface BusinessMonthlyData {
@@ -235,10 +273,22 @@ export interface BusinessMonthlyData {
   total_revenue: number;
   total_expenses: number;
   net_burn: number;
+  cash_in_bank?: number;
   mrr: number;
+  churn_rate?: number;
   new_customers: number;
   total_customers: number;
   key_highlights: string;
+  key_challenges?: string;
+  next_focus?: string;
+  created_by: number;
+  created_at: string;
+}
+
+export interface MarketingOverview {
+    marketing_id: number;
+    startup_id: number;
+    positioning_statement?: string;
 }
 
 export interface Investor {
@@ -255,8 +305,8 @@ export interface Investor {
 export interface RoundInvestor {
   investor: Investor;
   amount_invested: number;
-  ownership_percent?: number; // Added missing field
-  committed_on?: string; // Added missing field
+  ownership_percent?: number;
+  committed_on?: string;
 }
 
 export interface FundingRound {
@@ -267,19 +317,28 @@ export interface FundingRound {
   target_amount: number;
   amount_raised: number;
   valuation_pre?: number;
+  valuation_post?: number;
   lead_investor?: string;
   date_opened?: string;
   date_closed?: string;
+  pitch_deck_url?: string;
+  notes?: string;
+  created_at?: string;
   investors: RoundInvestor[];
 }
 
 export interface MarketingContentItem {
   content_id: number;
+  calendar_id: number;
   title: string;
-  content_type: string;
-  channel: string;
+  content_type?: string;
+  content_body?: string;
+  channel?: string;
   publish_date: string;
   status: MarketingContentStatus;
+  performance?: Record<string, any>;
+  created_by: number;
+  created_at: string;
 }
 
 export interface MarketingContentCalendar {
@@ -290,20 +349,30 @@ export interface MarketingContentCalendar {
   owner_id: number;
   start_date?: string;
   end_date?: string;
+  created_at: string;
   content_items: MarketingContentItem[];
 }
 
 export interface MarketingCampaign {
   campaign_id: number;
   startup_id: number;
+  scope: string;
+  product_id?: number;
   campaign_name: string;
-  channel: string;
-  spend?: number; // Made optional as it might not always be present
-  clicks?: number; // Made optional
-  conversions?: number; // Made optional
+  objective?: string;
+  channel?: string;
+  start_date?: string;
+  end_date?: string;
+  spend?: number;
+  impressions?: number;
+  clicks?: number;
+  conversions?: number;
   status: MarketingCampaignStatus;
-  content_mode: boolean; // Added content_mode to the type
-  content_calendars?: MarketingContentCalendar[]; // Changed from content_items to content_calendars
+  notes?: string;
+  content_mode: boolean;
+  created_by: number;
+  created_at: string;
+  content_calendars: MarketingContentCalendar[];
 }
 
 export interface Task {
@@ -311,8 +380,12 @@ export interface Task {
   startup_id: number;
   scope: Scope;
   name: string;
+  description?: string;
   due_date?: string;
   status: TaskStatus;
+  linked_to_id?: number;
+  linked_to_type?: string;
+  created_at: string;
 }
 
 export interface Experiment {
@@ -320,8 +393,14 @@ export interface Experiment {
   startup_id: number;
   scope: Scope;
   name:string;
+  description?: string;
   assumption: string;
+  validation_method?: string;
+  result?: string;
   status: ExperimentStatus;
+  linked_to_id?: number;
+  linked_to_type?: string;
+  created_at: string;
 }
 
 export interface Artifact {
@@ -329,8 +408,12 @@ export interface Artifact {
   startup_id: number;
   scope: Scope;
   name: string;
+  description?: string;
   type: ArtifactType;
   location: string;
+  linked_to_id?: number;
+  linked_to_type?: string;
+  created_at: string;
 }
 
 export interface Founder {
@@ -341,6 +424,22 @@ export interface Founder {
   email: string;
   phone_number?: string;
   linkedin_link?: string;
+}
+
+export interface NextFundingGoal {
+  id: number;
+  fundraise_id: number;
+  target_amount?: number;
+  target_valuation?: number;
+  target_close_date?: string;
+}
+
+export interface Fundraise {
+  id: number;
+  startup_id: number;
+  funding_stage?: string;
+  amount_raised?: number;
+  next_funding_goal?: NextFundingGoal;
 }
 
 export interface Startup {
@@ -354,6 +453,7 @@ export interface Startup {
   next_milestone: string;
   created_at: string;
   updated_at: string;
+  user: User;
   submission: Submission;
   founders: Founder[];
   products: Product[];
@@ -363,6 +463,9 @@ export interface Startup {
   tasks: Task[];
   experiments: Experiment[];
   artifacts: Artifact[];
+  marketing_overview?: MarketingOverview;
+  business_overview?: BusinessOverview;
+  fundraise_details?: Fundraise;
   scope_document?: ScopeDocument;
   contract?: Contract;
 }

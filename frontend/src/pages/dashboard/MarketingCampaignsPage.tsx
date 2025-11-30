@@ -14,8 +14,10 @@ import { Plus } from 'lucide-react';
  * @interface MarketingCampaignsPageProps
  */
 interface MarketingCampaignsPageProps {
+    startupId: number;
     /** An array of all marketing campaign objects. The backend should provide an array of `MarketingCampaign` objects. */
     campaigns: MarketingCampaign[];
+    setCampaigns: React.Dispatch<React.SetStateAction<MarketingCampaign[]>>;
     /** Callback function triggered when a campaign card is clicked, passing the campaign's ID. */
     onSelectCampaign: (campaignId: number) => void;
     /** Callback function triggered when the "Create New Campaign" button is clicked. */

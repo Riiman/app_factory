@@ -14,8 +14,10 @@ import { Plus } from 'lucide-react';
  * @interface InvestorCrmPageProps
  */
 interface InvestorCrmPageProps {
+    startupId: number;
     /** An array of all investor objects to be displayed. The backend should provide an array of `Investor` objects. */
     investors: Investor[];
+    setInvestors: React.Dispatch<React.SetStateAction<Investor[]>>;
     /** Callback function triggered when the "Add New Investor" button is clicked. */
     onAddNewInvestor: () => void;
 }

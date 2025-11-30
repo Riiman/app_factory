@@ -187,37 +187,6 @@ def get_founders(startup_id):
     founders = [f.to_dict() for f in startup.founders]
     return jsonify({'success': True, 'founders': founders}), 200
 
-# ... (rest of the file with POST/PUT routes) ...
-    startup = Startup.query.get_or_404(startup_id)
-    
-    # Ensure the logged-in user owns this startup
-    if startup.user_id != session.get('user_id'):
-        return jsonify({'success': False, 'error': 'Unauthorized to add task to this startup.'}), 403
-
-    data = request.get_json()
-    if not data or 'name' not in data:
-        return jsonify({'success': False, 'error': 'Task name is required.'}), 400
-
-    new_task = Task(
-        startup_id=startup_id,
-        name=data['name'],
-        description=data.get('description'),
-        due_date=data.get('due_date'),
-        status=data.get('status', 'pending'),
-        scope=data.get('scope', 'general'),
-        linked_to_id=data.get('linked_to_id'),
-        linked_to_type=data.get('linked_to_type')
-    )
-    
-    db.session.add(new_task)
-    db.session.commit()
-    
-    return jsonify({
-        'success': True,
-        'message': 'Task created successfully.',
-        'task': new_task.to_dict()
-    }), 201
-
 @startups_bp.route('/<int:startup_id>/experiments', methods=['POST'])
 @jwt_required()
 def create_experiment(startup_id):
@@ -233,14 +202,17 @@ def create_experiment(startup_id):
     if not data or 'name' not in data:
         return jsonify({'success': False, 'error': 'Experiment name is required.'}), 400
 
+    scope_str = data.get('scope', 'general').upper()
+    status_str = data.get('status', 'planned').upper()
+
     new_experiment = Experiment(
         startup_id=startup_id,
         name=data['name'],
         description=data.get('description'),
         assumption=data.get('assumption'),
         validation_method=data.get('validation_method'),
-        status=data.get('status', 'planned'),
-        scope=data.get('scope', 'general'),
+        status=status_str,
+        scope=scope_str,
         linked_to_id=data.get('linked_to_id'),
         linked_to_type=data.get('linked_to_type')
     )
@@ -258,21 +230,26 @@ def create_experiment(startup_id):
 @jwt_required()
 def create_artifact(startup_id):
     startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
     
-    if startup.user_id != session.get('user_id'):
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
         return jsonify({'success': False, 'error': 'Unauthorized to add artifact to this startup.'}), 403
 
     data = request.get_json()
     if not data or 'name' not in data or 'type' not in data or 'location' not in data:
         return jsonify({'success': False, 'error': 'Missing required fields for artifact.'}), 400
+    
+    scope_str = data.get('scope', 'general').upper()
 
     new_artifact = Artifact(
         startup_id=startup_id,
         name=data['name'],
         description=data.get('description'),
-        type=data['type'],
+        type=data['type'].upper(),
         location=data['location'],
-        scope=data.get('scope', 'general'),
+        scope=scope_str,
         linked_to_id=data.get('linked_to_id'),
         linked_to_type=data.get('linked_to_type')
     )
@@ -325,8 +302,11 @@ def create_product(startup_id):
 @jwt_required()
 def create_feature(startup_id, product_id):
     startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
     
-    if startup.user_id != session.get('user_id'):
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
         return jsonify({'success': False, 'error': 'Unauthorized to add feature to this startup.'}), 403
 
     data = request.get_json()
@@ -354,7 +334,10 @@ def create_feature(startup_id, product_id):
 @jwt_required()
 def create_metric(startup_id, product_id):
     startup = Startup.query.get_or_404(startup_id)
-    if startup.user_id != session.get('user_id'):
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     data = request.get_json()
@@ -382,20 +365,26 @@ def create_metric(startup_id, product_id):
 @jwt_required()
 def create_issue(startup_id, product_id):
     startup = Startup.query.get_or_404(startup_id)
-    if startup.user_id != session.get('user_id'):
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     data = request.get_json()
     if not data or 'title' not in data:
         return jsonify({'success': False, 'error': 'Issue title is required.'}), 400
 
+    severity_str = data.get('severity', 'Low').upper()
+    status_str = data.get('status', 'Open').upper()
+
     new_issue = ProductIssue(
         product_id=product_id,
         title=data['title'],
         description=data.get('description'),
-        severity=data.get('severity'),
-        status=data.get('status', 'Open'),
-        created_by=session.get('user_id')
+        severity=severity_str,
+        status=status_str,
+        created_by=user_id
     )
     db.session.add(new_issue)
     db.session.commit()
@@ -460,10 +449,13 @@ def create_funding_round(startup_id):
     date_opened = datetime.strptime(date_opened_str, '%Y-%m-%d').date() if date_opened_str else None
     date_closed = datetime.strptime(date_closed_str, '%Y-%m-%d').date() if date_closed_str else None
 
+    round_type_str = data.get('round_type').upper()
+    status_str = data.get('status', 'Planned').upper()
+
     new_round = FundingRound(
         startup_id=startup_id,
-        round_type=data['round_type'],
-        status=data.get('status', 'Planned'),
+        round_type=round_type_str,
+        status=status_str,
         target_amount=data.get('target_amount'),
         valuation_pre=data.get('valuation_pre'),
         date_opened=date_opened,
@@ -494,7 +486,7 @@ def create_investor(startup_id):
     new_investor = Investor(
         name=data['name'],
         firm_name=data.get('firm_name'),
-        type=data.get('type'),
+        type=data.get('type').upper() if data.get('type') else None,
         email=data.get('email'),
         website=data.get('website'),
         notes=data.get('notes')
@@ -508,7 +500,10 @@ def create_investor(startup_id):
 @jwt_required()
 def create_campaign(startup_id):
     startup = Startup.query.get_or_404(startup_id)
-    if startup.user_id != session.get('user_id'):
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     data = request.get_json()
@@ -517,16 +512,17 @@ def create_campaign(startup_id):
 
     start_date_str = data.get('start_date')
     end_date_str = data.get('end_date')
-
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
 
+
+    scope_str = data.get('scope', 'overall').upper()
     status_str = data.get('status', 'PLANNED').upper()
 
     new_campaign = MarketingCampaign(
         startup_id=startup_id,
         campaign_name=data['campaign_name'],
-        scope=data.get('scope', 'overall'),
+        scope=scope_str,
         product_id=data.get('product_id'),
         objective=data.get('objective'),
         channel=data.get('channel'),
@@ -535,7 +531,7 @@ def create_campaign(startup_id):
         status=status_str,
         notes=data.get('notes'),
         content_mode=data.get('content_mode', False),
-        created_by=session.get('user_id')
+        created_by=user_id
     )
     db.session.add(new_campaign)
     db.session.commit()
@@ -619,7 +615,7 @@ def create_founder(startup_id):
     new_founder = Founder(
         startup_id=startup_id,
         name=data['name'],
-        role=data.get('role'),
+        role=data.get('role').upper() if data.get('role') else None,
         email=data.get('email'),
         phone_number=data.get('phone_number'),
         linkedin_link=data.get('linkedin_link')

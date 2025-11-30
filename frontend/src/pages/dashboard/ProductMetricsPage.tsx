@@ -15,8 +15,10 @@ import { Plus } from 'lucide-react';
  * @interface ProductMetricsPageProps
  */
 interface ProductMetricsPageProps {
+    startupId: number;
     /** An array of all product objects. The component will flatten the metrics from these products. The backend should provide a list of all products with their nested metrics. */
     products: Product[];
+    setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
     /** Callback function triggered when the "Add New Metric" button is clicked. */
     onAddNewMetric: () => void;
 }

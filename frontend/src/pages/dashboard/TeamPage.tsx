@@ -14,8 +14,10 @@ import { Plus, Edit, Trash2, Mail, Phone, Linkedin } from 'lucide-react';
  * @interface TeamPageProps
  */
 interface TeamPageProps {
+    startupId: number;
     /** An array of founder objects to be displayed. The backend should provide an array of `Founder` objects. */
     founders: Founder[];
+    setFounders: React.Dispatch<React.SetStateAction<Founder[]>>;
     /** Callback function triggered when the "Add Founder" button is clicked. */
     onAddNewFounder: () => void;
 }

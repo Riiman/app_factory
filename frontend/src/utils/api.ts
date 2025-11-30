@@ -188,6 +188,64 @@ class Api {
     return this.put(`/admin/contract/${startupId}/status`, { status: newStatus });
   }
 
+  // --- Startup Dashboard Create/Update Endpoints ---
+
+  async createTask(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/tasks`, data);
+  }
+
+  async createExperiment(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/experiments`, data);
+  }
+
+  async createArtifact(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/artifacts`, data);
+  }
+
+  async createProduct(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/products`, data);
+  }
+
+  async createFeature(startupId: number, productId: number, data: any) {
+    return this.post(`/startups/${startupId}/products/${productId}/features`, data);
+  }
+
+  async createMetric(startupId: number, productId: number, data: any) {
+    return this.post(`/startups/${startupId}/products/${productId}/metrics`, data);
+  }
+
+  async createIssue(startupId: number, productId: number, data: any) {
+    return this.post(`/startups/${startupId}/products/${productId}/issues`, data);
+  }
+
+  async createMonthlyReport(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/monthly-reports`, data);
+  }
+
+  async createFundingRound(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/funding-rounds`, data);
+  }
+
+  async createInvestor(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/investors`, data);
+  }
+
+  async createCampaign(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/campaigns`, data);
+  }
+
+  async createContentItem(startupId: number, campaignId: number, data: any) {
+    return this.post(`/startups/${startupId}/campaigns/${campaignId}/content-items`, data);
+  }
+
+  async createFounder(startupId: number, data: any) {
+    return this.post(`/startups/${startupId}/founders`, data);
+  }
+
+  async updateStartupSettings(startupId: number, data: any) {
+    return this.put(`/startups/${startupId}/settings`, data);
+  }
+
   // Other methods...
 }
 
