@@ -21,7 +21,9 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 @admin_bp.route('/submissions', methods=['GET'])
 @admin_required
 def get_all_submissions():
-    submissions = Submission.query.all()
+    submissions = Submission.query.filter(
+        Submission.status.notin_([SubmissionStatus.DRAFT, SubmissionStatus.FINALIZE_SUBMISSION])
+    ).all()
     print(f"--- DEBUG: Found {len(submissions)} submissions in get_all_submissions ---")
     return jsonify({'success': True, 'submissions': [s.to_dict() for s in submissions]}), 200
 

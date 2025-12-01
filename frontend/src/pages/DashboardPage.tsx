@@ -57,7 +57,8 @@ import EditMetricModal from '@/components/dashboard/EditMetricModal';
 import EditFeatureModal from '@/components/dashboard/EditFeatureModal';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { BusinessOverview } from '@/types/dashboard-types';
+import { BusinessOverview, StartupStage } from '@/types/dashboard-types';
+import AssetGenerationModal from '@/components/dashboard/AssetGenerationModal';
 
 type CreateModalType = 'task' | 'experiment' | 'artifact';
 
@@ -114,6 +115,23 @@ const DashboardPage: React.FC = () => {
             setNotifications(startup.notifications || []);
         }
     }, [startup]);
+
+    // --- Asset Generation Modal Logic ---
+    const [isAssetGenerationModalOpen, setIsAssetGenerationModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (startupData && startupData.current_stage === StartupStage.ADMITTED) {
+            const hasProduct = (startupData.products || []).length > 0;
+            const hasGtm = (startupData.marketing_campaigns || []).length > 0;
+
+            if (!hasProduct || !hasGtm) {
+                const hideModal = localStorage.getItem(`hide_asset_modal_${startupData.id}`);
+                if (!hideModal) {
+                    setIsAssetGenerationModalOpen(true);
+                }
+            }
+        }
+    }, [startupData]);
 
 
     // --- UI State (Navigation, Modals, etc.) ---
@@ -725,6 +743,16 @@ const DashboardPage: React.FC = () => {
             {isEditFundingRoundModalOpen && selectedFundingRoundToEdit && <EditFundingRoundModal round={selectedFundingRoundToEdit} onClose={() => setIsEditFundingRoundModalOpen(false)} onUpdate={(updatedData) => handleUpdateFundingRound(selectedFundingRoundToEdit.round_id, updatedData)} />}
             {isEditMetricModalOpen && selectedMetricToEdit && productIdForMetricEdit && <EditMetricModal metric={selectedMetricToEdit} onClose={() => setIsEditMetricModalOpen(false)} onUpdate={(updatedData) => handleUpdateMetric(productIdForMetricEdit, selectedMetricToEdit.metric_id, updatedData)} />}
             {isEditFeatureModalOpen && selectedFeatureToEdit && productIdForFeatureEdit && <EditFeatureModal feature={selectedFeatureToEdit} onClose={() => setIsEditFeatureModalOpen(false)} onUpdate={(updatedData) => handleUpdateFeature(productIdForFeatureEdit, selectedFeatureToEdit.id, updatedData)} />}
+
+            {startupData && (
+                <AssetGenerationModal
+                    isOpen={isAssetGenerationModalOpen}
+                    onClose={() => setIsAssetGenerationModalOpen(false)}
+                    startupId={startupData.id}
+                    hasProduct={(startupData.products || []).length > 0}
+                    hasGtm={(startupData.marketing_campaigns || []).length > 0}
+                />
+            )}
         </div>
     );
 };

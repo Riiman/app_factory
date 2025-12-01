@@ -9,7 +9,8 @@ import SignupPage from './pages/SignupPage';
 import DashboardPage from './pages/DashboardPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import SubmissionPage from './pages/SubmissionPage';
-import PendingReviewPage from './pages/PendingReviewPage';
+import FinalizeSubmissionPage from './pages/FinalizeSubmissionPage';
+import InReviewPage from './pages/InReviewPage';
 import RejectedSubmissionPage from './pages/RejectedSubmissionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute'; // Import PublicRoute
@@ -87,7 +88,8 @@ const AppRoutes: FC = () => {
         <Route path="/start-submission" element={<StartSubmissionPage />} />
         <Route path="/submission" element={<SubmissionPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/pending-review" element={<PendingReviewPage />} />
+        <Route path="/finalize-submission" element={<FinalizeSubmissionPage />} />
+        <Route path="/in-review" element={<InReviewPage />} />
         <Route path="/rejected-submission" element={<RejectedSubmissionPage />} />
         <Route path="/evaluation" element={<EvaluationPage />} />
         <Route path="/scope" element={<ScopePage />} />

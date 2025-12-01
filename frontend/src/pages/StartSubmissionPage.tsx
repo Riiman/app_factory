@@ -10,10 +10,13 @@ const StartSubmissionPage = () => {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        // This is the core logic: if the user has a pending submission,
-        // they should not be on this page. Redirect them to the chat.
-        if (!isAuthLoading && submissionStatus === 'PENDING') {
+        // If the user has a draft, go to chat.
+        if (!isAuthLoading && submissionStatus === 'DRAFT') {
             navigate('/submission');
+        }
+        // If pending, go to pending review.
+        if (!isAuthLoading && submissionStatus === 'PENDING') {
+            navigate('/pending-review');
         }
     }, [submissionStatus, isAuthLoading, navigate]);
 

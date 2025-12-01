@@ -4,7 +4,7 @@ import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 
 const SubmissionPage = () => {
-    const { user, submissionData, nextQuestion, isLoading, handleLogout } = useAuth();
+    const { user, submissionData, nextQuestion, isLoading, handleLogout, refreshUser } = useAuth();
     const navigate = useNavigate();
 
     const [messages, setMessages] = useState([]);
@@ -17,6 +17,10 @@ const SubmissionPage = () => {
         if (!isLoading) {
             if (!user) {
                 navigate('/login');
+            } else if (submissionData?.status === 'PENDING' || submissionData?.status === 'FINALIZE_SUBMISSION') {
+                navigate('/finalize-submission');
+            } else if (submissionData?.status === 'not_started' || !submissionData) {
+                navigate('/start-submission');
             } else if (nextQuestion && !initialMessagesSet.current) {
                 const greeting = user.full_name ? `Hello ${user.full_name}!` : 'Hello there!';
                 setMessages([{ text: greeting, sender: 'bot' }, { text: nextQuestion, sender: 'bot' }]);
@@ -49,9 +53,10 @@ const SubmissionPage = () => {
             setMessages(prev => [...prev, { text: data.next_question, sender: 'bot' }]);
 
             if (data.is_completed) {
+                await refreshUser(); // Refresh auth context to get updated status
                 setTimeout(() => {
-                    navigate('/pending-review');
-                }, 3000);
+                    navigate('/finalize-submission');
+                }, 1000); // Reduced timeout as we are now waiting for refresh
             }
         } catch (error) {
             console.error('Failed to send message:', error);

@@ -93,9 +93,9 @@ def update_contract_status(startup_id):
             contract.signed_at = datetime.utcnow()
         # Update startup stage to ADMITTED
         startup.current_stage = StartupStage.ADMITTED
-        # Trigger the generation of startup assets
-        generate_startup_assets_task.delay(startup.id)
-        print(f"--- [API] Triggered startup asset generation for startup ID: {startup.id} ---")
+        # Asset generation is now triggered manually by the user via the dashboard
+        # generate_startup_assets_task.delay(startup.id)
+        # print(f"--- [API] Triggered startup asset generation for startup ID: {startup.id} ---")
 
     db.session.commit()
     return jsonify({'success': True, 'contract': contract.to_dict()}), 200

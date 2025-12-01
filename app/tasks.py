@@ -7,10 +7,10 @@ from app.services.generation_service import generate_startup_assets
 from app.models import Product, Feature
 
 @celery.task(name='app.tasks.generate_startup_assets_task')
-def generate_startup_assets_task(startup_id):
+def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm=True):
     """Celery task to trigger the generation of all startup assets."""
-    print(f"--- [Celery Task] Starting asset generation for startup ID: {startup_id} ---")
-    generate_startup_assets(startup_id)
+    print(f"--- [Celery Task] Starting asset generation for startup ID: {startup_id} (Product: {generate_product}, GTM: {generate_gtm}) ---")
+    generate_startup_assets(startup_id, generate_product=generate_product, generate_gtm=generate_gtm)
 
 
 @celery.task(name='app.tasks.analyze_submission_task')

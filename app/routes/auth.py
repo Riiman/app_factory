@@ -30,7 +30,7 @@ def status():
         "submission_data": submission.to_dict() if submission else None,
     }
 
-    if submission and submission_status == 'PENDING':
+    if submission and submission_status == 'DRAFT':
         # Determine the next question for the frontend
         current_step_key = submission.chat_progress_step
         if current_step_key == 'start':
@@ -175,7 +175,7 @@ def login():
             'submission_data': submission.to_dict() if submission else None,
         }
 
-        if submission and submission_status == 'PENDING':
+        if submission and submission_status == 'DRAFT':
             current_step_key = submission.chat_progress_step
             if current_step_key == 'start':
                 response["next_question"] = SUBMISSION_FIELDS[0]['question']

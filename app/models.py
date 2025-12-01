@@ -8,6 +8,8 @@ class UserRole(Enum):
     ADMIN = "admin"
 
 class SubmissionStatus(Enum):
+    DRAFT = 'DRAFT'
+    FINALIZE_SUBMISSION = 'FINALIZE_SUBMISSION'
     PENDING = 'PENDING'
     IN_REVIEW = 'IN_REVIEW'
     APPROVED = 'APPROVED'
@@ -52,6 +54,7 @@ class ContractStatus(Enum):
     DRAFT = "DRAFT"
     SENT = "SENT"
     SIGNED = "SIGNED"
+    ACCEPTED = "ACCEPTED" # Added ACCEPTED status
 
     def __str__(self):
         return self.value
@@ -343,6 +346,7 @@ class Product(db.Model):
     customer_segment = db.Column(db.Text, nullable=True)
     unique_value_prop = db.Column(db.Text, nullable=True)
     tech_stack = db.Column(db.JSON, nullable=True) # Store as JSON array of strings
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     startup = db.relationship('Startup', back_populates='products')
     features = db.relationship('Feature', back_populates='product', lazy=True, cascade='all, delete-orphan')
@@ -369,6 +373,7 @@ class Product(db.Model):
             'product_issues': [issue.to_dict() for issue in self.product_issues],
             'business_details': self.business_details.to_dict() if self.business_details else None,
             'marketing_campaigns': [campaign.to_dict() for campaign in self.marketing_campaigns],
+            'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
 class FeatureStatus(Enum):
@@ -388,6 +393,7 @@ class Feature(db.Model):
     description = db.Column(db.Text, nullable=True)
     acceptance_criteria = db.Column(db.Text, nullable=True)
     status = db.Column(db.Enum(FeatureStatus), default=FeatureStatus.PENDING, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     product = db.relationship('Product', back_populates='features')
 
@@ -399,6 +405,7 @@ class Feature(db.Model):
             'description': self.description,
             'acceptance_criteria': self.acceptance_criteria,
             'status': str(self.status),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
 class ProductMetric(db.Model):
@@ -995,6 +1002,8 @@ class ScopeDocument(db.Model):
     version = db.Column(db.String(20), default='1.0')
     status = db.Column(db.String(50), default='Pending Review') # e.g., Pending Review, Accepted, Rejected
     content = db.Column(db.Text, nullable=False) # Storing as JSON or Markdown
+    founder_accepted = db.Column(db.Boolean, default=False)
+    admin_accepted = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -1009,6 +1018,8 @@ class ScopeDocument(db.Model):
             'version': self.version,
             'status': self.status,
             'content': self.content,
+            'founder_accepted': self.founder_accepted,
+            'admin_accepted': self.admin_accepted,
             'comments': [comment.to_dict() for comment in self.comments],
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
@@ -1050,10 +1061,12 @@ class Contract(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     sent_at = db.Column(db.DateTime, nullable=True)
     signed_at = db.Column(db.DateTime, nullable=True)
+    founder_accepted = db.Column(db.Boolean, default=False)
+    admin_accepted = db.Column(db.Boolean, default=False)
     
     startup = db.relationship('Startup', back_populates='contract')
-    signatories = db.relationship('ContractSignatory', back_populates='contract', cascade="all, delete-orphan")
-    comments = db.relationship('ContractComment', back_populates='contract', cascade="all, delete-orphan")
+    signatories = db.relationship('ContractSignatory', back_populates='contract', lazy=True, cascade="all, delete-orphan")
+    comments = db.relationship('ContractComment', back_populates='contract', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -1063,6 +1076,8 @@ class Contract(db.Model):
             'content': self.content,
             'document_url': self.document_url,
             'status': self.status.name,
+            'founder_accepted': self.founder_accepted,
+            'admin_accepted': self.admin_accepted,
             'signatories': [s.to_dict() for s in self.signatories],
             'comments': [c.to_dict() for c in self.comments],
             'created_at': self.created_at.isoformat(),

@@ -30,6 +30,12 @@ def delete_user(identifier):
         
         if confirm.lower() == 'yes':
             try:
+                # Delete related notifications and activity logs first
+                from app.models import DashboardNotification, ActivityLog
+                
+                DashboardNotification.query.filter_by(user_id=user.id).delete()
+                ActivityLog.query.filter_by(user_id=user.id).delete()
+                
                 db.session.delete(user)
                 db.session.commit()
                 print("User and related data deleted successfully.")

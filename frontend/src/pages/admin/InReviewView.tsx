@@ -15,6 +15,7 @@ interface InReviewViewProps {
 
 const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startups, onUpdateStatus, onOpenCreateTaskModal }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const submissionsWithDetails = useMemo(() => {
     const inReviewSubs = submissions.filter(s => s.status === SubmissionStatus.IN_REVIEW);
@@ -44,6 +45,17 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
 
   const handleSelectSubmission = (submission: Submission) => {
     setSelectedSubmission(submission);
+  };
+
+  const handleUpdateStatus = async (submissionId: number, status: SubmissionStatus) => {
+    try {
+      setIsUpdatingStatus(true);
+      await onUpdateStatus(submissionId, status);
+    } catch (error) {
+      console.error("Failed to update status:", error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const selectedDetails = selectedSubmission ? submissionsWithDetails.find(s => s.id === selectedSubmission.id) : null;
@@ -93,11 +105,37 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
                 </div>
               </div>
               <div className="flex space-x-2">
-                <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.REJECTED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-                  <FileX className="mr-2 h-4 w-4" /> Reject
+                <button
+                  onClick={() => handleUpdateStatus(selectedDetails.id, SubmissionStatus.REJECTED)}
+                  disabled={isUpdatingStatus}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                  {isUpdatingStatus ? (
+                    <>
+                      <span className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <FileX className="mr-2 h-4 w-4" /> Reject
+                    </>
+                  )}
                 </button>
-                <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.APPROVED)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-                  <FileCheck className="mr-2 h-4 w-4" /> Approve
+                <button
+                  onClick={() => handleUpdateStatus(selectedDetails.id, SubmissionStatus.APPROVED)}
+                  disabled={isUpdatingStatus}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                  {isUpdatingStatus ? (
+                    <>
+                      <span className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <FileCheck className="mr-2 h-4 w-4" /> Approve
+                    </>
+                  )}
                 </button>
               </div>
             </div>

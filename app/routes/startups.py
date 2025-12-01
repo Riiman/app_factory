@@ -761,3 +761,23 @@ def get_startup_activity(startup_id):
 
     activities = ActivityLog.query.filter_by(startup_id=startup_id).order_by(ActivityLog.created_at.desc()).limit(50).all()
     return jsonify({'success': True, 'activity': [a.to_dict() for a in activities]}), 200
+
+@startups_bp.route('/<int:startup_id>/assets/generate', methods=['POST'])
+@jwt_required()
+def generate_assets(startup_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    generate_product = data.get('generate_product', True)
+    generate_gtm = data.get('generate_gtm', True)
+
+    from app.tasks import generate_startup_assets_task
+    generate_startup_assets_task.delay(startup.id, generate_product=generate_product, generate_gtm=generate_gtm)
+
+    return jsonify({'success': True, 'message': 'Asset generation triggered.'}), 200
