@@ -23,7 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
 
     const handleLogout = useCallback(async () => {
-        
+
         await signOut(auth);
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
@@ -35,18 +35,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     useEffect(() => {
-        
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            
+
             if (firebaseUser) {
-                
+
                 try {
                     const idToken = await firebaseUser.getIdToken();
                     const data = await api.post('/auth/login', { firebase_id_token: idToken });
-                    
-                    
+
+
                     if (data.success) {
-                        
+
                         localStorage.setItem('access_token', data.access_token);
                         localStorage.setItem('user', JSON.stringify(data.user));
                         setUser(data.user);
@@ -54,18 +54,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         setSubmissionData(data.submission_data);
                         setNextQuestion(data.next_question);
                     } else {
-                        
+
                         handleLogout();
                     }
-                } catch (error) {
+                } catch (error: any) {
                     console.error("AUTH: Error syncing with Flask backend:", error);
-                    handleLogout();
+                    // If backend returns 403 (verification required) and we are on signup page,
+                    // DO NOT log out. Let the user finish verification.
+                    if (window.location.pathname === '/signup' && error.status === 403) {
+                        console.log("AUTH: Ignoring 403 on signup page to allow verification.");
+                    } else {
+                        handleLogout();
+                    }
                 } finally {
-                    
+
                     setIsLoading(false);
                 }
             } else {
-                
+
                 // We don't call handleLogout() here because that could cause a navigation loop.
                 // We just clear the state. ProtectedRoute will handle navigation.
                 localStorage.removeItem('access_token');
@@ -79,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         return () => {
-            
+
             unsubscribe();
         };
     }, [handleLogout]);

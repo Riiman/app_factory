@@ -51,47 +51,46 @@ def status():
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+    firebase_id_token = data.get('firebase_id_token')
     full_name = data.get('full_name')
-    phone_number = data.get('phone_number') # New field
+    phone_number = data.get('phone_number')
+    email = data.get('email')
 
-    if not all([email, password, full_name]):
-        return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
+    if not firebase_id_token:
+        return jsonify({'success': False, 'error': 'Firebase ID token is required.'}), 400
 
     try:
-        # 1. Create user in Firebase Authentication
-        firebase_user = auth.create_user(
-            email=email,
-            password=password,
-            display_name=full_name,
-            phone_number=phone_number, # Pass phone number to Firebase
-            email_verified=False, # Firebase will handle actual verification
-            disabled=False
-        )
-        firebase_uid = firebase_user.uid
+        # 1. Verify the Firebase ID token
+        decoded_token = auth.verify_id_token(firebase_id_token)
+        firebase_uid = decoded_token['uid']
+        token_email = decoded_token['email']
+        
+        # Verify email matches token (security check)
+        if email and email != token_email:
+             return jsonify({'success': False, 'error': 'Email mismatch.'}), 400
 
         # 2. Check if user already exists in our local database via Firebase UID
         user = User.query.filter_by(firebase_uid=firebase_uid).first()
 
         if not user:
             # If not, create a new local user record
+            # Get Firebase user to check verification status
+            firebase_user = auth.get_user(firebase_uid)
+            
             user = User(
                 firebase_uid=firebase_uid,
-                email=email,
-                full_name=full_name,
-                phone_number=phone_number,
+                email=token_email,
+                full_name=full_name or firebase_user.display_name or token_email,
+                phone_number=phone_number or firebase_user.phone_number,
                 email_verified=firebase_user.email_verified,
-                phone_verified=firebase_user.phone_number is not None # Basic check, Firebase client-side SMS verification will update this
+                phone_verified=firebase_user.phone_number is not None
             )
             db.session.add(user)
         else:
             # If user exists, update their details
-            user.email = email
-            user.full_name = full_name
-            user.phone_number = phone_number
-            user.email_verified = firebase_user.email_verified
-            user.phone_verified = firebase_user.phone_number is not None
+            user.full_name = full_name or user.full_name
+            user.phone_number = phone_number or user.phone_number
+            # Don't overwrite email/verification status blindly, trust the token/firebase_user
             
         db.session.commit()
 
@@ -105,12 +104,10 @@ def signup():
             'access_token': access_token
         }), 201
 
-    except auth.EmailAlreadyExistsError:
-        return jsonify({'success': False, 'error': 'Email already registered with Firebase.'}), 400
-    except auth.PhoneNumberAlreadyExistsError:
-        return jsonify({'success': False, 'error': 'Phone number already registered with Firebase.'}), 400
+    except auth.InvalidIdTokenError:
+        return jsonify({'success': False, 'error': 'Invalid Firebase ID token.'}), 401
     except Exception as e:
-        current_app.logger.error(f"Firebase signup error: {e}")
+        current_app.logger.error(f"Signup error: {e}")
         return jsonify({'success': False, 'error': 'Failed to create user account.'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
@@ -154,6 +151,13 @@ def login():
             user.phone_verified = firebase_user.phone_number is not None # Removed trailing comma
             
         db.session.commit()
+
+        # Enforce verification (Disabled for now)
+        # if not user.phone_verified:
+        #      return jsonify({
+        #         'success': False, 
+        #         'error': 'Please verify your phone number before logging in.'
+        #     }), 403
 
         # 4. Create our internal JWT
         access_token = create_access_token(identity=str(user.id))

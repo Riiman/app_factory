@@ -76,8 +76,9 @@ const AppRoutes: FC = () => {
       {/* Routes for logged-out users only */}
       <Route element={<PublicRoute />}>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
       </Route>
+
+      <Route path="/signup" element={<SignupPage />} />
 
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 

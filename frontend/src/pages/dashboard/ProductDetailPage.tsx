@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { Product, Task, Experiment, Artifact } from '@/types/dashboard-types';
+import { Product, Task, Experiment, Artifact, Feature, ProductMetric, ProductBusinessDetails } from '@/types/dashboard-types';
 import Card from '@/components/Card';
 import { ArrowLeft, Plus, Edit } from 'lucide-react';
 
@@ -37,96 +37,116 @@ interface ProductDetailPageProps {
     onEditProductBusinessDetails: (productId: number, businessDetails: ProductBusinessDetails) => void;
     /** Callback function to open the "Edit Metric" modal. */
     onEditMetric: (productId: number, metric: ProductMetric) => void;
+    onEditFeature: (productId: number, feature: Feature) => void;
 }
 
 type Tab = 'Features' | 'Metrics' | 'Issues' | 'Business Details' | 'Linked Items';
 
-const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ 
-    product, 
-    linkedTasks, 
-    linkedExperiments, 
-    linkedArtifacts, 
+const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
+    product,
+    linkedTasks,
+    linkedExperiments,
+    linkedArtifacts,
     onBack,
     onAddFeature,
     onAddMetric,
     onAddIssue,
     onEditProduct,
     onEditProductBusinessDetails,
-    onEditMetric
+    onEditMetric,
+    onEditFeature
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('Features');
-    
+
     const tabs: Tab[] = ['Features', 'Metrics', 'Issues', 'Business Details', 'Linked Items'];
 
     const renderTabContent = () => {
-        switch(activeTab) {
+        switch (activeTab) {
             case 'Features':
                 return (
-                    <Card title="Features" actions={<button onClick={onAddFeature} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Feature</button>}>
+                    <Card title="Features" actions={<button onClick={onAddFeature} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Add Feature</button>}>
                         <ul className="divide-y divide-gray-200">
-                           {product.features.map(feature => (
-                               <li key={feature.id} className="py-4">
-                                   <h4 className="font-semibold text-gray-800">{feature.name}</h4>
-                                   <p className="text-sm text-gray-600 mt-1">{feature.description}</p>
-                               </li>
-                           ))}
+                            {product.features.map(feature => (
+                                <li key={feature.id} className="py-4 flex justify-between items-start group">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-semibold text-gray-800">{feature.name}</h4>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full ${feature.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                                feature.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                {feature.status ? feature.status.replace('_', ' ') : 'PENDING'}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mt-1">{feature.description}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => onEditFeature(product.id, feature)}
+                                        disabled={feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED'}
+                                        className={`p-1 transition-opacity ${feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100'}`}
+                                        title={feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED' ? "Cannot edit in-progress or completed features" : "Edit Feature"}
+                                    >
+                                        <Edit size={16} />
+                                    </button>
+                                </li>
+                            ))}
                         </ul>
                     </Card>
                 );
             case 'Metrics':
-                 return (
-                    <Card title="Metrics" actions={<button onClick={onAddMetric} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Metric</button>}>
-                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {product.product_metrics.map(metric => (
-                            metric && (
-                            <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg relative">
-                                <p className="text-sm text-gray-500">{metric.metric_name}</p>
-                                <p className="text-2xl font-bold text-gray-900">{metric.value?.toLocaleString() ?? 'N/A'} <span className="text-base font-normal text-gray-600">{metric.unit}</span></p>
-                                <button onClick={() => onEditMetric(product.id, metric)} className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 rounded-md">
-                                    <Edit size={16} />
-                                </button>
-                            </div>
-                            )
-                        ))}
-                       </div>
+                return (
+                    <Card title="Metrics" actions={<button onClick={onAddMetric} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Add Metric</button>}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {product.product_metrics.map(metric => (
+                                metric && (
+                                    <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg relative">
+                                        <p className="text-sm text-gray-500">{metric.metric_name}</p>
+                                        <p className="text-2xl font-bold text-gray-900">{metric.value?.toLocaleString() ?? 'N/A'} <span className="text-base font-normal text-gray-600">{metric.unit}</span></p>
+                                        <button onClick={() => onEditMetric(product.id, metric)} className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 rounded-md">
+                                            <Edit size={16} />
+                                        </button>
+                                    </div>
+                                )
+                            ))}
+                        </div>
                     </Card>
                 );
             case 'Issues':
                 return (
-                     <Card title="Issues & Feedback" actions={<button onClick={onAddIssue} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Report Issue</button>}>
+                    <Card title="Issues & Feedback" actions={<button onClick={onAddIssue} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Report Issue</button>}>
                         <ul className="divide-y divide-gray-200">
-                           {product.product_issues.map(issue => (
-                               <li key={issue.issue_id} className="py-4">
-                                   <div className="flex justify-between items-center">
-                                       <h4 className="font-semibold text-gray-800">{issue.title}</h4>
-                                       <span className={`text-xs px-2 py-0.5 rounded-full ${issue.severity === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{issue.status}</span>
-                                   </div>
-                                   <p className="text-sm text-gray-600 mt-1">{issue.description}</p>
-                               </li>
-                           ))}
+                            {product.product_issues.map(issue => (
+                                <li key={issue.issue_id} className="py-4">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="font-semibold text-gray-800">{issue.title}</h4>
+                                        <span className={`text-xs px-2 py-0.5 rounded-full ${issue.severity === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{issue.status}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-1">{issue.description}</p>
+                                </li>
+                            ))}
                         </ul>
                     </Card>
                 );
             case 'Business Details':
                 return (
-                    <Card title="Business Details" actions={<button onClick={() => product.business_details && onEditProductBusinessDetails(product.id, product.business_details)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit</button>}>
+                    <Card title="Business Details" actions={<button onClick={() => product.business_details && onEditProductBusinessDetails(product.id, product.business_details)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1" /> Edit</button>}>
                         <div className="space-y-4">
-                           <div>
+                            <div>
                                 <h4 className="font-medium text-sm text-gray-500">Pricing Model</h4>
                                 <p className="text-gray-800">{product.business_details?.pricing_model || 'N/A'}</p>
-                           </div>
-                           <div>
+                            </div>
+                            <div>
                                 <h4 className="font-medium text-sm text-gray-500">Target Customer</h4>
                                 <p className="text-gray-800">{product.business_details?.target_customer || 'N/A'}</p>
-                           </div>
-                           <div>
+                            </div>
+                            <div>
                                 <h4 className="font-medium text-sm text-gray-500">Distribution Channels</h4>
                                 <p className="text-gray-800">{product.business_details?.distribution_channels || 'N/A'}</p>
-                           </div>
+                            </div>
                         </div>
                     </Card>
                 );
-             case 'Linked Items':
+            case 'Linked Items':
                 return (
                     <div className="space-y-4">
                         <Card title="Linked Tasks"><ul className="space-y-2">{linkedTasks.map(t => <li key={t.id} className="text-sm text-gray-700">{t.name}</li>)}</ul></Card>
@@ -152,7 +172,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                             <p className="text-gray-600">{product.description}</p>
                         </div>
                         <div className="flex items-center space-x-2">
-                             <button onClick={() => onEditProduct(product)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit Product</button>
+                            <button onClick={() => onEditProduct(product)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1" /> Edit Product</button>
                         </div>
                     </div>
                 </Card>
@@ -164,18 +184,17 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`${
-                                activeTab === tab
-                                    ? 'border-brand-primary text-brand-primary'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                            className={`${activeTab === tab
+                                ? 'border-brand-primary text-brand-primary'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                         >
                             {tab}
                         </button>
                     ))}
                 </nav>
             </div>
-            
+
             <div>{renderTabContent()}</div>
         </div>
     );

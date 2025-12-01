@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Startup, Submission, Evaluation, User, SubmissionStatus, ScopeStatus, Contract, ContractStatus, Scope, ArtifactType, StartupStage, ActivityLog, DashboardNotification } from '../../types/dashboard-types';
+import { Startup, Submission, Evaluation, User, SubmissionStatus, ScopeStatus, Contract, ContractStatus, Scope, ArtifactType, StartupStage, ActivityLog, DashboardNotification, Feature } from '../../types/dashboard-types';
 import api from '../../utils/api';
 import StartupDetailView from './StartupDetailView';
 import StartupListView from './StartupListView';
@@ -23,6 +23,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import CreateTaskModal from '../../components/dashboard/CreateTaskModal';
 import CreateExperimentModal from '../../components/dashboard/CreateExperimentModal';
 import CreateArtifactModal from '../../components/dashboard/CreateArtifactModal';
+import EditFeatureModal from '../../components/dashboard/EditFeatureModal';
 
 
 const NavItem: React.FC<{
@@ -118,6 +119,9 @@ const AdminDashboardPage: React.FC = () => {
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isCreateExperimentModalOpen, setIsCreateExperimentModalOpen] = useState(false);
   const [isCreateArtifactModalOpen, setIsCreateArtifactModalOpen] = useState(false);
+  const [isEditFeatureModalOpen, setIsEditFeatureModalOpen] = useState(false);
+  const [selectedFeatureToEdit, setSelectedFeatureToEdit] = useState<Feature | null>(null);
+  const [selectedProductForFeatureEdit, setSelectedProductForFeatureEdit] = useState<number | null>(null);
 
   const selectedStartup = selectedStartupId ? startups.find(s => s.id === selectedStartupId) || null : null;
 
@@ -180,6 +184,18 @@ const AdminDashboardPage: React.FC = () => {
       alert("Failed to add artifact.");
     }
   }, [queryClient, selectedStartupId]);
+
+  const handleUpdateFeature = useCallback(async (updatedData: Partial<Feature>) => {
+    if (!selectedStartupId || !selectedProductForFeatureEdit || !selectedFeatureToEdit) return;
+    try {
+      await api.updateFeature(selectedStartupId, selectedProductForFeatureEdit, selectedFeatureToEdit.id, updatedData);
+      queryClient.invalidateQueries({ queryKey: ['adminData'] });
+      setIsEditFeatureModalOpen(false);
+    } catch (err) {
+      console.error("Failed to update feature:", err);
+      alert("Failed to update feature.");
+    }
+  }, [queryClient, selectedStartupId, selectedProductForFeatureEdit, selectedFeatureToEdit]);
 
   const handleUpdateScope = useCallback(async (startupId: number, productScope: string, gtmScope: string) => {
     try {
@@ -287,6 +303,11 @@ const AdminDashboardPage: React.FC = () => {
             onOpenCreateTaskModal={() => setIsCreateTaskModalOpen(true)}
             onOpenCreateExperimentModal={() => setIsCreateExperimentModalOpen(true)}
             onOpenCreateArtifactModal={() => setIsCreateArtifactModalOpen(true)}
+            onEditFeature={(productId, feature) => {
+              setSelectedProductForFeatureEdit(productId);
+              setSelectedFeatureToEdit(feature);
+              setIsEditFeatureModalOpen(true);
+            }}
           />;
         }
         return <StartupListView startups={activeStartups} onSelectStartup={handleSelectStartup} />;
@@ -400,6 +421,14 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.SETTINGS]: [],
             [Scope.DASHBOARD]: []
           }}
+        />
+      )}
+
+      {isEditFeatureModalOpen && selectedFeatureToEdit && (
+        <EditFeatureModal
+          feature={selectedFeatureToEdit}
+          onClose={() => setIsEditFeatureModalOpen(false)}
+          onUpdate={handleUpdateFeature}
         />
       )}
     </div>

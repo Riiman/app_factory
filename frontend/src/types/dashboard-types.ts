@@ -217,12 +217,19 @@ export interface ProductIssue {
   resolved_at?: string;
 }
 
+export enum FeatureStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+}
+
 export interface Feature {
   id: number;
   product_id: number;
   name: string;
   description: string;
   acceptance_criteria?: string;
+  status: FeatureStatus;
 }
 
 export interface ProductBusinessDetails {
@@ -456,6 +463,7 @@ export interface Startup {
   user: User;
   submission: Submission;
   founders: Founder[];
+  investors: Investor[];
   products: Product[];
   monthly_data: BusinessMonthlyData[];
   funding_rounds: FundingRound[];

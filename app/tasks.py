@@ -59,7 +59,8 @@ def generate_product_task(startup_id):
             new_feature = Feature(
                 product_id=new_product.id,
                 name=feature_item.get('name', 'Unnamed Feature'),
-                description=feature_item.get('description', '')
+                description=feature_item.get('description', ''),
+                acceptance_criteria=feature_item.get('acceptance_criteria', '')
             )
             db.session.add(new_feature)
 

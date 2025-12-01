@@ -254,6 +254,36 @@ def create_feature(startup_id, product_id):
     db.session.commit()
     return jsonify({'success': True, 'feature': new_feature.to_dict()}), 201
 
+@startups_bp.route('/<int:startup_id>/products/<int:product_id>/features/<int:feature_id>', methods=['PUT'])
+@jwt_required()
+def update_feature(startup_id, product_id, feature_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    product = Product.query.get_or_404(product_id)
+    if product.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Product does not belong to this startup.'}), 400
+
+    feature = Feature.query.get_or_404(feature_id)
+    if feature.product_id != product_id:
+        return jsonify({'success': False, 'error': 'Feature does not belong to this product.'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    feature.name = data.get('name', feature.name)
+    feature.description = data.get('description', feature.description)
+    feature.acceptance_criteria = data.get('acceptance_criteria', feature.acceptance_criteria)
+    feature.status = data.get('status', feature.status)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'feature': feature.to_dict()}), 200
+
 @startups_bp.route('/<int:startup_id>/products/<int:product_id>/metrics', methods=['POST'])
 @jwt_required()
 def create_metric(startup_id, product_id):

@@ -34,11 +34,16 @@ class Api {
         if (contentType && contentType.indexOf('application/json') !== -1) {
           const errorData = await response.json();
           console.error('Error from backend:', errorData);
-          throw new Error(errorData.msg || 'An API error occurred');
+          const errorMessage = errorData.error || errorData.msg || 'An API error occurred';
+          const error: any = new Error(errorMessage);
+          error.status = response.status;
+          throw error;
         } else {
           const errorText = await response.text();
           console.error('Non-JSON error from backend:', errorText);
-          throw new Error(`Server returned an error: ${response.status} ${response.statusText}`);
+          const error: any = new Error(`Server returned an error: ${response.status} ${response.statusText}`);
+          error.status = response.status;
+          throw error;
         }
       }
 
@@ -416,6 +421,11 @@ class Api {
   async updateProductBusinessDetails(startupId: number, productId: number, data: Partial<ProductBusinessDetails>) {
     const response = await this.put(`/startups/${startupId}/products/${productId}/business-details`, data);
     return response.product_business_details; // Assuming backend returns updated product_business_details directly
+  }
+
+  async updateFeature(startupId: number, productId: number, featureId: number, data: Partial<any>) {
+    const response = await this.put(`/startups/${startupId}/products/${productId}/features/${featureId}`, data);
+    return response.feature;
   }
 
   async updateFundingRound(startupId: number, roundId: number, data: Partial<FundingRound>) {

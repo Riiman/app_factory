@@ -371,6 +371,14 @@ class Product(db.Model):
             'marketing_campaigns': [campaign.to_dict() for campaign in self.marketing_campaigns],
         }
 
+class FeatureStatus(Enum):
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+
+    def __str__(self):
+        return self.value
+
 class Feature(db.Model):
     """Represents a specific feature of a product."""
     __tablename__ = 'features'
@@ -379,6 +387,7 @@ class Feature(db.Model):
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
     acceptance_criteria = db.Column(db.Text, nullable=True)
+    status = db.Column(db.Enum(FeatureStatus), default=FeatureStatus.PENDING, nullable=False)
 
     product = db.relationship('Product', back_populates='features')
 
@@ -389,6 +398,7 @@ class Feature(db.Model):
             'name': self.name,
             'description': self.description,
             'acceptance_criteria': self.acceptance_criteria,
+            'status': str(self.status),
         }
 
 class ProductMetric(db.Model):

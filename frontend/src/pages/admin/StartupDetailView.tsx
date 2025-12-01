@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
-import { Startup, Task, Experiment, Artifact, Product, FundingRound, MarketingCampaign, Scope, ArtifactType } from '../../types/dashboard-types';
+import { Startup, Task, Experiment, Artifact, Product, FundingRound, MarketingCampaign, Scope, ArtifactType, Feature } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatCard from '../../components/admin/StatCard';
 import BusinessPerformanceChart from '../../components/admin/charts/BusinessPerformanceChart';
 import StatusBadge from '../../components/admin/StatusBadge';
-import { DollarSign, Users, TrendingDown, ArrowLeft, PlusCircle } from 'lucide-react';
+import { DollarSign, Users, TrendingDown, ArrowLeft, PlusCircle, Edit } from 'lucide-react';
 
 interface StartupDetailViewProps {
   startup: Startup;
@@ -13,6 +13,7 @@ interface StartupDetailViewProps {
   onOpenCreateTaskModal: (startupId: number) => void;
   onOpenCreateExperimentModal: (startupId: number) => void;
   onOpenCreateArtifactModal: (startupId: number) => void;
+  onEditFeature: (productId: number, feature: Feature) => void;
 }
 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
@@ -25,7 +26,7 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
   </button>
 );
 
-const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, onOpenCreateTaskModal, onOpenCreateExperimentModal, onOpenCreateArtifactModal }) => {
+const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, onOpenCreateTaskModal, onOpenCreateExperimentModal, onOpenCreateArtifactModal, onEditFeature }) => {
   const [activeTab, setActiveTab] = useState('overview');
 
   const latestMonthData = startup.monthly_data?.length > 0
@@ -39,7 +40,7 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
       case 'overview':
         return <OverviewTab startup={startup} latestMonthData={latestMonthData} />;
       case 'products':
-        return <ProductsTab products={startup.products} />;
+        return <ProductsTab products={startup.products} onEditFeature={onEditFeature} />;
       case 'business':
         return <BusinessTab monthlyData={startup.monthly_data} />;
       case 'fundraising':
@@ -126,7 +127,7 @@ const OverviewTab: React.FC<{ startup: Startup, latestMonthData: any }> = ({ sta
               <p className="font-semibold text-brand-text-primary">{founder.name}</p>
               <p className="text-sm text-brand-text-secondary">{founder.role}</p>
               <a href={`mailto:${founder.email}`} className="text-sm text-brand-primary hover:underline">{founder.email}</a>
-              {founder.mobile && <a href={`tel:${founder.mobile}`} className="text-sm text-brand-text-secondary hover:underline block">{founder.mobile}</a>}
+              {founder.phone_number && <a href={`tel:${founder.phone_number}`} className="text-sm text-brand-text-secondary hover:underline block">{founder.phone_number}</a>}
             </div>
           </li>
         ))}
@@ -160,7 +161,7 @@ const renderTable = (headers: string[], rows: (string | React.ReactNode)[][], em
   </div>
 );
 
-const ProductsTab: React.FC<{ products: Product[] }> = ({ products }) => (
+const ProductsTab: React.FC<{ products: Product[], onEditFeature: (productId: number, feature: Feature) => void }> = ({ products, onEditFeature }) => (
   <div className="space-y-6">
     {products.length > 0 ? (
       products.map(product => (
@@ -172,7 +173,17 @@ const ProductsTab: React.FC<{ products: Product[] }> = ({ products }) => (
           </div>
           <div className="space-y-4">
             <h4 className="font-semibold">Features</h4>
-            {renderTable(['Name', 'Description'], product.features.map(f => [f.name, f.description]), "No features defined.")}
+            {renderTable(['Name', 'Description', 'Actions'], product.features.map(f => [
+              f.name,
+              f.description,
+              <button
+                onClick={() => onEditFeature(product.id, f)}
+                className="text-brand-text-secondary hover:text-brand-primary transition-colors"
+                title="Edit Feature"
+              >
+                <Edit size={16} />
+              </button>
+            ]), "No features defined.")}
             <h4 className="font-semibold mt-4">Metrics</h4>
             {renderTable(['Name', 'Value', 'Unit', 'Period'], product.product_metrics.map(m => [m.metric_name, m.value?.toLocaleString() ?? 'N/A', m.unit, m.period]), "No metrics recorded.")}
             <h4 className="font-semibold mt-4">Issues</h4>
