@@ -4,7 +4,8 @@ from app.services.document_generator_service import generate_scope_document
 from app.services.contract_generator_service import generate_contract_document
 from app.services.product_generator_service import generate_product_from_scope
 from app.services.generation_service import generate_startup_assets
-from app.models import Product, Feature
+from app.models import Product, Feature, Startup
+from app.services.notification_service import publish_update
 
 @celery.task(name='app.tasks.generate_startup_assets_task')
 def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm=True):
@@ -65,6 +66,11 @@ def generate_product_task(startup_id):
             db.session.add(new_feature)
 
         db.session.commit()
+        
+        startup = Startup.query.get(startup_id)
+        if startup:
+            publish_update("product_generated", {"startup_id": startup_id, "product": new_product.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+        
         print(f"--- [Celery Task] Successfully created product '{new_product.name}' for startup ID: {startup_id} ---")
 
     except Exception as e:

@@ -24,10 +24,13 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const AppRoutes: FC = () => {
   const queryClient = useQueryClient();
+  const { token, refreshUser } = useAuth(); // Get token and refreshUser from AuthContext
 
   useEffect(() => {
-    // Establish WebSocket connection for dashboard notifications
-    const ws = new WebSocket("ws://localhost:8000/ws/dashboard-notifications");
+    if (!token) return; // Don't connect if no token
+
+    // Establish WebSocket connection for dashboard notifications with token
+    const ws = new WebSocket(`ws://localhost:8000/ws/dashboard-notifications?token=${token}`);
 
     ws.onopen = () => {
       console.log("Connected to dashboard notifications WebSocket.");
@@ -41,6 +44,15 @@ const AppRoutes: FC = () => {
           // This tells React Query to refetch the data for the dashboard
           queryClient.invalidateQueries({ queryKey: ['startupData'] });
           queryClient.invalidateQueries({ queryKey: ['adminData'] });
+          refreshUser(); // Refresh user context to update status/stage
+        } else if (message.type.startsWith('submission_')) {
+          console.log(`Received submission update (${message.type}), invalidating submission queries:`, message);
+          queryClient.invalidateQueries({ queryKey: ['submission'] });
+          queryClient.invalidateQueries({ queryKey: ['submissions'] });
+          // Also invalidate dashboard data as submission status might affect it
+          queryClient.invalidateQueries({ queryKey: ['startupData'] });
+          queryClient.invalidateQueries({ queryKey: ['adminData'] });
+          refreshUser(); // Refresh user context to update status/stage which triggers redirection
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -61,7 +73,7 @@ const AppRoutes: FC = () => {
         ws.close();
       }
     };
-  }, [queryClient]); // Add queryClient to the dependency array
+  }, [queryClient, token, refreshUser]); // Add queryClient, token, and refreshUser to the dependency array
 
   return (
     <Routes>

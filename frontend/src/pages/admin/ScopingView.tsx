@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { Startup, ScopeStatus } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
@@ -11,7 +12,7 @@ import api from '../../utils/api';
 interface ScopingViewProps {
   startupsInScoping: Startup[];
   onUpdateScope: (startupId: number, productScope: string, gtmScope: string) => void;
-  onAddComment: (startupId: number, text: string, author: 'Admin' | 'Founder') => void;
+  onAddComment: (startupId: number, text: string, author: 'Admin' | 'Founder', sectionId: string) => void;
   onUpdateStatus: (startupId: number, status: ScopeStatus) => void;
 }
 
@@ -110,12 +111,58 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
     setSelectedStartup(startup);
   };
 
-  const handleAddComment = (author: 'Admin' | 'Founder') => {
+  const handleAddComment = () => {
     if (selectedStartup && newComment.trim()) {
-      onAddComment(selectedStartup.id, newComment.trim(), author);
+      onAddComment(selectedStartup.id, newComment.trim(), 'Admin', activeTab);
       setNewComment('');
     }
   };
+
+  const { token } = useAuth();
+
+  // WebSocket Listener
+  useEffect(() => {
+    if (!token) return;
+
+    const ws = new WebSocket(`ws://localhost:8000/ws/dashboard-notifications?token=${token}`);
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'scope_comment_added') {
+          const newComment = message.data.comment;
+          const startupId = message.data.startup_id;
+
+          if (selectedStartup && selectedStartup.id === startupId) {
+            setSelectedStartup(prev => {
+              if (!prev || !prev.scope_document) return prev;
+
+              // Check if comment already exists to avoid duplicates
+              if (prev.scope_document.comments.some(c => c.id === newComment.id)) {
+                return prev;
+              }
+
+              return {
+                ...prev,
+                scope_document: {
+                  ...prev.scope_document,
+                  comments: [...prev.scope_document.comments, newComment]
+                }
+              };
+            });
+          }
+        }
+      } catch (error) {
+        console.error("WebSocket message error:", error);
+      }
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [token, selectedStartup]);
 
   const handleUpdateStatus = async (status: ScopeStatus) => {
     if (selectedStartup) {
@@ -269,16 +316,21 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
 
             <Card title="Discussion & Finalization">
               <div className="space-y-4">
-                <h3 className="font-semibold flex items-center text-md"><MessageSquare className="mr-2 h-5 w-5" /> Comments</h3>
+                <h3 className="font-semibold flex items-center text-md"><MessageSquare className="mr-2 h-5 w-5" /> Comments ({activeTab === 'product' ? 'Product' : 'GTM'})</h3>
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                  {selectedStartup.scope_document.comments.map(comment => (
-                    <div key={comment.id} className={`flex ${comment.author === 'Admin' ? 'justify-end' : ''}`}>
-                      <div className={`p-3 rounded-lg max-w-md ${comment.author === 'Admin' ? 'bg-brand-primary/10 text-brand-text-primary' : 'bg-slate-100 text-brand-text-secondary'}`}>
-                        <p className="text-sm">{comment.text}</p>
-                        <p className="text-xs text-slate-400 mt-1 text-right">{comment.author} &bull; {new Date(comment.createdAt).toLocaleTimeString()}</p>
+                  {selectedStartup.scope_document.comments
+                    .filter(comment => comment.section_id === activeTab || (!comment.section_id && activeTab === 'product'))
+                    .map(comment => (
+                      <div key={comment.id} className={`flex ${comment.author === 'Admin' ? 'justify-end' : ''}`}>
+                        <div className={`p-3 rounded-lg max-w-md ${comment.author === 'Admin' ? 'bg-brand-primary/10 text-brand-text-primary' : 'bg-slate-100 text-brand-text-secondary'}`}>
+                          <p className="text-sm">{comment.text}</p>
+                          <p className="text-xs text-slate-400 mt-1 text-right">{comment.author} &bull; {new Date(comment.createdAt).toLocaleTimeString()}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  {selectedStartup.scope_document.comments.filter(comment => comment.section_id === activeTab || (!comment.section_id && activeTab === 'product')).length === 0 && (
+                    <p className="text-sm text-slate-400 text-center py-4">No comments in this section yet.</p>
+                  )}
                 </div>
                 <div className="flex items-center space-x-2 pt-2 border-t">
                   <input
@@ -287,9 +339,16 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
                     onChange={e => setNewComment(e.target.value)}
                     placeholder="Add a comment..."
                     className="flex-grow px-3 py-2 text-sm border border-slate-300 rounded-md"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddComment();
+                      }
+                    }}
                   />
-                  <button onClick={() => handleAddComment('Admin')} className="px-3 py-2 text-sm font-medium text-brand-primary rounded-md border border-brand-primary/50 hover:bg-brand-primary/5">Admin</button>
-                  <button onClick={() => handleAddComment('Founder')} className="px-3 py-2 text-sm font-medium text-brand-secondary rounded-md border border-brand-secondary/50 hover:bg-brand-secondary/5">Founder</button>
+                  <button onClick={handleAddComment} className="px-4 py-2 text-sm font-medium text-white bg-brand-primary rounded-md hover:bg-brand-primary/90 flex items-center">
+                    <Send className="w-4 h-4 mr-2" />
+                    Send
+                  </button>
                 </div>
               </div>
               <div className="mt-6 pt-4 border-t">

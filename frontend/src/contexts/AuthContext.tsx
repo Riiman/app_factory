@@ -13,6 +13,7 @@ interface AuthContextType {
     isLoading: boolean;
     handleLogout: () => void;
     refreshUser: () => Promise<void>;
+    token: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -101,7 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [fetchUserData]);
 
-    const value = { user, submissionStatus, submissionData, startupStage, nextQuestion, isLoading, handleLogout, refreshUser };
+    const token = localStorage.getItem('access_token');
+    const value = { user, submissionStatus, submissionData, startupStage, nextQuestion, isLoading, handleLogout, refreshUser, token };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

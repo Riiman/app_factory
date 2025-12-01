@@ -4,6 +4,8 @@ from app.models import User, Submission, EvaluationTask, ScopeDocument, ScopeCom
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 
+from app.services.notification_service import publish_update
+
 stages_bp = Blueprint('stages', __name__, url_prefix='/api/stages')
 
 # Helper function to get user and submission
@@ -76,6 +78,23 @@ def add_scope_comment():
     )
     db.session.add(new_comment)
     db.session.commit()
+    
+    # Create notification for the admin
+    from app.models import DashboardNotification
+    # Find an admin user to assign the notification to (or broadcast to all admins if logic supported, but here we pick one or just use ID 1 as fallback)
+    admin_user = User.query.filter_by(role=UserRole.ADMIN).first()
+    if admin_user:
+        notification = DashboardNotification(
+            user_id=admin_user.id,
+            title=f"New Scope Comment from {submission.startup.name}",
+            message=f"{submission.startup.name} commented on their {data.get('section_id', 'general')} scope: {data.get('text')[:50]}...",
+            type="info"
+        )
+        db.session.add(notification)
+        db.session.commit()
+        publish_update("notification_created", {"notification": notification.to_dict()}, rooms=["admin"])
+
+    publish_update("scope_comment_added", {"startup_id": submission.startup.id, "comment": new_comment.to_dict()}, rooms=[f"user_{submission.startup.user_id}", "admin"])
     
     return jsonify({'success': True, 'comment': new_comment.to_dict()}), 201
 
@@ -157,11 +176,8 @@ def accept_scope():
 
     db.session.commit()
     
-    return jsonify({
-        'success': True, 
-        'scope_document': scope_doc.to_dict(),
-        'message': 'Scope accepted successfully.'
-    }), 200
+    publish_update("scope_accepted", {"startup_id": startup.id, "scope_document": scope_doc.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({
         'success': True, 
         'scope_document': scope_doc.to_dict(),
@@ -194,6 +210,9 @@ def update_scope_document():
     scope_doc.status = 'Proposed' # Reset status
 
     db.session.commit()
+    
+    startup = Startup.query.get(startup_id)
+    publish_update("scope_document_updated", {"startup_id": startup_id, "scope_document": scope_doc.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
 
     return jsonify({'success': True, 'scope_document': scope_doc.to_dict()}), 200
 
@@ -224,6 +243,9 @@ def update_contract():
     contract.status = ContractStatus.DRAFT
     
     db.session.commit()
+    
+    startup = Startup.query.get(startup_id)
+    publish_update("contract_updated", {"startup_id": startup_id, "contract": contract.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
 
     return jsonify({'success': True, 'contract': contract.to_dict()}), 200
 
@@ -240,6 +262,7 @@ def accept_contract():
     startup_id = data.get('startup_id')
 
     contract = None
+    startup = None
 
     if is_admin:
         if not startup_id:
@@ -253,6 +276,7 @@ def accept_contract():
         submission = Submission.query.filter_by(user_id=user.id).first()
         if not submission or not submission.startup:
              return jsonify({'success': False, 'error': 'Submission/Startup not found'}), 404
+        startup = submission.startup
         contract = Contract.query.filter_by(startup_id=submission.startup.id).first()
 
     if not contract:
@@ -269,6 +293,8 @@ def accept_contract():
         contract.status = ContractStatus.ACCEPTED
             
     db.session.commit()
+    
+    publish_update("contract_accepted", {"startup_id": startup.id, "contract": contract.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
     
     return jsonify({
         'success': True, 
@@ -306,6 +332,8 @@ def add_contract_signatory():
     db.session.add(signatory)
     db.session.commit()
     
+    publish_update("contract_signatory_added", {"startup_id": submission.startup.id, "signatory": signatory.to_dict()}, rooms=[f"user_{submission.startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'signatory': signatory.to_dict()}), 201
 
 @stages_bp.route('/contract/comments', methods=['POST'])
@@ -334,6 +362,8 @@ def add_contract_comment():
     )
     db.session.add(comment)
     db.session.commit()
+    
+    publish_update("contract_comment_added", {"startup_id": submission.startup.id, "comment": comment.to_dict()}, rooms=[f"user_{submission.startup.user_id}", "admin"])
     
     return jsonify({'success': True, 'comment': comment.to_dict()}), 201
 
@@ -366,5 +396,7 @@ def sign_contract():
         founder_signatory.signed_at = datetime.utcnow()
 
     db.session.commit()
+    
+    publish_update("contract_signed", {"startup_id": submission.startup.id, "contract": contract.to_dict()}, rooms=[f"user_{submission.startup.user_id}", "admin"])
     
     return jsonify({'success': True, 'contract': contract.to_dict()}), 200

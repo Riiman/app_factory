@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Submission, User, SubmissionStatus # Added SubmissionStatus
 from app.extensions import db
 from app.services.chatbot_orchestrator import ChatbotOrchestrator
+from app.services.notification_service import publish_update
 
 submissions_bp = Blueprint('submissions_bp', __name__, url_prefix='/api/submissions')
 
@@ -26,6 +27,10 @@ def start_submission():
     new_submission = Submission(user_id=user_id, status=SubmissionStatus.DRAFT)
     db.session.add(new_submission)
     db.session.commit()
+
+
+
+    publish_update("submission_started", {"submission_id": new_submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
 
     return jsonify({"msg": "New submission started.", "submission_id": new_submission.id}), 201
 
@@ -54,6 +59,9 @@ def update_submission(submission_id):
             setattr(submission, key, value)
 
     db.session.commit()
+    
+    publish_update("submission_updated", {"submission_id": submission.id, "user_id": user_id, "updated_fields": list(data.keys())}, rooms=[f"user_{user_id}", "admin"])
+    
     return jsonify(submission.to_dict()), 200
 
 @submissions_bp.route('/chat', methods=['POST'])
@@ -79,6 +87,9 @@ def handle_chat():
     if response.get('is_completed'):
         submission.status = SubmissionStatus.FINALIZE_SUBMISSION
         db.session.commit()
+        publish_update("submission_finalized_draft", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
+
+    publish_update("submission_chat", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
 
     return jsonify(response), 200
 
@@ -96,5 +107,7 @@ def submit_submission(submission_id):
 
     submission.status = SubmissionStatus.PENDING
     db.session.commit()
+
+    publish_update("submission_submitted", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
 
     return jsonify({"msg": "Submission submitted successfully.", "status": "PENDING"}), 200

@@ -7,3 +7,4 @@ db = SQLAlchemy()
 sess = Session()
 celery = Celery(__name__, include=['app.tasks'])
 oauth = OAuth()
+redis_client = None # Initialize as None, will be set in create_app

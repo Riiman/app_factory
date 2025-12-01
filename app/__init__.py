@@ -10,8 +10,9 @@ import os
 import firebase_admin
 from firebase_admin import credentials
 
-from .extensions import db, sess, celery, oauth
+from .extensions import db, sess, celery, oauth, redis_client
 from .celery_utils import configure_celery
+import redis
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -51,6 +52,13 @@ def create_app(config_class=Config):
 
     # Configure the shared Celery instance
     configure_celery(app)
+
+    # Initialize Redis
+    # Use the same settings as in websocket_server.py
+    from . import extensions
+    extensions.redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    app.extensions['redis'] = extensions.redis_client
+
 
     with app.app_context():
         from .routes.auth import auth_bp

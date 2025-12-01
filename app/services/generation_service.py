@@ -5,6 +5,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_openai import AzureChatOpenAI
 import json
 from datetime import datetime, timedelta
+from app.services.notification_service import publish_update
 
 # Remove extract_json_from_string function, as model_kwargs will handle JSON output
 
@@ -229,4 +230,7 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
 
 
     db.session.commit()
-    print(f"--- [Generation Task] Successfully generated assets for startup ID: {startup_id} ---")
+    
+    publish_update("assets_generated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    print(f"--- [Generation Task] Successfully generated assets for startup ID: {startup.id} ---")

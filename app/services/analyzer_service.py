@@ -4,6 +4,7 @@ from app import db
 from app.models import Submission, Evaluation
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import AzureChatOpenAI
+from app.services.notification_service import publish_update
 
 def format_startup_data_for_analyzer(startup_data):
     """Formats the raw JSON chat data into a readable string for the LLM."""
@@ -105,6 +106,9 @@ def run_analysis(submission_id):
         
         evaluation.status = 'completed'
         db.session.commit()
+        
+        publish_update("analysis_completed", {"submission_id": submission_id, "evaluation": evaluation.to_dict()}, rooms=[f"user_{submission.user_id}", "admin"])
+        
         print(f"--- [Celery Task] Analysis for submission {submission_id} completed successfully. ---")
 
     except Exception as e:
@@ -112,3 +116,4 @@ def run_analysis(submission_id):
         if 'evaluation' in locals():
             evaluation.status = 'failed'
             db.session.commit()
+            publish_update("analysis_failed", {"submission_id": submission_id, "error": str(e)}, rooms=[f"user_{submission.user_id}", "admin"])

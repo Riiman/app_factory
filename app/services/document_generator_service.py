@@ -3,6 +3,7 @@ from app import db
 from app.models import Submission, Evaluation, ScopeDocument
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import AzureChatOpenAI
+from app.services.notification_service import publish_update
 
 def format_data_for_scope_generator(submission, evaluation):
     """Formats the submission and evaluation data into a readable string for the LLM."""
@@ -74,5 +75,7 @@ def generate_scope_document(startup):
     )
     db.session.add(scope_document)
     db.session.commit()
+    
+    publish_update("scope_document_generated", {"startup_id": startup.id, "scope_document": scope_document.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
 
     print(f"--- [Celery Task] Scope document generated for startup ID: {startup.id} ---")

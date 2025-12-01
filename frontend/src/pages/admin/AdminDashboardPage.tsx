@@ -207,11 +207,11 @@ const AdminDashboardPage: React.FC = () => {
     }
   }, [queryClient]);
 
-  const handleAddScopeComment = useCallback(async (startupId: number, text: string, author: 'Admin' | 'Founder') => {
+  const handleAddScopeComment = useCallback(async (startupId: number, text: string, author: 'Admin' | 'Founder', sectionId: string) => {
     // The backend automatically assigns the comment to the logged-in admin.
     // The 'author' parameter from the mock is no longer needed for the API call.
     try {
-      await api.addAdminScopeComment(startupId, text);
+      await api.addAdminScopeComment(startupId, text, sectionId);
       queryClient.invalidateQueries({ queryKey: ['adminData'] });
     } catch (err) {
       console.error("Failed to add scope comment:", err);

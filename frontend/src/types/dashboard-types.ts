@@ -136,6 +136,7 @@ export interface Comment {
   author: 'Admin' | 'Founder';
   text: string;
   createdAt: string;
+  section_id?: string;
 }
 
 export interface ScopeSection {

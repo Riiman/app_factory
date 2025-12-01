@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from app.utils.decorators import jwt_session_required
 from firebase_admin import auth # Added Firebase Auth import
 
+from app.services.notification_service import publish_update
+
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/status')
@@ -73,19 +75,32 @@ def signup():
         user = User.query.filter_by(firebase_uid=firebase_uid).first()
 
         if not user:
-            # If not, create a new local user record
-            # Get Firebase user to check verification status
-            firebase_user = auth.get_user(firebase_uid)
+            # Check if user exists by email (to avoid unique constraint violation)
+            user = User.query.filter_by(email=token_email).first()
             
-            user = User(
-                firebase_uid=firebase_uid,
-                email=token_email,
-                full_name=full_name or firebase_user.display_name or token_email,
-                phone_number=phone_number or firebase_user.phone_number,
-                email_verified=firebase_user.email_verified,
-                phone_verified=firebase_user.phone_number is not None
-            )
-            db.session.add(user)
+            if user:
+                # Link existing user to Firebase UID
+                user.firebase_uid = firebase_uid
+                # Update other details if needed
+                firebase_user = auth.get_user(firebase_uid)
+                user.full_name = full_name or firebase_user.display_name or user.full_name
+                user.phone_number = phone_number or firebase_user.phone_number or user.phone_number
+                user.email_verified = firebase_user.email_verified
+                user.phone_verified = firebase_user.phone_number is not None
+            else:
+                # If not, create a new local user record
+                # Get Firebase user to check verification status
+                firebase_user = auth.get_user(firebase_uid)
+                
+                user = User(
+                    firebase_uid=firebase_uid,
+                    email=token_email,
+                    full_name=full_name or firebase_user.display_name or token_email,
+                    phone_number=phone_number or firebase_user.phone_number,
+                    email_verified=firebase_user.email_verified,
+                    phone_verified=firebase_user.phone_number is not None
+                )
+                db.session.add(user)
         else:
             # If user exists, update their details
             user.full_name = full_name or user.full_name
@@ -95,7 +110,9 @@ def signup():
         db.session.commit()
 
         # 3. Generate internal JWT
-        access_token = create_access_token(identity=str(user.id))
+        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
+        
+        publish_update("user_signup", {"user": user.to_dict()}, rooms=["admin"])
 
         return jsonify({
             'success': True, 
@@ -160,7 +177,7 @@ def login():
         #     }), 403
 
         # 4. Create our internal JWT
-        access_token = create_access_token(identity=str(user.id))
+        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
 
         # Check the user's most recent submission (existing logic)
         submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()

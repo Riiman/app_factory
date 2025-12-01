@@ -6,10 +6,11 @@ from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMon
 
 from app import db
 from datetime import datetime
+from app.services.notification_service import publish_update
 
 # --- NEW: Redis client setup ---
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
-REDIS_CHANNEL = 'dashboard-notifications'
+# redis_client = redis.Redis(host='localhost', port=6379, db=0) # Replaced by notification_service
+# REDIS_CHANNEL = 'dashboard-notifications'
 
 startups_bp = Blueprint('startups', __name__, url_prefix='/api/startups')
 
@@ -75,20 +76,63 @@ def create_task(startup_id):
     db.session.refresh(new_task)
 
     # --- Publish notification to Redis ---
-    message = {
-        "type": "dashboard_update",
+    # --- Publish notification to Redis ---
+    publish_update("dashboard_update", {
         "model": "Task",
         "id": new_task.id,
         "startup_id": startup_id,
         "timestamp": datetime.now().isoformat()
-    }
-    redis_client.publish(REDIS_CHANNEL, json.dumps(message))
+    }, rooms=[f"user_{startup.user_id}", "admin"])
+    # redis_client.publish(REDIS_CHANNEL, json.dumps(message))
     
     return jsonify({
         'success': True,
         'message': 'Task created successfully.',
         'task': new_task.to_dict()
     }), 201
+
+@startups_bp.route('/<int:startup_id>/tasks/<int:task_id>', methods=['PUT'])
+@jwt_required()
+def update_task(startup_id, task_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized to update task for this startup.'}), 403
+
+    task = Task.query.get_or_404(task_id)
+    if task.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Task does not belong to this startup.'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    task.name = data.get('name', task.name)
+    task.description = data.get('description', task.description)
+    
+    due_date_str = data.get('due_date')
+    if due_date_str:
+        task.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+    
+    status_str = data.get('status')
+    if status_str:
+        task.status = status_str.upper()
+        
+    scope_str = data.get('scope')
+    if scope_str:
+        task.scope = scope_str.upper()
+
+    db.session.commit()
+    
+    publish_update("task_updated", {
+        "startup_id": startup_id, 
+        "task": task.to_dict()
+    }, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    return jsonify({'success': True, 'task': task.to_dict()}), 200
 
 @startups_bp.route('/<int:startup_id>/experiments', methods=['GET'])
 @jwt_required()
@@ -201,6 +245,9 @@ def create_experiment(startup_id):
     new_experiment = Experiment(startup_id=startup_id, **data)
     db.session.add(new_experiment)
     db.session.commit()
+    
+    publish_update("experiment_created", {"startup_id": startup_id, "experiment": new_experiment.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'experiment': new_experiment.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/artifacts', methods=['POST'])
@@ -218,6 +265,9 @@ def create_artifact(startup_id):
     new_artifact = Artifact(startup_id=startup_id, **data)
     db.session.add(new_artifact)
     db.session.commit()
+    
+    publish_update("artifact_created", {"startup_id": startup_id, "artifact": new_artifact.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'artifact': new_artifact.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/products', methods=['POST'])
@@ -235,6 +285,9 @@ def create_product(startup_id):
     new_product = Product(startup_id=startup_id, **data)
     db.session.add(new_product)
     db.session.commit()
+    
+    publish_update("product_created", {"startup_id": startup_id, "product": new_product.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'product': new_product.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/products/<int:product_id>/features', methods=['POST'])
@@ -252,6 +305,9 @@ def create_feature(startup_id, product_id):
     new_feature = Feature(product_id=product_id, **data)
     db.session.add(new_feature)
     db.session.commit()
+    
+    publish_update("feature_created", {"startup_id": startup_id, "product_id": product_id, "feature": new_feature.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'feature': new_feature.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/products/<int:product_id>/features/<int:feature_id>', methods=['PUT'])
@@ -282,6 +338,9 @@ def update_feature(startup_id, product_id, feature_id):
     feature.status = data.get('status', feature.status)
     
     db.session.commit()
+    
+    publish_update("feature_updated", {"startup_id": startup_id, "product_id": product_id, "feature": feature.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'feature': feature.to_dict()}), 200
 
 @startups_bp.route('/<int:startup_id>/products/<int:product_id>/metrics', methods=['POST'])
@@ -299,6 +358,9 @@ def create_metric(startup_id, product_id):
     new_metric = ProductMetric(product_id=product_id, **data)
     db.session.add(new_metric)
     db.session.commit()
+    
+    publish_update("metric_created", {"startup_id": startup_id, "product_id": product_id, "metric": new_metric.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'metric': new_metric.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/products/<int:product_id>/issues', methods=['POST'])
@@ -316,6 +378,9 @@ def create_issue(startup_id, product_id):
     new_issue = ProductIssue(product_id=product_id, created_by=user_id, **data)
     db.session.add(new_issue)
     db.session.commit()
+    
+    publish_update("issue_created", {"startup_id": startup_id, "product_id": product_id, "issue": new_issue.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'issue': new_issue.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/monthly-reports', methods=['POST'])
@@ -333,6 +398,9 @@ def create_monthly_report(startup_id):
     new_report = BusinessMonthlyData(startup_id=startup_id, created_by=user_id, **data)
     db.session.add(new_report)
     db.session.commit()
+    
+    publish_update("monthly_report_created", {"startup_id": startup_id, "report": new_report.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'report': new_report.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/funding-rounds', methods=['POST'])
@@ -350,6 +418,9 @@ def create_funding_round(startup_id):
     new_round = FundingRound(startup_id=startup_id, **data)
     db.session.add(new_round)
     db.session.commit()
+    
+    publish_update("funding_round_created", {"startup_id": startup_id, "round": new_round.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'round': new_round.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/investors', methods=['POST'])
@@ -367,6 +438,9 @@ def create_investor(startup_id):
     new_investor = Investor(**data)
     db.session.add(new_investor)
     db.session.commit()
+    
+    publish_update("investor_created", {"startup_id": startup_id, "investor": new_investor.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'investor': new_investor.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/campaigns', methods=['POST'])
@@ -384,6 +458,9 @@ def create_campaign(startup_id):
     new_campaign = MarketingCampaign(startup_id=startup_id, created_by=user_id, **data)
     db.session.add(new_campaign)
     db.session.commit()
+    
+    publish_update("campaign_created", {"startup_id": startup_id, "campaign": new_campaign.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'campaign': new_campaign.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/campaigns/<int:campaign_id>/content-items', methods=['POST'])
@@ -417,6 +494,9 @@ def create_content_item(startup_id, campaign_id):
     new_item = MarketingContentItem(calendar_id=calendar_id, created_by=user_id, **data)
     db.session.add(new_item)
     db.session.commit()
+    
+    publish_update("content_item_created", {"startup_id": startup_id, "campaign_id": campaign_id, "item": new_item.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'message': 'Content item created successfully.', 'item': new_item.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/founders', methods=['POST'])
@@ -434,6 +514,9 @@ def create_founder(startup_id):
     new_founder = Founder(startup_id=startup_id, **data)
     db.session.add(new_founder)
     db.session.commit()
+    
+    publish_update("founder_created", {"startup_id": startup_id, "founder": new_founder.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'message': 'Founder created successfully.', 'founder': new_founder.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/founders/<int:founder_id>', methods=['PUT'])
@@ -457,6 +540,9 @@ def update_founder(startup_id, founder_id):
     for key, value in data.items():
         setattr(founder, key, value)
     db.session.commit()
+    
+    publish_update("founder_updated", {"startup_id": startup_id, "founder": founder.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'founder': founder.to_dict()}), 200
 
 @startups_bp.route('/<int:startup_id>/founders/<int:founder_id>', methods=['DELETE'])
@@ -475,6 +561,9 @@ def delete_founder(startup_id, founder_id):
 
     db.session.delete(founder)
     db.session.commit()
+    
+    publish_update("founder_deleted", {"startup_id": startup_id, "founder_id": founder_id}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'message': 'Founder deleted successfully.'}), 200
 
 @startups_bp.route('/<int:startup_id>/products/<int:product_id>', methods=['PUT'])
@@ -498,6 +587,9 @@ def update_product(startup_id, product_id):
     for key, value in data.items():
         setattr(product, key, value)
     db.session.commit()
+    
+    publish_update("product_updated", {"startup_id": startup_id, "product": product.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'product': product.to_dict()}), 200
 
 @startups_bp.route('/<int:startup_id>/products/<int:product_id>/business-details', methods=['PUT'])
@@ -523,6 +615,9 @@ def update_product_business_details(startup_id, product_id):
         setattr(business_details, key, value)
     db.session.add(business_details)
     db.session.commit()
+    
+    publish_update("product_business_details_updated", {"startup_id": startup_id, "product_id": product_id, "business_details": business_details.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'business_details': business_details.to_dict()}), 200
 
 @startups_bp.route('/<int:startup_id>/funding-rounds/<int:round_id>', methods=['PUT'])
@@ -546,6 +641,9 @@ def update_funding_round(startup_id, round_id):
     for key, value in data.items():
         setattr(funding_round, key, value)
     db.session.commit()
+    
+    publish_update("funding_round_updated", {"startup_id": startup_id, "round": funding_round.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     return jsonify({'success': True, 'round': funding_round.to_dict()}), 200
 
 @startups_bp.route('/<int:startup_id>/products/<int:product_id>/metrics/<int:metric_id>', methods=['PUT'])
@@ -586,15 +684,15 @@ def update_metric(startup_id, product_id, metric_id):
     db.session.refresh(metric)
 
     # --- Publish notification to Redis ---
-    message = {
-        "type": "dashboard_update",
+    # --- Publish notification to Redis ---
+    publish_update("dashboard_update", {
         "model": "ProductMetric",
         "id": metric_id,
         "product_id": product_id,
         "startup_id": startup_id,
         "timestamp": datetime.now().isoformat()
-    }
-    redis_client.publish(REDIS_CHANNEL, json.dumps(message))
+    }, rooms=[f"user_{startup.user_id}", "admin"])
+    # redis_client.publish(REDIS_CHANNEL, json.dumps(message))
 
     return jsonify({'success': True, 'metric': metric.to_dict()}), 200
 
@@ -617,6 +715,9 @@ def update_startup_settings(startup_id):
     startup.next_milestone = data.get('next_milestone', startup.next_milestone)
     
     db.session.commit()
+    
+    publish_update("startup_settings_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
+
     return jsonify({
         'success': True,
         'message': 'Settings updated successfully.',
@@ -649,6 +750,8 @@ def update_business_overview(startup_id):
     
     db.session.commit()
     db.session.refresh(business_overview)
+
+    publish_update("business_overview_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
 
     return jsonify({'success': True, 'business_overview': business_overview.to_dict()}), 200
 
@@ -694,6 +797,8 @@ def update_fundraise_details(startup_id):
 
     db.session.commit()
     db.session.refresh(fundraise)
+
+    publish_update("fundraise_details_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
 
     return jsonify({
         'success': True,
@@ -744,6 +849,8 @@ def update_marketing_overview(startup_id):
     marketing_overview.positioning_statement = data['positioning_statement']
     db.session.commit()
     db.session.refresh(startup)
+
+    publish_update("marketing_overview_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
 
     return jsonify({'success': True, 'marketing_overview': startup.marketing_overview.to_dict()}), 200
     return jsonify({'success': True, 'marketing_overview': startup.marketing_overview.to_dict()}), 200

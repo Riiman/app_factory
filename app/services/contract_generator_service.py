@@ -3,6 +3,7 @@ from app import db
 from app.models import Startup, ScopeDocument, Contract, ContractStatus
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import AzureChatOpenAI
+from app.services.notification_service import publish_update
 
 def format_data_for_contract_generator(startup, scope_document):
     """Formats the startup and scope data into a readable string for the LLM."""
@@ -73,5 +74,7 @@ def generate_contract_document(startup_id):
     contract.content = contract_content
     contract.status = ContractStatus.DRAFT
     db.session.commit()
+    
+    publish_update("contract_generated", {"startup_id": startup.id, "contract": contract.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
 
     print(f"--- [Celery Task] Contract document generated for startup ID: {startup.id} ---")

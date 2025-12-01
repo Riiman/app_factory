@@ -1,5 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { ScopeDocument, ScopeSection, Comment as ScopeComment, User, UserRole as Role, ScopeStatus } from '@/types/dashboard-types';
 import { Header } from '../components/scope/Header';
 import { ScopeSectionComponent } from '../components/scope/ScopeSectionComponent';
@@ -64,6 +65,8 @@ const ScopePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState('product');
+
+  const { token } = useAuth(); // Get token for WebSocket
 
   useEffect(() => {
     const fetchScopeData = async () => {
@@ -184,6 +187,31 @@ const ScopePage: React.FC = () => {
           }
         }
 
+        // Distribute comments to sections
+        if (data.comments && Array.isArray(data.comments)) {
+          data.comments.forEach((comment: any) => {
+            const section = sections.find(s => s.id === comment.section_id);
+            if (section) {
+              section.comments.push({
+                id: comment.id,
+                text: comment.text,
+                author: comment.author_name || 'Unknown',
+                createdAt: comment.created_at
+              });
+            } else {
+              // Fallback: add to first section or a general section if section_id doesn't match
+              if (sections.length > 0) {
+                sections[0].comments.push({
+                  id: comment.id,
+                  text: comment.text,
+                  author: comment.author_name || 'Unknown',
+                  createdAt: comment.created_at
+                });
+              }
+            }
+          });
+        }
+
         setScopeData({ ...data, sections });
       } catch (err) {
         setError('Failed to load the scope document.');
@@ -195,18 +223,95 @@ const ScopePage: React.FC = () => {
     fetchScopeData();
   }, []);
 
+  // WebSocket Listener
+  useEffect(() => {
+    if (!token) return;
+
+    const ws = new WebSocket(`ws://localhost:8000/ws/dashboard-notifications?token=${token}`);
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'scope_comment_added') {
+          const newComment = message.data.comment;
+          setScopeData(prevData => {
+            if (!prevData) return null;
+            const sectionExists = prevData.sections.some(s => s.id === newComment.section_id);
+            // If section match found, use it. Otherwise fallback to first section (like fetch logic)
+            // But if no sections, we can't add it.
+            const targetSectionId = sectionExists ? newComment.section_id : (prevData.sections.length > 0 ? prevData.sections[0].id : null);
+
+            if (!targetSectionId) return prevData;
+
+            const newSections = prevData.sections.map(section => {
+              if (section.id === targetSectionId) {
+                // Check for duplicates
+                if (section.comments.some(c => c.id === newComment.id)) {
+                  return section;
+                }
+                return {
+                  ...section,
+                  comments: [...section.comments, {
+                    id: newComment.id,
+                    text: newComment.text,
+                    author: newComment.author_name || 'Unknown',
+                    createdAt: newComment.created_at
+                  }]
+                };
+              }
+              return section;
+            });
+            return { ...prevData, sections: newSections };
+          });
+        } else if (message.type === 'scope_document_updated' || message.type === 'scope_status_updated') {
+          // Reload data on document update
+          // Ideally we should just update state, but parsing logic is complex, so re-fetching might be safer or just reload page
+          // For now, let's just trigger a re-fetch if we extracted fetch logic
+          // Or just update status
+          if (message.type === 'scope_status_updated') {
+            setScopeData(prev => prev ? ({ ...prev, status: message.data.scope_document.status }) : null);
+          }
+        }
+      } catch (error) {
+        console.error("WebSocket message error:", error);
+      }
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [token]);
+
   const addComment = useCallback(async (sectionId: string, text: string) => {
     if (!text.trim() || !scopeData) return;
 
     try {
       const newComment = await api.addScopeComment(sectionId, text);
 
+      // Optimistic update is fine, but WebSocket will also come in. 
+      // To avoid duplicates, we can rely on WebSocket OR check ID.
+      // For simplicity, let's rely on WebSocket for the update to appear for others, 
+      // but for the sender, we might want immediate feedback.
+      // However, since we added WebSocket listener, we might get double comments if we also update here.
+      // Let's NOT update state here and wait for WebSocket, OR check for duplicates in WebSocket handler.
+      // Actually, standard pattern: Optimistic update here, and if WebSocket comes with same ID, ignore?
+      // Or just rely on WebSocket if it's fast enough.
+      // Let's keep the local update for responsiveness, but we need to handle duplicates in the WS handler if we do.
+      // For now, I'll remove the local state update here and rely on the WebSocket to update the UI, 
+      // which ensures consistency and proves WS is working.
+
+      // ... actually, user experience is better with immediate update.
+      // But let's stick to the existing logic which does local update, 
+      // AND update the WS handler to NOT add if ID exists.
+
       const newSections = scopeData.sections.map(section => {
         if (section.id === sectionId) {
           const formattedComment: ScopeComment = {
             id: newComment.id,
             text: newComment.text,
-            author: 'Founder', // Assuming founder for now, backend should return role/type
+            author: 'Founder', // We know it's us
             createdAt: newComment.created_at,
           };
           return { ...section, comments: [...section.comments, formattedComment] };

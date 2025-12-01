@@ -130,8 +130,7 @@ class Api {
 
   async addScopeComment(sectionId: string, text: string) {
     const response = await this.post('/stages/scope/comments', { section_id: sectionId, text });
-    if (!response.ok) throw new Error('Failed to add comment');
-    return (await response.json()).comment;
+    return response.comment;
   }
 
   async getContractDetails() {
@@ -205,6 +204,10 @@ class Api {
       details: `Scope status updated to ${status}`
     });
     return response;
+  }
+
+  async addAdminScopeComment(startupId: number, text: string, sectionId: string) {
+    return this.post(`/admin/scope/${startupId}/comments`, { text, section_id: sectionId });
   }
 
   async updateContractStatus(startupId: number, newStatus: string) {
