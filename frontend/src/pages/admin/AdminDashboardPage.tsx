@@ -199,7 +199,7 @@ const AdminDashboardPage: React.FC = () => {
 
   const handleUpdateScope = useCallback(async (startupId: number, productScope: string, gtmScope: string) => {
     try {
-      await api.updateScopeDocument(startupId, { productScope, gtmScope });
+      await api.updateScopeDocument(startupId, JSON.stringify({ product: productScope, gtm: gtmScope }));
       queryClient.invalidateQueries({ queryKey: ['adminData'] });
     } catch (err) {
       console.error("Failed to update scope:", err);

@@ -20,6 +20,7 @@ import EvaluationPage from './pages/EvaluationPage';
 import ScopePage from './pages/ScopePage';
 import ContractPage from './pages/ContractPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import StartupCodeStudio from './pages/admin/StartupCodeStudio';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const AppRoutes: FC = () => {
@@ -111,6 +112,7 @@ const AppRoutes: FC = () => {
       {/* Protected Routes (Admin) */}
       <Route element={<AdminRoute />}>
         <Route path="/admin/*" element={<AdminDashboardPage />} />
+        <Route path="/admin/startups/:id/code-studio" element={<StartupCodeStudio />} />
       </Route>
 
       {/* Redirect any unknown paths to home */}

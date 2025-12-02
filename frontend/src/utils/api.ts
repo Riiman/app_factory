@@ -519,8 +519,8 @@ class Api {
     return this.put('/stages/scope', { startup_id: startupId, content });
   }
 
-  async updateContract(startupId: number, content: string) {
-    return this.put('/stages/contract', { startup_id: startupId, content });
+  async updateContract(startupId: number, data: { documentUrl?: string; status?: string; content?: string }) {
+    return this.put('/stages/contract', { startup_id: startupId, ...data });
   }
 
   async acceptContract(startupId?: number) {

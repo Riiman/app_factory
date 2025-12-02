@@ -24,7 +24,7 @@ def get_startup(startup_id):
 
     if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
         return jsonify({'success': False, 'error': 'Unauthorized access to startup data.'}), 403
-    return jsonify({'success': True, 'startup': startup.to_dict(include_relations=['monthly_data', 'marketing_campaigns'])}), 200
+    return jsonify({'success': True, 'startup': startup.to_dict(include_relations=['monthly_data', 'marketing_campaigns', 'products'])}), 200
 
 @startups_bp.route('/<int:startup_id>/tasks', methods=['GET'])
 @jwt_required()

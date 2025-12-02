@@ -33,7 +33,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
   const handleSaveContract = async () => {
     if (selectedStartup && contractContent) {
       try {
-        await api.updateContract(selectedStartup.id, contractContent);
+        await api.updateContract(selectedStartup.id, { content: contractContent });
         setIsEditingContract(false);
         alert("Contract updated successfully.");
         fetchData();

@@ -29,6 +29,8 @@ Flask-Mail==0.9.1
 Flask-Migrate==4.1.0
 Flask-Session==0.8.0
 Flask-SQLAlchemy==3.1.1
+Flask-SocketIO==5.3.6
+eventlet==0.35.2
 frozenlist==1.8.0
 greenlet==3.2.4
 gunicorn==22.0.0
@@ -48,6 +50,7 @@ langchain-openai==1.0.2
 langchain-text-splitters==1.0.0
 langgraph==1.0.3
 langgraph-checkpoint==3.0.1
+langgraph-checkpoint-sqlite==1.0.3
 langgraph-prebuilt==1.0.2
 langgraph-sdk==0.2.9
 langsmith==0.4.42
@@ -73,7 +76,7 @@ python-slugify==8.0.4
 PyYAML==6.0.3
 redis==5.0.7
 regex==2025.11.3
-requests==2.32.5
+requests==2.31.0
 requests-toolbelt==1.0.0
 resend==2.19.0
 six==1.17.0
@@ -94,3 +97,4 @@ xxhash==3.6.0
 yarl==1.22.0
 zstandard==0.25.0
 firebase-admin==6.3.0
+docker==7.0.0

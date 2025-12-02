@@ -49,6 +49,9 @@ def create_app(config_class=Config):
     sess.init_app(app)
     cors_origins = app.config.get('CORS_ORIGINS', ['http://localhost:3000', 'http://127.0.0.1:3000'])
     CORS(app, supports_credentials=True, origins=cors_origins)
+    
+    from .extensions import socketio
+    socketio.init_app(app)
 
     # Configure the shared Celery instance
     configure_celery(app)
@@ -79,6 +82,13 @@ def create_app(config_class=Config):
 
         app.register_blueprint(admin_contract_bp)
         app.register_blueprint(notifications_bp)
+
+        from .startup_builder import builder_bp
+        from .startup_builder import builder_bp
+        app.register_blueprint(builder_bp)
+        
+        # Import sockets to register events
+        from .startup_builder import sockets
 
 
         # Import tasks so that they are registered with Celery

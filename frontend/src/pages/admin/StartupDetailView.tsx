@@ -5,7 +5,7 @@ import Card from '../../components/admin/Card';
 import StatCard from '../../components/admin/StatCard';
 import BusinessPerformanceChart from '../../components/admin/charts/BusinessPerformanceChart';
 import StatusBadge from '../../components/admin/StatusBadge';
-import { DollarSign, Users, TrendingDown, ArrowLeft, PlusCircle, Edit } from 'lucide-react';
+import { DollarSign, Users, TrendingDown, ArrowLeft, PlusCircle, Edit, Terminal } from 'lucide-react';
 
 interface StartupDetailViewProps {
   startup: Startup;
@@ -74,7 +74,13 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
         </div>
         <div className="text-right">
           <p className="text-sm text-brand-text-secondary">Next Milestone</p>
-          <p className="font-semibold text-brand-primary">{startup.next_milestone}</p>
+          <p className="font-semibold text-brand-primary mb-2">{startup.next_milestone}</p>
+          <a
+            href={`/admin/startups/${startup.id}/code-studio`}
+            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md hover:bg-black transition-colors"
+          >
+            <Terminal className="mr-1.5 h-3 w-3" /> Open Code Studio
+          </a>
         </div>
       </div>
 

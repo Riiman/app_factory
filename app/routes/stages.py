@@ -227,20 +227,38 @@ def update_contract():
     data = request.get_json()
     startup_id = data.get('startup_id')
     content = data.get('content')
-    # title = data.get('title') # Optional update for title
+    document_url = data.get('documentUrl')
+    status = data.get('status')
 
-    if not startup_id or not content:
-        return jsonify({'success': False, 'error': 'Startup ID and content are required'}), 400
+    if not startup_id:
+        return jsonify({'success': False, 'error': 'Startup ID is required'}), 400
 
     contract = Contract.query.filter_by(startup_id=startup_id).first()
     if not contract:
         return jsonify({'success': False, 'error': 'Contract not found'}), 404
 
-    contract.content = content
-    # Reset acceptance on update
-    contract.founder_accepted = False
-    contract.admin_accepted = False
-    contract.status = ContractStatus.DRAFT
+    if content:
+        contract.content = content
+    
+    if document_url:
+        contract.document_url = document_url
+
+    if status:
+        # If status is provided, use it (e.g. Admin setting to SENT)
+        # We might want to validate the status string against Enum
+        try:
+            contract.status = ContractStatus[status] if isinstance(status, str) else ContractStatus(status)
+        except:
+            pass # Ignore invalid status or handle error
+    else:
+        # Default behavior: if content changed and no status provided, reset to DRAFT
+        if content:
+            contract.status = ContractStatus.DRAFT
+
+    # Reset acceptance on update if content changed (optional, but good practice)
+    if content or document_url:
+        contract.founder_accepted = False
+        contract.admin_accepted = False
     
     db.session.commit()
     

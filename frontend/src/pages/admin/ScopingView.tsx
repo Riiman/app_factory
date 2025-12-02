@@ -86,14 +86,9 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
   const handleSaveScope = async () => {
     if (selectedStartup) {
       try {
-        const content = JSON.stringify({
-          product: productScope,
-          gtm: gtmScope
-        });
-        await api.updateScopeDocument(selectedStartup.id, content);
+        await onUpdateScope(selectedStartup.id, productScope, gtmScope);
         setIsEditingScope(false);
         alert("Scope updated successfully.");
-        window.location.reload();
       } catch (e) {
         console.error("Failed to update scope:", e);
         alert("Failed to update scope.");
