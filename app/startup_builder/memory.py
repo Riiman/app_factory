@@ -35,6 +35,17 @@ class MemoryManager:
         
         try:
             docs = loader.load()
+            
+            # Defensive filtering: Exclude node_modules and other artifacts
+            # even if they were copied (e.g. if tar exclude failed or manual copy happened)
+            filtered_docs = []
+            for doc in docs:
+                source = doc.metadata.get("source", "")
+                if "node_modules" in source or ".git" in source or "dist/" in source or "build/" in source:
+                    continue
+                filtered_docs.append(doc)
+            docs = filtered_docs
+            
         except Exception as e:
             print(f"Error loading docs: {e}")
             return

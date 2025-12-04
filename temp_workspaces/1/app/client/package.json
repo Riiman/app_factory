@@ -1,0 +1,10 @@
+{
+  // ...existing content...
+  "scripts": {
+    // ...existing scripts...
+    "test": "cross-env NODE_ENV=test jest",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
+  }
+  // ...rest of file...
+}

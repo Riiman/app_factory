@@ -93,5 +93,42 @@ def create_app(config_class=Config):
 
         # Import tasks so that they are registered with Celery
         from . import tasks
+    
+    # Register cleanup handler for server shutdown
+    # DISABLED: This cleanup is too aggressive - it stops containers even on server restart
+    # Users should manually stop containers via the UI when needed
+    # import atexit
+    # def cleanup_containers_on_shutdown():
+    #     """Cleanup all Docker containers when server stops."""
+    #     try:
+    #         from .startup_builder.manager import DockerManager
+    #         from .models import Startup
+    #         from sqlalchemy.exc import OperationalError
+    #         
+    #         with app.app_context():
+    #             try:
+    #                     manager = DockerManager()
+    #                     startups = Startup.query.filter(Startup.container_name.isnot(None)).all()
+    #                     
+    #                     for startup in startups:
+    #                         try:
+    #                             print(f"Cleaning up container {startup.container_name} for startup {startup.id}")
+    #                             manager.cleanup_container(startup.container_name)
+    #                             startup.container_name = None
+    #                         except Exception as e:
+    #                             print(f"Error cleaning up container {startup.container_name}: {e}")
+    #                     
+    #                     db.session.commit()
+    #                     print("Container cleanup completed")
+    #             except OperationalError as e:
+    #                 # Column doesn't exist yet (during migration)
+    #                 if "no such column" in str(e):
+    #                     print("Skipping container cleanup - database migration pending")
+    #                 else:
+    #                     raise
+    #     except Exception as e:
+    #         print(f"Error during container cleanup: {e}")
+    # 
+    # atexit.register(cleanup_containers_on_shutdown)
 
     return app

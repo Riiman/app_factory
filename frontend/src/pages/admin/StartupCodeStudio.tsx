@@ -5,6 +5,7 @@ import TerminalComponent from '../../components/TerminalComponent';
 import FileExplorer from '../../components/FileExplorer';
 import ChatModal from '../../components/ChatModal';
 import api from '../../utils/api';
+import { io, Socket } from 'socket.io-client';
 
 interface PlanStep {
     id: number;
@@ -24,7 +25,9 @@ const StartupCodeStudio: React.FC = () => {
     const [plan, setPlan] = useState<PlanStep[]>([]);
     const [isWorking, setIsWorking] = useState(false);
     const [ports, setPorts] = useState<any>(null);
+    const [taskStatus, setTaskStatus] = useState<string>('idle');
     const logsEndRef = useRef<HTMLDivElement>(null);
+    const socketRef = useRef<Socket | null>(null);
 
     // New State for Refactor
     const [showChatModal, setShowChatModal] = useState(false);
@@ -61,7 +64,6 @@ const StartupCodeStudio: React.FC = () => {
                 addLog(`Environment started. Container ID: ${data.container_id}`);
             } else if (data.status === 'building') {
                 addLog(`Environment is building... this may take a few minutes. (${data.message})`);
-                setTimeout(handleStart, 5000);
             } else {
                 addLog(`Error starting: ${JSON.stringify(data)}`);
             }
@@ -70,6 +72,103 @@ const StartupCodeStudio: React.FC = () => {
         }
     };
 
+    // WebSocket connection for real-time environment updates
+    useEffect(() => {
+        if (!id) return;
+
+        // Connect to /builder namespace
+        const socket = io('http://localhost:5000/builder', {
+            transports: ['websocket'],
+            path: '/socket.io'
+        });
+
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+            console.log('Connected to builder namespace');
+            // Subscribe to updates for this startup
+            socket.emit('subscribe', { startup_id: id });
+        });
+
+        socket.on('env_status', (data) => {
+            console.log('Received env_status:', data);
+            if (data.status === 'running') {
+                setIsRunning(true);
+                setPorts(data.ports);
+                addLog(`Environment is running. Container ID: ${data.container_id}`);
+            } else {
+                setIsRunning(false);
+                setPorts(null);
+            }
+        });
+
+        socket.on('build_started', (data) => {
+            console.log('Build started:', data);
+            addLog(`Building ${data.stack_type} environment...`);
+        });
+
+        socket.on('build_complete', (data) => {
+            console.log('Build complete:', data);
+            setIsRunning(true);
+            setPorts(data.ports);
+            addLog(`Environment ready! Container ID: ${data.container_id}`);
+        });
+
+        socket.on('build_failed', (data) => {
+            console.log('Build failed:', data);
+            addLog(`Build failed: ${data.error}`);
+        });
+
+        socket.on('agent_update', (data) => {
+            if (data.logs) setLogs(data.logs);
+            if (data.plan) setPlan(data.plan);
+            if (data.task_status) setTaskStatus(data.task_status);
+
+            if (data.total_tasks) {
+                setProgress({
+                    completed: data.completed_tasks || 0,
+                    total: data.total_tasks
+                });
+            }
+
+            if (data.waiting_approval) {
+                setWaitingApproval(true);
+                setIsWorking(false);
+                if (data.current_step) setCurrentStep(data.current_step);
+                addLog("System paused. Waiting for approval.");
+            } else if (data.task_status === 'waiting_interaction') {
+                setWaitingApproval(true);
+                setIsWorking(false);
+                setShowTerminal(true);
+            } else if (data.task_status === 'done' || data.task_status === 'qa_passed') {
+                setIsWorking(false);
+                setWaitingApproval(false);
+                addLog('Task completed successfully.');
+                fetchData();
+            } else if (data.task_status === 'failed') {
+                setIsWorking(false);
+                setWaitingApproval(false);
+                addLog('Task failed.');
+            } else if (data.task_status === 'planning_needed' || data.task_status === 'plan_ready' || data.task_status === 'coding' || data.task_status === 'strategizing') {
+                setIsWorking(true);
+            } else {
+                // Default fallback, but don't force true if we are unsure
+                // setIsWorking(true); 
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from builder namespace');
+        });
+
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.emit('unsubscribe', { startup_id: id });
+                socketRef.current.disconnect();
+            }
+        };
+    }, [id]);
+
     const handleStop = async () => {
         addLog('Stopping environment...');
         try {
@@ -77,13 +176,13 @@ const StartupCodeStudio: React.FC = () => {
             const data = await res.json();
             setIsRunning(false);
             setPorts(null);
-            addLog(`Environment stopped: ${data.status}`);
+            addLog(`Environment stopped: ${data.status || 'Success'}`);
         } catch (e) {
             addLog(`Error: ${e}`);
         }
     };
 
-    const [yoloMode, setYoloMode] = useState(false);
+    const [yoloMode, setYoloMode] = useState(true); // Default to YOLO
     const [activeTab, setActiveTab] = useState<'projects' | 'issues' | 'files'>('projects');
     const [showTerminal, setShowTerminal] = useState(false);
     const [showContainerLogs, setShowContainerLogs] = useState(false);
@@ -92,38 +191,61 @@ const StartupCodeStudio: React.FC = () => {
     const [currentStep, setCurrentStep] = useState<PlanStep | null>(null);
     const [progress, setProgress] = useState({ completed: 0, total: 0 });
 
+    // Separate logs
+    const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
+
     useEffect(() => {
-        if (id) fetchData();
+        if (id) {
+            fetchData();
+            checkAgentStatus(); // Check persistence on load
+        }
     }, [id]);
 
-    // Polling for logs and progress
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (isWorking && !waitingApproval) {
-            interval = setInterval(fetchLogs, 2000);
+    // Polling removed in favor of WebSockets
+
+    const checkAgentStatus = async () => {
+        try {
+            const res = await fetch(`/api/builder/${id}/status`);
+            const data = await res.json();
+            if (data.status === 'active') {
+                setIsWorking(true);
+                setLogs(data.logs || []);
+                setPlan(data.plan || []);
+                setTaskStatus(data.task_status || 'unknown');
+
+                if (data.total_tasks > 0) {
+                    setProgress({
+                        completed: data.completed_tasks,
+                        total: data.total_tasks
+                    });
+                }
+
+                if (data.waiting_approval) {
+                    setWaitingApproval(true);
+                    setIsWorking(false);
+                } else if (data.waiting_interaction) {
+                    setWaitingApproval(true);
+                    setIsWorking(false);
+                    setShowTerminal(true);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to check status:", e);
         }
-        return () => clearInterval(interval);
-    }, [isWorking, waitingApproval]);
+    };
 
     const fetchData = async () => {
         try {
-            // Fetch Products (which include features)
-            // We might need a new endpoint or reuse existing.
-            // Assuming /api/startups/{id} returns full object including products.
-            // Or we can use the existing /features endpoint if it returns hierarchy.
-            // Let's try to fetch full startup data for now.
             const res = await api.get(`/startups/${id}`);
-            const startup = res.data;
-            if (startup.products) {
-                setProducts(startup.products);
-                // Extract issues from products
-                const allIssues = startup.products.flatMap((p: any) =>
-                    (p.product_issues || []).map((i: any) => ({ ...i, product_name: p.name }))
-                );
-                setIssues(allIssues);
+            // @ts-ignore
+            if (res.startup) {
+                // @ts-ignore
+                setProducts(res.startup.products || []);
+                // @ts-ignore
+                setIssues(res.startup.issues || []);
             }
         } catch (e) {
-            console.error("Error fetching data:", e);
+            console.error(e);
         }
     };
 
@@ -142,28 +264,82 @@ const StartupCodeStudio: React.FC = () => {
         await runTaskInternal(taskPrompt, yoloMode);
     };
 
-    const initProduct = (product: any) => {
-        const p = `Initialize project structure for product "${product.name}".
-Description: ${product.description}
-Tech Stack: ${JSON.stringify(product.tech_stack || [])}
+    const initProduct = async (product: any) => {
+        if (!isRunning) return;
+        setIsWorking(true);
 
-Create the necessary folders, package.json/requirements.txt, and a basic README.md.
-Do not implement features yet.`;
-        triggerAgent(p);
+        // Only clear logs if starting fresh
+        if (product.stage !== 'development') {
+            setLogs([]);
+            setPlan([]);
+            setProgress({ completed: 0, total: 0 });
+        }
+
+        try {
+            const res = await fetch(`/api/builder/${id}/run-task`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    goal: `Initialize project structure for ${product.name}. Tech Stack: ${product.tech_stack || 'React + Node.js'}. Create basic scaffold.`,
+                    yolo: yoloMode,
+                    product_id: product.id // Send ID for status update
+                })
+            });
+            const data = await res.json();
+            handleResponse(data);
+            fetchData(); // Refresh to show "Resume"
+        } catch (e) {
+            addLog(`Error: ${e}`);
+            setIsWorking(false);
+        }
     };
 
-    const buildFeature = (feature: any, productName: string) => {
-        const p = `Implement feature "${feature.name}" for product "${productName}".
-Description: ${feature.description}
-Acceptance Criteria: ${feature.acceptance_criteria || 'N/A'}`;
-        triggerAgent(p);
+    const buildFeature = async (feature: any, productName: string) => {
+        if (!isRunning) return;
+        setIsWorking(true);
+        setLogs([]);
+        setPlan([]);
+        setProgress({ completed: 0, total: 0 });
+
+        try {
+            const res = await fetch(`/api/builder/${id}/build-feature`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    feature_id: feature.id,
+                    yolo: yoloMode
+                })
+            });
+            const data = await res.json();
+            handleResponse(data);
+            fetchData(); // Refresh to show "Resume"
+        } catch (e) {
+            addLog(`Error: ${e}`);
+            setIsWorking(false);
+        }
     };
 
-    const fixIssue = (issue: any) => {
-        const p = `Fix issue "${issue.title}" in product "${issue.product_name}".
-Description: ${issue.description}
-Severity: ${issue.severity}`;
-        triggerAgent(p);
+    const fixIssue = async (issue: any) => {
+        if (!isRunning) return;
+        setIsWorking(true);
+        setLogs([]);
+        setPlan([]);
+
+        try {
+            const res = await fetch(`/api/builder/${id}/run-task`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    goal: `Fix issue: ${issue.title}. Description: ${issue.description}. Severity: ${issue.severity}`,
+                    yolo: true
+                })
+            });
+            const data = await res.json();
+            handleResponse(data);
+        } catch (e) {
+            addLog(`Error: ${e}`);
+            setIsWorking(false);
+        }
     };
 
     const runTaskInternal = async (goal: string, yolo: boolean) => {
@@ -182,13 +358,28 @@ Severity: ${issue.severity}`;
 
     const runTask = async () => {
         if (!prompt) return;
+
+        // Add user message to chat
+        setChatMessages(prev => [...prev, { role: 'user', content: prompt }]);
+        const currentPrompt = prompt;
+        setPrompt(''); // Clear input
+
         setIsWorking(true);
         setWaitingApproval(false);
         setPlan([]);
         setLogs([]);
         setProgress({ completed: 0, total: 0 });
-        addLog(`Team assigned to task: "${prompt}" (YOLO: ${yoloMode})`);
-        await runTaskInternal(prompt, yoloMode);
+        addLog(`Team assigned to task: "${currentPrompt}" (YOLO: ${yoloMode})`);
+
+        // Add placeholder response (since we don't have real streaming chat yet)
+        setTimeout(() => {
+            setChatMessages(prev => [...prev, {
+                role: 'assistant',
+                content: `I've started working on: "${currentPrompt}". check the Team Activity Log for detailed progress.`
+            }]);
+        }, 500);
+
+        await runTaskInternal(currentPrompt, yoloMode);
     };
 
     const approveStep = async () => {
@@ -228,9 +419,20 @@ Severity: ${issue.severity}`;
                         total: data.total_tasks
                     });
                 }
+
                 if (data.task_status === 'failed') {
-                    addLog("Task failed (fetched from history).");
+                    if (isWorking || waitingApproval) {
+                        addLog("Task failed.");
+                    }
                     setIsWorking(false);
+                    setWaitingApproval(false);
+                } else if (data.task_status === 'done') {
+                    if (isWorking || waitingApproval) {
+                        addLog("Task completed successfully.");
+                        fetchData();
+                    }
+                    setIsWorking(false);
+                    setWaitingApproval(false);
                 }
             }
         } catch (e) {
@@ -256,8 +458,17 @@ Severity: ${issue.severity}`;
 
     const handleResponse = (data: any) => {
         if (data.status === 'success') {
+            // Handle async background start
+            if (data.message && (data.message.includes("background") || data.message.includes("started"))) {
+                addLog(data.message);
+                setIsWorking(true);
+                // Do not reset other state here, wait for socket updates
+                return;
+            }
+
             if (data.logs) setLogs(data.logs);
             if (data.plan) setPlan(data.plan);
+            setTaskStatus(data.task_status || 'unknown');
 
             if (data.total_tasks) {
                 setProgress({
@@ -270,11 +481,14 @@ Severity: ${issue.severity}`;
                 setWaitingApproval(true);
                 setCurrentStep(data.current_step);
                 addLog("System paused. Waiting for approval.");
-                setShowChatModal(true); // Auto-open modal for approval
+            } else if (data.task_status === 'waiting_interaction') {
+                setWaitingApproval(true);
+                setIsWorking(false);
+                setShowTerminal(true);
             } else if (data.task_status === 'failed') {
                 addLog('Task failed. Check logs for details.');
                 setIsWorking(false);
-            } else {
+            } else if (data.task_status === 'done' || data.task_status === 'qa_passed') {
                 addLog('Task completed successfully.');
                 setIsWorking(false);
                 fetchData(); // Refresh features/issues status
@@ -359,39 +573,145 @@ Severity: ${issue.severity}`;
                     >
                         <FileText className="w-4 h-4" /> Logs
                     </button>
+                    <button
+                        onClick={async () => {
+                            if (confirm("Are you sure you want to reset the agent's memory? This will clear all task history.")) {
+                                try {
+                                    const res = await fetch(`/api/builder/${id}/reset`, { method: 'POST' });
+                                    const data = await res.json();
+                                    if (data.status === 'success') {
+                                        setLogs(data.logs || []);
+                                        setPlan(data.plan || []);
+                                        setTaskStatus(data.task_status || 'unknown');
+
+                                        if (data.waiting_approval) {
+                                            setWaitingApproval(true);
+                                            setIsWorking(false);
+                                        } else if (data.task_status === 'waiting_interaction') {
+                                            setWaitingApproval(true); // Reuse approval state to pause polling
+                                            setIsWorking(false);
+                                            // Automatically open terminal if preferred, or let user click
+                                            setShowTerminal(true);
+                                        } else if (data.task_status === 'done' || data.task_status === 'failed') {
+                                            setIsWorking(false);
+                                            setWaitingApproval(false);
+                                        }
+
+                                        if (data.total_tasks > 0) {
+                                            setProgress({
+                                                completed: data.completed_tasks,
+                                                total: data.total_tasks
+                                            });
+                                        }
+                                    } else {
+                                        alert("Failed to reset: " + data.error);
+                                    }
+                                } catch (e) {
+                                    alert("Error resetting: " + e);
+                                }
+                            }
+                        }}
+                        className="ml-2 flex items-center gap-2 bg-red-900/50 hover:bg-red-900 border border-red-800 px-3 py-1.5 rounded text-sm font-medium transition-colors text-red-200"
+                        title="Reset Agent Memory"
+                    >
+                        <RefreshCw className="w-4 h-4" /> Reset
+                    </button>
                 </div>
             </div>
 
+            {/* Progress Bar Section */}
+            {(isWorking || progress.total > 0) && (
+                <div className="h-16 bg-gray-950 border-b border-gray-800 px-4 flex items-center justify-between">
+                    <div className="flex-1 max-w-4xl">
+                        {/* Progress Bar */}
+                        <div className="mb-2">
+                            <div className="flex justify-between text-xs text-gray-400 mb-1">
+                                <span className="font-medium">
+                                    {progress.total > 0 ? (
+                                        `Task ${progress.completed + 1} of ${progress.total}`
+                                    ) : (
+                                        'Initializing...'
+                                    )}
+                                </span>
+                                <span>
+                                    {progress.total > 0
+                                        ? `${Math.round((progress.completed / progress.total) * 100)}%`
+                                        : '0%'
+                                    }
+                                </span>
+                            </div>
+                            <div className="w-full bg-gray-800 rounded-full h-2">
+                                {progress.total > 0 ? (
+                                    <div
+                                        className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+                                    />
+                                ) : (
+                                    <div className="bg-blue-500 h-2 rounded-full animate-pulse w-full" />
+                                )}
+                            </div>
+                        </div>
+                        {/* Current Task Display */}
+                        <div className="flex items-center gap-4 text-xs">
+                            <div className="flex items-center gap-2 text-gray-300 truncate max-w-[50%]">
+                                <span className="text-blue-400 font-semibold">Current:</span>
+                                <span className="truncate" title={currentStep?.description || "Planning..."}>
+                                    {currentStep?.description || "Planning..."}
+                                </span>
+                            </div>
+                            {plan.length > (progress.completed + 1) && (
+                                <div className="flex items-center gap-2 text-gray-500 truncate max-w-[40%]">
+                                    <span className="font-semibold">Next:</span>
+                                    <span className="truncate">
+                                        {plan[progress.completed + 1]?.description || "..."}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 ml-4">
+                        {isWorking && (
+                            <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Working...</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Main Content Area */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Left Panel: Tabs */}
-                <div className="w-1/3 border-r border-gray-800 flex flex-col bg-gray-900">
+                {/* Left Sidebar */}
+                <div className="w-64 bg-gray-950 border-r border-gray-800 flex flex-col">
                     <div className="flex border-b border-gray-800">
                         <button
                             onClick={() => setActiveTab('projects')}
-                            className={`flex-1 py-3 text-sm font-medium ${activeTab === 'projects' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+                            className={`flex-1 py-3 text-xs font-medium transition-colors ${activeTab === 'projects' ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-900' : 'text-gray-500 hover:text-gray-300'}`}
                         >
                             Projects
                         </button>
                         <button
                             onClick={() => setActiveTab('issues')}
-                            className={`flex-1 py-3 text-sm font-medium ${activeTab === 'issues' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+                            className={`flex-1 py-3 text-xs font-medium transition-colors ${activeTab === 'issues' ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-900' : 'text-gray-500 hover:text-gray-300'}`}
                         >
                             Issues
                         </button>
                         <button
                             onClick={() => setActiveTab('files')}
-                            className={`flex-1 py-3 text-sm font-medium ${activeTab === 'files' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+                            className={`flex-1 py-3 text-xs font-medium transition-colors ${activeTab === 'files' ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-900' : 'text-gray-500 hover:text-gray-300'}`}
                         >
                             Files
                         </button>
                     </div>
 
                     {activeTab === 'projects' ? (
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-2 space-y-2">
                             {products.map((product: any) => (
-                                <div key={product.id} className="bg-gray-800/50 rounded-lg border border-gray-800 overflow-hidden">
+                                <div key={product.id} className="bg-gray-900 rounded border border-gray-800 overflow-hidden">
                                     <div
-                                        className="p-3 bg-gray-800 flex items-center justify-between cursor-pointer hover:bg-gray-750 transition-colors"
+                                        className="p-3 flex items-center justify-between cursor-pointer hover:bg-gray-800 transition-colors"
                                         onClick={() => toggleProduct(product.id)}
                                     >
                                         <div className="flex items-center gap-2">
@@ -402,9 +722,12 @@ Severity: ${issue.severity}`;
                                         <button
                                             onClick={(e) => { e.stopPropagation(); initProduct(product); }}
                                             disabled={!isRunning || isWorking}
-                                            className="text-xs bg-purple-900/50 text-purple-300 hover:bg-purple-900 px-2 py-1 rounded border border-purple-800 transition-colors"
+                                            className={`text-xs px-2 py-1 rounded border transition-colors ${!isRunning ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed' :
+                                                product.stage === 'development' ? 'bg-yellow-900/50 text-yellow-300 hover:bg-yellow-900 border-yellow-800' :
+                                                    'bg-purple-900/50 text-purple-300 hover:bg-purple-900 border-purple-800'
+                                                }`}
                                         >
-                                            Initialize
+                                            {product.stage === 'development' ? 'Resume' : 'Initialize'}
                                         </button>
                                     </div>
 
@@ -414,19 +737,20 @@ Severity: ${issue.severity}`;
                                                 <div key={feature.id} className="flex items-center justify-between p-2 rounded hover:bg-gray-800 group">
                                                     <div className="flex items-center gap-2 overflow-hidden">
                                                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${feature.status === 'COMPLETED' ? 'bg-green-500' :
-                                                                feature.status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-gray-600'
+                                                            feature.status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-gray-600'
                                                             }`} />
                                                         <span className="text-sm text-gray-400 truncate group-hover:text-gray-200">{feature.name}</span>
                                                     </div>
                                                     <button
                                                         onClick={() => buildFeature(feature, product.name)}
                                                         disabled={!isRunning || isWorking || feature.status === 'COMPLETED'}
-                                                        className={`text-xs px-2 py-0.5 rounded transition-colors ${feature.status === 'COMPLETED'
-                                                                ? 'text-green-500 cursor-default'
-                                                                : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900 border border-blue-800/50'
+                                                        className={`text-xs px-2 py-0.5 rounded transition-colors ${!isRunning ? 'text-gray-600 cursor-not-allowed' :
+                                                            feature.status === 'COMPLETED' ? 'text-green-500 cursor-default' :
+                                                                feature.status === 'IN_PROGRESS' ? 'bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900 border border-yellow-800/50' :
+                                                                    'bg-blue-900/30 text-blue-400 hover:bg-blue-900 border border-blue-800/50'
                                                             }`}
                                                     >
-                                                        {feature.status === 'COMPLETED' ? 'Done' : 'Build'}
+                                                        {feature.status === 'COMPLETED' ? 'Done' : feature.status === 'IN_PROGRESS' ? 'Resume' : 'Build'}
                                                     </button>
                                                 </div>
                                             ))}
@@ -449,8 +773,8 @@ Severity: ${issue.severity}`;
                                             <h4 className="font-medium text-sm text-gray-200">{issue.title}</h4>
                                         </div>
                                         <span className={`text-xs px-2 py-0.5 rounded uppercase ${issue.severity === 'Critical' ? 'bg-red-900 text-red-300' :
-                                                issue.severity === 'High' ? 'bg-orange-900 text-orange-300' :
-                                                    'bg-gray-700 text-gray-400'
+                                            issue.severity === 'High' ? 'bg-orange-900 text-orange-300' :
+                                                'bg-gray-700 text-gray-400'
                                             }`}>{issue.severity}</span>
                                     </div>
                                     <p className="text-xs text-gray-400 mb-3 line-clamp-2">{issue.description}</p>
@@ -474,10 +798,10 @@ Severity: ${issue.severity}`;
                             {id && <FileExplorer startupId={id} />}
                         </div>
                     )}
-                </div>
+                </div >
 
                 {/* Right Panel: Team Logs */}
-                <div className="flex-1 flex flex-col bg-black font-mono text-sm">
+                < div className="flex-1 flex flex-col bg-black font-mono text-sm" >
                     <div className="h-8 bg-gray-800 flex items-center px-4 text-xs text-gray-400 border-b border-gray-700 justify-between">
                         <div className="flex items-center">
                             <TerminalIcon className="w-3 h-3 mr-2" /> Team Activity Log
@@ -486,87 +810,123 @@ Severity: ${issue.severity}`;
                             <RefreshCw className="w-3 h-3" />
                         </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-1 text-gray-300">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 text-gray-300">
                         {logs.map((log, i) => {
+                            let parsedLog = { agent: "Unknown", message: log, details: "" };
+                            let isJson = false;
+
+                            try {
+                                if (log.trim().startsWith("{")) {
+                                    parsedLog = JSON.parse(log);
+                                    isJson = true;
+                                }
+                            } catch (e) {
+                                // Not JSON, use raw string
+                            }
+
                             // Color code logs based on agent
                             let color = "text-gray-300";
-                            if (log.includes("Architect:")) color = "text-purple-400";
-                            if (log.includes("Planner:")) color = "text-blue-400";
-                            if (log.includes("Developer:")) color = "text-green-400";
-                            if (log.includes("Reviewer:")) color = "text-orange-400";
-                            if (log.includes("Executor:")) color = "text-yellow-400";
-                            if (log.includes("Strategist:")) color = "text-red-400";
+                            const agent = isJson ? parsedLog.agent : log;
 
-                            return <div key={i} className={`break-all ${color}`}>{log}</div>
+                            if (agent.includes("Architect")) color = "text-purple-400";
+                            if (agent.includes("Planner")) color = "text-blue-400";
+                            if (agent.includes("Developer")) color = "text-green-400";
+                            if (agent.includes("Reviewer")) color = "text-orange-400";
+                            if (agent.includes("Executor")) color = "text-yellow-400";
+                            if (agent.includes("Strategist")) color = "text-red-400";
+                            if (agent.includes("Tester")) color = "text-pink-400";
+
+                            return (
+                                <div key={i} className={`flex flex-col gap-1 ${color} border-b border-gray-800/50 pb-2 last:border-0`}>
+                                    <div className="flex justify-between items-start gap-2">
+                                        <span className="break-words">
+                                            {isJson ? (
+                                                <>
+                                                    <span className="font-bold">[{parsedLog.agent}]:</span> {parsedLog.message}
+                                                </>
+                                            ) : (
+                                                log
+                                            )}
+                                        </span>
+                                        {isJson && parsedLog.details && (
+                                            <button
+                                                onClick={() => {
+                                                    setContainerLogs(parsedLog.details); // Reuse container logs modal for simplicity
+                                                    setShowContainerLogs(true);
+                                                }}
+                                                className="shrink-0 text-[10px] bg-gray-800 hover:bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded border border-gray-700 transition-colors"
+                                            >
+                                                View Output
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
                         })}
                         <div ref={logsEndRef} />
                     </div>
-                </div>
-            </div>
+                </div >
+            </div >
 
             {/* Chat Modal */}
             <ChatModal
                 isOpen={showChatModal}
                 onClose={() => setShowChatModal(false)}
-                logs={logs}
-                plan={plan}
-                progress={progress}
-                waitingApproval={waitingApproval}
-                currentStep={currentStep}
                 prompt={prompt}
                 setPrompt={setPrompt}
                 runTask={runTask}
-                approveStep={approveStep}
-                rejectStep={rejectStep}
-                isWorking={isWorking}
-                isRunning={isRunning}
+                chatMessages={chatMessages}
             />
 
             {/* Terminal Modal */}
-            {showTerminal && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 md:p-10 backdrop-blur-sm">
-                    <div className="bg-gray-900 w-full h-full max-w-6xl rounded-lg border border-gray-700 flex flex-col shadow-2xl overflow-hidden">
-                        <div className="h-10 bg-gray-800 flex items-center justify-between px-4 border-b border-gray-700 shrink-0">
-                            <div className="flex items-center gap-2 text-gray-300 font-mono text-sm">
-                                <TerminalIcon className="w-4 h-4" />
-                                <span>Terminal</span>
-                            </div>
-                            <button onClick={() => setShowTerminal(false)} className="text-gray-400 hover:text-white transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 bg-black p-1 overflow-hidden relative">
-                            {id && <TerminalComponent startupId={id} />}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Container Logs Modal */}
-            {showContainerLogs && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 md:p-10 backdrop-blur-sm">
-                    <div className="bg-gray-900 w-full h-full max-w-4xl rounded-lg border border-gray-700 flex flex-col shadow-2xl overflow-hidden">
-                        <div className="h-10 bg-gray-800 flex items-center justify-between px-4 border-b border-gray-700 shrink-0">
-                            <div className="flex items-center gap-2 text-gray-300 font-mono text-sm">
-                                <FileText className="w-4 h-4" />
-                                <span>Container Logs</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={fetchContainerLogs} className="text-gray-400 hover:text-white transition-colors" title="Refresh">
-                                    <RefreshCw className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => setShowContainerLogs(false)} className="text-gray-400 hover:text-white transition-colors">
+            {
+                showTerminal && (
+                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 md:p-10 backdrop-blur-sm">
+                        <div className="bg-gray-900 w-full h-full max-w-6xl rounded-lg border border-gray-700 flex flex-col shadow-2xl overflow-hidden">
+                            <div className="h-10 bg-gray-800 flex items-center justify-between px-4 border-b border-gray-700 shrink-0">
+                                <div className="flex items-center gap-2 text-gray-300 font-mono text-sm">
+                                    <TerminalIcon className="w-4 h-4" />
+                                    <span>Terminal</span>
+                                </div>
+                                <button onClick={() => setShowTerminal(false)} className="text-gray-400 hover:text-white transition-colors">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
-                        </div>
-                        <div className="flex-1 bg-black p-4 overflow-auto">
-                            <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">{containerLogs}</pre>
+                            <div className="flex-1 bg-black p-1 overflow-hidden relative">
+                                {id && <TerminalComponent startupId={id} />}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* Container Logs Modal */}
+            {
+                showContainerLogs && (
+                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 md:p-10 backdrop-blur-sm">
+                        <div className="bg-gray-900 w-full h-full max-w-4xl rounded-lg border border-gray-700 flex flex-col shadow-2xl overflow-hidden">
+                            <div className="h-10 bg-gray-800 flex items-center justify-between px-4 border-b border-gray-700 shrink-0">
+                                <div className="flex items-center gap-2 text-gray-300 font-mono text-sm">
+                                    <FileText className="w-4 h-4" />
+                                    <span>Container Logs</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={fetchContainerLogs} className="text-gray-400 hover:text-white transition-colors" title="Refresh">
+                                        <RefreshCw className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => setShowContainerLogs(false)} className="text-gray-400 hover:text-white transition-colors">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex-1 bg-black p-4 overflow-auto">
+                                <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">{containerLogs}</pre>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

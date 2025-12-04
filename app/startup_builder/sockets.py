@@ -1,5 +1,5 @@
 from flask import request
-from flask_socketio import emit, disconnect
+from flask_socketio import emit, disconnect, join_room, leave_room
 from app.extensions import socketio
 from app.startup_builder.manager import DockerManager
 import docker
@@ -8,6 +8,9 @@ import time
 
 # Store active streams: sid -> {'sock': socket, 'thread': thread}
 active_streams = {}
+
+# Store builder subscriptions: startup_id -> set of session IDs
+builder_subscriptions = {}
 
 def read_stream(sid, sock):
     """
@@ -148,3 +151,84 @@ def handle_resize(data):
             manager.client.api.exec_resize(exec_id, height=rows, width=cols)
         except Exception as e:
             print(f"Error resizing terminal {sid}: {e}")
+
+# ============================================
+# Builder Namespace - Environment Status Updates
+# ============================================
+
+@socketio.on('connect', namespace='/builder')
+def builder_connect():
+    print(f'Client connected to builder: {request.sid}')
+    emit('connected', {'status': 'connected'})
+
+@socketio.on('disconnect', namespace='/builder')
+def builder_disconnect():
+    sid = request.sid
+    print(f'Client disconnected from builder: {sid}')
+    
+    # Remove from all subscriptions
+    for startup_id in list(builder_subscriptions.keys()):
+        if sid in builder_subscriptions[startup_id]:
+            builder_subscriptions[startup_id].discard(sid)
+            if not builder_subscriptions[startup_id]:
+                del builder_subscriptions[startup_id]
+
+@socketio.on('subscribe', namespace='/builder')
+def subscribe_to_startup(data):
+    startup_id = data.get('startup_id')
+    if not startup_id:
+        return
+    
+    sid = request.sid
+    room = f"startup_{startup_id}"
+    
+    # Join the room for this startup
+    join_room(room)
+    
+    # Track subscription
+    if startup_id not in builder_subscriptions:
+        builder_subscriptions[startup_id] = set()
+    builder_subscriptions[startup_id].add(sid)
+    
+    print(f"Client {sid} subscribed to startup {startup_id}")
+    
+    # Send current status immediately
+    from app.models import Startup
+    startup = Startup.query.get(startup_id)
+    if startup and startup.container_name:
+        manager = DockerManager()
+        try:
+            container = manager.client.containers.get(startup.container_name)
+            if container.status == 'running':
+                ports = container.attrs['NetworkSettings']['Ports']
+                emit('env_status', {
+                    'status': 'running',
+                    'container_id': container.id,
+                    'ports': ports
+                })
+            else:
+                emit('env_status', {'status': 'stopped'})
+        except:
+            emit('env_status', {'status': 'stopped'})
+    else:
+        emit('env_status', {'status': 'stopped'})
+
+@socketio.on('unsubscribe', namespace='/builder')
+def unsubscribe_from_startup(data):
+    startup_id = data.get('startup_id')
+    if not startup_id:
+        return
+    
+    sid = request.sid
+    room = f"startup_{startup_id}"
+    
+    # Leave the room
+    leave_room(room)
+    
+    # Remove from tracking
+    if startup_id in builder_subscriptions:
+        builder_subscriptions[startup_id].discard(sid)
+        if not builder_subscriptions[startup_id]:
+            del builder_subscriptions[startup_id]
+    
+    print(f"Client {sid} unsubscribed from startup {startup_id}")

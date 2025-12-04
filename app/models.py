@@ -267,6 +267,7 @@ class Startup(db.Model):
     current_stage = db.Column(db.Enum(StartupStage), default=StartupStage.EVALUATION, nullable=False)
     next_milestone = db.Column(db.String(255), nullable=True)
     recent_activity = db.Column(db.JSON, nullable=True) # Store as JSON array of strings
+    container_name = db.Column(db.String(100), nullable=True, unique=True) # Docker container name
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

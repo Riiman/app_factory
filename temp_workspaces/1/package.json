@@ -1,0 +1,21 @@
+{
+  "name": "your-project-name",
+  "version": "1.0.0",
+  "main": "api.js",
+  "scripts": {
+    "test": "cross-env NODE_ENV=test jest",
+    "start": "nodemon api.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cross-env": "^7.0.3",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "nodemon": "^2.0.22"
+  }
+}

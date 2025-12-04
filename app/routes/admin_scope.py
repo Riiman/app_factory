@@ -30,14 +30,37 @@ def update_scope_status(startup_id):
     except KeyError:
         return jsonify({'success': False, 'error': f'Invalid status: {new_status_str}'}), 400
 
-    startup.scope_document.status = new_status.name
-
-    # If the scope is accepted, move the startup to the contract stage
-    # and trigger the contract generation task.
+    scope_doc = startup.scope_document
+    
+    # If admin is setting status to ACCEPTED, mark admin_accepted as True
     if new_status == ScopeStatus.ACCEPTED:
-        startup.current_stage = StartupStage.CONTRACT
-        generate_contract_task.delay(startup.id)
-        print(f"--- [API] Triggered contract generation for startup ID: {startup.id} ---")
+        scope_doc.admin_accepted = True
+        print(f"--- [API] Admin accepted scope for startup ID: {startup.id} ---")
+        
+        # Check if both admin and founder have accepted
+        if scope_doc.admin_accepted and scope_doc.founder_accepted:
+            # Both parties accepted - transition to CONTRACT stage
+            scope_doc.status = ScopeStatus.ACCEPTED.name
+            startup.current_stage = StartupStage.CONTRACT
+            generate_contract_task.delay(startup.id)
+            print(f"--- [API] Both parties accepted. Triggered contract generation for startup ID: {startup.id} ---")
+        elif scope_doc.founder_accepted:
+            # Only founder accepted previously, now admin accepted too
+            scope_doc.status = ScopeStatus.ACCEPTED.name
+            startup.current_stage = StartupStage.CONTRACT
+            generate_contract_task.delay(startup.id)
+            print(f"--- [API] Founder already accepted. Admin accepted. Triggered contract generation for startup ID: {startup.id} ---")
+        else:
+            # Only admin accepted, waiting for founder
+            scope_doc.status = 'Pending Founder Acceptance'
+            print(f"--- [API] Admin accepted. Waiting for founder acceptance for startup ID: {startup.id} ---")
+    else:
+        # For other status changes (PROPOSED, IN_REVIEW, REJECTED, etc.)
+        scope_doc.status = new_status.name
+        # Reset acceptance flags if status is changed to something other than ACCEPTED
+        if new_status != ScopeStatus.ACCEPTED:
+            scope_doc.admin_accepted = False
+            scope_doc.founder_accepted = False
 
     db.session.commit()
     

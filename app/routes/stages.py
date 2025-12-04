@@ -152,13 +152,16 @@ def accept_scope():
     # Update acceptance
     if is_admin:
         scope_doc.admin_accepted = True
+        print(f"--- [API] Admin accepted scope for startup ID: {startup.id} ---")
     else:
         scope_doc.founder_accepted = True
+        print(f"--- [API] Founder accepted scope for startup ID: {startup.id} ---")
 
     # Check if both accepted
     if scope_doc.admin_accepted and scope_doc.founder_accepted:
         scope_doc.status = 'Accepted'
         startup.current_stage = 'CONTRACT' # Update startup stage
+        print(f"--- [API] Both parties accepted. Transitioning to CONTRACT stage for startup ID: {startup.id} ---")
         
         # Create initial contract if not exists
         if not startup.contract:
@@ -171,8 +174,10 @@ def accept_scope():
             
     elif scope_doc.admin_accepted:
          scope_doc.status = 'Pending Founder Acceptance'
+         print(f"--- [API] Admin accepted. Waiting for founder acceptance for startup ID: {startup.id} ---")
     elif scope_doc.founder_accepted:
          scope_doc.status = 'Pending Admin Acceptance'
+         print(f"--- [API] Founder accepted. Waiting for admin acceptance for startup ID: {startup.id} ---")
 
     db.session.commit()
     

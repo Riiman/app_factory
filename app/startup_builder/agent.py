@@ -176,6 +176,44 @@ class MultiAgentSystem:
         """Breaks down the spec into a list of tasks."""
         print("--- Task Manager Node ---")
         startup_id = state["startup_id"]
+
+        # --- FIX: Handle QA Failure ---
+        if state.get("status") == "qa_failed":
+             print("Task Manager: Detected QA Failure. Generating fix task.")
+             error_history = state.get("error_history", [])
+             last_error = error_history[-1] if error_history else "Unknown error"
+             
+             # Create a fix task
+             # Clean up error message for title
+             clean_error = last_error.split('\n')[0][:100]
+             fix_task = f"Fix QA Error: {clean_error}"
+             
+             # Append to tasks.json
+             tasks_path = "artifacts/tasks.json"
+             existing_tasks_data = self.docker_manager.read_file(startup_id, tasks_path)
+             
+             all_tasks = []
+             if "content" in existing_tasks_data and existing_tasks_data["content"]:
+                 try:
+                     all_tasks = json.loads(existing_tasks_data["content"])
+                 except:
+                     pass
+             
+             # Avoid adding duplicate fix tasks if we are looping on the same error
+             # But if we failed again, maybe we need to try again? 
+             # Let's just add it. The Developer/Planner will handle it.
+             
+             new_id = len(all_tasks) + 1
+             new_task_entry = {"id": new_id, "title": fix_task, "status": "pending"}
+             all_tasks.append(new_task_entry)
+             
+             self.docker_manager.write_file(startup_id, tasks_path, json.dumps(all_tasks, indent=2))
+             
+             return {
+                 "task_queue": [fix_task],
+                 "status": "developer",
+                 "logs": state.get("logs", []) + [f"Task Manager: Added fix task: {fix_task}"]
+             }
         
         # Resumability: Check for existing tasks
         tasks_path = "artifacts/tasks.json"
@@ -330,12 +368,14 @@ class MultiAgentSystem:
         3. **File Paths**: Must be relative to project root.
         4. **Granularity**: One logical change per step.
         5. **Verification**: Do NOT include "verify" steps. The Reviewer handles that.
+        6. **Output Format**: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or explanations.
+        7. **Interactive Commands**: Prefer non-interactive commands. However, if an interactive command is absolutely necessary (e.g. `npm login`, `cypress open`), set `"interactive": true` in the step object.
         
         Example Output:
         {
             "steps": [
                 {"id": 1, "description": "Install axios", "action": "command", "command": "npm install axios"},
-                {"id": 2, "description": "Create api service", "action": "write_file", "file_path": "src/api.js", "content": "..."}
+                {"id": 2, "description": "Open Cypress", "action": "command", "command": "npx cypress open", "interactive": true}
             ]
         }
         """
@@ -350,33 +390,65 @@ class MultiAgentSystem:
         
         try:
             response = json_llm.invoke(messages)
-            content = response.content
+            content = response.content.strip()
             
             # Extract JSON if wrapped in markdown (JSON mode might still do this)
             if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
+                content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
-                content = content.split("```")[1]
+                content = content.split("```")[1].strip()
             
-            data = json.loads(content)
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError:
+                # Fallback 1: Try to find the first '{' and last '}'
+                start = content.find('{')
+                end = content.rfind('}')
+                if start != -1 and end != -1:
+                    content = content[start:end+1]
+                    data = json.loads(content)
+                else:
+                    # Fallback 2: Treat as raw command
+                    print(f"DEBUG: Planner Fallback triggered. Content: {content[:50]}...")
+                    cmd = content.replace("```bash", "").replace("```sh", "").replace("```", "").strip()
+                    data = {
+                        "steps": [
+                            {
+                                "id": 1, 
+                                "description": "Execute generated command", 
+                                "action": "command", 
+                                "command": cmd
+                            }
+                        ]
+                    }
+            
             plan = data.get("steps", [])
             if not plan and isinstance(data, list):
                 plan = data
             
+            # Format log as JSON string for UI parsing
+            log_entry = {
+                "agent": "Planner",
+                "message": f"Generated {len(plan)} steps for task: {current_task}",
+                "details": json.dumps(plan, indent=2)
+            }
+            
             return {
                 "plan": plan,
                 "current_step_index": 0,
-                "status": "plan_ready", # Signal Overseer to switch to Execution
-                "logs": state.get("logs", []) + [f"Planner: Created {len(plan)} steps (JSON Mode)."]
+                "status": "plan_ready",
+                "logs": state.get("logs", []) + [json.dumps(log_entry)]
             }
         except Exception as e:
             error_msg = f"Planner failed: {str(e)}"
             print(error_msg)
-            print(f"DEBUG: Failed content: {content}")
+            # Log the raw content to the frontend for debugging
+            raw_content_preview = content[:1000] if content else "Empty response"
+            print(f"DEBUG: Failed content: {raw_content_preview}") 
             return {
                 "status": "failed", 
                 "error_history": [str(e)],
-                "logs": state.get("logs", []) + [error_msg]
+                "logs": state.get("logs", []) + [error_msg, f"DEBUG: Raw LLM Response:\n{raw_content_preview}"]
             }
 
     def developer_node(self, state):
@@ -407,6 +479,10 @@ class MultiAgentSystem:
             }
 
         # 2. Step Management: Execute the plan
+        if not plan:
+             print("Developer: Plan is empty. Triggering Planner.")
+             return {"status": "planning_needed"}
+
         if idx >= len(plan):
             # Task Complete! Pick next one immediately.
             print(f"Developer: Task '{current_task}' complete.")
@@ -640,13 +716,38 @@ class MultiAgentSystem:
 
         startup_id = state["startup_id"]
         step = state["current_step"]
+        print(f"Executor: Running step: {step.get('description')}")
         
+        # Check for resume signal
+        if state.get("interaction_completed"):
+            print("Executor: Resuming after manual interaction.")
+            return {
+                "last_result": {"exit_code": 0, "output": "Manual interaction completed by user."},
+                "status": "success",
+                "interaction_completed": False # Reset flag
+            }
+
+        # Check for interactive step
+        if step.get("interactive"):
+            print("Executor: Pausing for interactive step.")
+            return {
+                "status": "waiting_interaction",
+                "logs": state.get("logs", []) + [f"Executor: Pausing for interactive command: {step.get('command')}"]
+            }
+
         action = step.get("action")
-        result = {}
+        result = {"exit_code": 1, "output": "Unknown action"}
         
         if action == "command":
             cmd = step.get("command")
-            result = self.docker_manager.run_command(startup_id, cmd)
+            detach = step.get("background", False)
+            
+            # Auto-detect server start commands to prevent blocking
+            if "npm start" in cmd or "node api.js" in cmd or "python app.py" in cmd or "python3 app.py" in cmd:
+                detach = True
+                print(f"Executor: Detaching server command: {cmd}")
+                
+            result = self.docker_manager.run_command(startup_id, cmd, detach=detach)
         
         elif action == "write_file":
             path = step.get("file_path")
@@ -671,13 +772,17 @@ class MultiAgentSystem:
             except Exception as e:
                 print(f"Git automation failed: {e}")
                 # Don't fail the step just because git failed
-            
+        
+        # Format log as JSON string for UI parsing
+        log_entry = {
+            "agent": "Executor",
+            "message": f"Ran {action}: {step.get('command') if action == 'command' else step.get('file_path')}",
+            "details": result.get('output', '') if action == 'command' else f"Written {len(step.get('content', ''))} bytes"
+        }
+        
         return {
             "last_result": result,
-            "logs": state.get("logs", []) + [
-                f"Executor: Ran {action}: {step.get('command') if action == 'command' else step.get('file_path')}",
-                f"Output: {result.get('output', '')[:500]}..." if action == 'command' else ""
-            ]
+            "logs": state.get("logs", []) + [json.dumps(log_entry)]
         }
 
     def _take_screenshot(self, startup_id):
@@ -741,8 +846,8 @@ class MultiAgentSystem:
         1. Return a JSON OBJECT with "status" ("success" or "failed") and "reason".
         2. **Idempotency**: If a creation command fails because it already exists (e.g., "mkdir: File exists"), mark it as SUCCESS.
         3. **Warnings**: If the output contains warnings (e.g., "npm warn") but otherwise completed, mark it as SUCCESS.
-        4. **Errors**: If the output contains actual errors (e.g., "npm ERR!", "SyntaxError"), mark it as FAILED.
-        5. **Exit Code**: Use the exit code as a strong signal, but override it if the output indicates success/idempotency.
+        4. **Errors**: If the output contains actual errors (e.g., "npm ERR!", "SyntaxError", "[FAILED]", "Exception"), mark it as FAILED.
+        5. **Exit Code**: Use the exit code as a signal, but YOU MUST override it if the output contains explicit failure messages like "[FAILED]".
         
         Example Output:
         {"status": "success", "reason": "Directory already exists (idempotent)."}
@@ -780,6 +885,7 @@ class MultiAgentSystem:
             if status == "success":
                  return {
                     "status": "done",
+                    "current_step_index": state.get("current_step_index", 0) + 1,
                     "logs": state.get("logs", []) + [f"Reviewer: Step verified. Reason: {reason}"]
                 }
             else:
@@ -900,52 +1006,77 @@ class MultiAgentSystem:
             logs.append("Overseer: Execution complete. Activating QA Team.")
         elif status == "qa_failed":
             logs.append("Overseer: QA Failed. Re-activating Planning Team for fix.")
+        elif status == "qa_passed":
+            logs.append("Overseer: QA Passed. Task Completed Successfully.")
             
         return {"logs": logs}
 
     def tester_node(self, state):
-        """The QA Team that verifies the final output."""
-        print("--- Tester Node ---")
+        """The QA Team that verifies the final output and manages server lifecycle."""
+        print("--- QA/Tester Node ---")
         startup_id = state["startup_id"]
-        
-        # Basic Verification: Check if port 3000 is responding
-        # In a real system, this would run a test suite (npm test, pytest, etc.)
-        
-        print("Tester: Verifying application health...")
-        
-        # We can use the docker manager to run curl inside the container
-        # Or just check if the container is running and port is open.
-        # Let's try to curl localhost:3000 inside the container.
-        
-        # Retry logic: Wait for server to start (up to 30 seconds)
-        import time
-        max_retries = 10
-        for i in range(max_retries):
-            result = self.docker_manager.run_command(startup_id, "curl -I http://localhost:3000")
-            if result.get("exit_code") == 0:
-                logs = state.get("logs", [])
-                logs.append("Tester: Application is responsive (HTTP 200 OK).")
-                return {"status": "qa_passed", "logs": logs}
-            
-            print(f"Tester: Attempt {i+1}/{max_retries} failed. Waiting...")
-            time.sleep(3)
-            
-        # If we get here, all retries failed
         logs = state.get("logs", [])
         
-        # Fetch container logs to understand WHY it failed (e.g. "Missing script: start")
-        container_logs = self.docker_manager.get_container_logs(startup_id)
-        log_content = container_logs.get("logs", "No logs available.")
+        # 1. Server Management: Ensure Server is Running
+        print("Tester: Checking server status...")
         
-        # Truncate logs to last 2000 chars to avoid context overflow
-        if len(log_content) > 2000:
-            log_content = log_content[-2000:]
+        # Try to start/restart server
+        # We always restart to ensure latest code is running
+        self.docker_manager.stop_server(startup_id)
+        start_result = self.docker_manager.start_server(startup_id)
+        
+        if start_result.get("error"):
+            error_msg = f"Failed to start server: {start_result['error']}"
+            print(f"Tester: {error_msg}")
+            return {
+                "status": "qa_failed",
+                "error_history": state.get("error_history", []) + [error_msg],
+                "logs": logs + [f"Tester: {error_msg}"]
+            }
             
-        error_msg = f"Application not responding after {max_retries} attempts.\n\n--- Container Logs ---\n{log_content}"
-        logs.append(f"Tester: QA Failed. Container Logs:\n{log_content}")
+        logs.append(f"Tester: Server started (PID: {start_result.get('pid')}). Verifying health...")
         
-        return {
-            "status": "qa_failed", 
-            "error_history": state.get("error_history", []) + [error_msg],
-            "logs": logs
-        }
+        # 2. Health Check
+        import time
+        max_retries = 3 # Wait up to 9 seconds (3 * 3s)
+        server_healthy = False
+        
+        for i in range(max_retries):
+            # Check localhost:3000 (React) or 5000/8000 (Python)
+            # We can try multiple ports or just the one mapped
+            # For now, we assume 3000 as per MERN stack default
+            result = self.docker_manager.run_command(startup_id, "curl -I http://localhost:3000")
+            
+            if result.get("exit_code") == 0:
+                server_healthy = True
+                break
+            
+            # If 3000 fails, try 8000 (Python)
+            result_alt = self.docker_manager.run_command(startup_id, "curl -I http://localhost:8000")
+            if result_alt.get("exit_code") == 0:
+                 server_healthy = True
+                 break
+                 
+            time.sleep(3)
+            
+        if server_healthy:
+            logs.append("Tester: Application is responsive (HTTP 200 OK).")
+            return {"status": "qa_passed", "logs": logs}
+        else:
+            # 3. Runtime Error Analysis
+            # Fetch app.log to see why it failed
+            log_result = self.docker_manager.read_file(startup_id, "app.log")
+            app_log = log_result.get("content", "No app.log found.")
+            
+            # Truncate
+            if len(app_log) > 2000:
+                app_log = app_log[-2000:]
+                
+            error_msg = f"Server failed to start/respond.\n\n--- app.log ---\n{app_log}"
+            logs.append(f"Tester: Runtime Error Detected. Logs:\n{app_log}")
+            
+            return {
+                "status": "qa_failed", # Trigger Overseer to route to Architect/Developer
+                "error_history": state.get("error_history", []) + [error_msg],
+                "logs": logs
+            }
