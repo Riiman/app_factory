@@ -3,6 +3,20 @@ import operator
 import sqlite3
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
+from enum import Enum
+
+class AgentStateEnum(str, Enum):
+    BOOTSTRAP = "bootstrap"
+    DIAGNOSE = "diagnose"
+    TEST_GEN = "test_gen"
+    DEVELOP = "develop"
+    VERIFY = "verify"
+    PLANNING = "planning"
+    CODING = "coding"
+    REVIEWING = "reviewing"
+    DONE = "done"
+    FAILED = "failed"
+    WAITING_APPROVAL = "waiting_approval"
 
 class AgentState(TypedDict):
     startup_id: str
@@ -20,7 +34,7 @@ class AgentState(TypedDict):
     completed_tasks: int # Number of completed tasks
     status: str # "planning", "coding", "reviewing", "done", "failed", "waiting_approval"
 
-def create_graph(architect_node, spec_approval_node, task_manager_node, reasoning_node, planner_node, developer_node, executor_node, reviewer_node, debugger_node, strategist_node, overseer_node, tester_node, db_path="checkpoints.sqlite"):
+def create_graph(architect_node, spec_approval_node, task_manager_node, reasoning_node, planner_node, developer_node, executor_node, reviewer_node, debugger_node, strategist_node, overseer_node, tester_node, test_gen_node, db_path="checkpoints.sqlite"):
     # Initialize Checkpointer
     conn = sqlite3.connect(db_path, check_same_thread=False)
     checkpointer = SqliteSaver(conn)
@@ -46,25 +60,118 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
 
     # Team C: QA
     workflow.add_node("tester", tester_node)
+    workflow.add_node("test_gen", test_gen_node)
 
     # --- Edges ---
     
     # Entry Point
     workflow.set_entry_point("overseer")
     
-    # Overseer Logic (Conditional Routing)
-    def overseer_route(state):
-        status = state.get("status", "start")
-        if status == "start" or status == "planning_needed" or status == "qa_failed":
-            return "architect"
-        elif status == "plan_ready" or status == "waiting_approval":
-            return "developer"
-        elif status == "execution_done":
-            return "tester"
-        elif status == "qa_passed":
-            return END
-        return END
+# --- Routing Logic ---
 
+def overseer_route(state):
+    status = state.get("status", "start")
+    error_category = state.get("error_category", "UNKNOWN")
+    
+    if status == "start" or status == "planning_needed":
+        return "architect"
+    elif status == "qa_failed":
+        if error_category == "INFRASTRUCTURE":
+            return "architect" # Re-plan environment
+        elif error_category == "LOGIC_SYNTAX":
+            return "developer" # Fix code
+        elif error_category == "MISSING_IMPLEMENTATION":
+            return "developer" # Implement missing feature
+        return "architect" # Default fallback
+        
+    elif status == "plan_ready" or status == "waiting_approval":
+        return "test_gen"
+    elif status == "execution_done":
+        return "tester"
+    elif status == "qa_passed":
+        return END
+    elif status == AgentStateEnum.TEST_GEN:
+        return "test_gen"
+    elif status == AgentStateEnum.VERIFY:
+        return "tester"
+    return END
+
+def architect_route(state):
+    if state.get("status") == "waiting_approval":
+        return "spec_approval"
+    return "task_manager"
+
+def developer_route(state):
+    if state["status"] == "planning_needed":
+        return "reasoning" # Go to planning
+    elif state["status"] == "coding":
+        return "executor"
+    elif state["status"] == "execution_done":
+        return "overseer" # Go to QA
+    return "overseer"
+
+def reviewer_route(state):
+    if state["status"] == "failed":
+        error_category = state.get("error_category", "UNKNOWN")
+        
+        # Recursive Debugging: Go to Debugger
+        if len(state.get("error_history", [])) > 5: # Limit recursion depth
+            return "strategist" # Loop detected -> Strategist
+        
+        if error_category == "INFRASTRUCTURE":
+            return "architect" # Escalate to Architect for infra issues
+        
+        return "debugger" # Default to debugger for logic/syntax
+        
+    elif state["status"] == "done":
+        if state["current_step_index"] < len(state["plan"]):
+            return "next_step"
+        return "complete"
+    return "complete"
+
+def strategist_route(state):
+    action = state.get("strategy_action", "ABORT")
+    if action == "REPLAN":
+        return "planner"
+    elif action == "PIVOT":
+        return "reasoning"
+    elif action == "SKIP":
+        return "developer" # Skip step, go back to dev
+    return "failed"
+
+def create_graph(architect_node, spec_approval_node, task_manager_node, reasoning_node, planner_node, developer_node, executor_node, reviewer_node, debugger_node, strategist_node, overseer_node, tester_node, test_gen_node, db_path="checkpoints.sqlite"):
+    # Initialize Checkpointer
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    checkpointer = SqliteSaver(conn)
+
+    workflow = StateGraph(AgentState)
+
+    # --- Nodes ---
+    workflow.add_node("overseer", overseer_node)
+    
+    # Team A: Planning
+    workflow.add_node("architect", architect_node)
+    workflow.add_node("spec_approval", spec_approval_node)
+    workflow.add_node("task_manager", task_manager_node)
+    workflow.add_node("reasoning", reasoning_node)
+    workflow.add_node("planner", planner_node)
+    
+    # Team B: Execution
+    workflow.add_node("developer", developer_node)
+    workflow.add_node("executor", executor_node)
+    workflow.add_node("reviewer", reviewer_node)
+    workflow.add_node("debugger", debugger_node)
+    workflow.add_node("strategist", strategist_node) # New Node
+
+    # Team C: QA
+    workflow.add_node("tester", tester_node)
+    workflow.add_node("test_gen", test_gen_node)
+
+    # --- Edges ---
+    
+    # Entry Point
+    workflow.set_entry_point("overseer")
+    
     workflow.add_conditional_edges(
         "overseer",
         overseer_route,
@@ -72,15 +179,10 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
             "architect": "architect",
             "developer": "developer",
             "tester": "tester",
+            "test_gen": "test_gen",
             END: END
         }
     )
-
-    # Planning Loop
-    def architect_route(state):
-        if state.get("status") == "waiting_approval":
-            return "spec_approval"
-        return "task_manager"
 
     workflow.add_conditional_edges(
         "architect",
@@ -98,19 +200,6 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
     workflow.add_edge("planner", "overseer") 
 
     # Execution Loop
-    # Developer -> Executor (if coding) OR Planner (if planning_needed)
-    # But Developer returns status. It doesn't route itself.
-    # We need conditional edge from Developer.
-    
-    def developer_route(state):
-        if state["status"] == "planning_needed":
-            return "reasoning" # Go to planning
-        elif state["status"] == "coding":
-            return "executor"
-        elif state["status"] == "execution_done":
-            return "overseer" # Go to QA
-        return "overseer"
-
     workflow.add_conditional_edges(
         "developer",
         developer_route,
@@ -123,24 +212,13 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
 
     workflow.add_edge("executor", "reviewer")
     
-    def reviewer_route(state):
-        if state["status"] == "failed":
-            # Recursive Debugging: Go to Debugger
-            if len(state.get("error_history", [])) > 5: # Limit recursion depth
-                return "strategist" # Loop detected -> Strategist
-            return "debugger"
-        elif state["status"] == "done":
-            if state["current_step_index"] < len(state["plan"]):
-                return "next_step"
-            return "complete"
-        return "complete"
-
     workflow.add_conditional_edges(
         "reviewer",
         reviewer_route,
         {
             "debugger": "debugger", 
             "strategist": "strategist", # New Route
+            "architect": "architect", # Escalate Infra
             "next_step": "developer", # Next step
             "complete": "developer", # Task done, go back to Developer to pick next task
             "failed": END 
@@ -151,16 +229,6 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
     workflow.add_edge("debugger", "executor")
     
     # Strategist Routing
-    def strategist_route(state):
-        action = state.get("strategy_action", "ABORT")
-        if action == "REPLAN":
-            return "planner"
-        elif action == "PIVOT":
-            return "reasoning"
-        elif action == "SKIP":
-            return "developer" # Skip step, go back to dev
-        return "failed"
-
     workflow.add_conditional_edges(
         "strategist",
         strategist_route,
@@ -174,6 +242,7 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
 
     # QA Loop
     workflow.add_edge("tester", "overseer")
+    workflow.add_edge("test_gen", "developer")
 
     # Compile
     return workflow.compile(checkpointer=checkpointer, interrupt_before=["executor", "spec_approval"])

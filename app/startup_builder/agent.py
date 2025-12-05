@@ -2,12 +2,15 @@ import os
 import json
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
-from .manager import DockerManager
+from .manager import DockerManager, Linter
 from .memory import MemoryManager
+from .graph import AgentStateEnum
+from .utils import JsonRepair
 
 class MultiAgentSystem:
     def __init__(self):
         self.docker_manager = DockerManager()
+        self.linter = Linter(self.docker_manager)
         self.memory_managers = {} # Cache for MemoryManager instances
         self._init_llm()
 
@@ -157,15 +160,42 @@ class MultiAgentSystem:
         context = f"Project Files:\n{files}\n\nGoal: {goal}"
         
         # 3. Spec Generation (The "Architect" Phase)
+        system_prompt = """You are a Chief Technology Officer (CTO).
+        Analyze the goal and the current project state.
+        Create a high-level Technical Specification (spec.md).
         
-        return {
-            "context": context,
-            "logs": state.get("logs", []) + ["Architect: Analyzed project structure and context files."]
-        }
-        return {
-            "context": context,
-            "logs": state.get("logs", []) + ["Architect: Analyzed project structure and context files."]
-        }
+        CRITICAL RULES:
+        1. Return the content of the spec.md file directly.
+        2. Include:
+           - **Goal**: Restate the goal.
+           - **Architecture**: Brief overview of the approach.
+           - **Files**: List of files to be created/modified.
+           - **Steps**: High-level steps.
+        """
+        
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=context)
+        ]
+        
+        try:
+            response = self.llm.invoke(messages)
+            spec_content = response.content
+            
+            # Save spec to artifacts
+            self.docker_manager.run_command(startup_id, "mkdir -p artifacts")
+            self.docker_manager.write_file(startup_id, "artifacts/spec.md", spec_content)
+            
+            return {
+                "context": context,
+                "logs": state.get("logs", []) + ["Architect: Generated Technical Specification (spec.md)."]
+            }
+        except Exception as e:
+            print(f"Architect failed: {e}")
+            return {
+                "context": context,
+                "logs": state.get("logs", []) + [f"Architect: Failed to generate spec: {e}"]
+            }
 
     def spec_approval_node(self, state):
         """Dummy node to trigger interrupt for Spec Approval."""
@@ -388,68 +418,56 @@ class MultiAgentSystem:
         # Use JSON Mode
         json_llm = self.llm.bind(response_format={"type": "json_object"})
         
-        try:
-            response = json_llm.invoke(messages)
-            content = response.content.strip()
-            
-            # Extract JSON if wrapped in markdown (JSON mode might still do this)
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].strip()
-            
+        max_retries = 3
+        current_messages = messages.copy()
+        
+        for attempt in range(max_retries):
             try:
-                data = json.loads(content)
-            except json.JSONDecodeError:
-                # Fallback 1: Try to find the first '{' and last '}'
-                start = content.find('{')
-                end = content.rfind('}')
-                if start != -1 and end != -1:
-                    content = content[start:end+1]
-                    data = json.loads(content)
-                else:
-                    # Fallback 2: Treat as raw command
-                    print(f"DEBUG: Planner Fallback triggered. Content: {content[:50]}...")
-                    cmd = content.replace("```bash", "").replace("```sh", "").replace("```", "").strip()
-                    data = {
-                        "steps": [
-                            {
-                                "id": 1, 
-                                "description": "Execute generated command", 
-                                "action": "command", 
-                                "command": cmd
-                            }
-                        ]
+                response = json_llm.invoke(current_messages)
+                content = response.content.strip()
+                
+                # Use JsonRepair for robust parsing
+                try:
+                    data = JsonRepair.parse(content)
+                except ValueError as e:
+                    print(f"Planner JSON Parse Error (Attempt {attempt+1}/{max_retries}): {e}")
+                    # Feedback loop: Add error to messages and retry
+                    current_messages.append(HumanMessage(content=f"JSON Error: {str(e)}. Please fix the JSON format and return ONLY the JSON object."))
+                    continue
+
+                plan = data.get("steps", [])
+                if not plan and isinstance(data, list):
+                    plan = data
+                
+                # Format log as JSON string for UI parsing
+                log_entry = {
+                    "agent": "Planner",
+                    "message": f"Generated {len(plan)} steps for task: {current_task}",
+                    "details": json.dumps(plan, indent=2)
+                }
+                
+                return {
+                    "plan": plan,
+                    "current_step_index": 0,
+                    "status": "plan_ready",
+                    "logs": state.get("logs", []) + [json.dumps(log_entry)]
+                }
+            except Exception as e:
+                print(f"Planner LLM Error (Attempt {attempt+1}/{max_retries}): {e}")
+                if attempt == max_retries - 1:
+                    error_msg = f"Planner failed after {max_retries} attempts: {str(e)}"
+                    return {
+                        "status": "failed", 
+                        "error_history": [str(e)],
+                        "logs": state.get("logs", []) + [error_msg]
                     }
-            
-            plan = data.get("steps", [])
-            if not plan and isinstance(data, list):
-                plan = data
-            
-            # Format log as JSON string for UI parsing
-            log_entry = {
-                "agent": "Planner",
-                "message": f"Generated {len(plan)} steps for task: {current_task}",
-                "details": json.dumps(plan, indent=2)
-            }
-            
-            return {
-                "plan": plan,
-                "current_step_index": 0,
-                "status": "plan_ready",
-                "logs": state.get("logs", []) + [json.dumps(log_entry)]
-            }
-        except Exception as e:
-            error_msg = f"Planner failed: {str(e)}"
-            print(error_msg)
-            # Log the raw content to the frontend for debugging
-            raw_content_preview = content[:1000] if content else "Empty response"
-            print(f"DEBUG: Failed content: {raw_content_preview}") 
-            return {
-                "status": "failed", 
-                "error_history": [str(e)],
-                "logs": state.get("logs", []) + [error_msg, f"DEBUG: Raw LLM Response:\n{raw_content_preview}"]
-            }
+                current_messages.append(HumanMessage(content=f"Error: {str(e)}. Please try again."))
+        
+        return {
+            "status": "failed",
+            "error_history": ["Planner failed to generate valid JSON after multiple attempts."],
+            "logs": state.get("logs", []) + ["Planner: Failed to generate valid plan."]
+        }
 
     def developer_node(self, state):
         """Manages task queue and prepares steps for execution."""
@@ -757,6 +775,16 @@ class MultiAgentSystem:
             result = self.docker_manager.write_file(startup_id, path, content)
             print(f"DEBUG: Write Result: {result}")
             
+            # Auto-Linting
+            lint_result = self.linter.lint_file(startup_id, path)
+            if not lint_result["passed"]:
+                print(f"Linter Failed for {path}: {lint_result['errors']}")
+                # We don't fail the step immediately, but we append errors to logs
+                # The Reviewer will see this.
+                result["linter_errors"] = lint_result["errors"]
+            else:
+                print(f"Linter Passed for {path}")
+            
         # --- Git Automation ---
         if result.get("exit_code", 0) == 0:
             try:
@@ -831,10 +859,22 @@ class MultiAgentSystem:
         command = step.get("command") or step.get("file_path") or "Unknown Action"
         output = result.get("output", "") or result.get("error", "")
         exit_code = result.get("exit_code", 0)
+        linter_errors = result.get("linter_errors", [])
         
         print(f"DEBUG: Reviewer checking: {command} (Exit: {exit_code})")
         
-        system_prompt = """You are a Senior QA Engineer.
+        # Immediate Fail on Linter Errors
+        if linter_errors:
+            error_msg = f"Linter Errors Detected:\n" + "\n".join(linter_errors[:10])
+            print(f"Reviewer: {error_msg}")
+            return {
+                "status": "failed",
+                "error_category": "LOGIC_SYNTAX",
+                "error_history": state.get("error_history", []) + [error_msg],
+                "logs": state.get("logs", []) + [f"Reviewer: Step failed due to linter errors."]
+            }
+        
+        system_prompt = """You are a cynical QA Engineer.
         Analyze the execution result of a development step.
         
         INPUT DATA:
@@ -843,14 +883,13 @@ class MultiAgentSystem:
         - Exit Code: The shell exit code (0 = success, non-zero = usually failure).
         
         CRITICAL RULES:
-        1. Return a JSON OBJECT with "status" ("success" or "failed") and "reason".
-        2. **Idempotency**: If a creation command fails because it already exists (e.g., "mkdir: File exists"), mark it as SUCCESS.
-        3. **Warnings**: If the output contains warnings (e.g., "npm warn") but otherwise completed, mark it as SUCCESS.
-        4. **Errors**: If the output contains actual errors (e.g., "npm ERR!", "SyntaxError", "[FAILED]", "Exception"), mark it as FAILED.
-        5. **Exit Code**: Use the exit code as a signal, but YOU MUST override it if the output contains explicit failure messages like "[FAILED]".
+        1. **TRUST OUTPUT OVER EXIT CODE**: The "Exit Code" is often WRONG (e.g. pip exits with 0 even when it fails).
+        2. **SEARCH FOR ERRORS**: Scan the "Output" for keywords: "error", "failed", "exception", "externally-managed-environment", "command not found".
+        3. **IF ERROR FOUND -> FAIL**: If ANY of those keywords appear in a failure context, you MUST return "status": "failed", even if Exit Code is 0.
+        4. **Idempotency**: If a creation command fails because it already exists (e.g., "mkdir: File exists"), mark it as SUCCESS.
+        5. **Warnings**: If the output contains ONLY warnings (e.g., "npm warn") but otherwise completed, mark it as SUCCESS.
         
-        Example Output:
-        {"status": "success", "reason": "Directory already exists (idempotent)."}
+        Return JSON: {"status": "success" | "failed", "reason": "...", "category": "..."}
         """
         
         user_message = f"""
@@ -860,6 +899,8 @@ class MultiAgentSystem:
         {output[:2000]} 
         """
         
+        print(f"DEBUG: Reviewer LLM Input:\n{user_message}")
+
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message)
@@ -879,8 +920,9 @@ class MultiAgentSystem:
             verdict = json.loads(content)
             status = verdict.get("status", "failed").lower()
             reason = verdict.get("reason", "Unknown reason")
+            category = verdict.get("category", "LOGIC_SYNTAX") # Default to logic if unknown
             
-            print(f"Reviewer Verdict: {status} - {reason}")
+            print(f"Reviewer Verdict: {status} - {reason} ({category})")
             
             if status == "success":
                  return {
@@ -896,14 +938,16 @@ class MultiAgentSystem:
                 if len(error_history) >= 3 and error_msg in error_history[-2:]:
                     return {
                         "status": "failed",
+                        "error_category": category,
                         "error_history": error_history + [error_msg],
                         "logs": state.get("logs", []) + [f"Reviewer: CRITICAL - Loop detected. Aborting. Error: {error_msg}"]
                     }
 
                 return {
                     "status": "failed",
+                    "error_category": category,
                     "error_history": error_history + [error_msg],
-                    "logs": state.get("logs", []) + [f"Reviewer: Step failed. Reason: {reason}. Requesting fix..."]
+                    "logs": state.get("logs", []) + [f"Reviewer: Step failed. Reason: {reason}. Category: {category}. Requesting fix..."]
                 }
                 
         except Exception as e:
@@ -912,7 +956,11 @@ class MultiAgentSystem:
             if exit_code == 0:
                  return {"status": "done", "logs": state.get("logs", []) + ["Reviewer: Verified (Fallback)."]}
             else:
-                 return {"status": "failed", "logs": state.get("logs", []) + [f"Reviewer: Failed (Fallback). Error: {str(e)}"]}
+                 return {
+                     "status": "failed", 
+                     "error_category": "LOGIC_SYNTAX", # Assume logic error on fallback
+                     "logs": state.get("logs", []) + [f"Reviewer: Failed (Fallback). Error: {str(e)}"]
+                 }
             
         # Robust check for npm errors even if exit code is 0 (some versions/configs might behave oddly)
         output = result.get("output", "").lower()
@@ -922,6 +970,7 @@ class MultiAgentSystem:
              print(f"Reviewer found error in output: {error_msg}")
              return {
                 "status": "failed",
+                "error_category": "LOGIC_SYNTAX",
                 "error_history": state.get("error_history", []) + [error_msg],
                 "logs": state.get("logs", []) + [f"Reviewer: Step failed. Error: {error_msg}. Requesting fix..."]
             }
@@ -936,6 +985,7 @@ class MultiAgentSystem:
                 print(f"Reviewer: {error_msg}")
                 return {
                     "status": "failed",
+                    "error_category": "MISSING_IMPLEMENTATION",
                     "error_history": state.get("error_history", []) + [error_msg],
                     "logs": state.get("logs", []) + [f"Reviewer: {error_msg}"]
                 }
@@ -946,6 +996,7 @@ class MultiAgentSystem:
                 print(f"Reviewer: {error_msg}")
                 return {
                     "status": "failed",
+                    "error_category": "LOGIC_SYNTAX",
                     "error_history": state.get("error_history", []) + [error_msg],
                     "logs": state.get("logs", []) + [f"Reviewer: {error_msg}"]
                 }
@@ -1004,6 +1055,10 @@ class MultiAgentSystem:
             logs.append("Overseer: Plan approved. Activating Execution Team.")
         elif status == "execution_done":
             logs.append("Overseer: Execution complete. Activating QA Team.")
+        elif status == AgentStateEnum.TEST_GEN:
+            logs.append("Overseer: Generating Verification Script (Test-First).")
+        elif status == AgentStateEnum.VERIFY:
+            logs.append("Overseer: Running Verification Script.")
         elif status == "qa_failed":
             logs.append("Overseer: QA Failed. Re-activating Planning Team for fix.")
         elif status == "qa_passed":
@@ -1011,12 +1066,80 @@ class MultiAgentSystem:
             
         return {"logs": logs}
 
+    def test_gen_node(self, state):
+        """Generates a verification script before implementation."""
+        print("--- Test Gen Node ---")
+        goal = state.get("current_task", state.get("goal"))
+        startup_id = state["startup_id"]
+        
+        system_prompt = """You are a QA Automation Engineer.
+        Your job is to write a standalone Python script to verify if a specific task has been completed successfully.
+        
+        CRITICAL RULES:
+        1. The script must be self-contained (no external dependencies other than requests/standard lib if possible).
+        2. It should print "VERIFICATION PASSED" if successful, and "VERIFICATION FAILED: <reason>" if not.
+        3. It should exit with code 0 for pass, 1 for fail.
+        4. Return ONLY the python code for the script.
+        """
+        
+        user_message = f"""
+        Task to Verify: {goal}
+        
+        Context: The app runs on localhost:3000 (React) and localhost:5000 (Flask).
+        """
+        
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_message)
+        ]
+        
+        try:
+            response = self.llm.invoke(messages)
+            script_content = response.content.replace("```python", "").replace("```", "").strip()
+            
+            # Write the script
+            self.docker_manager.write_file(startup_id, "verify_task.py", script_content)
+            
+            return {
+                "status": "plan_ready",
+                "logs": state.get("logs", []) + ["Test Gen: Created verification script."]
+            }
+        except Exception as e:
+            print(f"Test Gen Failed: {e}")
+            # Fallback to standard testing if generation fails
+            return {
+                "status": "plan_ready",
+                "logs": state.get("logs", []) + [f"Test Gen: Failed to generate script ({e}). Using standard checks."]
+            }
+
     def tester_node(self, state):
         """The QA Team that verifies the final output and manages server lifecycle."""
         print("--- QA/Tester Node ---")
         startup_id = state["startup_id"]
         logs = state.get("logs", [])
         
+        # 0. Check for Verification Script (Test-First Strategy)
+        check_script = self.docker_manager.run_command(startup_id, "ls verify_task.py")
+        if check_script.get("exit_code") == 0:
+            print("Tester: Found verification script. Running it...")
+            # Run the script
+            verify_result = self.docker_manager.run_command(startup_id, "python3 verify_task.py")
+            output = verify_result.get("output", "")
+            
+            if verify_result.get("exit_code") == 0:
+                logs.append(f"Tester: Verification Script Passed.\n{output}")
+                return {"status": "qa_passed", "logs": logs}
+            else:
+                error_msg = f"Verification Script Failed.\n{output}"
+                logs.append(f"Tester: {error_msg}")
+                return {
+                    "status": "qa_failed",
+                    "error_category": "LOGIC_SYNTAX", # Verification script failure is usually logic
+                    "error_history": state.get("error_history", []) + [error_msg],
+                    "logs": logs
+                }
+
+        # Fallback: Standard Server Health Check
         # 1. Server Management: Ensure Server is Running
         print("Tester: Checking server status...")
         
@@ -1030,6 +1153,7 @@ class MultiAgentSystem:
             print(f"Tester: {error_msg}")
             return {
                 "status": "qa_failed",
+                "error_category": "INFRASTRUCTURE",
                 "error_history": state.get("error_history", []) + [error_msg],
                 "logs": logs + [f"Tester: {error_msg}"]
             }
@@ -1077,6 +1201,7 @@ class MultiAgentSystem:
             
             return {
                 "status": "qa_failed", # Trigger Overseer to route to Architect/Developer
+                "error_category": "INFRASTRUCTURE", # Runtime crash is usually infra/runtime
                 "error_history": state.get("error_history", []) + [error_msg],
                 "logs": logs
             }

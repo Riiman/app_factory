@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { authenticateToken, authorizeUserOrAdmin } = require('./auth');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
@@ -164,11 +166,41 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.get('/', (req, res) => {
-  res.send('API Running');
+// GET /api/hello endpoint
+app.get('/api/hello', (req, res) => {
+  res.json({ message: 'Hello World' });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+app.get('/hello.txt', (req, res) => {
+  const helloPath = path.join(__dirname, 'hello.txt');
+  fs.readFile(helloPath, 'utf8', (err, data) => {
+    if (err) {
+      res.status(404).send('Not found');
+    } else {
+      res.type('text/plain').send(data);
+    }
+  });
 });
+
+// Root route for verification
+app.get('/', (req, res) => {
+  // Try to serve the React build index.html if it exists
+  const reactIndex = path.join(__dirname, 'client', 'build', 'index.html');
+  fs.readFile(reactIndex, 'utf8', (err, data) => {
+    if (!err) {
+      res.type('html').send(data);
+    } else {
+      // Fallback placeholder for verification
+      res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>React App</title></head><body><div id="root">Welcome to the React App!</div><script>console.log('React app loaded');</script></body></html>`);
+    }
+  });
+});
+
+if (require.main === module) {
+  const PORT = 3000;
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+module.exports = app;

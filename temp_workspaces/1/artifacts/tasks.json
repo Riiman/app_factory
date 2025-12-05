@@ -1,1 +1,222 @@
-[]
+[
+  {
+    "id": 1,
+    "title": "Identify backend implementation (Flask or Node.js/Express)",
+    "status": "completed"
+  },
+  {
+    "id": 2,
+    "title": "Locate main backend file (flask_app.py, api.js, or server.js)",
+    "status": "completed"
+  },
+  {
+    "id": 3,
+    "title": "Add GET /api/hello endpoint returning {\"message\": \"Hello World\"}",
+    "status": "completed"
+  },
+  {
+    "id": 4,
+    "title": "Add or update test for GET /api/hello endpoint",
+    "status": "completed"
+  },
+  {
+    "id": 5,
+    "title": "Restart backend server",
+    "status": "completed"
+  },
+  {
+    "id": 6,
+    "title": "Manually verify /api/hello endpoint returns correct JSON",
+    "status": "completed"
+  },
+  {
+    "id": 7,
+    "title": "Update documentation or README to reflect new endpoint",
+    "status": "completed"
+  },
+  {
+    "id": 8,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "completed"
+  },
+  {
+    "id": 9,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 10,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 11,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 12,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 13,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 14,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 15,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 16,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 17,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 18,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 19,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 20,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 21,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 22,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 23,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 24,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 25,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 26,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 27,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 28,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 29,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 30,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 31,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 32,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 33,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 34,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 35,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 36,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 37,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 38,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 39,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 40,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 41,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 42,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 43,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  },
+  {
+    "id": 44,
+    "title": "Fix QA Error: Verification Script Failed.",
+    "status": "pending"
+  }
+]

@@ -522,3 +522,62 @@ class DockerManager:
 
         except Exception as e:
             return {"error": str(e)}
+
+    def get_container_logs(self, startup_id):
+        """Returns the logs of the container."""
+        if not self.client:
+            return {"error": "Docker not available"}
+            
+        container_name = self.get_container_name(startup_id)
+        try:
+            container = self.client.containers.get(container_name)
+            return {"logs": container.logs().decode('utf-8')}
+        except Exception as e:
+            return {"error": str(e)}
+
+class Linter:
+    def __init__(self, docker_manager):
+        self.docker_manager = docker_manager
+
+    def lint_file(self, startup_id, file_path):
+        """
+        Runs the appropriate linter based on file extension.
+        Returns: {"passed": bool, "errors": list[str]}
+        """
+        if file_path.endswith(".js") or file_path.endswith(".ts") or file_path.endswith(".jsx") or file_path.endswith(".tsx"):
+            return self.run_eslint(startup_id, file_path)
+        elif file_path.endswith(".py"):
+            return self.run_flake8(startup_id, file_path)
+        else:
+            return {"passed": True, "errors": []}
+
+    def run_eslint(self, startup_id, file_path):
+        # Check for existing config
+        check_config = self.docker_manager.run_command(startup_id, "ls eslint.config.js")
+        config_flag = ""
+        
+        if check_config.get("exit_code") != 0:
+            # No config found, use default in /tmp
+            default_config_path = "/tmp/eslint.config.js"
+            # Create default config if not exists
+            # We use a simple check to avoid overwriting if it exists (though overwriting is fine for tmp)
+            create_config_cmd = "echo 'module.exports = [{files: [\"**/*.js\", \"**/*.ts\", \"**/*.jsx\", \"**/*.tsx\"], rules: {\"no-unused-vars\": \"warn\", \"no-undef\": \"error\"}}];' > " + default_config_path
+            self.docker_manager.run_command(startup_id, create_config_cmd)
+            config_flag = f"--config {default_config_path}"
+            
+        cmd = f"eslint {config_flag} {file_path}"
+        result = self.docker_manager.run_command(startup_id, cmd)
+        
+        if result.get("exit_code") == 0:
+            return {"passed": True, "errors": []}
+        else:
+            return {"passed": False, "errors": result.get("output", "").splitlines()}
+
+    def run_flake8(self, startup_id, file_path):
+        cmd = f"flake8 {file_path}"
+        result = self.docker_manager.run_command(startup_id, cmd)
+        
+        if result.get("exit_code") == 0:
+            return {"passed": True, "errors": []}
+        else:
+            return {"passed": False, "errors": result.get("output", "").splitlines()}

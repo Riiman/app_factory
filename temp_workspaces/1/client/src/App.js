@@ -1,32 +1,12 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import UserLogin from './UserLogin';
-import UserRegistration from './UserRegistration';
-import Dashboard from './Dashboard';
-import DashboardHome from './DashboardHome';
-import ProfileManagement from './ProfileManagement';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import SimpleButton from './components/SimpleButton';
+import './App.css';
 
 function App() {
   return (
-    <Router>
-      <div className=App>
-        <SimpleButton />
-        <Routes>
-          <Route path=/login element={<UserLogin />} />
-          <Route path=/register element={<UserRegistration />} />
-          <Route path=/dashboard element={
-            <Dashboard>
-              <DashboardHome />
-            </Dashboard>
-          } />
-          <Route path=/profile element={<ProfileManagement />} />
-        </Routes>
-        <ToastContainer position=top-right autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
-      </div>
-    </Router>
+    <div className="App">
+      <h1>React App Running</h1>
+      {/* Other components/routes here */}
+    </div>
   );
 }
 

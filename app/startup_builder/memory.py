@@ -86,3 +86,25 @@ class MemoryManager:
         
         docs = vectorstore.similarity_search(query, k=k)
         return [doc.page_content for doc in docs]
+
+class RetryBudget:
+    def __init__(self, max_retries=3):
+        self.max_retries = max_retries
+        self.attempts = {} # Key: (goal, state), Value: count
+
+    def check_budget(self, goal, state):
+        key = (goal, state)
+        count = self.attempts.get(key, 0)
+        if count >= self.max_retries:
+            return False
+        return True
+
+    def consume_budget(self, goal, state):
+        key = (goal, state)
+        self.attempts[key] = self.attempts.get(key, 0) + 1
+        return self.attempts[key]
+    
+    def reset_budget(self, goal, state):
+        key = (goal, state)
+        if key in self.attempts:
+            del self.attempts[key]

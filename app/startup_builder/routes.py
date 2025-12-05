@@ -19,7 +19,8 @@ graph = create_graph(
     agent.debugger_node,
     agent.strategist_node, # New Node
     agent.overseer_node,
-    agent.tester_node
+    agent.tester_node,
+    agent.test_gen_node
 )
 
 import threading

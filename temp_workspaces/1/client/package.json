@@ -1,10 +1,15 @@
 {
-  // ...existing content...
+  "name": "client",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
   "scripts": {
-    // ...existing scripts...
-    "test": "cross-env NODE_ENV=test jest",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   }
-  // ...rest of file...
 }

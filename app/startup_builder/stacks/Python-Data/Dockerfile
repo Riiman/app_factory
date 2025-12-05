@@ -18,7 +18,8 @@ RUN pip install --no-cache-dir \
     jupyter \
     flask \
     fastapi \
-    uvicorn
+    uvicorn \
+    flake8
 
 # Set working directory
 WORKDIR /app
