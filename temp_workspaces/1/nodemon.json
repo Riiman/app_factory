@@ -1,5 +1,0 @@
-{
-  "watch": ["."],
-  "ext": "js,json",
-  "ignore": ["artifacts/*", "node_modules/*"]
-}
