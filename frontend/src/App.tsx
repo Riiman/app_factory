@@ -6,6 +6,7 @@ import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import api, { getWebSocketUrl } from './utils/api';
 import DashboardPage from './pages/DashboardPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import SubmissionPage from './pages/SubmissionPage';
@@ -31,7 +32,9 @@ const AppRoutes: FC = () => {
     if (!token) return; // Don't connect if no token
 
     // Establish WebSocket connection for dashboard notifications with token
-    const ws = new WebSocket(`ws://localhost:8000/ws/dashboard-notifications?token=${token}`);
+    // Establish WebSocket connection for dashboard notifications with token
+    const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
+    const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
     ws.onopen = () => {
       console.log("Connected to dashboard notifications WebSocket.");
