@@ -4,7 +4,7 @@ import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 
 const SubmissionPage = () => {
-    const { user, submissionData, nextQuestion, isLoading } = useAuth();
+    const { user, submissionData, nextQuestion, isLoading, handleLogout, refreshUser } = useAuth();
     const navigate = useNavigate();
 
     const [messages, setMessages] = useState([]);
@@ -17,6 +17,10 @@ const SubmissionPage = () => {
         if (!isLoading) {
             if (!user) {
                 navigate('/login');
+            } else if (submissionData?.status === 'PENDING' || submissionData?.status === 'FINALIZE_SUBMISSION') {
+                navigate('/finalize-submission');
+            } else if (submissionData?.status === 'not_started' || !submissionData) {
+                navigate('/start-submission');
             } else if (nextQuestion && !initialMessagesSet.current) {
                 const greeting = user.full_name ? `Hello ${user.full_name}!` : 'Hello there!';
                 setMessages([{ text: greeting, sender: 'bot' }, { text: nextQuestion, sender: 'bot' }]);
@@ -42,16 +46,17 @@ const SubmissionPage = () => {
 
         try {
             const data = await api.chat(userInput);
-            
+
             // The useAuth hook will automatically update with the new submissionData
             // so we don't need to set it locally.
-            
+
             setMessages(prev => [...prev, { text: data.next_question, sender: 'bot' }]);
 
             if (data.is_completed) {
+                await refreshUser(); // Refresh auth context to get updated status
                 setTimeout(() => {
-                    navigate('/pending-review');
-                }, 3000);
+                    navigate('/finalize-submission');
+                }, 1000); // Reduced timeout as we are now waiting for refresh
             }
         } catch (error) {
             console.error('Failed to send message:', error);
@@ -102,17 +107,25 @@ const SubmissionPage = () => {
 
             {/* Submission Summary Sidebar */}
             <div className="w-1/3 bg-white border-l p-6 overflow-y-auto">
-                <h2 className="text-xl font-bold mb-4">Your Submission Details</h2>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold">Your Submission Details</h2>
+                    <button
+                        onClick={handleLogout}
+                        className="text-sm text-red-600 hover:text-red-800 font-medium"
+                    >
+                        Logout
+                    </button>
+                </div>
                 {submissionData ? (
                     <div>
                         {Object.entries(submissionData).map(([key, value]) => {
-                             if (['id', 'user_id', 'status', 'submitted_at', 'raw_chat_data', 'chat_progress_step', 'user', 'evaluation', 'startup'].includes(key)) {
+                            if (['id', 'user_id', 'status', 'submitted_at', 'raw_chat_data', 'chat_progress_step', 'user', 'evaluation', 'startup'].includes(key)) {
                                 return null;
                             }
                             return (
                                 <div key={key} className="mb-4">
                                     <h3 className="font-semibold capitalize">{key.replace(/_/g, ' ')}</h3>
-                                    <p className="text-gray-700 whitespace-pre-wrap">{value ? value : <span className="text-gray-400">Not yet provided</span>}</p>
+                                    <p className="text-gray-700 whitespace-pre-wrap">{value ? String(value) : <span className="text-gray-400">Not yet provided</span>}</p>
                                 </div>
                             );
                         })}

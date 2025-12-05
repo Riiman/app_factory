@@ -61,14 +61,15 @@ def generate_product_from_scope(startup_id: int):
     {
       "name": "A concise and catchy product name derived from the scope",
       "description": "A one or two-sentence high-level description of the product's purpose and value.",
-      "features": [
         {
           "name": "Feature Name 1",
-          "description": "A brief description of what this feature does and its primary benefit."
+          "description": "A brief description of what this feature does and its primary benefit.",
+          "acceptance_criteria": "A list of specific conditions that must be met for this feature to be considered complete."
         },
         {
           "name": "Feature Name 2",
-          "description": "A brief description of what this feature does and its primary benefit."
+          "description": "A brief description of what this feature does and its primary benefit.",
+          "acceptance_criteria": "A list of specific conditions that must be met for this feature to be considered complete."
         }
       ]
     }

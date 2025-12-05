@@ -7,7 +7,10 @@
 import React from 'react';
 import { MarketingCampaign, MarketingCampaignStatus } from '@/types/dashboard-types';
 import Card from '@/components/Card';
-import { Plus } from 'lucide-react';
+import api from '@/utils/api';
+import { Plus, Sparkles } from 'lucide-react';
+
+// ... (existing interfaces)
 
 /**
  * Props for the MarketingCampaignsPage component.
@@ -34,17 +37,40 @@ const getStatusColor = (status: MarketingCampaignStatus) => {
     }
 };
 
-const MarketingCampaignsPage: React.FC<MarketingCampaignsPageProps> = ({ campaigns, onSelectCampaign, onAddNewCampaign }) => {
+const MarketingCampaignsPage: React.FC<MarketingCampaignsPageProps> = ({ startupId, campaigns, onSelectCampaign, onAddNewCampaign }) => {
+    const handleGenerateGtm = async () => {
+        if (confirm('Are you sure you want to generate a GTM strategy based on your scope document?')) {
+            try {
+                await api.generateAssets(startupId, false, true);
+                alert('GTM strategy generation triggered! This may take a few minutes.');
+            } catch (error) {
+                console.error("Failed to trigger generation:", error);
+                alert("Failed to trigger generation.");
+            }
+        }
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Marketing Campaigns</h1>
-                <button 
-                    onClick={onAddNewCampaign}
-                    className="flex items-center px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
-                    <Plus className="h-5 w-5 mr-2" />
-                    <span className="text-sm font-medium">Create New Campaign</span>
-                </button>
+                <div className="flex space-x-2">
+                    {(campaigns || []).length === 0 && (
+                        <button
+                            onClick={handleGenerateGtm}
+                            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                        >
+                            <Sparkles className="h-5 w-5 mr-2" />
+                            <span className="text-sm font-medium">Generate Strategy</span>
+                        </button>
+                    )}
+                    <button
+                        onClick={onAddNewCampaign}
+                        className="flex items-center px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
+                        <Plus className="h-5 w-5 mr-2" />
+                        <span className="text-sm font-medium">Create New Campaign</span>
+                    </button>
+                </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {(campaigns || []).map(campaign => (

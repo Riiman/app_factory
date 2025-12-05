@@ -21,7 +21,7 @@ class Config:
     LINKEDIN_CLIENT_ID = os.environ.get('LINKEDIN_CLIENT_ID', 'your-linkedin-client-id')
     LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET', 'your-linkedin-client-secret')
     
-    SERVER_NAME = '127.0.0.1:5000'
+    # SERVER_NAME = '127.0.0.1:5000'
 
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
@@ -42,8 +42,8 @@ class Config:
     # Azure OpenAI Configuration
     AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
     AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
-    AZURE_DEPLOYMENT_NAME = os.getenv('AZURE_DEPLOYMENT_NAME', 'gpt-4')
-    AZURE_API_VERSION = os.getenv('AZURE_API_VERSION', '2024-08-01-preview')
+    AZURE_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
+    AZURE_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2024-08-01-preview')
     
     # File paths
     DOCUMENTS_DIR = os.path.join(os.path.dirname(basedir), 'generated_documents')

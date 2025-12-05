@@ -5,6 +5,8 @@ from app.utils.decorators import admin_required
 from app.tasks import generate_startup_assets_task
 from datetime import datetime
 
+from app.services.notification_service import publish_update
+
 admin_contract_bp = Blueprint('admin_contract', __name__, url_prefix='/api/admin/contract')
 
 @admin_contract_bp.route('/<int:startup_id>/comments', methods=['POST'])
@@ -33,6 +35,9 @@ def add_contract_comment(startup_id):
     )
     db.session.add(comment)
     db.session.commit()
+    
+    publish_update("contract_comment_added", {"startup_id": startup.id, "comment": comment.to_dict()}, rooms=["admin", f"user_{startup.user_id}"])
+    
     return jsonify({'success': True, 'comment': comment.to_dict()}), 201
 
 @admin_contract_bp.route('/<int:startup_id>/signatories', methods=['POST'])
@@ -60,6 +65,9 @@ def add_contract_signatory(startup_id):
     )
     db.session.add(signatory)
     db.session.commit()
+    
+    publish_update("contract_signatory_added", {"startup_id": startup.id, "signatory": signatory.to_dict()}, rooms=["admin", f"user_{startup.user_id}"])
+    
     return jsonify({'success': True, 'signatory': signatory.to_dict()}), 201
 
 @admin_contract_bp.route('/<int:startup_id>/status', methods=['PUT'])
@@ -93,9 +101,12 @@ def update_contract_status(startup_id):
             contract.signed_at = datetime.utcnow()
         # Update startup stage to ADMITTED
         startup.current_stage = StartupStage.ADMITTED
-        # Trigger the generation of startup assets
-        generate_startup_assets_task.delay(startup.id)
-        print(f"--- [API] Triggered startup asset generation for startup ID: {startup.id} ---")
+        # Asset generation is now triggered manually by the user via the dashboard
+        # generate_startup_assets_task.delay(startup.id)
+        # print(f"--- [API] Triggered startup asset generation for startup ID: {startup.id} ---")
 
     db.session.commit()
+    
+    publish_update("contract_status_updated", {"startup_id": startup.id, "contract": contract.to_dict()}, rooms=["admin", f"user_{startup.user_id}"])
+    
     return jsonify({'success': True, 'contract': contract.to_dict()}), 200

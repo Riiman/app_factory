@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, Product, Founder, MarketingCampaign, ProductMetric, ProductBusinessDetails, Investor, ActivityLog, DashboardNotification } from '@/types/dashboard-types';
+import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, Product, Founder, MarketingCampaign, ProductMetric, ProductBusinessDetails, Investor, ActivityLog, DashboardNotification, Feature, Fundraise } from '@/types/dashboard-types';
 import api from '@/utils/api';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
@@ -54,9 +54,11 @@ import EditProductModal from '@/components/dashboard/EditProductModal';
 import EditProductBusinessDetailsModal from '@/components/dashboard/EditProductBusinessDetailsModal';
 import EditFundingRoundModal from '@/components/dashboard/EditFundingRoundModal';
 import EditMetricModal from '@/components/dashboard/EditMetricModal';
+import EditFeatureModal from '@/components/dashboard/EditFeatureModal';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { BusinessOverview } from '@/types/dashboard-types';
+import { BusinessOverview, StartupStage } from '@/types/dashboard-types';
+import AssetGenerationModal from '@/components/dashboard/AssetGenerationModal';
 
 type CreateModalType = 'task' | 'experiment' | 'artifact';
 
@@ -114,6 +116,23 @@ const DashboardPage: React.FC = () => {
         }
     }, [startup]);
 
+    // --- Asset Generation Modal Logic ---
+    const [isAssetGenerationModalOpen, setIsAssetGenerationModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (startupData && startupData.current_stage === StartupStage.ADMITTED) {
+            const hasProduct = (startupData.products || []).length > 0;
+            const hasGtm = (startupData.marketing_campaigns || []).length > 0;
+
+            if (!hasProduct || !hasGtm) {
+                const hideModal = localStorage.getItem(`hide_asset_modal_${startupData.id}`);
+                if (!hideModal) {
+                    setIsAssetGenerationModalOpen(true);
+                }
+            }
+        }
+    }, [startupData]);
+
 
     // --- UI State (Navigation, Modals, etc.) ---
     const [activeScope, setActiveScope] = useState<Scope>(Scope.DASHBOARD);
@@ -163,6 +182,9 @@ const DashboardPage: React.FC = () => {
     const [isEditMetricModalOpen, setIsEditMetricModalOpen] = useState(false);
     const [selectedMetricToEdit, setSelectedMetricToEdit] = useState<ProductMetric | null>(null);
     const [productIdForMetricEdit, setProductIdForMetricEdit] = useState<number | null>(null);
+    const [isEditFeatureModalOpen, setIsEditFeatureModalOpen] = useState(false);
+    const [selectedFeatureToEdit, setSelectedFeatureToEdit] = useState<Feature | null>(null);
+    const [productIdForFeatureEdit, setProductIdForFeatureEdit] = useState<number | null>(null);
 
     // --- Handlers and Component Logic (remains largely the same) ---
     // NOTE: The create/update/delete handlers still use manual state updates.
@@ -399,6 +421,14 @@ const DashboardPage: React.FC = () => {
             setIsEditMetricModalOpen(false);
         } catch (error) { console.error("Failed to update metric:", error); }
     };
+    const handleUpdateFeature = async (productId: number, featureId: number, updatedData: Partial<Feature>) => {
+        if (!startupData) return;
+        try {
+            const response = await api.updateFeature(startupData.id, productId, featureId, updatedData);
+            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, features: p.features.map(f => f.id === featureId ? response : f) } : p) : null);
+            setIsEditFeatureModalOpen(false);
+        } catch (error) { console.error("Failed to update feature:", error); }
+    };
     const handleBackToList = () => setSelectedProductId(null);
     const handleBackToRoundsList = () => setSelectedFundingRoundId(null);
     const handleBackToCampaignsList = () => setSelectedCampaignId(null);
@@ -462,6 +492,11 @@ const DashboardPage: React.FC = () => {
                                 setProductIdForMetricEdit(productId);
                                 setSelectedMetricToEdit(metric);
                                 setIsEditMetricModalOpen(true);
+                            }}
+                            onEditFeature={(productId, feature) => {
+                                setProductIdForFeatureEdit(productId);
+                                setSelectedFeatureToEdit(feature);
+                                setIsEditFeatureModalOpen(true);
                             }}
                         />;
                     }
@@ -541,7 +576,7 @@ const DashboardPage: React.FC = () => {
                         onAddNewInvestor={() => setIsCreateInvestorModalOpen(true)}
                     />;
                 }
-                return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details} />;
+                return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details} onEdit={() => setIsEditFundraisingGoalsModalOpen(true)} />;
 
             case Scope.MARKETING:
                 const selectedCampaign = (marketingCampaigns || []).find(c => c.campaign_id === selectedCampaignId);
@@ -610,6 +645,7 @@ const DashboardPage: React.FC = () => {
                     setFounders={setFounders}
                     onAddNewFounder={() => setIsCreateFounderModalOpen(true)}
                     onEditFounder={(founder) => { setSelectedFounderToEdit(founder); setIsEditFounderModalOpen(true); }}
+                    onDeleteFounder={handleDeleteFounder}
                 />;
             case Scope.SETTINGS:
                 return <SettingsPage
@@ -706,6 +742,17 @@ const DashboardPage: React.FC = () => {
             {isEditProductBusinessDetailsModalOpen && selectedProductBusinessDetailsToEdit && productIdForBusinessDetailsEdit && <EditProductBusinessDetailsModal productBusinessDetails={selectedProductBusinessDetailsToEdit} onClose={() => setIsEditProductBusinessDetailsModalOpen(false)} onUpdate={(updatedData) => handleUpdateProductBusinessDetails(productIdForBusinessDetailsEdit, updatedData)} />}
             {isEditFundingRoundModalOpen && selectedFundingRoundToEdit && <EditFundingRoundModal round={selectedFundingRoundToEdit} onClose={() => setIsEditFundingRoundModalOpen(false)} onUpdate={(updatedData) => handleUpdateFundingRound(selectedFundingRoundToEdit.round_id, updatedData)} />}
             {isEditMetricModalOpen && selectedMetricToEdit && productIdForMetricEdit && <EditMetricModal metric={selectedMetricToEdit} onClose={() => setIsEditMetricModalOpen(false)} onUpdate={(updatedData) => handleUpdateMetric(productIdForMetricEdit, selectedMetricToEdit.metric_id, updatedData)} />}
+            {isEditFeatureModalOpen && selectedFeatureToEdit && productIdForFeatureEdit && <EditFeatureModal feature={selectedFeatureToEdit} onClose={() => setIsEditFeatureModalOpen(false)} onUpdate={(updatedData) => handleUpdateFeature(productIdForFeatureEdit, selectedFeatureToEdit.id, updatedData)} />}
+
+            {startupData && (
+                <AssetGenerationModal
+                    isOpen={isAssetGenerationModalOpen}
+                    onClose={() => setIsAssetGenerationModalOpen(false)}
+                    startupId={startupData.id}
+                    hasProduct={(startupData.products || []).length > 0}
+                    hasGtm={(startupData.marketing_campaigns || []).length > 0}
+                />
+            )}
         </div>
     );
 };

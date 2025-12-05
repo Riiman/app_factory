@@ -12,6 +12,7 @@ from app.services.document_generator_service import generate_scope_document
 from app.tasks import generate_product_task
 from app.services.product_generator_service import generate_product_from_scope
 from app.models import Product, Feature, ActivityLog
+from app.services.notification_service import publish_update
 
 
 print("--- DEBUG: Importing admin.py ---")
@@ -21,7 +22,9 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 @admin_bp.route('/submissions', methods=['GET'])
 @admin_required
 def get_all_submissions():
-    submissions = Submission.query.all()
+    submissions = Submission.query.filter(
+        Submission.status.notin_([SubmissionStatus.DRAFT, SubmissionStatus.FINALIZE_SUBMISSION])
+    ).all()
     print(f"--- DEBUG: Found {len(submissions)} submissions in get_all_submissions ---")
     return jsonify({'success': True, 'submissions': [s.to_dict() for s in submissions]}), 200
 
@@ -54,6 +57,9 @@ def update_startup_stage(startup_id):
 
     startup.current_stage = new_stage
     db.session.commit()
+    
+    publish_update("startup_stage_updated", {"startup_id": startup.id, "new_stage": new_stage.value}, rooms=["admin", f"user_{startup.user_id}"])
+    
     return jsonify({'success': True, 'startup': startup.to_dict(include_relations=False)}), 200
 
 @admin_bp.route('/submissions/<int:submission_id>/status', methods=['PUT'])
@@ -124,6 +130,7 @@ def update_submission_status(submission_id):
 
     try:
         db.session.commit()
+        publish_update("submission_status_updated", {"submission_id": submission.id, "new_status": new_status.value}, rooms=["admin", f"user_{submission.user_id}"])
     except IntegrityError:
         db.session.rollback()
         return jsonify({'success': False, 'error': 'A startup already exists for this submission.'}), 409
@@ -152,6 +159,8 @@ def update_submission_status(submission_id):
         )
         db.session.add(task)
         db.session.commit()
+        
+        publish_update("evaluation_task_created", {"submission_id": submission.id, "task": task.to_dict()}, rooms=["admin", f"user_{submission.user_id}"])
     
         return jsonify({'success': True, 'task': task.to_dict()}), 201
 
@@ -179,6 +188,9 @@ def update_user_role(user_id):
 
     user.role = new_role
     db.session.commit()
+    
+    publish_update("user_role_updated", {"user_id": user.id, "new_role": new_role.value}, rooms=["admin", f"user_{user.id}"])
+    
     return jsonify({'success': True, 'user': user.to_dict()}), 200
 
 @admin_bp.route('/startups/<int:startup_id>/scope', methods=['PUT'])
@@ -193,6 +205,9 @@ def update_scope_document(startup_id):
     startup.scope_document.gtm_scope = data.get('gtmScope', startup.scope_document.gtm_scope)
     
     db.session.commit()
+    
+    publish_update("scope_document_updated", {"startup_id": startup.id, "scope_document": startup.scope_document.to_dict()}, rooms=["admin", f"user_{startup.user_id}"])
+    
     return jsonify({'success': True, 'scope_document': startup.scope_document.to_dict()}), 200
 
 @admin_bp.route('/startups/<int:startup_id>/scope/comments', methods=['POST'])
@@ -216,6 +231,9 @@ def add_scope_comment(startup_id):
     )
     db.session.add(comment)
     db.session.commit()
+    
+    publish_update("scope_comment_added", {"startup_id": startup.id, "comment": comment.to_dict()}, rooms=["admin", f"user_{startup.user_id}"])
+    
     return jsonify({'success': True, 'comment': comment.to_dict()}), 201
 
 @admin_bp.route('/startups/<int:startup_id>/contract', methods=['PUT'])
@@ -242,7 +260,39 @@ def update_contract(startup_id):
             return jsonify({'success': False, 'error': f'Invalid contract status: {new_status_str}'}), 400
 
     db.session.commit()
+    
+    publish_update("contract_updated", {"startup_id": startup.id, "contract": startup.contract.to_dict()}, rooms=["admin", f"user_{startup.user_id}"])
+    
     return jsonify({'success': True, 'contract': startup.contract.to_dict()}), 200
+
+@admin_bp.route('/startups/<int:startup_id>/contract/comments', methods=['POST'])
+@admin_required
+def add_contract_comment(startup_id):
+    startup = Startup.query.get_or_404(startup_id)
+    if not startup.contract:
+        return jsonify({'success': False, 'error': 'Contract not found for this startup'}), 404
+
+    data = request.get_json()
+    text = data.get('text')
+    if not text:
+        return jsonify({'success': False, 'error': 'Comment text is required'}), 400
+
+    admin_user_id = session.get('user_id')
+    
+    # Ensure ContractComment is imported or available
+    from app.models import ContractComment
+
+    comment = ContractComment(
+        contract_id=startup.contract.id,
+        user_id=admin_user_id,
+        text=text
+    )
+    db.session.add(comment)
+    db.session.commit()
+    
+    publish_update("contract_comment_added", {"startup_id": startup.id, "comment": comment.to_dict()}, rooms=["admin", f"user_{startup.user_id}"])
+    
+    return jsonify({'success': True, 'comment': comment.to_dict()}), 201
 
 @admin_bp.route('/startups/<int:startup_id>/generate-product', methods=['POST'])
 @admin_required
@@ -289,6 +339,11 @@ def create_activity():
     
     db.session.add(activity)
     db.session.commit()
+    
+    # Activity logs are generally for admins, but if it relates to a startup, the user might want to know?
+    # The current implementation seems to be admin-focused.
+    # Let's publish to admin room.
+    publish_update("activity_created", {"activity": activity.to_dict()}, rooms=["admin"])
     
     return jsonify({'success': True, 'activity': activity.to_dict()}), 201
 

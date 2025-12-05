@@ -9,7 +9,8 @@ import SignupPage from './pages/SignupPage';
 import DashboardPage from './pages/DashboardPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import SubmissionPage from './pages/SubmissionPage';
-import PendingReviewPage from './pages/PendingReviewPage';
+import FinalizeSubmissionPage from './pages/FinalizeSubmissionPage';
+import InReviewPage from './pages/InReviewPage';
 import RejectedSubmissionPage from './pages/RejectedSubmissionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute'; // Import PublicRoute
@@ -19,14 +20,18 @@ import EvaluationPage from './pages/EvaluationPage';
 import ScopePage from './pages/ScopePage';
 import ContractPage from './pages/ContractPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import StartupCodeStudio from './pages/admin/StartupCodeStudio';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const AppRoutes: FC = () => {
   const queryClient = useQueryClient();
+  const { token, refreshUser } = useAuth(); // Get token and refreshUser from AuthContext
 
   useEffect(() => {
-    // Establish WebSocket connection for dashboard notifications
-    const ws = new WebSocket("ws://localhost:8000/ws/dashboard-notifications");
+    if (!token) return; // Don't connect if no token
+
+    // Establish WebSocket connection for dashboard notifications with token
+    const ws = new WebSocket(`ws://localhost:8000/ws/dashboard-notifications?token=${token}`);
 
     ws.onopen = () => {
       console.log("Connected to dashboard notifications WebSocket.");
@@ -40,6 +45,15 @@ const AppRoutes: FC = () => {
           // This tells React Query to refetch the data for the dashboard
           queryClient.invalidateQueries({ queryKey: ['startupData'] });
           queryClient.invalidateQueries({ queryKey: ['adminData'] });
+          refreshUser(); // Refresh user context to update status/stage
+        } else if (message.type.startsWith('submission_')) {
+          console.log(`Received submission update (${message.type}), invalidating submission queries:`, message);
+          queryClient.invalidateQueries({ queryKey: ['submission'] });
+          queryClient.invalidateQueries({ queryKey: ['submissions'] });
+          // Also invalidate dashboard data as submission status might affect it
+          queryClient.invalidateQueries({ queryKey: ['startupData'] });
+          queryClient.invalidateQueries({ queryKey: ['adminData'] });
+          refreshUser(); // Refresh user context to update status/stage which triggers redirection
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -60,7 +74,7 @@ const AppRoutes: FC = () => {
         ws.close();
       }
     };
-  }, [queryClient]); // Add queryClient to the dependency array
+  }, [queryClient, token, refreshUser]); // Add queryClient, token, and refreshUser to the dependency array
 
   return (
     <Routes>
@@ -76,8 +90,9 @@ const AppRoutes: FC = () => {
       {/* Routes for logged-out users only */}
       <Route element={<PublicRoute />}>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
       </Route>
+
+      <Route path="/signup" element={<SignupPage />} />
 
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
@@ -86,7 +101,8 @@ const AppRoutes: FC = () => {
         <Route path="/start-submission" element={<StartSubmissionPage />} />
         <Route path="/submission" element={<SubmissionPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/pending-review" element={<PendingReviewPage />} />
+        <Route path="/finalize-submission" element={<FinalizeSubmissionPage />} />
+        <Route path="/in-review" element={<InReviewPage />} />
         <Route path="/rejected-submission" element={<RejectedSubmissionPage />} />
         <Route path="/evaluation" element={<EvaluationPage />} />
         <Route path="/scope" element={<ScopePage />} />
@@ -96,6 +112,7 @@ const AppRoutes: FC = () => {
       {/* Protected Routes (Admin) */}
       <Route element={<AdminRoute />}>
         <Route path="/admin/*" element={<AdminDashboardPage />} />
+        <Route path="/admin/startups/:id/code-studio" element={<StartupCodeStudio />} />
       </Route>
 
       {/* Redirect any unknown paths to home */}

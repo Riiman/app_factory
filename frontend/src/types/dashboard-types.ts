@@ -4,6 +4,8 @@ export enum UserRole {
 }
 
 export enum SubmissionStatus {
+  DRAFT = 'DRAFT',
+  FINALIZE_SUBMISSION = 'FINALIZE_SUBMISSION',
   PENDING = 'PENDING',
   IN_REVIEW = 'IN_REVIEW',
   APPROVED = 'APPROVED',
@@ -39,6 +41,7 @@ export enum MarketingCampaignStatus {
   PLANNED = 'planned',
   ACTIVE = 'active',
   COMPLETED = 'completed',
+  PAUSED = 'paused',
 }
 
 export enum MarketingContentStatus {
@@ -89,6 +92,7 @@ export enum ContractStatus {
   DRAFT = 'DRAFT',
   SENT = 'SENT',
   SIGNED = 'SIGNED',
+  ACCEPTED = 'ACCEPTED',
 }
 
 export type LinkedEntityType = 'Product' | 'FundingRound' | 'MarketingCampaign';
@@ -119,6 +123,8 @@ export interface Contract {
   content?: string; // New field for generated contract text
   document_url?: string; // Made optional as content will be primary
   status: ContractStatus;
+  founder_accepted?: boolean;
+  admin_accepted?: boolean;
   sent_at?: string;
   signed_at?: string;
   signatories: ContractSignatory[];
@@ -130,6 +136,14 @@ export interface Comment {
   author: 'Admin' | 'Founder';
   text: string;
   createdAt: string;
+  section_id?: string;
+}
+
+export interface ScopeSection {
+  id: string;
+  title: string;
+  content: string[];
+  comments: Comment[];
 }
 
 export interface ScopeDocument {
@@ -139,6 +153,8 @@ export interface ScopeDocument {
   version: string;
   status: ScopeStatus;
   content: string;
+  founder_accepted?: boolean;
+  admin_accepted?: boolean;
   comments: Comment[];
   created_at: string;
   updated_at: string;
@@ -149,6 +165,7 @@ export interface User {
   firebase_uid?: string;
   email: string;
   phone_number?: string;
+  mobile?: string;
   email_verified: boolean;
   phone_verified: boolean;
   full_name: string;
@@ -217,12 +234,19 @@ export interface ProductIssue {
   resolved_at?: string;
 }
 
+export enum FeatureStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+}
+
 export interface Feature {
   id: number;
   product_id: number;
   name: string;
   description: string;
   acceptance_criteria?: string;
+  status: FeatureStatus;
 }
 
 export interface ProductBusinessDetails {
@@ -423,6 +447,7 @@ export interface Founder {
   role: string;
   email: string;
   phone_number?: string;
+  mobile?: string;
   linkedin_link?: string;
 }
 
@@ -456,6 +481,7 @@ export interface Startup {
   user: User;
   submission: Submission;
   founders: Founder[];
+  investors: Investor[];
   products: Product[];
   monthly_data: BusinessMonthlyData[];
   funding_rounds: FundingRound[];

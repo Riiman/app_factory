@@ -5,6 +5,8 @@ from app.utils.decorators import admin_required
 from flask_jwt_extended import jwt_required
 
 
+from app.services.notification_service import publish_update
+
 notifications_bp = Blueprint('notifications', __name__, url_prefix='/api/notifications')
 
 @notifications_bp.route('', methods=['GET'])
@@ -44,6 +46,8 @@ def create_notification():
     db.session.add(notification)
     db.session.commit()
     
+    publish_update("notification_created", {"notification": notification.to_dict()}, rooms=[f"user_{notification.user_id}"])
+    
     return jsonify({'success': True, 'notification': notification.to_dict()}), 201
 
 @notifications_bp.route('/<int:notification_id>/read', methods=['PUT'])
@@ -53,4 +57,7 @@ def mark_as_read(notification_id):
     notification = DashboardNotification.query.get_or_404(notification_id)
     notification.read = True
     db.session.commit()
+    
+    publish_update("notification_read", {"notification_id": notification.id}, rooms=[f"user_{notification.user_id}"])
+    
     return jsonify({'success': True, 'notification': notification.to_dict()}), 200

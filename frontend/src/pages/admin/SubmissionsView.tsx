@@ -7,21 +7,33 @@ import EvaluationDetailModal from '../../components/admin/EvaluationDetailModal'
 
 interface SubmissionsViewProps {
   submissions: Submission[];
-  onUpdateStatus: (submissionId: number, status: SubmissionStatus) => void;
+  onUpdateStatus: (submissionId: number, status: SubmissionStatus) => Promise<void>;
 }
 
 const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdateStatus }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [updatingSubmissionId, setUpdatingSubmissionId] = useState<number | null>(null);
 
   const submissionsWithDetails = useMemo(() => {
     return submissions.filter(s => s.status === SubmissionStatus.PENDING).map(sub => ({
       ...sub,
     })).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
   }, [submissions]);
-  
+
   const handleSelectSubmission = (submission: Submission) => {
     setSelectedSubmission(submission);
+  };
+
+  const handleStatusUpdate = async (id: number, status: SubmissionStatus) => {
+    setUpdatingSubmissionId(id);
+    try {
+      await onUpdateStatus(id, status);
+    } catch (error) {
+      console.error("Error updating status:", error);
+    } finally {
+      setUpdatingSubmissionId(null);
+    }
   };
 
   const selectedDetails = selectedSubmission ? submissionsWithDetails.find(s => s.id === selectedSubmission.id) : null;
@@ -41,8 +53,8 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdate
                   className={`w-full text-left p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${selectedSubmission?.id === sub.id ? 'bg-brand-primary/5' : ''}`}
                 >
                   <div className="flex justify-between items-center">
-                      <p className="font-semibold text-brand-text-primary">{sub.startup_name}</p>
-                      <StatusBadge status={sub.status} />
+                    <p className="font-semibold text-brand-text-primary">{sub.startup_name}</p>
+                    <StatusBadge status={sub.status} />
                   </div>
                   <p className="text-sm text-brand-text-secondary mt-1">by {sub.user?.full_name || 'Unknown User'}</p>
                   <p className="text-xs text-slate-500 mt-1 truncate">{sub.user?.email}{sub.user?.mobile && ` • ${sub.user.mobile}`}</p>
@@ -65,69 +77,81 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdate
                       <UserIcon className="mr-1.5 h-4 w-4" /> Submitted by <span className="font-semibold ml-1">{selectedDetails.user?.full_name}</span>
                     </div>
                     <span className="text-slate-400 mx-2">&bull;</span>
-                     <a href={`mailto:${selectedDetails.user?.email}`} className="text-sm text-brand-primary hover:underline">{selectedDetails.user?.email}</a>
-                     {selectedDetails.user?.mobile && (
-                       <>
-                         <span className="text-slate-400 mx-2">&bull;</span>
-                         <a href={`tel:${selectedDetails.user.mobile}`} className="text-sm text-brand-text-secondary hover:underline">{selectedDetails.user.mobile}</a>
-                       </>
-                     )}
+                    <a href={`mailto:${selectedDetails.user?.email}`} className="text-sm text-brand-primary hover:underline">{selectedDetails.user?.email}</a>
+                    {selectedDetails.user?.mobile && (
+                      <>
+                        <span className="text-slate-400 mx-2">&bull;</span>
+                        <a href={`tel:${selectedDetails.user.mobile}`} className="text-sm text-brand-text-secondary hover:underline">{selectedDetails.user.mobile}</a>
+                      </>
+                    )}
                   </div>
                 </div>
                 {selectedDetails.status === SubmissionStatus.PENDING && (
-                    <div className="flex space-x-2">
-                        <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.REJECTED)} className="flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-                            <FileX className="mr-2 h-4 w-4" /> Reject
-                        </button>
-                        <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.IN_REVIEW)} className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                            <FileClock className="mr-2 h-4 w-4" /> Move to Review
-                        </button>
-                        <button onClick={() => onUpdateStatus(selectedDetails.id, SubmissionStatus.APPROVED)} className="flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-                            <FileCheck className="mr-2 h-4 w-4" /> Approve
-                        </button>
-                    </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleStatusUpdate(selectedDetails.id, SubmissionStatus.REJECTED)}
+                      disabled={updatingSubmissionId !== null}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {updatingSubmissionId === selectedDetails.id ? 'Processing...' : <><FileX className="mr-2 h-4 w-4" /> Reject</>}
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(selectedDetails.id, SubmissionStatus.IN_REVIEW)}
+                      disabled={updatingSubmissionId !== null}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {updatingSubmissionId === selectedDetails.id ? 'Processing...' : <><FileClock className="mr-2 h-4 w-4" /> Move to Review</>}
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(selectedDetails.id, SubmissionStatus.APPROVED)}
+                      disabled={updatingSubmissionId !== null}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {updatingSubmissionId === selectedDetails.id ? 'Processing...' : <><FileCheck className="mr-2 h-4 w-4" /> Approve</>}
+                    </button>
+                  </div>
                 )}
               </div>
 
               <Card title="Submission Details">
-                  <div className="space-y-4">
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">Founders and Inspiration</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.founders_and_inspiration}</p>
-                      </div>
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">Problem Statement</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.problem_statement}</p>
-                      </div>
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">Who Experiences Problem</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.who_experiences_problem}</p>
-                      </div>
-                       <div>
-                          <h4 className="font-semibold text-brand-text-primary">Product/Service Idea</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.product_service_idea}</p>
-                      </div>
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">How Solves Problem</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.how_solves_problem}</p>
-                      </div>
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">Intended Users/Customers</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.intended_users_customers}</p>
-                      </div>
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">Main Competitors/Alternatives</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.main_competitors_alternatives}</p>
-                      </div>
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">How Stands Out</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.how_stands_out}</p>
-                      </div>
-                      <div>
-                          <h4 className="font-semibold text-brand-text-primary">Startup Type</h4>
-                          <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.startup_type}</p>
-                      </div>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">Founders and Inspiration</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.founders_and_inspiration}</p>
                   </div>
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">Problem Statement</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.problem_statement}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">Who Experiences Problem</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.who_experiences_problem}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">Product/Service Idea</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.product_service_idea}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">How Solves Problem</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.how_solves_problem}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">Intended Users/Customers</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.intended_users_customers}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">Main Competitors/Alternatives</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.main_competitors_alternatives}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">How Stands Out</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.how_stands_out}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-brand-text-primary">Startup Type</h4>
+                    <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.startup_type}</p>
+                  </div>
+                </div>
               </Card>
 
             </div>

@@ -34,11 +34,16 @@ class Api {
         if (contentType && contentType.indexOf('application/json') !== -1) {
           const errorData = await response.json();
           console.error('Error from backend:', errorData);
-          throw new Error(errorData.msg || 'An API error occurred');
+          const errorMessage = errorData.error || errorData.msg || 'An API error occurred';
+          const error: any = new Error(errorMessage);
+          error.status = response.status;
+          throw error;
         } else {
           const errorText = await response.text();
           console.error('Non-JSON error from backend:', errorText);
-          throw new Error(`Server returned an error: ${response.status} ${response.statusText}`);
+          const error: any = new Error(`Server returned an error: ${response.status} ${response.statusText}`);
+          error.status = response.status;
+          throw error;
         }
       }
 
@@ -95,6 +100,10 @@ class Api {
     return this.put(`/submissions/${submissionId}`, data);
   }
 
+  async submitSubmission(submissionId: number) {
+    return this.post(`/submissions/${submissionId}/submit`, {});
+  }
+
   // --- Startup Data ---
   async getStartupData(startupId: number) {
     const response = await this.fetch(`/startups/${startupId}`);
@@ -121,8 +130,7 @@ class Api {
 
   async addScopeComment(sectionId: string, text: string) {
     const response = await this.post('/stages/scope/comments', { section_id: sectionId, text });
-    if (!response.ok) throw new Error('Failed to add comment');
-    return (await response.json()).comment;
+    return response.comment;
   }
 
   async getContractDetails() {
@@ -185,23 +193,6 @@ class Api {
     return this.put(`/admin/users/${userId}/role`, { role: newRole });
   }
 
-  async updateScopeDocument(startupId: number, data: { productScope: string; gtmScope: string }) {
-    const response = await this.put(`/admin/startups/${startupId}/scope`, data);
-    await this.createActivity({
-      user_id: 1, // Admin
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Scope',
-      target_id: startupId,
-      details: 'Scope document updated'
-    });
-    return response;
-  }
-
-  async addAdminScopeComment(startupId: number, text: string) {
-    return this.post(`/admin/startups/${startupId}/scope/comments`, { text });
-  }
-
   async updateScopeStatus(startupId: number, status: string) {
     const response = await this.put(`/admin/scope/${startupId}/status`, { status });
     await this.createActivity({
@@ -215,21 +206,20 @@ class Api {
     return response;
   }
 
-  async updateContract(startupId: number, data: { documentUrl: string; status: string }) {
-    const response = await this.put(`/admin/startups/${startupId}/contract`, data);
-    await this.createActivity({
-      user_id: 1, // Admin
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Contract',
-      target_id: startupId,
-      details: `Contract updated (Status: ${data.status})`
-    });
-    return response;
+  async addAdminScopeComment(startupId: number, text: string, sectionId: string) {
+    return this.post(`/admin/scope/${startupId}/comments`, { text, section_id: sectionId });
   }
 
   async updateContractStatus(startupId: number, newStatus: string) {
     return this.put(`/admin/contract/${startupId}/status`, { status: newStatus });
+  }
+
+  async addContractSignatory(startupId: number, name: string, email: string) {
+    return this.post(`/admin/contract/${startupId}/signatories`, { name, email });
+  }
+
+  async addContractComment(startupId: number, text: string) {
+    return this.post(`/admin/contract/${startupId}/comments`, { text });
   }
 
   // --- Startup Dashboard Create/Update Endpoints ---
@@ -418,6 +408,11 @@ class Api {
     return response.product_business_details; // Assuming backend returns updated product_business_details directly
   }
 
+  async updateFeature(startupId: number, productId: number, featureId: number, data: Partial<any>) {
+    const response = await this.put(`/startups/${startupId}/products/${productId}/features/${featureId}`, data);
+    return response.feature;
+  }
+
   async updateFundingRound(startupId: number, roundId: number, data: Partial<FundingRound>) {
     const response = await this.put(`/startups/${startupId}/funding-rounds/${roundId}`, data);
     return response.round; // Assuming backend returns updated round directly
@@ -515,7 +510,38 @@ class Api {
   async createNotification(data: Omit<DashboardNotification, 'id' | 'created_at' | 'read'>) {
     return this.post('/notifications', data);
   }
+
+  async acceptScope(startupId?: number) {
+    return this.post('/stages/scope/accept', { startup_id: startupId });
+  }
+
+  async updateScopeDocument(startupId: number, content: string) {
+    return this.put('/stages/scope', { startup_id: startupId, content });
+  }
+
+  async updateContract(startupId: number, data: { documentUrl?: string; status?: string; content?: string }) {
+    return this.put('/stages/contract', { startup_id: startupId, ...data });
+  }
+
+  async acceptContract(startupId?: number) {
+    return this.post('/stages/contract/accept', { startup_id: startupId });
+  }
+
+  async addContractSignatoryFounder(name: string, email: string) {
+    return this.post('/stages/contract/signatories', { name, email });
+  }
+
+  async addContractCommentFounder(text: string) {
+    return this.post('/stages/contract/comments', { text });
+  }
+
+  async signDocument(contractId: number) {
+    return this.post('/stages/contract/sign', { contract_id: contractId });
+  }
+
+  async generateAssets(startupId: number, generateProduct: boolean, generateGtm: boolean) {
+    return this.post(`/startups/${startupId}/assets/generate`, { generate_product: generateProduct, generate_gtm: generateGtm });
+  }
 }
 
-const api = new Api();
-export default api;
+export default new Api();

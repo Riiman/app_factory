@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Submission, User, SubmissionStatus # Added SubmissionStatus
 from app.extensions import db
 from app.services.chatbot_orchestrator import ChatbotOrchestrator
+from app.services.notification_service import publish_update
 
 submissions_bp = Blueprint('submissions_bp', __name__, url_prefix='/api/submissions')
 
@@ -14,14 +15,22 @@ def start_submission():
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
-    # Check if the user already has a pending submission
-    existing_submission = Submission.query.filter_by(user_id=user_id, status='PENDING').first()
+    # Check if the user already has a pending or draft submission
+    existing_submission = Submission.query.filter(
+        Submission.user_id == user_id,
+        Submission.status.in_([SubmissionStatus.PENDING, SubmissionStatus.DRAFT, SubmissionStatus.FINALIZE_SUBMISSION])
+    ).first()
+    
     if existing_submission:
-        return jsonify({"msg": "You already have a pending submission.", "submission_id": existing_submission.id}), 400
+        return jsonify({"msg": "You already have an active submission.", "submission_id": existing_submission.id}), 400
 
-    new_submission = Submission(user_id=user_id)
+    new_submission = Submission(user_id=user_id, status=SubmissionStatus.DRAFT)
     db.session.add(new_submission)
     db.session.commit()
+
+
+
+    publish_update("submission_started", {"submission_id": new_submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
 
     return jsonify({"msg": "New submission started.", "submission_id": new_submission.id}), 201
 
@@ -50,6 +59,9 @@ def update_submission(submission_id):
             setattr(submission, key, value)
 
     db.session.commit()
+    
+    publish_update("submission_updated", {"submission_id": submission.id, "user_id": user_id, "updated_fields": list(data.keys())}, rooms=[f"user_{user_id}", "admin"])
+    
     return jsonify(submission.to_dict()), 200
 
 @submissions_bp.route('/chat', methods=['POST'])
@@ -62,8 +74,8 @@ def handle_chat():
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
 
-    # Find the user's latest pending submission
-    submission = Submission.query.filter_by(user_id=user_id, status='PENDING').order_by(Submission.submitted_at.desc()).first()
+    # Find the user's latest draft submission
+    submission = Submission.query.filter_by(user_id=user_id, status=SubmissionStatus.DRAFT).order_by(Submission.submitted_at.desc()).first()
 
     if not submission:
         return jsonify({"error": "No active submission found for this user."}), 404
@@ -72,4 +84,30 @@ def handle_chat():
     orchestrator = ChatbotOrchestrator(submission_id=submission.id)
     response = orchestrator.process_user_message(user_message)
 
+    if response.get('is_completed'):
+        submission.status = SubmissionStatus.FINALIZE_SUBMISSION
+        db.session.commit()
+        publish_update("submission_finalized_draft", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
+
+    publish_update("submission_chat", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
+
     return jsonify(response), 200
+
+@submissions_bp.route('/<int:submission_id>/submit', methods=['POST'])
+@jwt_required()
+def submit_submission(submission_id):
+    user_id = get_jwt_identity()
+    submission = Submission.query.filter_by(id=submission_id, user_id=user_id).first()
+
+    if not submission:
+        return jsonify({"msg": "Submission not found"}), 404
+
+    if submission.status != SubmissionStatus.FINALIZE_SUBMISSION:
+        return jsonify({"msg": "Submission cannot be submitted in its current state."}), 400
+
+    submission.status = SubmissionStatus.PENDING
+    db.session.commit()
+
+    publish_update("submission_submitted", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
+
+    return jsonify({"msg": "Submission submitted successfully.", "status": "PENDING"}), 200
