@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { io, Socket } from 'socket.io-client';
+import { getWebSocketUrl } from '../utils/api';
 import 'xterm/css/xterm.css';
 
 interface TerminalComponentProps {
@@ -38,10 +39,16 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ startupId }) => {
         fitAddonRef.current = fitAddon;
 
         // Connect Socket
-        // Assuming backend is at the same host or proxied correctly. 
-        // If dev server is on 3000 and backend on 5000, we might need full URL.
-        // Trying relative path first, assuming proxy. If fails, we might need env var.
-        const socket = io('http://localhost:5000/terminal', {
+        // Use helper to get correct URL for production/dev
+        const socketUrl = getWebSocketUrl('/terminal');
+        // socket.io-client expects the base URL, not the full WS URL with protocol if we want it to handle upgrades, 
+        // but getWebSocketUrl returns ws://... 
+        // Actually, io() can take a URL string. 
+        // However, getWebSocketUrl returns 'ws://host/path'. socket.io might prefer 'http://host/path' or just 'host/path'
+        // Let's check getWebSocketUrl implementation. It returns `ws://...` or `wss://...`.
+        // socket.io client `io(url)` works with http/https/ws/wss.
+
+        const socket = io(socketUrl.replace('ws', 'http'), {
             transports: ['websocket'],
             path: '/socket.io'
         });

@@ -129,7 +129,9 @@ def signup():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
+    print("DEBUG: /auth/login called")
     data = request.get_json()
+    print(f"DEBUG: Request data: {data}")
     firebase_id_token = data.get('firebase_id_token')
 
     if not firebase_id_token:
@@ -210,8 +212,10 @@ def login():
     except auth.InvalidIdTokenError:
         return jsonify({'success': False, 'error': 'Invalid Firebase ID token.'}), 401
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         current_app.logger.error(f"Firebase login error: {e}")
-        return jsonify({'success': False, 'error': 'Authentication failed.'}), 500
+        return jsonify({'success': False, 'error': f'Authentication failed: {str(e)}'}), 500
 
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()

@@ -3,6 +3,21 @@ import { MarketingCampaign, Founder, Product, ProductBusinessDetails, FundingRou
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
+export const getWebSocketUrl = (endpoint: string) => {
+  // If API_BASE_URL is a full URL (e.g. http://1.2.3.4/api), parse it
+  if (API_BASE_URL.startsWith('http')) {
+    const url = new URL(API_BASE_URL);
+    const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Remove /api if it exists at the end of pathname for the WS base
+    const basePath = url.pathname.replace(/\/api\/?$/, '');
+    return `${protocol}//${url.host}${basePath}${endpoint}`;
+  }
+
+  // If API_BASE_URL is relative (e.g. /api), use window.location
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}${endpoint}`;
+};
+
 class Api {
 
   private async fetch(url: string, options: RequestInit = {}) {

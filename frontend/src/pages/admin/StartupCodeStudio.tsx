@@ -4,7 +4,7 @@ import { ArrowLeft, Play, Square, Terminal as TerminalIcon, Send, Loader2, Check
 import TerminalComponent from '../../components/TerminalComponent';
 import FileExplorer from '../../components/FileExplorer';
 import ChatModal from '../../components/ChatModal';
-import api from '../../utils/api';
+import api, { getWebSocketUrl } from '../../utils/api';
 import { io, Socket } from 'socket.io-client';
 
 interface PlanStep {
@@ -77,7 +77,9 @@ const StartupCodeStudio: React.FC = () => {
         if (!id) return;
 
         // Connect to /builder namespace
-        const socket = io('http://localhost:5000/builder', {
+        // Connect to /builder namespace
+        const socketUrl = getWebSocketUrl('/builder');
+        const socket = io(socketUrl.replace('ws', 'http'), {
             transports: ['websocket'],
             path: '/socket.io'
         });

@@ -7,7 +7,7 @@ import StatusBadge from '../../components/admin/StatusBadge';
 import { FileSignature, Send, Save, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import ReactMarkdown from 'react-markdown';
-import api from '../../utils/api';
+import api, { getWebSocketUrl } from '../../utils/api';
 
 interface ScopingViewProps {
   startupsInScoping: Startup[];
@@ -119,7 +119,8 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
   useEffect(() => {
     if (!token) return;
 
-    const ws = new WebSocket(`ws://localhost:8000/ws/dashboard-notifications?token=${token}`);
+    const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
+    const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
     ws.onmessage = (event) => {
       try {

@@ -5,7 +5,7 @@ import { ScopeDocument, ScopeSection, Comment as ScopeComment, User, UserRole as
 import { Header } from '../components/scope/Header';
 import { ScopeSectionComponent } from '../components/scope/ScopeSectionComponent';
 import { ActionBar } from '../components/scope/ActionBar';
-import api from '../utils/api';
+import api, { getWebSocketUrl } from '../utils/api';
 
 // Mock Data - to be replaced by API calls
 const MOCK_USER: User = {
@@ -227,7 +227,8 @@ const ScopePage: React.FC = () => {
   useEffect(() => {
     if (!token) return;
 
-    const ws = new WebSocket(`ws://localhost:8000/ws/dashboard-notifications?token=${token}`);
+    const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
+    const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
     ws.onmessage = (event) => {
       try {
