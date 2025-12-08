@@ -7,10 +7,9 @@ import { GoogleIcon, LinkedInIcon } from '../components/Icons';
 import api from '../utils/api';
 import { auth } from '../firebase';
 import {
-  signInWithEmailAndPassword,
+  signInWithPopup,
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import { useAuth } from '../contexts/AuthContext';
 
@@ -28,29 +27,13 @@ const LoginPage: FC = () => {
     }
   }, [user, navigate]);
 
-  // Add useEffect to handle redirect result
-  useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("Redirect result user:", result.user);
-          // AuthContext will handle the backend sync via onAuthStateChanged
-        }
-      } catch (err: any) {
-        console.error("Redirect Login Error:", err);
-        setError(err.message || 'Failed to sign in with Google.');
-      }
-    };
-    checkRedirect();
-  }, [navigate]);
 
   const handleGoogleSignIn = async () => {
     console.log("handleGoogleSignIn called");
     try {
 
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
     } catch (err: any) {
       console.error("Google Sign-In Error:", err);
       setError(err.message || 'Failed to sign in with Google.');
