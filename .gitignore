@@ -16,7 +16,6 @@
 # API Keys and Secrets
 secrets/
 *.key
-*.pem
 *.cert
 *.crt
 

@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthFormWrapper from '../components/AuthFormWrapper';
 import Button from '../components/ui/Button';
@@ -6,23 +6,51 @@ import Input from '../components/ui/Input';
 import { GoogleIcon, LinkedInIcon } from '../components/Icons';
 import api from '../utils/api';
 import { auth } from '../firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+} from "firebase/auth";
+import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/start-submission');
+    }
+  }, [user, navigate]);
+
+  // Add useEffect to handle redirect result
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log("Redirect result user:", result.user);
+          // AuthContext will handle the backend sync via onAuthStateChanged
+        }
+      } catch (err: any) {
+        console.error("Redirect Login Error:", err);
+        setError(err.message || 'Failed to sign in with Google.');
+      }
+    };
+    checkRedirect();
+  }, [navigate]);
+
   const handleGoogleSignIn = async () => {
     console.log("handleGoogleSignIn called");
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      // After a successful popup sign-in, the onAuthStateChanged listener
-      // in useAuth will handle everything. We just need to trigger a reload
-      // to ensure the app re-initializes and the listener fires.
-      window.location.reload();
+
+      const provider = new GoogleAuthProvider();
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
       console.error("Google Sign-In Error:", err);
       setError(err.message || 'Failed to sign in with Google.');

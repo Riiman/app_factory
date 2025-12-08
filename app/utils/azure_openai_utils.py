@@ -34,6 +34,7 @@ def generate_evaluation_insights(submission):
             api_key=api_key,
             api_version=api_version,
             azure_endpoint=azure_endpoint,
+            max_retries=5,
         )
 
         prompt = f"""Analyze the following startup submission and generate insights for Product Scope and Go-to-Market (GTM) Scope.

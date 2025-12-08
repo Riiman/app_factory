@@ -51,6 +51,7 @@ class StartupAnalyzerChatbot:
             api_key=api_key,
             api_version=api_version,
             azure_endpoint=azure_endpoint,
+            max_retries=5,
         )
 
     def _llm_chat(self, prompt, system_message=None):

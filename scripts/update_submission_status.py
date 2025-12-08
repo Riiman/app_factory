@@ -4,6 +4,11 @@ from app import create_app, db
 from app.models import Submission, SubmissionStatus, Startup, StartupStatus
 from slugify import slugify
 
+# Set the working directory to the project root
+# This ensures that relative paths in .env (like FIREBASE_SERVICE_ACCOUNT_PATH) are resolved correctly
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+os.chdir(project_root)
+
 # Ensure the app context is available
 app = create_app()
 app.app_context().push()
