@@ -25,8 +25,8 @@ This guide outlines the steps to deploy the Turning Idea application (Flask Back
 ## Step 2: Connect to Server
 
 ```bash
-chmod 400 your-key.pem
-ssh -i "your-key.pem" ubuntu@your-ec2-public-ip
+chmod 400 startupos_key.pem
+ssh -i "startupos_key.pem" ubuntu@13.62.213.147
 ```
 
 ## Step 3: System Setup & Dependencies
@@ -146,6 +146,41 @@ sudo systemctl enable turningidea
 sudo systemctl status turningidea
 ```
 
+## Step 7b: Configure WebSocket Service (FastAPI)
+
+Create a systemd service for the WebSocket server:
+
+```bash
+sudo nano /etc/systemd/system/turningidea-ws.service
+```
+
+Paste the following:
+
+```ini
+[Unit]
+Description=Uvicorn instance to serve Turning Idea WebSocket
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/app_factory
+Environment="PATH=/home/ubuntu/app_factory/venv/bin"
+# Load environment variables if needed, or rely on .env loading in app
+ExecStart=/home/ubuntu/app_factory/venv/bin/uvicorn websocket_server:app --host 0.0.0.0 --port 8000 --workers 1
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start and enable the service:
+
+```bash
+sudo systemctl start turningidea-ws
+sudo systemctl enable turningidea-ws
+sudo systemctl status turningidea-ws
+```
+
 ## Step 8: Configure Nginx
 
 Create an Nginx server block.
@@ -187,7 +222,7 @@ server {
         proxy_buffering off;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "Upgrade";
-        proxy_pass http://unix:/home/ubuntu/app_factory/turningidea.sock;
+        proxy_pass http://127.0.0.1:8000;
     }
 }
 ```

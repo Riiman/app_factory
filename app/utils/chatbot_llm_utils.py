@@ -12,6 +12,7 @@ def extract_submission_details_from_message(user_message, fields_to_extract, cur
             api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
             api_version=os.environ.get("AZURE_OPENAI_API_VERSION"),
             azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
+            max_retries=5,
         )
 
         tools = [

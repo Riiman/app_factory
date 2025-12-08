@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchUserData = useCallback(async (firebaseUser: any) => {
         try {
-            const idToken = await firebaseUser.getIdToken(true); // Force refresh token
+            const idToken = await firebaseUser.getIdToken(); // Remove force refresh to prevent throttling
             const data = await api.post('/auth/login', { firebase_id_token: idToken });
 
             if (data.success) {

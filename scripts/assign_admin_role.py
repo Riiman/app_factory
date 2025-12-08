@@ -2,11 +2,16 @@ import sys
 import os
 from dotenv import load_dotenv
 
+# Set the working directory to the project root
+# This ensures that relative paths in .env (like FIREBASE_SERVICE_ACCOUNT_PATH) are resolved correctly
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+os.chdir(project_root)
+
 # Load environment variables from .env file
 load_dotenv()
 
 # Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, project_root)
 
 from app import create_app, db
 from app.models import User
