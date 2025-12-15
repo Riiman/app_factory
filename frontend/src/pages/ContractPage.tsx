@@ -5,11 +5,22 @@ import DocumentViewer from '@/components/contract/DocumentViewer';
 import SignatoryList from '@/components/contract/SignatoryList';
 import { DocumentIcon } from '@/components/contract/icons';
 import api from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const ContractPage: React.FC = () => {
   const [document, setDocument] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { startupStage } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (startupStage === 'ADMITTED') {
+      navigate('/dashboard');
+    }
+  }, [startupStage, navigate]);
 
   useEffect(() => {
     const fetchContractData = async () => {
@@ -103,9 +114,9 @@ const ContractPage: React.FC = () => {
           </h1>
           <div className="flex items-center space-x-4">
             <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${document.status === ContractStatus.SIGNED ? 'bg-green-100 text-green-800' :
-                document.status === ContractStatus.SENT ? 'bg-amber-100 text-amber-800' :
-                  document.status === ContractStatus.ACCEPTED ? 'bg-blue-100 text-blue-800' :
-                    'bg-slate-100 text-slate-800'
+              document.status === ContractStatus.SENT ? 'bg-amber-100 text-amber-800' :
+                document.status === ContractStatus.ACCEPTED ? 'bg-blue-100 text-blue-800' :
+                  'bg-slate-100 text-slate-800'
               }`}>{document.status}</span>
 
             {!document.founder_accepted && document.status !== ContractStatus.SENT && document.status !== ContractStatus.SIGNED && (

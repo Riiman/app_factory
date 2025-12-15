@@ -181,6 +181,11 @@ sudo systemctl enable turningidea-celery
 sudo systemctl status turningidea-celery
 ```
 
+You should see `Active: active (running)`. If not, check logs:
+```bash
+journalctl -u turningidea-celery -f
+```
+
 ## Step 7b: Configure WebSocket Service (FastAPI)
 
 Create a systemd service for the WebSocket server:
