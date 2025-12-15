@@ -109,8 +109,13 @@ cd app_factory
     ```bash
     # IMPORTANT: Set the API URL to your EC2 IP/Domain
     VITE_API_BASE_URL=http://13.62.213.147/api npm run build
+    
+    # Deploy to /var/www (Standard web directory)
+    sudo mkdir -p /var/www/turningidea
+    sudo cp -r dist/* /var/www/turningidea/
+    sudo chown -R www-data:www-data /var/www/turningidea
     ```
-    This will create a `dist` directory with static files.
+    This will create a `dist` directory and copy it to the web server path.
 
 ## Step 7: Configure Gunicorn (Systemd)
 
@@ -237,7 +242,7 @@ server {
     server_name your-domain.com OR-YOUR-PUBLIC-IP;
 
     location / {
-        root /home/ubuntu/app_factory/frontend/dist;
+        root /var/www/turningidea;
         index index.html index.htm;
         try_files $uri $uri/ /index.html;
     }
