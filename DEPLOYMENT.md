@@ -146,6 +146,41 @@ sudo systemctl enable turningidea
 sudo systemctl status turningidea
 ```
 
+## Step 7c: Configure Celery Worker (Systemd)
+
+Create a systemd service for the Celery worker:
+
+```bash
+sudo nano /etc/systemd/system/turningidea-celery.service
+```
+
+Paste the following:
+
+```ini
+[Unit]
+Description=Celery Worker for Turning Idea App
+After=network.target redis-server.service
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/app_factory
+Environment="PATH=/home/ubuntu/app_factory/venv/bin"
+# Ensure DATABASE_URL is set in .env with absolute path if using SQLite
+ExecStart=/home/ubuntu/app_factory/venv/bin/celery -A celery_app.celery worker --loglevel=info --logfile=celery.log
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start and enable the service:
+
+```bash
+sudo systemctl start turningidea-celery
+sudo systemctl enable turningidea-celery
+sudo systemctl status turningidea-celery
+```
+
 ## Step 7b: Configure WebSocket Service (FastAPI)
 
 Create a systemd service for the WebSocket server:

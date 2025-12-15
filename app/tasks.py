@@ -21,10 +21,14 @@ def analyze_submission_task(submission_id):
     run_analysis(submission_id)
 
 @celery.task(name='app.tasks.generate_scope_document_task')
-def generate_scope_document_task(submission_id):
+def generate_scope_document_task(startup_id):
     """Celery task to trigger the scope document generation."""
-    print(f"--- [Celery Task] Starting scope document generation for submission ID: {submission_id} ---")
-    generate_scope_document(submission_id)
+    print(f"--- [Celery Task] Starting scope document generation for startup ID: {startup_id} ---")
+    startup = Startup.query.get(startup_id)
+    if startup:
+        generate_scope_document(startup)
+    else:
+        print(f"--- [Celery Task] Error: Startup not found for ID: {startup_id} ---")
 
 @celery.task(name='app.tasks.generate_contract_task')
 def generate_contract_task(startup_id):
