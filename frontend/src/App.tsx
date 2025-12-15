@@ -57,6 +57,11 @@ const AppRoutes: FC = () => {
           queryClient.invalidateQueries({ queryKey: ['startupData'] });
           queryClient.invalidateQueries({ queryKey: ['adminData'] });
           refreshUser(); // Refresh user context to update status/stage which triggers redirection
+        } else if (message.type === 'contract_status_updated' || message.type === 'scope_status_updated') {
+          console.log(`Received status update (${message.type}), refreshing user context:`, message);
+          // Invalidate startup data to reflect new stage/status
+          queryClient.invalidateQueries({ queryKey: ['startupData'] });
+          refreshUser(); // Refresh user context to trigger potential redirections (e.g. Contact -> Dashboard)
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
