@@ -238,8 +238,10 @@ Paste the following:
 
 ```nginx
 server {
-    listen 80;
     server_name your-domain.com OR-YOUR-PUBLIC-IP;
+    
+    # Allow Google Sign-In popups
+    add_header Cross-Origin-Opener-Policy same-origin-allow-popups;
 
     location / {
         root /var/www/turningidea;
