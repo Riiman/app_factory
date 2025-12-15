@@ -107,8 +107,8 @@ cd app_factory
 
 2.  **Build React App**:
     ```bash
-    # IMPORTANT: Set the API URL to your EC2 IP/Domain
-    VITE_API_BASE_URL=http://13.62.213.147/api npm run build
+    # IMPORTANT: Set to /api to avoid Mixed Content errors (HTTPS vs HTTP) and CORS issues
+    VITE_API_BASE_URL=/api npm run build
     
     # Deploy to /var/www (Standard web directory)
     sudo mkdir -p /var/www/turningidea
