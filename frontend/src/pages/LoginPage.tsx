@@ -26,7 +26,7 @@ const LoginPage: FC = () => {
       if (user.role === 'admin') {
         navigate('/admin');
       } else {
-        navigate('/start-submission');
+        navigate('/dashboard');
       }
     }
   }, [user, navigate]);
@@ -51,7 +51,7 @@ const LoginPage: FC = () => {
         if (data.user.role === 'admin') {
           navigate('/admin');
         } else {
-          navigate('/start-submission');
+          navigate('/dashboard');
         }
       } else {
         setError(data.error || 'An unknown error occurred.');
@@ -79,7 +79,7 @@ const LoginPage: FC = () => {
         if (data.user.role === 'admin') {
           navigate('/admin');
         } else {
-          navigate('/start-submission');
+          navigate('/dashboard');
         }
       } else {
         setError(data.error || 'An unknown error occurred.');

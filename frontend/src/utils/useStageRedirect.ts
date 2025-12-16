@@ -71,7 +71,7 @@ export const useStageRedirect = () => {
                 // when they should be on dashboard.
                 // However, we must be careful not to redirect away from valid dashboard sub-routes.
                 // If the user is on /evaluation but target is /dashboard, we SHOULD redirect.
-                const restrictedPaths = ['/evaluation', '/scope', '/contract', '/pending-review', '/rejected-submission', '/submission'];
+                const restrictedPaths = ['/evaluation', '/scope', '/contract', '/pending-review', '/rejected-submission', '/submission', '/start-submission'];
                 if (restrictedPaths.includes(location.pathname)) {
                     navigate('/dashboard');
                 }
