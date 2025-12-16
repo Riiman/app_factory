@@ -9,6 +9,8 @@ const StartSubmissionPage = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState('');
 
+    console.log('StartSubmissionPage Debug:', { submissionStatus, isAuthLoading, user: useAuth().user });
+
     useEffect(() => {
         // If the user has a draft, go to chat.
         if (!isAuthLoading && submissionStatus === 'DRAFT') {
@@ -39,8 +41,8 @@ const StartSubmissionPage = () => {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
     }
 
-    // Only show the page content if the user truly has not started a submission
-    if (submissionStatus === 'not_started') {
+    // Only show the page content if the user truly has not started a submission or if status is null/missing (fallback)
+    if (!submissionStatus || submissionStatus === 'not_started') {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-gray-100 relative">
                 <button
