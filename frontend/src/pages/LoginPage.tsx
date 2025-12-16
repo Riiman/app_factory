@@ -9,9 +9,7 @@ import { auth } from '../firebase';
 import {
   signInWithPopup,
   GoogleAuthProvider,
-  signInWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult
+  signInWithEmailAndPassword
 } from "firebase/auth";
 import { useAuth } from '../contexts/AuthContext';
 
@@ -29,43 +27,30 @@ const LoginPage: FC = () => {
     }
   }, [user, navigate]);
 
-  // Handle Google Redirect Result
-  useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("Got redirect result:", result);
-          const firebaseUser = result.user;
-          const idToken = await firebaseUser.getIdToken();
 
-          const data = await api.post('/auth/login', { firebase_id_token: idToken });
-
-          if (data.access_token) {
-            localStorage.setItem('access_token', data.access_token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            navigate('/start-submission');
-          } else {
-            setError(data.error || 'An unknown error occurred.');
-          }
-        }
-      } catch (err: any) {
-        console.error("Google Redirect Error:", err);
-        setError(err.message || 'Failed to sign in with Google.');
-      }
-    };
-    checkRedirect();
-  }, [navigate]);
 
 
   const handleGoogleSignIn = async () => {
-    console.log("handleGoogleSignIn called (Redirect flow)");
+    console.log("handleGoogleSignIn called (Popup flow)");
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+
+      const firebaseUser = result.user;
+      const idToken = await firebaseUser.getIdToken();
+
+      const data = await api.post('/auth/login', { firebase_id_token: idToken });
+
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        navigate('/start-submission');
+      } else {
+        setError(data.error || 'An unknown error occurred.');
+      }
     } catch (err: any) {
       console.error("Google Sign-In Error:", err);
-      setError(err.message || 'Failed to initiate Google sign-in.');
+      setError(err.message || 'Failed to sign in with Google.');
     }
   };
 

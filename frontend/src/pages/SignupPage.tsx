@@ -6,7 +6,7 @@ import Input from '../components/ui/Input';
 import api from '../utils/api';
 import { GoogleIcon, LinkedInIcon } from '../components/Icons';
 import { auth } from '../firebase';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, RecaptchaVerifier, linkWithPhoneNumber, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, RecaptchaVerifier, linkWithPhoneNumber, GoogleAuthProvider, signOut, signInWithPopup } from "firebase/auth";
 import { useAuth } from '../contexts/AuthContext';
 
 const SignupPage: FC = () => {
@@ -42,36 +42,20 @@ const SignupPage: FC = () => {
     }
   }, [user, confirmationResult, navigate, isSigningUp, isMockVerification]);
 
-  // Handle Google Redirect Result
-  useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          // Existing logic handles creating the user record in simple login,
-          // but for signup, we technically need more fields (phone, name).
-          // For now, let's treat it as a login/signup hybrid same as Login page
-          // or we could prompt for more info.
-          // Assuming Google provides enough info to start.
-          const firebaseUser = result.user;
-          const idToken = await firebaseUser.getIdToken();
 
-          // Reuse login endpoint which creates user if missing
-          await api.post('/auth/login', { firebase_id_token: idToken });
-          navigate('/start-submission');
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to sign in with Google.');
-      }
-    };
-    checkRedirect();
-  }, [navigate]);
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+      const idToken = await firebaseUser.getIdToken();
+
+      // Reuse login endpoint which creates user if missing
+      await api.post('/auth/login', { firebase_id_token: idToken });
+      navigate('/start-submission');
     } catch (err: any) {
+      console.error("Google Sign-In Error:", err);
       setError(err.message || 'Failed to sign in with Google.');
     }
   };
