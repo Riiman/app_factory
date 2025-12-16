@@ -10,6 +10,7 @@ import { Product } from '@/types/dashboard-types';
 import Card from '@/components/Card';
 import api from '@/utils/api';
 import { Plus, Sparkles } from 'lucide-react';
+import PromptModal from '@/components/ui/PromptModal';
 
 // ... (existing interfaces)
 
@@ -39,20 +40,61 @@ const getStageColor = (stage: string) => {
 }
 
 const ProductListPage: React.FC<ProductListPageProps> = ({ startupId, products, onSelectProduct, onAddNewProduct }) => {
+    const [promptState, setPromptState] = React.useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'info' | 'confirm' | 'error' | 'success';
+        onConfirm?: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info',
+    });
+
+    const closePrompt = () => {
+        setPromptState(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const showPrompt = (title: string, message: string, type: 'info' | 'confirm' | 'error' | 'success', onConfirm?: () => void) => {
+        setPromptState({
+            isOpen: true,
+            title,
+            message,
+            type,
+            onConfirm,
+        });
+    };
+
     const handleGenerateProduct = async () => {
-        if (confirm('Are you sure you want to generate a product strategy based on your scope document?')) {
-            try {
-                await api.generateAssets(startupId, true, false);
-                alert('Product generation triggered! This may take a few minutes.');
-            } catch (error) {
-                console.error("Failed to trigger generation:", error);
-                alert("Failed to trigger generation.");
+        showPrompt(
+            'Generate Product Strategy',
+            'Are you sure you want to generate a product strategy based on your scope document?',
+            'confirm',
+            async () => {
+                closePrompt(); // Close confirmation modal
+                try {
+                    await api.generateAssets(startupId, true, false);
+                    showPrompt('Success', 'Product generation triggered! This may take a few minutes.', 'success');
+                } catch (error) {
+                    console.error("Failed to trigger generation:", error);
+                    showPrompt('Error', 'Failed to trigger generation.', 'error');
+                }
             }
-        }
+        );
     };
 
     return (
         <div>
+            <PromptModal
+                isOpen={promptState.isOpen}
+                onClose={closePrompt}
+                title={promptState.title}
+                message={promptState.message}
+                type={promptState.type}
+                onConfirm={promptState.onConfirm}
+            />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Products</h1>
                 <div className="flex space-x-2">
