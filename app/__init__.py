@@ -10,7 +10,7 @@ import os
 import firebase_admin
 from firebase_admin import credentials
 
-from .extensions import db, sess, celery, oauth, redis_client
+from .extensions import db, sess, celery, oauth, redis_client, mail
 from .celery_utils import configure_celery
 import redis
 
@@ -19,7 +19,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 migrate = Migrate()
 jwt = JWTManager()
-mail = Mail()
 
 def create_app(config_class=Config):
     app = Flask(__name__)

@@ -1,11 +1,9 @@
 import os
-import resend
 import jwt
 from datetime import datetime, timedelta
 from flask import current_app, url_for
-
-# Initialize Resend
-resend.api_key = os.getenv("RESEND_API_KEY")
+from flask_mail import Message
+from app.extensions import mail
 
 def generate_verification_token(email, expires_in=3600):
     """
@@ -146,15 +144,13 @@ def send_verification_email(user_email, user_name, verification_token):
     """
     
     try:
-        params = {
-            "from": "VentureXit <noreply@venturexit.in>",  # Update with your verified domain
-            "to": [user_email],
-            "subject": "Verify your VentureXit account",
-            "html": html_content
-        }
-        
-        response = resend.Emails.send(params)
-        return {"success": True, "response": response}
+        msg = Message(
+            subject="Verify your VentureXit account",
+            recipients=[user_email],
+            html=html_content
+        )
+        mail.send(msg)
+        return {"success": True}
     
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -233,15 +229,13 @@ def send_password_reset_email(user_email, user_name, reset_token):
     """
     
     try:
-        params = {
-            "from": "VentureXit <noreply@venturexit.in>",
-            "to": [user_email],
-            "subject": "Reset your VentureXit password",
-            "html": html_content
-        }
-        
-        response = resend.Emails.send(params)
-        return {"success": True, "response": response}
+        msg = Message(
+            subject="Reset your VentureXit password",
+            recipients=[user_email],
+            html=html_content
+        )
+        mail.send(msg)
+        return {"success": True}
     
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -433,3 +427,94 @@ def get_response_date():
             business_days += 1
     
     return current_date.strftime("%B %d, %Y")
+
+def send_submission_status_email(email, startup_name, status, message=''):
+    """
+    Send notification when submission status changes
+    """
+    status_messages = {
+        'under_review': {
+            'title': 'Application Under Review',
+            'message': 'Your application is currently being reviewed by our team.'
+        },
+        'approved': {
+            'title': 'Application Approved! 🎉',
+            'message': 'Congratulations! Your application has been approved.'
+        },
+        'rejected': {
+            'title': 'Application Status Update',
+            'message': 'Thank you for your application. After careful review, we are unable to move forward at this time.'
+        },
+        'in_review': {
+             'title': 'Application Under Review',
+             'message': 'Your application is currently being reviewed by our team.'
+        }
+    }
+    
+    # Handle case insensitivity and enum naming differences
+    status_key = status.lower()
+    
+    status_info = status_messages.get(status_key, {
+        'title': 'Application Status Update',
+        'message': 'Your application status has been updated.'
+    })
+    
+    subject = f"{status_info['title']} - {startup_name}"
+    
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .button {{ display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+            .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+            .status-box {{ background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #667eea; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>{{status_info['title']}}</h1>
+            </div>
+            <div class="content">
+                <p>Hello,</p>
+                <p>We have an update regarding your application for <strong>{{startup_name}}</strong>.</p>
+                
+                <div class="status-box">
+                    <h3>Status: {{status.replace('_', ' ').title()}}</h3>
+                    <p>{{status_info['message']}}</p>
+                    {{f'<p><strong>Additional Notes:</strong> {{message}}</p>' if message else ''}}
+                </div>
+                
+                {{'<p>Our team will be in touch with you shortly regarding next steps.</p>' if status == 'approved' else ''}}
+                {{'<p>We encourage you to continue refining your business model and reapply in the future.</p>' if status == 'rejected' else ''}}
+                
+                <a href="{frontend_url}/submissions" class="button">View Submission Details</a>
+                
+                <p>If you have any questions, please feel free to contact us.</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 Turning Ideas App Factory. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        msg = Message(
+            subject=subject,
+            recipients=[email],
+            html=html_content
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending submission status email: {str(e)}")
+        return False

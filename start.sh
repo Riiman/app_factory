@@ -1,8 +1,12 @@
 #!/bin/bash
 
 # --- Configuration ---
-FLASK_APP_DIR="/home/rimanshu/Desktop/Turning Idea"
-FRONTEND_DIR="/home/rimanshu/Desktop/Turning Idea/frontend"
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+# Assuming the script is in the root of the project or one level deep. 
+# If script is in root (app_factory/start.sh), then FLASK_APP_DIR is SCRIPT_DIR.
+FLASK_APP_DIR="$SCRIPT_DIR"
+FRONTEND_DIR="$SCRIPT_DIR/frontend"
 
 # --- Check for Redis ---
 echo "Checking for Redis server..."
@@ -27,7 +31,8 @@ echo "Flask Backend started with PID: $FLASK_PID (logs in backend.log)"
 
 # --- Start Celery Worker ---
 echo "Starting Celery Worker..."
-celery -A celery_worker.celery worker --loglevel=info > celery.log 2>&1 &
+# CHANGED: Use celery_app instead of celery_worker
+celery -A celery_app.celery worker --loglevel=info > celery.log 2>&1 &
 CELERY_PID=$!
 echo "Celery Worker started with PID: $CELERY_PID (logs in celery.log)"
 

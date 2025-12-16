@@ -90,8 +90,13 @@ def start_env(startup_id):
                     }, room=room, namespace='/builder')
                     return
                 
+                start_container_name = startup_obj.container_name
+                
+                # Close the session to release any potential locks during the long build process
+                db.session.remove()
+                
                 print(f"Starting async build for {startup_id}")
-                result = manager.ensure_container(startup_id, stack_type=stack_type, container_name=startup_obj.container_name)
+                result = manager.ensure_container(startup_id, stack_type=stack_type, container_name=start_container_name)
                 
                 # Check for errors
                 if result.get("error"):
@@ -103,10 +108,17 @@ def start_env(startup_id):
                     return
                 
                 # Save container_name to database if it was generated
-                if result.get("container_name") and not startup_obj.container_name:
-                    startup_obj.container_name = result["container_name"]
-                    db.session.commit()
-                    print(f"Saved container name {result['container_name']} to database")
+                if result.get("container_name"):
+                    # Re-query the startup object in a fresh session/transaction
+                    from app.models import Startup
+                    startup_update = Startup.query.get(startup_id)
+                    if startup_update and not startup_update.container_name:
+                         startup_update.container_name = result["container_name"]
+                         db.session.commit()
+                         print(f"Saved container name {result['container_name']} to database")
+                    elif startup_update:
+                         # Just ensure we have the latest state if we need to do other updates
+                         pass
                 
                 print(f"Async build finished for {startup_id}")
                 

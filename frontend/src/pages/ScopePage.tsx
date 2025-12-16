@@ -1,5 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ScopeDocument, ScopeSection, Comment as ScopeComment, User, UserRole as Role, ScopeStatus } from '@/types/dashboard-types';
 import { Header } from '../components/scope/Header';
@@ -66,7 +67,14 @@ const ScopePage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState('product');
 
-  const { token } = useAuth(); // Get token for WebSocket
+  const { token, startupStage } = useAuth(); // Get token for WebSocket
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (startupStage === 'CONTRACT' || startupStage === 'ADMITTED') {
+      navigate('/contract');
+    }
+  }, [startupStage, navigate]);
 
   useEffect(() => {
     const fetchScopeData = async () => {

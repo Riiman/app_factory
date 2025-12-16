@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const InReviewPage = () => {
-    const { handleLogout } = useAuth();
+    const { handleLogout, submissionStatus, user } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (submissionStatus === 'APPROVED' || user?.startup_id) {
+            navigate('/scope');
+        }
+    }, [submissionStatus, user, navigate]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">

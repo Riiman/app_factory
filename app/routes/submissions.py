@@ -4,6 +4,7 @@ from app.models import Submission, User, SubmissionStatus # Added SubmissionStat
 from app.extensions import db
 from app.services.chatbot_orchestrator import ChatbotOrchestrator
 from app.services.notification_service import publish_update
+from app.email_utils import send_submission_confirmation_email
 
 submissions_bp = Blueprint('submissions_bp', __name__, url_prefix='/api/submissions')
 
@@ -109,5 +110,10 @@ def submit_submission(submission_id):
     db.session.commit()
 
     publish_update("submission_submitted", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
+    
+    # Send confirmation email
+    user = User.query.get(user_id)
+    if user:
+        send_submission_confirmation_email(user.email, submission.startup_name)
 
     return jsonify({"msg": "Submission submitted successfully.", "status": "PENDING"}), 200

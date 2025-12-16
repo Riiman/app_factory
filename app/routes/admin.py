@@ -9,10 +9,11 @@ from datetime import datetime
 import json
 from app.services.analyzer_service import run_analysis
 from app.services.document_generator_service import generate_scope_document
-from app.tasks import generate_product_task
+from app.tasks import generate_product_task, analyze_submission_task, generate_scope_document_task
 from app.services.product_generator_service import generate_product_from_scope
 from app.models import Product, Feature, ActivityLog
 from app.services.notification_service import publish_update
+from app.email_utils import send_submission_status_email
 
 
 print("--- DEBUG: Importing admin.py ---")
@@ -81,7 +82,8 @@ def update_submission_status(submission_id):
     
     # If submission is moved to review, trigger the analysis task
     if new_status == SubmissionStatus.IN_REVIEW:
-        run_analysis(submission.id)
+        # ASYNC: Use Celery task
+        analyze_submission_task.delay(submission.id)
 
     # If submission is approved, create a startup entry and trigger scope document generation
     if new_status == SubmissionStatus.APPROVED:
@@ -117,7 +119,8 @@ def update_submission_status(submission_id):
                 db.session.add(founder)
 
             # Trigger async scope document generation
-            generate_scope_document(startup)
+            # ASYNC: Use Celery task
+            generate_scope_document_task.delay(startup.id)
 
             # Create initial Contract
             contract = Contract(
@@ -130,7 +133,13 @@ def update_submission_status(submission_id):
 
     try:
         db.session.commit()
-        publish_update("submission_status_updated", {"submission_id": submission.id, "new_status": new_status.value}, rooms=["admin", f"user_{submission.user_id}"])
+        publish_update("submission_status_updated", {"submission_id": submission.id, "new_status": new_status.value, "startup_id": startup.id if 'startup' in locals() and startup else None}, rooms=["admin", f"user_{submission.user_id}"])
+        
+        # Send status update email
+        user = User.query.get(submission.user_id)
+        if user:
+            send_submission_status_email(user.email, submission.startup_name, new_status.name)
+            
     except IntegrityError:
         db.session.rollback()
         return jsonify({'success': False, 'error': 'A startup already exists for this submission.'}), 409

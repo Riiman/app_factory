@@ -107,10 +107,15 @@ cd app_factory
 
 2.  **Build React App**:
     ```bash
-    # IMPORTANT: Set the API URL to your EC2 IP/Domain
-    VITE_API_BASE_URL=http://13.62.213.147/api npm run build
+    # IMPORTANT: Set to /api to avoid Mixed Content errors (HTTPS vs HTTP) and CORS issues
+    VITE_API_BASE_URL=/api npm run build
+    
+    # Deploy to /var/www (Standard web directory)
+    sudo mkdir -p /var/www/turningidea
+    sudo cp -r dist/* /var/www/turningidea/
+    sudo chown -R www-data:www-data /var/www/turningidea
     ```
-    This will create a `dist` directory with static files.
+    This will create a `dist` directory and copy it to the web server path.
 
 ## Step 7: Configure Gunicorn (Systemd)
 
@@ -144,6 +149,46 @@ Start and enable the service:
 sudo systemctl start turningidea
 sudo systemctl enable turningidea
 sudo systemctl status turningidea
+```
+
+## Step 7c: Configure Celery Worker (Systemd)
+
+Create a systemd service for the Celery worker:
+
+```bash
+sudo nano /etc/systemd/system/turningidea-celery.service
+```
+
+Paste the following:
+
+```ini
+[Unit]
+Description=Celery Worker for Turning Idea App
+After=network.target redis-server.service
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/app_factory
+Environment="PATH=/home/ubuntu/app_factory/venv/bin"
+# Ensure DATABASE_URL is set in .env with absolute path if using SQLite
+ExecStart=/home/ubuntu/app_factory/venv/bin/celery -A celery_app.celery worker --loglevel=info --logfile=celery.log
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start and enable the service:
+
+```bash
+sudo systemctl start turningidea-celery
+sudo systemctl enable turningidea-celery
+sudo systemctl status turningidea-celery
+```
+
+You should see `Active: active (running)`. If not, check logs:
+```bash
+journalctl -u turningidea-celery -f
 ```
 
 ## Step 7b: Configure WebSocket Service (FastAPI)
@@ -193,11 +238,13 @@ Paste the following:
 
 ```nginx
 server {
-    listen 80;
     server_name your-domain.com OR-YOUR-PUBLIC-IP;
+    
+    # Allow Google Sign-In popups
+    add_header Cross-Origin-Opener-Policy same-origin-allow-popups;
 
     location / {
-        root /home/ubuntu/app_factory/frontend/dist;
+        root /var/www/turningidea;
         index index.html index.htm;
         try_files $uri $uri/ /index.html;
     }

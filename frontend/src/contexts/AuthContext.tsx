@@ -27,16 +27,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
 
     const handleLogout = useCallback(async () => {
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Firebase signOut failed:", error);
+        }
 
-        await signOut(auth);
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        setUser(null);
-        setSubmissionStatus(null);
-        setSubmissionData(null);
-        setStartupStage(null);
-        setNextQuestion(null);
-        window.location.href = '/login';
+        try {
+            // Optional: Call backend logout if you want to notify the server
+            // await api.logout(); 
+        } catch (error) {
+            console.error("Backend logout failed:", error);
+        } finally {
+            // Always clear local state
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+            setUser(null);
+            setSubmissionStatus(null);
+            setSubmissionData(null);
+            setStartupStage(null);
+            setNextQuestion(null);
+            window.location.href = '/login';
+        }
     }, []);
 
     const fetchUserData = useCallback(async (firebaseUser: any) => {
