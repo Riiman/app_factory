@@ -446,3 +446,12 @@ progress_tracking/*
 uploads/*
 !uploads/.gitkeep
 sfv-backend-firebase-adminsdk-fbsvc-beefdc2d12.json
+debug_parsing.py
+fix_startup_stage.py
+nuke_startup.py
+proxy_snippet.py
+reproduce_issue.py
+reset_db_data.py
+reset_startup.py
+scripts/reset_startup_build.py
+startupos_key.pem
