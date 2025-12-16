@@ -247,7 +247,7 @@ class User(db.Model):
             'phone_verified': self.phone_verified,
             'full_name': self.full_name,
             'is_verified': self.is_verified,
-            'role': self.role.name,
+            'role': self.role.value,
             'created_at': self.created_at.isoformat(),
             'startup_id': startup.id if startup else None
         }

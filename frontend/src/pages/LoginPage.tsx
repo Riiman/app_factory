@@ -23,7 +23,11 @@ const LoginPage: FC = () => {
   // Redirect if user is already logged in
   useEffect(() => {
     if (user) {
-      navigate('/start-submission');
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/start-submission');
+      }
     }
   }, [user, navigate]);
 
@@ -44,7 +48,11 @@ const LoginPage: FC = () => {
       if (data.access_token) {
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        navigate('/start-submission');
+        if (data.user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/start-submission');
+        }
       } else {
         setError(data.error || 'An unknown error occurred.');
       }
@@ -68,7 +76,11 @@ const LoginPage: FC = () => {
       if (data.access_token) {
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        navigate('/start-submission'); // Redirect to the submission flow
+        if (data.user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/start-submission');
+        }
       } else {
         setError(data.error || 'An unknown error occurred.');
       }
