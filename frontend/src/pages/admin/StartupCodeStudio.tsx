@@ -546,23 +546,17 @@ const StartupCodeStudio: React.FC = () => {
                             <Square className="w-4 h-4" /> Stop Env
                         </button>
                     )}
-                    {ports && Object.entries(ports).map(([port, mappings]) => {
-                        const maps = mappings as any[];
-                        if (!maps || maps.length === 0) return null;
-                        const hostPort = maps[0].HostPort;
-                        return (
-                            <a
-                                key={port}
-                                href={`http://${window.location.hostname}:${hostPort}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-sm font-medium transition-colors"
-                                title={`Open Port ${port}`}
-                            >
-                                <ExternalLink className="w-4 h-4" /> {port.split('/')[0]}
-                            </a>
-                        );
-                    })}
+                    <a
+                        href={`/api/startups/${id}/preview/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${ports ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed pointer-events-none'
+                            }`}
+                        title={ports ? "Open Preview" : "Preview not available"}
+                        onClick={(e) => { if (!ports) e.preventDefault(); }}
+                    >
+                        <ExternalLink className="w-4 h-4" /> Preview
+                    </a>
                     <button
                         onClick={() => setShowTerminal(true)}
                         className="ml-4 flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded text-sm font-medium transition-colors"
@@ -724,12 +718,13 @@ const StartupCodeStudio: React.FC = () => {
                                         <button
                                             onClick={(e) => { e.stopPropagation(); initProduct(product); }}
                                             disabled={!isRunning || isWorking}
-                                            className={`text-xs px-2 py-1 rounded border transition-colors ${!isRunning ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed' :
+                                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${!isRunning || isWorking ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed' :
                                                 product.stage === 'development' ? 'bg-yellow-900/50 text-yellow-300 hover:bg-yellow-900 border-yellow-800' :
                                                     'bg-purple-900/50 text-purple-300 hover:bg-purple-900 border-purple-800'
                                                 }`}
                                         >
-                                            {product.stage === 'development' ? 'Resume' : 'Initialize'}
+                                            {isWorking ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                            {isWorking ? 'Processing...' : product.stage === 'development' ? 'Resume' : 'Initialize'}
                                         </button>
                                     </div>
 
@@ -746,13 +741,14 @@ const StartupCodeStudio: React.FC = () => {
                                                     <button
                                                         onClick={() => buildFeature(feature, product.name)}
                                                         disabled={!isRunning || isWorking || feature.status === 'COMPLETED'}
-                                                        className={`text-xs px-2 py-0.5 rounded transition-colors ${!isRunning ? 'text-gray-600 cursor-not-allowed' :
+                                                        className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded transition-colors ${!isRunning || isWorking ? 'text-gray-600 cursor-not-allowed' :
                                                             feature.status === 'COMPLETED' ? 'text-green-500 cursor-default' :
                                                                 feature.status === 'IN_PROGRESS' ? 'bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900 border border-yellow-800/50' :
                                                                     'bg-blue-900/30 text-blue-400 hover:bg-blue-900 border border-blue-800/50'
                                                             }`}
                                                     >
-                                                        {feature.status === 'COMPLETED' ? 'Done' : feature.status === 'IN_PROGRESS' ? 'Resume' : 'Build'}
+                                                        {isWorking && feature.status !== 'COMPLETED' ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                                        {feature.status === 'COMPLETED' ? 'Done' : feature.status === 'IN_PROGRESS' ? (isWorking ? 'Resuming...' : 'Resume') : 'Build'}
                                                     </button>
                                                 </div>
                                             ))}

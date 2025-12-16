@@ -430,11 +430,21 @@ class MultiAgentSystem:
                 response = json_llm.invoke(current_messages)
                 content = response.content.strip()
                 
+                # DEBUG DIRECT LOGGING
+                try:
+                    with open("/tmp/planner_debug.log", "a") as f:
+                        f.write(f"\\n--- Planner Attempt {attempt+1} ---\\n")
+                        f.write(content)
+                        f.write("\\n----------------------------------\\n")
+                except Exception as ex:
+                    logger.error(f"Failed to write to debug log: {ex}")
+
                 # Use JsonRepair for robust parsing
                 try:
                     data = JsonRepair.parse(content)
                 except ValueError as e:
                     logger.warning(f"Planner JSON Parse Error (Attempt {attempt+1}/{max_retries}): {e}")
+                    logger.warning(f"Failed Content Repr: {repr(content)}")
                     # Feedback loop: Add error to messages and retry
                     current_messages.append(HumanMessage(content=f"JSON Error: {str(e)}. Please fix the JSON format and return ONLY the JSON object."))
                     continue
@@ -765,7 +775,14 @@ class MultiAgentSystem:
             detach = step.get("background", False)
             
             # Auto-detect server start commands to prevent blocking
-            if "npm start" in cmd or "node api.js" in cmd or "python app.py" in cmd or "python3 app.py" in cmd:
+            server_indicators = [
+                "npm start", "npm run dev", "npm run start",
+                "node server.js", "node app.js", "node index.js", "node api.js",
+                "python app.py", "python3 app.py", "python main.py", "python3 main.py",
+                "flask run", "uvicorn", "gunicorn"
+            ]
+            
+            if any(indicator in cmd for indicator in server_indicators):
                 detach = True
                 logger.info(f"Executor: Detaching server command: {cmd}")
                 
@@ -1213,6 +1230,10 @@ class MultiAgentSystem:
             
         if server_healthy:
             logs.append("Tester: Application is responsive (HTTP 200 OK).")
+            # --- OPTIMIZATION: Stop server after verification to save resources ---
+            # The user can start it on-demand for preview.
+            self.docker_manager.stop_server(startup_id)
+            logs.append("Tester: Application verified. Stopping server to save resources.")
             return {"status": "qa_passed", "logs": logs}
         else:
             # 3. Runtime Error Analysis

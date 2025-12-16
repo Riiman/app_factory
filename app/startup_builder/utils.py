@@ -11,15 +11,32 @@ class JsonRepair:
         text = text.strip()
         
         # Try to find JSON in markdown code blocks
-        match = re.search(r"```json\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
-        if match:
-            return match.group(1)
-            
-        match = re.search(r"```\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
-        if match:
-            return match.group(1)
-            
-        # Try to find the first '{' and last '}'
+    @staticmethod
+    def parse(text):
+        """
+        Robustly parses JSON from text.
+        Returns parsed dict/list or raises ValueError.
+        """
+        # Attempt 1: Parse original text directly (best case)
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        json_str = JsonRepair.extract_json(text)
+        
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            # Try repairing
+            repaired_str = JsonRepair.repair_json(json_str)
+            try:
+                return json.loads(repaired_str)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse JSON: {e}")
+
+    @staticmethod
+    def extract_json(text):
         start = text.find('{')
         end = text.rfind('}')
         
@@ -33,15 +50,22 @@ class JsonRepair:
         """
         Attempts to repair common JSON errors.
         """
-        # Remove comments (// ...)
-        json_str = re.sub(r"//.*", "", json_str)
+        # Fix unescaped newlines (common in LLM output)
+        # Replace control character newlines, tabs, etc if needed.
+        # But specifically newlines validly appear in formatted JSON (indentation), 
+        # so we can't just blind replace ALL newlines if they are outside strings.
+        # BUT, standard json.loads handles newlines outside strings fine. 
+        # It fails on newlines INSIDE strings.
+        
+        # A simple naive fix for unescaped newlines in strings is hard without a parser.
+        # However, for this specific issue, let's just avoid the destructive regex first.
+        
+        # DANGEROUS: re.sub(r"//.*", "", json_str) breaks URLs! 
+        # We will disable it.
+        # json_str = re.sub(r"//.*", "", json_str)
         
         # Remove trailing commas
         json_str = re.sub(r",\s*([}\]])", r"\1", json_str)
-        
-        # Fix missing quotes around keys (simple cases)
-        # This is risky but can help with some LLM outputs
-        # json_str = re.sub(r"([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:", r'\1"\2":', json_str)
         
         return json_str
 
