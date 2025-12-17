@@ -37,40 +37,7 @@ class AgentState(TypedDict):
     status: str # "planning", "coding", "reviewing", "done", "failed", "waiting_approval"
     running_processes: List[dict] # Tracks background processes: [{"pid": "123", "command": "npm start"}]
 
-def create_graph(architect_node, spec_approval_node, task_manager_node, reasoning_node, planner_node, developer_node, executor_node, reviewer_node, debugger_node, strategist_node, mission_verifier, overseer_node, tester_node, test_gen_node, db_path="checkpoints.sqlite"):
-    # Initialize Checkpointer
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
 
-    workflow = StateGraph(AgentState)
-
-    # --- Nodes ---
-    workflow.add_node("overseer", overseer_node)
-    
-    # Team A: Planning
-    workflow.add_node("architect", architect_node)
-    workflow.add_node("spec_approval", spec_approval_node)
-    workflow.add_node("task_manager", task_manager_node)
-    workflow.add_node("reasoning", reasoning_node)
-    workflow.add_node("planner", planner_node)
-    
-    # Team B: Execution
-    workflow.add_node("developer", developer_node)
-    workflow.add_node("executor", executor_node)
-    workflow.add_node("reviewer", reviewer_node)
-    workflow.add_node("debugger", debugger_node)
-    workflow.add_node("debugger", debugger_node)
-    workflow.add_node("strategist", strategist_node) # New Node
-    workflow.add_node("mission_verifier", mission_verifier) # New Node (Team QA)
-
-    # Team C: QA
-    workflow.add_node("tester", tester_node)
-    workflow.add_node("test_gen", test_gen_node)
-
-    # --- Edges ---
-    
-    # Entry Point
-    workflow.set_entry_point("overseer")
     
 # --- Routing Logic ---
 
@@ -176,7 +143,7 @@ def strategist_route(state):
         return "developer" # Skip step, go back to dev
     return "failed"
 
-def create_graph(architect_node, spec_approval_node, task_manager_node, reasoning_node, planner_node, developer_node, executor_node, reviewer_node, debugger_node, strategist_node, overseer_node, tester_node, test_gen_node, db_path="checkpoints.sqlite"):
+def create_graph(architect_node, spec_approval_node, task_manager_node, reasoning_node, planner_node, developer_node, executor_node, reviewer_node, debugger_node, strategist_node, mission_verifier, overseer_node, tester_node, test_gen_node, db_path="checkpoints.sqlite"):
     # Initialize Checkpointer
     conn = sqlite3.connect(db_path, check_same_thread=False)
     checkpointer = SqliteSaver(conn)
@@ -203,6 +170,7 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
     # Team C: QA
     workflow.add_node("tester", tester_node)
     workflow.add_node("test_gen", test_gen_node)
+    workflow.add_node("mission_verifier", mission_verifier) # New Node (Team QA)
 
     # --- Edges ---
     

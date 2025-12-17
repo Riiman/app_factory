@@ -18,6 +18,7 @@ graph = create_graph(
     agent.reviewer_node,
     agent.debugger_node,
     agent.strategist_node, # New Node
+    agent.mission_verifier, # New Node
     agent.overseer_node,
     agent.tester_node,
     agent.test_gen_node
