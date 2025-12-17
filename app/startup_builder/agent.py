@@ -51,7 +51,9 @@ class MultiAgentSystem:
     def _get_relevant_context(self, startup_id, goal):
         """
         Retrieves scoped context by selecting and reading only relevant files.
+        Returns both the context string and the list of logs generated.
         """
+        logs = []
         logger.info(f"DEBUG: Context Manager identifying files for goal: {goal}")
         
         # 1. List all files
@@ -61,7 +63,7 @@ class MultiAgentSystem:
         
         all_files = ls_result.get("output", "")
         if not all_files:
-            return "Project is empty."
+            return "Project is empty.", logs
 
         # 2. Ask LLM to select relevant files
         system_prompt = """You are a Context Manager.
@@ -96,6 +98,14 @@ class MultiAgentSystem:
         try:
             response = json_llm.invoke(messages)
             content = response.content
+            
+            # Log LLM Interaction
+            logs.append(json.dumps({
+                "agent": "Context Manager", 
+                "message": "Selected relevant files for context.",
+                "details": f"Task: {goal}\n\nSelected Files raw response:\n{content}"
+            }))
+            
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
@@ -106,6 +116,11 @@ class MultiAgentSystem:
             
         except Exception as e:
             logger.error(f"Context Manager failed to select files: {e}")
+            logs.append(json.dumps({
+                "agent": "Context Manager",
+                "message": f"Failed to select files: {e}",
+                "details": str(e)
+            }))
 
         # 3. Semantic Search (RAG)
         memory_manager = self._get_memory_manager(startup_id)
@@ -127,20 +142,32 @@ class MultiAgentSystem:
                 context_str += f"Snippet {i+1}:\n{snippet}\n\n"
         
         context_str += "--- Selected File Contents ---\n"
+        read_logs_details = ""
         for file_path in selected_files:
             file_data = self.docker_manager.read_file(startup_id, file_path)
             if "content" in file_data:
+                content_preview = file_data['content'][:500] + "..." if len(file_data['content']) > 500 else file_data['content']
                 context_str += f"\n--- {file_path} ---\n{file_data['content']}\n"
+                read_logs_details += f"Read {file_path} ({len(file_data['content'])} bytes)\n"
             else:
                 context_str += f"\n--- {file_path} ---\n(File not found or unreadable)\n"
+                read_logs_details += f"Failed to read {file_path}\n"
                 
-        return context_str
+        if read_logs_details:
+             logs.append(json.dumps({
+                "agent": "Context Manager",
+                "message": f"Read {len(selected_files)} files.",
+                "details": read_logs_details
+            }))
+             
+        return context_str, logs
 
     def architect_node(self, state):
         """Analyzes the request and file system to provide context."""
         logger.info("--- Architect Node ---")
         startup_id = state["startup_id"]
         goal = state["goal"]
+        logs = state.get("logs", [])
         
         # --- RAG: Sync and Index ---
         from .memory import MemoryManager
@@ -186,19 +213,25 @@ class MultiAgentSystem:
             response = self.llm.invoke(messages)
             spec_content = response.content
             
+            logs.append(json.dumps({
+                "agent": "Architect",
+                "message": "Generated Technical Specification.",
+                "details": f"Goal: {goal}\n\nSpec Content:\n{spec_content}"
+            }))
+            
             # Save spec to artifacts
             self.docker_manager.run_command(startup_id, "mkdir -p artifacts")
             self.docker_manager.write_file(startup_id, "artifacts/spec.md", spec_content)
             
             return {
                 "context": context,
-                "logs": state.get("logs", []) + ["Architect: Generated Technical Specification (spec.md)."]
+                "logs": logs
             }
         except Exception as e:
             logger.error(f"Architect failed: {e}")
             return {
                 "context": context,
-                "logs": state.get("logs", []) + [f"Architect: Failed to generate spec: {e}"]
+                "logs": logs + [f"Architect: Failed to generate spec: {e}"]
             }
 
     def spec_approval_node(self, state):
@@ -210,6 +243,7 @@ class MultiAgentSystem:
         """Breaks down the spec into a list of tasks."""
         logger.info("--- Task Manager Node ---")
         startup_id = state["startup_id"]
+        logs = state.get("logs", [])
 
         # --- FIX: Handle QA Failure ---
         if state.get("status") == "qa_failed":
@@ -250,7 +284,7 @@ class MultiAgentSystem:
                  "current_task": None, # Force Developer to pick the new fix task
                  "plan": [], # Clear previous plan
                  "current_step_index": 0, # Reset step index
-                 "logs": state.get("logs", []) + [f"Task Manager: Added fix task: {fix_task}"]
+                 "logs": logs + [f"Task Manager: Added fix task: {fix_task}"]
              }
         
         # Resumability: Check for existing tasks
@@ -270,13 +304,13 @@ class MultiAgentSystem:
                         "task_queue": pending_tasks,
                         "total_tasks": len(all_tasks),
                         "completed_tasks": completed_count,
-                        "logs": state.get("logs", []) + ["Task Manager: Resuming from existing task list."],
+                        "logs": logs + ["Task Manager: Resuming from existing task list."],
                         "status": "developer"
                     }
                 else:
                     return {
                         "task_queue": [],
-                        "logs": state.get("logs", []) + ["Task Manager: All tasks completed."],
+                        "logs": logs + ["Task Manager: All tasks completed."],
                         "status": "developer" # Developer will handle empty queue
                     }
             except json.JSONDecodeError:
@@ -307,6 +341,13 @@ class MultiAgentSystem:
         
         try:
             content = response.content
+            
+            logs.append(json.dumps({
+                "agent": "Task Manager",
+                "message": "Generated Task List.",
+                "details": f"Spec:\n{spec[:500]}...\n\nResponse:\n{content}"
+            }))
+            
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
@@ -323,21 +364,23 @@ class MultiAgentSystem:
                 "task_queue": task_list,
                 "total_tasks": len(task_list),
                 "completed_tasks": 0,
-                "logs": state.get("logs", []) + [f"Task Manager: Generated {len(task_list)} tasks."],
+                "logs": logs, # Updated logs with details
                 "status": "developer"
             }
         except Exception as e:
             logger.error(f"Task Manager Error: {e}")
-            return {"status": "failed", "logs": state.get("logs", []) + [f"Task Manager failed: {e}"]}
+            return {"status": "failed", "logs": logs + [f"Task Manager failed: {e}"]}
 
     def reasoning_node(self, state):
         """Analyzes the problem and decides on a strategy (Chain of Thought)."""
         logger.info("--- Reasoning Node ---")
         startup_id = state["startup_id"]
         goal = state["goal"]
+        logs = state.get("logs", [])
         
         # Context Manager: Get Scoped Context
-        context = self._get_relevant_context(startup_id, goal)
+        context, context_logs = self._get_relevant_context(startup_id, goal)
+        logs.extend(context_logs)
         
         system_prompt = """You are a Senior Software Architect.
         Analyze the user's request and the current project context.
@@ -365,17 +408,23 @@ class MultiAgentSystem:
             response = self.llm.invoke(messages)
             reasoning = response.content
             
+            logs.append(json.dumps({
+                "agent": "Thinker",
+                "message": "Analyzed architecture and devised strategy.",
+                "details": f"Goal: {goal}\n\nReasoning:\n{reasoning}"
+            }))
+            
             # Append reasoning to context for the Planner
             updated_context = f"{context}\n\n--- Technical Strategy ---\n{reasoning}"
             
             return {
                 "context": updated_context,
-                "logs": state.get("logs", []) + ["Thinker: Analyzed architecture and devised strategy."]
+                "logs": logs
             }
         except Exception as e:
             logger.error(f"Reasoning failed: {e}")
             return {
-                "logs": state.get("logs", []) + [f"Thinker: Failed to reason: {e}"]
+                "logs": logs + [f"Thinker: Failed to reason: {e}"]
             }
 
     def planner_node(self, state):
@@ -383,10 +432,12 @@ class MultiAgentSystem:
         logger.info("--- Planner Node ---")
         startup_id = state["startup_id"]
         current_task = state.get("current_task")
+        logs = state.get("logs", [])
         
         # Context Manager: Get Scoped Context for Planning
         # We re-fetch context here because the Planner might need more detail than Reasoning
-        context = self._get_relevant_context(startup_id, current_task)
+        context, context_logs = self._get_relevant_context(startup_id, current_task)
+        logs.extend(context_logs)
         
         running_processes = state.get("running_processes", [])
         running_processes_str = json.dumps(running_processes, indent=2) if running_processes else "None"
@@ -447,21 +498,11 @@ class MultiAgentSystem:
                 response = json_llm.invoke(current_messages)
                 content = response.content.strip()
                 
-                # DEBUG DIRECT LOGGING
-                try:
-                    with open("/tmp/planner_debug.log", "a") as f:
-                        f.write(f"\\n--- Planner Attempt {attempt+1} ---\\n")
-                        f.write(content)
-                        f.write("\\n----------------------------------\\n")
-                except Exception as ex:
-                    logger.error(f"Failed to write to debug log: {ex}")
-
                 # Use JsonRepair for robust parsing
                 try:
                     data = JsonRepair.parse(content)
                 except ValueError as e:
                     logger.warning(f"Planner JSON Parse Error (Attempt {attempt+1}/{max_retries}): {e}")
-                    logger.warning(f"Failed Content Repr: {repr(content)}")
                     # Feedback loop: Add error to messages and retry
                     current_messages.append(HumanMessage(content=f"JSON Error: {str(e)}. Please fix the JSON format and return ONLY the JSON object."))
                     continue
@@ -481,7 +522,7 @@ class MultiAgentSystem:
                     "plan": plan,
                     "current_step_index": 0,
                     "status": "plan_ready",
-                    "logs": state.get("logs", []) + [json.dumps(log_entry)]
+                    "logs": logs + [json.dumps(log_entry)]
                 }
             except Exception as e:
                 logger.error(f"Planner LLM Error (Attempt {attempt+1}/{max_retries}): {e}")
@@ -490,14 +531,14 @@ class MultiAgentSystem:
                     return {
                         "status": "failed", 
                         "error_history": [str(e)],
-                        "logs": state.get("logs", []) + [error_msg]
+                        "logs": logs + [error_msg]
                     }
                 current_messages.append(HumanMessage(content=f"Error: {str(e)}. Please try again."))
         
         return {
             "status": "failed",
             "error_history": ["Planner failed to generate valid JSON after multiple attempts."],
-            "logs": state.get("logs", []) + ["Planner: Failed to generate valid plan."]
+            "logs": logs + ["Planner: Failed to generate valid plan."]
         }
 
     def developer_node(self, state):
@@ -508,6 +549,7 @@ class MultiAgentSystem:
         task_queue = state.get("task_queue", [])
         plan = state.get("plan", [])
         idx = state.get("current_step_index", 0)
+        logs = state.get("logs", [])
         
         # 1. Task Management: Pick a task if none exists
         if not current_task:
@@ -523,7 +565,7 @@ class MultiAgentSystem:
                 "goal": current_task,
                 "plan": [],
                 "current_step_index": 0,
-                "logs": state.get("logs", []) + [f"Developer: Starting task: {current_task}"],
+                "logs": logs + [f"Developer: Starting task: {current_task}"],
                 "status": "planning_needed" # Trigger Planner
             }
 
@@ -537,7 +579,7 @@ class MultiAgentSystem:
             logger.info(f"Developer: Task '{current_task}' complete.")
             
             # Increment completed tasks
-            completed_tasks = state.get("completed_tasks", 0) + 1
+            # completed_tasks = state.get("completed_tasks", 0) + 1 # DEPRECATED: We will calculate from DB
             
             # Auto-Update PROGRESS.md
             try:
@@ -552,6 +594,11 @@ class MultiAgentSystem:
                 # Resumability: Update tasks.json
                 tasks_path = "artifacts/tasks.json"
                 tasks_data = self.docker_manager.read_file(state["startup_id"], tasks_path)
+                
+                # --- FIX: Recalculate Total Tasks and Completed Tasks ---
+                total_tasks = state.get("total_tasks", 0)
+                completed_tasks = state.get("completed_tasks", 0)
+                
                 if "content" in tasks_data:
                     all_tasks = json.loads(tasks_data["content"])
                     for t in all_tasks:
@@ -561,19 +608,20 @@ class MultiAgentSystem:
                     self.docker_manager.write_file(state["startup_id"], tasks_path, json.dumps(all_tasks, indent=2))
                     logger.info(f"Developer: Updated status in tasks.json")
                     
+                    # Update counts source of truth
+                    total_tasks = len(all_tasks)
+                    completed_tasks = len([t for t in all_tasks if t.get("status") == "completed"])
+                    
             except Exception as e:
                 logger.error(f"Failed to update PROGRESS.md or tasks.json: {e}")
+                # Fallback to simple increment if file read failed, to avoid stalls
+                completed_tasks = state.get("completed_tasks", 0) + 1
             
             # Auto-Index Codebase (RAG Update)
             logger.info(f"Developer: Task complete. Indexing codebase...")
             try:
                 memory_manager = self._get_memory_manager(state["startup_id"])
                 startup_id = state["startup_id"]
-                
-                # Sync: Copy files from Container to Host for Indexing
-                # We use 'docker cp' via the CLI or python client.
-                # Since DockerManager wraps the client, we can add a method or use run_command with tar?
-                # 'docker cp' is a host command, not a container command.
                 
                 # Workaround: We will use a temporary directory on host.
                 local_workspace = f"./temp_workspaces/{startup_id}"
@@ -593,7 +641,7 @@ class MultiAgentSystem:
                 logger.error(f"Indexing failed: {e}")
 
             if not task_queue:
-                 return {"status": "execution_done", "completed_tasks": completed_tasks}
+                 return {"status": "execution_done", "completed_tasks": completed_tasks, "total_tasks": total_tasks}
             
             next_task = task_queue.pop(0)
             logger.info(f"Developer: Starting next task: {next_task}")
@@ -601,10 +649,11 @@ class MultiAgentSystem:
                 "current_task": next_task,
                 "task_queue": task_queue,
                 "completed_tasks": completed_tasks,
+                "total_tasks": total_tasks,
                 "goal": next_task,
                 "plan": [],
                 "current_step_index": 0,
-                "logs": state.get("logs", []) + [f"Developer: Completed previous task. Starting: {next_task}"],
+                "logs": logs + [f"Developer: Completed previous task. Starting: {next_task}"],
                 "status": "planning_needed"
             }
             
@@ -628,7 +677,7 @@ class MultiAgentSystem:
         return {
             "current_step": step,
             "status": "coding",
-            "logs": state.get("logs", []) + [f"Developer: Prepared step: {step.get('description')}"]
+            "logs": logs + [f"Developer: Prepared step: {step.get('description')}"]
         }
 
     def debugger_node(self, state):
@@ -637,6 +686,7 @@ class MultiAgentSystem:
         error_history = state.get("error_history", [])
         last_error = error_history[-1] if error_history else "Unknown error"
         current_task = state.get("current_task", "Unknown Task")
+        logs = state.get("logs", [])
         
         logger.info(f"Debugger: Analyzing error in task '{current_task}': {last_error}")
         
@@ -665,6 +715,13 @@ class MultiAgentSystem:
         try:
             response = json_llm.invoke(messages)
             content = response.content
+            
+            logs.append(json.dumps({
+                "agent": "Debugger",
+                "message": f"Proposed fix for error: {last_error[:50]}...",
+                "details": f"Error:\n{last_error}\n\nFix Proposal:\n{content}"
+            }))
+            
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
@@ -679,7 +736,7 @@ class MultiAgentSystem:
             
             return {
                 "current_step": fix_step,
-                "logs": state.get("logs", []) + [f"Debugger: Proposed fix for error: {last_error[:50]}..."],
+                "logs": logs,
                 "status": "coding" # Go directly to Executor
             }
         except Exception as e:
@@ -692,6 +749,7 @@ class MultiAgentSystem:
         error_history = state.get("error_history", [])
         current_task = state.get("current_task", "Unknown Task")
         plan = state.get("plan", [])
+        logs = state.get("logs", [])
         
         logger.info(f"Strategist: Analyzing loop in task '{current_task}'. Errors: {len(error_history)}")
         
@@ -734,6 +792,13 @@ class MultiAgentSystem:
         try:
             response = json_llm.invoke(messages)
             content = response.content
+            
+            logs.append(json.dumps({
+                "agent": "Strategist",
+                "message": "Analyzed execution loop.",
+                "details": f"Task: {current_task}\nRecent Errors: {error_history[-3:]}\n\nStrategy:\n{content}"
+            }))
+            
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
@@ -749,12 +814,12 @@ class MultiAgentSystem:
                 "status": "strategizing", # Intermediate status
                 "strategy_action": action,
                 "strategy_directive": directive,
-                "logs": state.get("logs", []) + [f"Strategist: Loop detected. Decision: {action}. Directive: {directive}"]
+                "logs": logs
             }
             
         except Exception as e:
             logger.error(f"Strategist failed: {e}")
-            return {"status": "failed", "logs": state.get("logs", []) + [f"Strategist: Failed to decide. Aborting."]}
+            return {"status": "failed", "logs": logs + [f"Strategist: Failed to decide. Aborting."]}
 
     def executor_node(self, state):
         """Executes the command in Docker."""
@@ -765,6 +830,8 @@ class MultiAgentSystem:
 
         startup_id = state["startup_id"]
         step = state["current_step"]
+        logs = state.get("logs", [])
+        
         logger.info(f"Executor: Running step: {step.get('description')}")
         
         # Check for resume signal
@@ -781,7 +848,7 @@ class MultiAgentSystem:
             logger.info("Executor: Pausing for interactive step.")
             return {
                 "status": "waiting_interaction",
-                "logs": state.get("logs", []) + [f"Executor: Pausing for interactive command: {step.get('command')}"]
+                "logs": logs + [f"Executor: Pausing for interactive command: {step.get('command')}"]
             }
 
         action = step.get("action")
@@ -830,7 +897,7 @@ class MultiAgentSystem:
                  return {
                     "last_result": {"exit_code": 1, "output": "Missing file_path"},
                     "status": "failed",
-                    "logs": state.get("logs", []) + ["Executor: Failed - Missing file_path for write_file action."]
+                    "logs": logs + ["Executor: Failed - Missing file_path for write_file action."]
                 }
                 
             logger.info(f"DEBUG: Writing file to {path}. Content length: {len(content) if content else 0}")
@@ -874,7 +941,7 @@ class MultiAgentSystem:
         return {
             "last_result": result,
             "running_processes": running_processes if 'running_processes' in locals() else state.get("running_processes", []),
-            "logs": state.get("logs", []) + [json.dumps(log_entry)]
+            "logs": logs + [json.dumps(log_entry)]
         }
 
     def _take_screenshot(self, startup_id):
@@ -920,6 +987,7 @@ class MultiAgentSystem:
         result = state.get("last_result", {})
         step = state.get("current_step", {})
         startup_id = state.get("startup_id")
+        logs = state.get("logs", [])
         
         command = step.get("command") or step.get("file_path") or "Unknown Action"
         output = result.get("output", "") or result.get("error", "")
@@ -936,7 +1004,7 @@ class MultiAgentSystem:
                 "status": "failed",
                 "error_category": "LOGIC_SYNTAX",
                 "error_history": state.get("error_history", []) + [error_msg],
-                "logs": state.get("logs", []) + [f"Reviewer: Step failed due to linter errors."]
+                "logs": logs + [f"Reviewer: Step failed due to linter errors."]
             }
 
         # --- Verification for File Writes (Bypassing LLM) ---
@@ -950,7 +1018,7 @@ class MultiAgentSystem:
                     "status": "failed",
                     "error_category": "INFRASTRUCTURE",
                     "error_history": state.get("error_history", []) + [error_msg],
-                    "logs": state.get("logs", []) + [f"Reviewer: {error_msg}"]
+                    "logs": logs + [f"Reviewer: {error_msg}"]
                 }
 
             # Verify file content
@@ -962,7 +1030,7 @@ class MultiAgentSystem:
                     "status": "failed",
                     "error_category": "MISSING_IMPLEMENTATION",
                     "error_history": state.get("error_history", []) + [error_msg],
-                    "logs": state.get("logs", []) + [f"Reviewer: {error_msg}"]
+                    "logs": logs + [f"Reviewer: {error_msg}"]
                 }
             
             content = read_result.get("content", "")
@@ -973,7 +1041,7 @@ class MultiAgentSystem:
                     "status": "failed",
                     "error_category": "LOGIC_SYNTAX",
                     "error_history": state.get("error_history", []) + [error_msg],
-                    "logs": state.get("logs", []) + [f"Reviewer: {error_msg}"]
+                    "logs": logs + [f"Reviewer: {error_msg}"]
                 }
             
             # Optional: Check if content matches expected (fuzzy check)
@@ -983,7 +1051,7 @@ class MultiAgentSystem:
             if abs(expected_len - actual_len) > expected_len * 0.2: # >20% difference
                  print(f"Reviewer Warning: Content length mismatch. Expected ~{expected_len}, got {actual_len}.")
             
-            logs = state.get("logs", []) + [f"Reviewer: Verified file {path} (Size: {actual_len} bytes)."]
+            logs = logs + [f"Reviewer: Verified file {path} (Size: {actual_len} bytes)."]
             
             # Use standard next-step logic
             idx = state["current_step_index"]
@@ -1038,6 +1106,13 @@ class MultiAgentSystem:
         try:
             response = json_llm.invoke(messages)
             content = response.content
+            
+            logs.append(json.dumps({
+                "agent": "Reviewer",
+                "message": f"Reviewing execution of: {command}",
+                "details": f"Command: {command}\n\nOutput:\n{output[:1000]}...\n\nVerdict:\n{content}"
+            }))
+            
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
@@ -1054,7 +1129,7 @@ class MultiAgentSystem:
                  return {
                     "status": "done",
                     "current_step_index": state.get("current_step_index", 0) + 1,
-                    "logs": state.get("logs", []) + [f"Reviewer: Step verified. Reason: {reason}"]
+                    "logs": logs + [f"Reviewer: Step verified. Reason: {reason}"]
                 }
             else:
                 # Failure Logic
@@ -1066,26 +1141,26 @@ class MultiAgentSystem:
                         "status": "failed",
                         "error_category": category,
                         "error_history": error_history + [error_msg],
-                        "logs": state.get("logs", []) + [f"Reviewer: CRITICAL - Loop detected. Aborting. Error: {error_msg}"]
+                        "logs": logs + [f"Reviewer: CRITICAL - Loop detected. Aborting. Error: {error_msg}"]
                     }
 
                 return {
                     "status": "failed",
                     "error_category": category,
                     "error_history": error_history + [error_msg],
-                    "logs": state.get("logs", []) + [f"Reviewer: Step failed. Reason: {reason}. Category: {category}. Requesting fix..."]
+                    "logs": logs + [f"Reviewer: Step failed. Reason: {reason}. Category: {category}. Requesting fix..."]
                 }
                 
         except Exception as e:
             print(f"Reviewer LLM failed: {e}")
             # Fallback to strict exit code check
             if exit_code == 0:
-                 return {"status": "done", "logs": state.get("logs", []) + ["Reviewer: Verified (Fallback)."]}
+                 return {"status": "done", "logs": logs + ["Reviewer: Verified (Fallback)."]}
             else:
                  return {
                      "status": "failed", 
                      "error_category": "LOGIC_SYNTAX", # Assume logic error on fallback
-                     "logs": state.get("logs", []) + [f"Reviewer: Failed (Fallback). Error: {str(e)}"]
+                     "logs": logs + [f"Reviewer: Failed (Fallback). Error: {str(e)}"]
                  }
             
         # Robust check for npm errors even if exit code is 0 (some versions/configs might behave oddly)
@@ -1098,7 +1173,7 @@ class MultiAgentSystem:
                 "status": "failed",
                 "error_category": "LOGIC_SYNTAX",
                 "error_history": state.get("error_history", []) + [error_msg],
-                "logs": state.get("logs", []) + [f"Reviewer: Step failed. Error: {error_msg}. Requesting fix..."]
+                "logs": logs + [f"Reviewer: Step failed. Error: {error_msg}. Requesting fix..."]
             }
         
         # --- Visual QA ---
@@ -1136,6 +1211,7 @@ class MultiAgentSystem:
         current_index = state.get("current_mission_index", 0)
         current_mission = mission_queue[current_index] if current_index < len(mission_queue) else {}
         mission_goal = current_mission.get("goal", "Current Mission")
+        logs = state.get("logs", [])
         
         logger.info(f"Mission Verifier: Verifying goal: {mission_goal}")
         
@@ -1172,8 +1248,14 @@ class MultiAgentSystem:
             content = json.loads(response.content)
             test_code = content.get("test_script", "")
             
+            logs.append(json.dumps({
+                "agent": "Mission Verifier",
+                "message": "Generated Verification Script",
+                "details": f"Mission: {mission_goal}\n\nTest Code:\n{test_code}"
+            }))
+            
             if not test_code:
-                 return {"status": "qa_failed", "logs": state.get("logs", []) + ["Mission Verifier: Failed to generate test code."]}
+                 return {"status": "qa_failed", "logs": logs + ["Mission Verifier: Failed to generate test code."]}
             
             # Write test file
             test_path = "tests/mission_integration_test.py"
@@ -1186,23 +1268,29 @@ class MultiAgentSystem:
             
             result = self.docker_manager.run_command(startup_id, f"python3 {test_path}")
             
+            logs.append(json.dumps({
+                "agent": "Mission Verifier",
+                "message": f"Integration Test Result: {'Passed' if result.get('exit_code') == 0 else 'Failed'}",
+                "details": result.get('output', '')
+            }))
+            
             if result.get("exit_code") == 0:
                 logger.info("Mission Verifier: Mission Passed!")
                 return {
                     "status": "mission_complete",
-                    "logs": state.get("logs", []) + ["Mission Verifier: Integration tests passed. Mission Success!"]
+                    "logs": logs + ["Mission Verifier: Integration tests passed. Mission Success!"]
                 }
             else:
                 logger.warning(f"Mission Verifier: Mission Failed. Output: {result.get('output')}")
                 return {
                     "status": "qa_failed", 
                     "error_history": state.get("error_history", []) + [f"Mission Integration Test Failed: {result.get('output')[:200]}"],
-                    "logs": state.get("logs", []) + [f"Mission Verification Failed. Output: {result.get('output')[:100]}..."]
+                    "logs": logs + [f"Mission Verification Failed. Output: {result.get('output')[:100]}..."]
                 }
                 
         except Exception as e:
             logger.error(f"Mission Verifier Error: {e}")
-            return {"status": "qa_failed", "logs": state.get("logs", []) + [f"Mission Verifier Exception: {e}"]}
+            return {"status": "qa_failed", "logs": logs + [f"Mission Verifier Exception: {e}"]}
 
     def overseer_node(self, state):
         """The Supervisor that decides which team works next."""
