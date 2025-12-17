@@ -464,12 +464,18 @@ class MultiAgentSystem:
         3. **File Paths**: Must be relative to project root.
         4. **Granularity**: One logical change per step.
         5. **Verification**: Do NOT include "verify" steps. The Reviewer handles that.
-        6. **Output Format**: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or explanations.
+        6. **Output Format**: Return ONLY valid JSON. All string values must be properly escaped.
         7. **Interactive Commands**: Prefer non-interactive commands. However, if an interactive command is absolutely necessary (e.g. `npm login`, `cypress open`), set `"interactive": true` in the step object.
         8. **System Capabilities**: You have full access to the shell.
            - Use `action: "command"` for system diagnostics (`ps aux`, `netstat -tuln`, `curl -I localhost:3000`).
-           - Use `action: "write_file"` to create temporary test scripts (e.g., `test_db.py`) and then run them.
-           - Do not limit yourself to just editing files; inspect the environment!
+        
+        CONDITIONAL LOGIC & SCRIPTS (CRITICAL):
+        If the task involves "Checking if X, then do Y", or any logic that depends on a runtime state:
+        - **DO NOT** generate linear steps like [Check Pot, Start Server]. The Planner is static; it cannot see the output of step 1 before deciding step 2.
+        - **INSTEAD**, generate a **SINGLE Python or Shell script** that encapsulates the logic.
+        - Example Task: "Start server if not running".
+          - Bad Plan: Step 1: `ps aux`, Step 2: `npm start` (Will fail if already running).
+          - Good Plan: Step 1: `write_file check_and_start.py` (Script checks PID/Port, starts if needed), Step 2: `python3 check_and_start.py`.
         
         WEB APP CONFIGURATION RULES:
         1. **Port**: Always configure web servers (React, Vite, Next.js, Express) to run on **Port 3000**.
@@ -481,16 +487,19 @@ class MultiAgentSystem:
         Example Output:
         {
             "steps": [
-                {"id": 1, "description": "Check if port 3000 is free", "action": "command", "command": "netstat -tuln | grep 3000"},
-                {"id": 2, "description": "Install axios", "action": "command", "command": "npm install axios"},
-                {"id": 3, "description": "Update vite config", "action": "write_file", "file_path": "frontend/vite.config.js", "content": "..."}
+                {"id": 1, "description": "Create conditional startup script", "action": "write_file", "file_path": "tools/safe_start.py", "content": "...python code..."},
+                {"id": 2, "description": "Run safe start script", "action": "command", "command": "python3 tools/safe_start.py"}
             ]
         }
         """.replace("{running_processes}", running_processes_str)
         
+        # Inject Execution Context (Last 10 logs)
+        relevant_logs = logs[-10:] if len(logs) > 10 else logs
+        context_with_logs = f"{context}\n\nRecent Execution Log:\n" + json.dumps(relevant_logs, indent=2)
+        
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"Task: {current_task}\n\nContext:\n{context}")
+            HumanMessage(content=f"Task: {current_task}\n\nContext:\n{context_with_logs}")
         ]
         
         # Use JSON Mode
