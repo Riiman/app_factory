@@ -466,18 +466,24 @@ class MultiAgentSystem:
         5. **Verification**: Do NOT include "verify" steps. The Reviewer handles that.
         6. **Output Format**: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or explanations.
         7. **Interactive Commands**: Prefer non-interactive commands. However, if an interactive command is absolutely necessary (e.g. `npm login`, `cypress open`), set `"interactive": true` in the step object.
+        8. **System Capabilities**: You have full access to the shell.
+           - Use `action: "command"` for system diagnostics (`ps aux`, `netstat -tuln`, `curl -I localhost:3000`).
+           - Use `action: "write_file"` to create temporary test scripts (e.g., `test_db.py`) and then run them.
+           - Do not limit yourself to just editing files; inspect the environment!
         
         WEB APP CONFIGURATION RULES:
         1. **Port**: Always configure web servers (React, Vite, Next.js, Express) to run on **Port 3000**.
         2. **Host**: Always bind to **0.0.0.0** (required for Docker).
         3. **Vite**: Update `vite.config.js` to set `server: { host: true, port: 3000 }`.
         4. **Scripts**: Ensure `package.json` has a `dev` or `start` script.
+        5. **Lifecycle**: If the task involves "Fixing" or "Verifying" a running app, EXPLICITLY generate a step to START the server (e.g., `npm start` or `python app.py`) if you suspect it's down.
         
         Example Output:
         {
             "steps": [
-                {"id": 1, "description": "Install axios", "action": "command", "command": "npm install axios"},
-                {"id": 2, "description": "Update vite config", "action": "write_file", "file_path": "frontend/vite.config.js", "content": "..."}
+                {"id": 1, "description": "Check if port 3000 is free", "action": "command", "command": "netstat -tuln | grep 3000"},
+                {"id": 2, "description": "Install axios", "action": "command", "command": "npm install axios"},
+                {"id": 3, "description": "Update vite config", "action": "write_file", "file_path": "frontend/vite.config.js", "content": "..."}
             ]
         }
         """.replace("{running_processes}", running_processes_str)
@@ -699,7 +705,8 @@ class MultiAgentSystem:
            - The "fix" value must be a single step object (command or write_file).
         3. CHOICE B: If you need more info, return `{"diagnose": {"tasks": ["Check X", "Check Y"]}}`.
            - Provide a list of 1-3 short, specific diagnostic task titles.
-           - Example: `["Check port usage", "Read server logs", "Verify config file"]`
+           - Example: `["Check port usage (netstat)", "Read logs via tail", "Verify config file"]`.
+           - **System Commands**: You are ENCOURAGED to use `action: "command"` to run shell commands (`ls`, `cat`, `curl`, `netstat`) to gather info.
         
         Example Output (Fix):
         {
@@ -708,7 +715,7 @@ class MultiAgentSystem:
         
         Example Output (Diagnose):
         {
-            "diagnose": {"tasks": ["Check if port 3000 is open", "Read backend logs"]}
+            "diagnose": {"tasks": ["Check if port 3000 is open (netstat)", "Run 'ls -la frontend/' to check files"]}
         }
         """
         
