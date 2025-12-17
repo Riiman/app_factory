@@ -660,7 +660,7 @@ const StartupCodeStudio: React.FC = () => {
                             <div className="flex justify-between text-xs text-gray-400 mb-1">
                                 <span className="font-medium">
                                     {progress.total > 0 ? (
-                                        `Task ${progress.completed + 1} of ${progress.total}`
+                                        `Task ${Math.min(progress.completed + 1, progress.total)} of ${progress.total}`
                                     ) : (
                                         'Initializing...'
                                     )}
@@ -801,32 +801,30 @@ const StartupCodeStudio: React.FC = () => {
                                     </div>
 
                                     {expandedProducts[product.id] && (
-                                        <div className="p-2 space-y-1 bg-gray-900/50">
+                                        <div className="bg-gray-950 p-2 border-t border-gray-800 space-y-2">
                                             {product.features?.map((feature: any) => (
-                                                <div key={feature.id} className="flex items-center justify-between p-2 rounded hover:bg-gray-800 group">
-                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${feature.status === 'COMPLETED' ? 'bg-green-500' :
-                                                            feature.status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-gray-600'
-                                                            }`} />
-                                                        <span className="text-sm text-gray-400 truncate group-hover:text-gray-200">{feature.name}</span>
+                                                <div key={feature.id} className="flex flex-col gap-1 p-2 rounded bg-gray-900 border border-gray-800">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-medium text-gray-300">{feature.name}</span>
+
+                                                        {/* Status Badge */}
+                                                        {feature.status === 'completed' ? (
+                                                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-green-900/30 text-green-400 border border-green-800">
+                                                                <CheckCircle className="w-3 h-3" /> Done
+                                                            </span>
+                                                        ) : feature.status === 'in_progress' ? (
+                                                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-blue-900/30 text-blue-400 border border-blue-800 animate-pulse">
+                                                                <Loader2 className="w-3 h-3 animate-spin" /> Building...
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-500 px-2 py-0.5">
+                                                                Pending
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <button
-                                                        onClick={() => buildFeature(feature, product.name)}
-                                                        disabled={!isRunning || isWorking || feature.status === 'COMPLETED'}
-                                                        className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded transition-colors ${!isRunning || isWorking ? 'text-gray-600 cursor-not-allowed' :
-                                                            feature.status === 'COMPLETED' ? 'text-green-500 cursor-default' :
-                                                                feature.status === 'IN_PROGRESS' ? 'bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900 border border-yellow-800/50' :
-                                                                    'bg-blue-900/30 text-blue-400 hover:bg-blue-900 border border-blue-800/50'
-                                                            }`}
-                                                    >
-                                                        {isWorking && feature.status !== 'COMPLETED' ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                                                        {feature.status === 'COMPLETED' ? 'Done' : feature.status === 'IN_PROGRESS' ? (isWorking ? 'Resuming...' : 'Resume') : 'Build'}
-                                                    </button>
+                                                    <p className="text-[10px] text-gray-500 line-clamp-2">{feature.description}</p>
                                                 </div>
                                             ))}
-                                            {(!product.features || product.features.length === 0) && (
-                                                <div className="text-xs text-gray-600 p-2 italic">No features defined.</div>
-                                            )}
                                         </div>
                                     )}
                                 </div>

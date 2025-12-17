@@ -318,14 +318,24 @@ def build_product(startup_id):
     features = Feature.query.filter_by(product_id=product_id).all()
     
     # 1. Initialization Mission
-    mission_queue = [{
-        "id": 0,
-        "title": f"Initialize {product.name}",
-        "goal": f"Initialize project structure for {product.name}. Tech Stack: {product.tech_stack or 'MERN'}. Create basic scaffold."
-    }]
+    # Only add if product is new (no features completed yet)
+    completed_features_count = Feature.query.filter_by(product_id=product_id, status=FeatureStatus.COMPLETED).count()
+    mission_queue = []
     
-    # 2. Feature Missions
-    for i, feature in enumerate(features):
+    if completed_features_count == 0:
+        mission_queue.append({
+            "id": 0,
+            "title": f"Initialize {product.name}",
+            "goal": f"Initialize project structure for {product.name}. Tech Stack: {product.tech_stack or 'MERN'}. Create basic scaffold."
+        })
+    
+    # 2. Feature Missions - Filter out COMPLETED
+    pending_features = [f for f in features if f.status != FeatureStatus.COMPLETED]
+    
+    if not pending_features and completed_features_count > 0:
+         return jsonify({'status': 'completed', 'message': 'All features are already completed.'})
+
+    for i, feature in enumerate(pending_features):
         goal = f"""
         Implement Feature: {feature.name}
         Context: Product '{product.name}'
@@ -341,7 +351,8 @@ def build_product(startup_id):
         mission_queue.append({
             "id": feature.id,
             "title": f"Build Feature: {feature.name}",
-            "goal": goal
+            "goal": goal,
+            "feature_id": feature.id # Store ID for status updates
         })
         
     # Initialize State with Queue
@@ -459,6 +470,23 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
             current_input = initial_state
             final_state = None
             
+            # Track current mission index to detect changes
+            last_mission_index = state_tracker.get("current_mission_index", 0)
+            
+            # --- STATUS SYNC: Set initial mission feature to IN_PROGRESS ---
+            if "mission_queue" in state_tracker and state_tracker["mission_queue"]:
+                 try:
+                     current_mission = state_tracker["mission_queue"][last_mission_index]
+                     if "feature_id" in current_mission:
+                         from app.models import Feature, FeatureStatus
+                         from app.extensions import db
+                         f = Feature.query.get(current_mission["feature_id"])
+                         if f and f.status != FeatureStatus.COMPLETED:
+                             f.status = FeatureStatus.IN_PROGRESS
+                             db.session.commit()
+                 except Exception as e:
+                     print(f"Failed to update initial feature status: {e}")
+            
             try:
                 while True:
                     # Check for pause signal
@@ -486,6 +514,38 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                             
                             final_state = value
                             
+                            # --- STATUS SYNC: Detect Mission Change ---
+                            current_index = state_tracker.get("current_mission_index", 0)
+                            if current_index != last_mission_index:
+                                try:
+                                    mission_queue = state_tracker.get("mission_queue", [])
+                                    # 1. Mark previous mission as COMPLETED
+                                    if last_mission_index < len(mission_queue):
+                                        prev_mission = mission_queue[last_mission_index]
+                                        if "feature_id" in prev_mission:
+                                            from app.models import Feature, FeatureStatus
+                                            from app.extensions import db
+                                            # Re-fetch because session might have closed/renewed? No, same thread.
+                                            f_prev = Feature.query.get(prev_mission["feature_id"])
+                                            if f_prev:
+                                                f_prev.status = FeatureStatus.COMPLETED
+                                                db.session.commit()
+                                                
+                                    # 2. Mark new mission as IN_PROGRESS
+                                    if current_index < len(mission_queue):
+                                        new_mission = mission_queue[current_index]
+                                        if "feature_id" in new_mission:
+                                            from app.models import Feature, FeatureStatus
+                                            from app.extensions import db
+                                            f_new = Feature.query.get(new_mission["feature_id"])
+                                            if f_new:
+                                                f_new.status = FeatureStatus.IN_PROGRESS
+                                                db.session.commit()
+                                    
+                                    last_mission_index = current_index
+                                except Exception as e:
+                                    print(f"Error syncing feature status: {e}")
+
                             # Emit update via WebSocket
                             from app.extensions import socketio
                             socketio.emit('agent_update', {
@@ -501,6 +561,22 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                     snapshot = graph.get_state(config)
                     
                     if not snapshot.next:
+                        # Graph finished (End of all missions?)
+                        # Mark last mission as completed if done
+                        try:
+                             mission_queue = state_tracker.get("mission_queue", [])
+                             current_index = state_tracker.get("current_mission_index", 0)
+                             if mission_queue and current_index < len(mission_queue):
+                                  last_mission = mission_queue[current_index]
+                                  if "feature_id" in last_mission and state_tracker.get("status") != "failed":
+                                       from app.models import Feature, FeatureStatus
+                                       from app.extensions import db
+                                       f = Feature.query.get(last_mission["feature_id"])
+                                       if f:
+                                            f.status = FeatureStatus.COMPLETED
+                                            db.session.commit()
+                        except:
+                            pass
                         break
                         
                     if yolo:
