@@ -473,9 +473,13 @@ class MultiAgentSystem:
         If the task involves "Checking if X, then do Y", or any logic that depends on a runtime state:
         - **DO NOT** generate linear steps like [Check Pot, Start Server]. The Planner is static; it cannot see the output of step 1 before deciding step 2.
         - **INSTEAD**, generate a **SINGLE Python or Shell script** that encapsulates the logic.
+        - **ROBUSTNESS**: Your script MUST verify its success.
+          - Example: After starting a server, use `curl` or `netstat` in a loop to confirm it is actually listening.
+          - If the verification fails, the script MUST exit with non-zero code (e.g., `sys.exit(1)`).
+        - **VERBOSE LOGGING**: Your script MUST use `print()` statements generously to indicate what it is doing (e.g., 'Checking port...', 'Service found on PID...'). Do not run silently.
         - Example Task: "Start server if not running".
-          - Bad Plan: Step 1: `ps aux`, Step 2: `npm start` (Will fail if already running).
-          - Good Plan: Step 1: `write_file check_and_start.py` (Script checks PID/Port, starts if needed), Step 2: `python3 check_and_start.py`.
+          - Bad Plan: Step 1: `ps aux`, Step 2: `npm start`.
+          - Good Plan: Step 1: `write_file check_and_start.py` (Script checks PID/Port, starts if needed, verifies with curl, prints logs), Step 2: `python3 check_and_start.py`.
         
         WEB APP CONFIGURATION RULES:
         1. **Port**: Always configure web servers (React, Vite, Next.js, Express) to run on **Port 3000**.
