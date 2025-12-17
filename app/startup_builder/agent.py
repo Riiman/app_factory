@@ -1134,6 +1134,7 @@ class MultiAgentSystem:
         
         INPUT DATA:
         - Command/Action: The command that was run.
+        - Script Content: The source code of the script executed (if applicable). Use this to understand WHAT the script checks/prints.
         - Output: The stdout/stderr produced.
         - Exit Code: The shell exit code (0 = success, non-zero = usually failure).
         
@@ -1142,14 +1143,33 @@ class MultiAgentSystem:
         2. **SEARCH FOR ERRORS**: Scan the "Output" for keywords: "error", "failed", "exception", "externally-managed-environment", "command not found".
         3. **PIP/ENV ERRORS**: If you see "externally-managed-environment" or "This environment is externally managed", YOU MUST FAIL THE STEP.
         4. **IF ERROR FOUND -> FAIL**: If ANY of those keywords appear in a failure context, you MUST return "status": "failed", even if Exit Code is 0.
-        4. **Idempotency**: If a creation command fails because it already exists (e.g., "mkdir: File exists"), mark it as SUCCESS.
-        5. **Warnings**: If the output contains ONLY warnings (e.g., "npm warn") but otherwise completed, mark it as SUCCESS.
+        5. **Idempotency**: If a creation command fails because it already exists (e.g., "mkdir: File exists"), mark it as SUCCESS.
+        6. **Warnings**: If the output contains ONLY warnings (e.g., "npm warn") but otherwise completed, mark it as SUCCESS.
         
         Return JSON: {"status": "success" | "failed", "reason": "...", "category": "..."}
         """
         
+        # Try to extract script content if command runs a file
+        script_content = "N/A"
+        try:
+            if "python" in command or "bash" in command or "sh " in command or "./" in command:
+                # Simple regex to find file paths ending in .py, .sh, .js
+                import re
+                match = re.search(r'[\w/.-]+\.(py|sh|js)', command)
+                if match:
+                    script_path = match.group(0)
+                    # Read file from Docker
+                    read_res = self.docker_manager.read_file(startup_id, script_path)
+                    if not read_res.get("error"):
+                        script_content = read_res.get("content", "Empty File")[:3000] # Truncate large scripts
+        except Exception as e:
+            logger.warning(f"Reviewer failed to read script content: {e}")        
+
         user_message = f"""
         Command: {command}
+        Script Content:
+        {script_content}
+        
         Exit Code: {exit_code}
         Output:
         {output[:2000]} 
