@@ -186,6 +186,7 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
             "strategist": "strategist",
             "tester": "tester",
             "test_gen": "test_gen",
+            "mission_verifier": "mission_verifier",
             END: END
         }
     )
