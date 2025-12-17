@@ -824,7 +824,15 @@ class MultiAgentSystem:
         
         elif action == "write_file":
             path = step.get("file_path")
-            content = step.get("content")
+            content = step.get("content", "")
+            
+            if not path:
+                 return {
+                    "last_result": {"exit_code": 1, "output": "Missing file_path"},
+                    "status": "failed",
+                    "logs": state.get("logs", []) + ["Executor: Failed - Missing file_path for write_file action."]
+                }
+                
             logger.info(f"DEBUG: Writing file to {path}. Content length: {len(content) if content else 0}")
             
             result = self.docker_manager.write_file(startup_id, path, content)
