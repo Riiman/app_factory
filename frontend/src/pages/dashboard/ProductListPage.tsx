@@ -27,6 +27,8 @@ interface ProductListPageProps {
     onSelectProduct: (productId: number) => void;
     /** Callback function triggered when the "Add New Product" button is clicked. Opens the creation modal. */
     onAddNewProduct: () => void;
+    /** Flag indicating if product generation is in progress */
+    isGeneratingProduct?: boolean;
 }
 
 const getStageColor = (stage: string) => {
@@ -39,7 +41,7 @@ const getStageColor = (stage: string) => {
     }
 }
 
-const ProductListPage: React.FC<ProductListPageProps> = ({ startupId, products, onSelectProduct, onAddNewProduct }) => {
+const ProductListPage: React.FC<ProductListPageProps> = ({ startupId, products, onSelectProduct, onAddNewProduct, isGeneratingProduct }) => {
     const [promptState, setPromptState] = React.useState<{
         isOpen: boolean;
         title: string;
@@ -100,11 +102,20 @@ const ProductListPage: React.FC<ProductListPageProps> = ({ startupId, products, 
                 <div className="flex space-x-2">
                     {products.length === 0 && (
                         <button
-                            onClick={handleGenerateProduct}
-                            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                            disabled={isGeneratingProduct}
+                            className={`flex items-center px-4 py-2 text-white rounded-md transition-colors ${isGeneratingProduct ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'}`}
                         >
-                            <Sparkles className="h-5 w-5 mr-2" />
-                            <span className="text-sm font-medium">Generate Strategy</span>
+                            {isGeneratingProduct ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    <span className="text-sm font-medium">Generating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="h-5 w-5 mr-2" />
+                                    <span className="text-sm font-medium">Generate Strategy</span>
+                                </>
+                            )}
                         </button>
                     )}
                     <button

@@ -4,14 +4,49 @@ from app.services.document_generator_service import generate_scope_document
 from app.services.contract_generator_service import generate_contract_document
 from app.services.product_generator_service import generate_product_from_scope
 from app.services.generation_service import generate_startup_assets
-from app.models import Product, Feature, Startup
+from app.models import Product, Feature, Startup, Contract
 from app.services.notification_service import publish_update
 
 @celery.task(name='app.tasks.generate_startup_assets_task')
 def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm=True):
     """Celery task to trigger the generation of all startup assets."""
     print(f"--- [Celery Task] Starting asset generation for startup ID: {startup_id} (Product: {generate_product}, GTM: {generate_gtm}) ---")
-    generate_startup_assets(startup_id, generate_product=generate_product, generate_gtm=generate_gtm)
+    
+    status = "success"
+    message = "Assets generated successfully!"
+    error_details = None
+
+    try:
+        generate_startup_assets(startup_id, generate_product=generate_product, generate_gtm=generate_gtm)
+    except Exception as e:
+        print(f"Error in generate_startup_assets_task: {e}")
+        status = "error"
+        message = "Failed to generate assets."
+        error_details = str(e)
+        
+    finally:
+        # Reset generation flags
+        try:
+            startup = Startup.query.get(startup_id)
+            if startup:
+                if generate_product:
+                    startup.is_generating_product = False
+                if generate_gtm:
+                    startup.is_generating_gtm = False
+                db.session.commit()
+                # Publish update to refresh UI state
+                publish_update("assets_generation_completed", 
+                               {
+                                   "startup_id": startup.id, 
+                                   "startup": startup.to_dict(),
+                                   "status": status,
+                                   "message": message,
+                                   "error": error_details
+                               }, 
+                               rooms=[f"user_{startup.user_id}", "admin"])
+
+        except Exception as e:
+            print(f"Error resetting generation flags: {e}")
 
 
 @celery.task(name='app.tasks.analyze_submission_task')
@@ -24,16 +59,75 @@ def analyze_submission_task(submission_id):
 def generate_scope_document_task(startup_id):
     """Celery task to trigger the scope document generation."""
     print(f"--- [Celery Task] Starting scope document generation for startup ID: {startup_id} ---")
-    startup = Startup.query.get(startup_id)
-    if startup:
-        generate_scope_document(startup)
-    else:
-        print(f"--- [Celery Task] Error: Startup not found for ID: {startup_id} ---")
+    status = "success"
+    message = "Scope document generated successfully!"
+    error_details = None
+
+    try:
+        startup = Startup.query.get(startup_id)
+        if startup:
+            generate_scope_document(startup)
+        else:
+            status = "error"
+            message = "Startup not found."
+            print(f"--- [Celery Task] Error: Startup not found for ID: {startup_id} ---")
+    except Exception as e:
+        print(f"Error in generate_scope_document_task: {e}")
+        status = "error"
+        message = "Failed to generate scope document."
+        error_details = str(e)
+    finally:
+        try:
+            startup = Startup.query.get(startup_id)
+            if startup:
+                startup.is_generating_scope = False
+                db.session.commit()
+                publish_update("scope_generation_completed", 
+                               {
+                                   "startup_id": startup.id, 
+                                   "scope_document": startup.scope_document.to_dict() if startup.scope_document else None,
+                                   "status": status,
+                                   "message": message,
+                                   "error": error_details
+                               }, 
+                               rooms=[f"user_{startup.user_id}", "admin"])
+        except Exception as e:
+            print(f"Error resetting scope generation flag: {e}")
 
 @celery.task(name='app.tasks.generate_contract_task')
 def generate_contract_task(startup_id):
     """Celery task to trigger the contract document generation."""
-    generate_contract_document(startup_id)
+    print(f"--- [Celery Task] Starting contract generation for startup ID: {startup_id} ---")
+    status = "success"
+    message = "Contract generated successfully!"
+    error_details = None
+    
+    try:
+        generate_contract_document(startup_id)
+    except Exception as e:
+        print(f"Error in generate_contract_task: {e}")
+        status = "error"
+        message = "Failed to generate contract."
+        error_details = str(e)
+    finally:
+        try:
+            startup = Startup.query.get(startup_id)
+            if startup:
+                startup.is_generating_contract = False
+                db.session.commit()
+                # Assuming contract is linked to startup, fetch it to send in update
+                contract = Contract.query.filter_by(startup_id=startup.id).first()
+                publish_update("contract_generation_completed", 
+                               {
+                                   "startup_id": startup.id, 
+                                   "contract": contract.to_dict() if contract else None,
+                                   "status": status,
+                                   "message": message,
+                                   "error": error_details
+                               }, 
+                               rooms=[f"user_{startup.user_id}", "admin"])
+        except Exception as e:
+            print(f"Error resetting contract generation flag: {e}")
 
 @celery.task(name='app.tasks.generate_product_task')
 def generate_product_task(startup_id):

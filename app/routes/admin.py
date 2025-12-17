@@ -118,10 +118,8 @@ def update_submission_status(submission_id):
                 )
                 db.session.add(founder)
 
-            # Trigger async scope document generation
+            # Trigger async scope document generation - MOVED TO AFTER COMMIT
             # ASYNC: Use Celery task
-            generate_scope_document_task.delay(startup.id)
-
             # Create initial Contract
             contract = Contract(
                 startup_id=startup.id,
@@ -133,6 +131,13 @@ def update_submission_status(submission_id):
 
     try:
         db.session.commit()
+        
+        # Trigger async tasks after commit to ensure data is visible to workers
+        if new_status == SubmissionStatus.APPROVED and 'startup' in locals() and startup:
+             startup.is_generating_scope = True
+             db.session.commit() # Commit the flag change
+             generate_scope_document_task.delay(startup.id)
+
         publish_update("submission_status_updated", {"submission_id": submission.id, "new_status": new_status.value, "startup_id": startup.id if 'startup' in locals() and startup else None}, rooms=["admin", f"user_{submission.user_id}"])
         
         # Send status update email

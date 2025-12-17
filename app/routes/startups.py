@@ -886,6 +886,13 @@ def generate_assets(startup_id):
     generate_product = data.get('generate_product', True)
     generate_gtm = data.get('generate_gtm', True)
 
+    
+    if generate_product:
+        startup.is_generating_product = True
+    if generate_gtm:
+        startup.is_generating_gtm = True
+    db.session.commit()
+
     from app.tasks import generate_startup_assets_task
     generate_startup_assets_task.delay(startup.id, generate_product=generate_product, generate_gtm=generate_gtm)
 

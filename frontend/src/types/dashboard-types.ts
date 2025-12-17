@@ -476,6 +476,11 @@ export interface Startup {
   status: StartupStatus;
   current_stage: StartupStage;
   next_milestone: string;
+  is_generating_product?: boolean;
+  is_generating_gtm?: boolean;
+  is_analyzing_submission?: boolean;
+  is_generating_scope?: boolean;
+  is_generating_contract?: boolean;
   created_at: string;
   updated_at: string;
   user: User;

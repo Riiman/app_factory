@@ -26,6 +26,8 @@ interface MarketingCampaignsPageProps {
     onSelectCampaign: (campaignId: number) => void;
     /** Callback function triggered when the "Create New Campaign" button is clicked. */
     onAddNewCampaign: () => void;
+    /** Flag indicating if GTM generation is in progress */
+    isGeneratingGtm?: boolean;
 }
 
 const getStatusColor = (status: MarketingCampaignStatus) => {
@@ -38,7 +40,7 @@ const getStatusColor = (status: MarketingCampaignStatus) => {
     }
 };
 
-const MarketingCampaignsPage: React.FC<MarketingCampaignsPageProps> = ({ startupId, campaigns, onSelectCampaign, onAddNewCampaign }) => {
+const MarketingCampaignsPage: React.FC<MarketingCampaignsPageProps> = ({ startupId, campaigns, onSelectCampaign, onAddNewCampaign, isGeneratingGtm }) => {
     const [promptState, setPromptState] = React.useState<{
         isOpen: boolean;
         title: string;
@@ -99,11 +101,20 @@ const MarketingCampaignsPage: React.FC<MarketingCampaignsPageProps> = ({ startup
                 <div className="flex space-x-2">
                     {(campaigns || []).length === 0 && (
                         <button
-                            onClick={handleGenerateGtm}
-                            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                            disabled={isGeneratingGtm}
+                            className={`flex items-center px-4 py-2 text-white rounded-md transition-colors ${isGeneratingGtm ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'}`}
                         >
-                            <Sparkles className="h-5 w-5 mr-2" />
-                            <span className="text-sm font-medium">Generate Strategy</span>
+                            {isGeneratingGtm ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    <span className="text-sm font-medium">Generating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="h-5 w-5 mr-2" />
+                                    <span className="text-sm font-medium">Generate Strategy</span>
+                                </>
+                            )}
                         </button>
                     )}
                     <button

@@ -1,6 +1,7 @@
 import React, { FC, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -134,6 +135,7 @@ const App: FC = () => {
     <Router>
       <AuthProvider>
         <div className="min-h-screen bg-gray-50 font-sans antialiased">
+          <Toaster position="top-right" />
           <AppRoutes />
         </div>
       </AuthProvider>

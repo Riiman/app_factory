@@ -107,7 +107,14 @@ def run_analysis(submission_id):
         evaluation.status = 'completed'
         db.session.commit()
         
-        publish_update("analysis_completed", {"submission_id": submission_id, "evaluation": evaluation.to_dict()}, rooms=[f"user_{submission.user_id}", "admin"])
+        publish_update("analysis_completed", 
+                       {
+                           "submission_id": submission_id, 
+                           "evaluation": evaluation.to_dict(),
+                           "status": "success",
+                           "message": "Analysis completed successfully!"
+                       }, 
+                       rooms=[f"user_{submission.user_id}", "admin"])
         
         print(f"--- [Celery Task] Analysis for submission {submission_id} completed successfully. ---")
 
@@ -116,4 +123,11 @@ def run_analysis(submission_id):
         if 'evaluation' in locals():
             evaluation.status = 'failed'
             db.session.commit()
-            publish_update("analysis_failed", {"submission_id": submission_id, "error": str(e)}, rooms=[f"user_{submission.user_id}", "admin"])
+            publish_update("analysis_failed", 
+                           {
+                               "submission_id": submission_id, 
+                               "error": str(e),
+                               "status": "error",
+                               "message": "Analysis failed."
+                           }, 
+                           rooms=[f"user_{submission.user_id}", "admin"])

@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { Startup, Submission, Evaluation, User, SubmissionStatus, ScopeStatus, Contract, ContractStatus, Scope, ArtifactType, StartupStage, ActivityLog, DashboardNotification, Feature } from '../../types/dashboard-types';
-import api from '../../utils/api';
+import api, { getWebSocketUrl } from '../../utils/api';
+import { io } from 'socket.io-client';
 import StartupDetailView from './StartupDetailView';
 import StartupListView from './StartupListView';
 import SubmissionsView from './SubmissionsView';
@@ -112,6 +114,42 @@ const AdminDashboardPage: React.FC = () => {
       }
     }
   }, [adminData]);
+
+  // --- Socket.IO Listener for Admin Updates ---
+  // Using a separate effect for socket connection
+  // --- Socket.IO Listener for Admin Updates ---
+  useEffect(() => {
+    const socketUrl = getWebSocketUrl('');
+    const socket = io(socketUrl.replace('ws', 'http'), {
+      transports: ['websocket'],
+      path: '/socket.io'
+    });
+
+    socket.on('connect', () => {
+      console.log('Connected to global namespace (Admin)');
+      socket.emit('join', { room: 'admin' });
+    });
+
+    const handleEvent = (eventName: string, data: any, successMsg: string, errorMsg: string) => {
+      console.log(`${eventName} received:`, data);
+      if (data.status === 'error') {
+        toast.error(data.message || errorMsg);
+      } else {
+        toast.success(data.message || successMsg);
+        queryClient.invalidateQueries({ queryKey: ['adminData'] });
+      }
+    };
+
+    socket.on('assets_generation_completed', (data: any) => handleEvent('Assets Gen', data, "Assets generated for startup!", "Failed to generate assets."));
+    socket.on('scope_generation_completed', (data: any) => handleEvent('Scope Gen', data, "Scope document generated!", "Failed to generate scope."));
+    socket.on('contract_generation_completed', (data: any) => handleEvent('Contract Gen', data, "Contract generated!", "Failed to generate contract."));
+    socket.on('analysis_completed', (data: any) => handleEvent('Analysis', data, "Evaluation analysis completed!", "Analysis failed."));
+    socket.on('analysis_failed', (data: any) => handleEvent('Analysis Failed', data, "", "Evaluation analysis failed.")); // Redundant if captured above, but good for safety
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [queryClient]);
 
   const [activeView, setActiveView] = useState<ActiveView>('overview');
   const [selectedStartupId, setSelectedStartupId] = useState<number | null>(null);
