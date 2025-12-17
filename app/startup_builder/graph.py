@@ -32,6 +32,8 @@ class AgentState(TypedDict):
     current_task: str # The task currently being executed
     total_tasks: int # Total number of tasks
     completed_tasks: int # Number of completed tasks
+    mission_queue: List[dict] # Queue of missions: [{"id": 1, "goal": "..."}]
+    current_mission_index: int # Current mission index in the queue
     status: str # "planning", "coding", "reviewing", "done", "failed", "waiting_approval"
 
 def create_graph(architect_node, spec_approval_node, task_manager_node, reasoning_node, planner_node, developer_node, executor_node, reviewer_node, debugger_node, strategist_node, overseer_node, tester_node, test_gen_node, db_path="checkpoints.sqlite"):

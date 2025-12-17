@@ -226,7 +226,9 @@ def get_status(startup_id):
             "total_tasks": state.get("total_tasks", 0),
             "completed_tasks": state.get("completed_tasks", 0),
             "waiting_approval": not snapshot.next, # If no next step, it's waiting
-            "waiting_interaction": state.get("status") == "waiting_interaction"
+            "waiting_interaction": state.get("status") == "waiting_interaction",
+            "mission_queue": state.get("mission_queue", []),
+            "current_mission_index": state.get("current_mission_index", 0)
         })
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)})
@@ -292,6 +294,82 @@ def run_task(startup_id):
     run_agent_bg(startup_id, initial_state, yolo)
     
     return jsonify({"status": "success", "message": "Task started in background"})
+
+@builder_bp.route('/<startup_id>/build-product', methods=['POST'])
+def build_product(startup_id):
+    data = request.json
+    product_id = data.get('product_id')
+    yolo = data.get('yolo', False)
+    
+    if not product_id:
+        return jsonify({'error': 'Product ID required'}), 400
+
+    product = Product.query.get(product_id)
+    if not product:
+        return jsonify({'error': 'Product not found'}), 404
+        
+    features = Feature.query.filter_by(product_id=product_id).all()
+    
+    # 1. Initialization Mission
+    mission_queue = [{
+        "id": 0,
+        "title": f"Initialize {product.name}",
+        "goal": f"Initialize project structure for {product.name}. Tech Stack: {product.tech_stack or 'MERN'}. Create basic scaffold."
+    }]
+    
+    # 2. Feature Missions
+    for i, feature in enumerate(features):
+        goal = f"""
+        Implement Feature: {feature.name}
+        Context: Product '{product.name}'
+        Feature Description: {feature.description}
+        Acceptance Criteria: {feature.acceptance_criteria}
+        Tech Stack: {product.tech_stack}
+        
+        Task:
+        1. Analyze existing codebase.
+        2. Implement feature.
+        3. Verify.
+        """
+        mission_queue.append({
+            "id": feature.id,
+            "title": f"Build Feature: {feature.name}",
+            "goal": goal
+        })
+        
+    # Initialize State with Queue
+    initial_state = {
+        "startup_id": startup_id,
+        "goal": mission_queue[0]["goal"], # Start with first mission
+        "mission_queue": mission_queue,
+        "current_mission_index": 0,
+        "context": "",
+        "plan": [],
+        "current_step_index": 0,
+        "current_step": {},
+        "code_changes": {},
+        "error_history": [],
+        "logs": [],
+        "status": "start",
+        "total_tasks": 0,
+        "completed_tasks": 0
+    }
+    
+    # Update Product Stage
+    try:
+        product.stage = ProductStage.DEVELOPMENT
+        db.session.commit()
+    except Exception:
+        pass
+    
+    # Run in background
+    run_agent_bg(startup_id, initial_state, yolo)
+    
+    return jsonify({
+        "status": "success", 
+        "message": f"Started product build with {len(mission_queue)} missions.",
+        "mission_queue": mission_queue
+    })
 
 @builder_bp.route('/<startup_id>/build-feature', methods=['POST'])
 def build_feature(startup_id):

@@ -26,6 +26,8 @@ const StartupCodeStudio: React.FC = () => {
     const [isWorking, setIsWorking] = useState(false);
     const [ports, setPorts] = useState<any>(null);
     const [taskStatus, setTaskStatus] = useState<string>('idle');
+    const [missionQueue, setMissionQueue] = useState<any[]>([]);
+    const [currentMissionIndex, setCurrentMissionIndex] = useState<number>(0);
     const logsEndRef = useRef<HTMLDivElement>(null);
     const socketRef = useRef<Socket | null>(null);
 
@@ -143,6 +145,11 @@ const StartupCodeStudio: React.FC = () => {
                 setIsWorking(false);
                 setShowTerminal(true);
             } else if (data.task_status === 'done' || data.task_status === 'qa_passed') {
+                // Determine if we are truly done or just switching missions
+                // The overseer will reset status to 'start' if switching, so 'done' might be transient.
+                // However, if we get 'done' and there is a queue, we might just wait for next update?
+                // Actually, the backend overseer returns status='start' for next mission immediately.
+                // So 'done' implies ALL done.
                 setIsWorking(false);
                 setWaitingApproval(false);
                 addLog('Task completed successfully.');
@@ -151,12 +158,13 @@ const StartupCodeStudio: React.FC = () => {
                 setIsWorking(false);
                 setWaitingApproval(false);
                 addLog('Task failed.');
-            } else if (data.task_status === 'planning_needed' || data.task_status === 'plan_ready' || data.task_status === 'coding' || data.task_status === 'strategizing') {
+            } else if (data.task_status === 'planning_needed' || data.task_status === 'plan_ready' || data.task_status === 'coding' || data.task_status === 'strategizing' || data.task_status === 'start') {
                 setIsWorking(true);
-            } else {
-                // Default fallback, but don't force true if we are unsure
-                // setIsWorking(true); 
             }
+
+            // Mission Tracking
+            if (data.mission_queue) setMissionQueue(data.mission_queue);
+            if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
         });
 
         socket.on('disconnect', () => {
@@ -230,6 +238,9 @@ const StartupCodeStudio: React.FC = () => {
                     setIsWorking(false);
                     setShowTerminal(true);
                 }
+
+                if (data.mission_queue) setMissionQueue(data.mission_queue);
+                if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
             }
         } catch (e) {
             console.error("Failed to check status:", e);
@@ -274,17 +285,19 @@ const StartupCodeStudio: React.FC = () => {
         if (product.stage !== 'development') {
             setLogs([]);
             setPlan([]);
+            setMissionQueue([]);
+            setCurrentMissionIndex(0);
             setProgress({ completed: 0, total: 0 });
         }
 
         try {
-            const res = await fetch(`/api/builder/${id}/run-task`, {
+            // Updated to use the new 'build-product' endpoint
+            const res = await fetch(`/api/builder/${id}/build-product`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    goal: `Initialize project structure for ${product.name}. Tech Stack: ${product.tech_stack || 'React + Node.js'}. Create basic scaffold.`,
-                    yolo: yoloMode,
-                    product_id: product.id // Send ID for status update
+                    product_id: product.id, // Send ID for status update
+                    yolo: yoloMode
                 })
             });
             const data = await res.json();
@@ -619,7 +632,7 @@ const StartupCodeStudio: React.FC = () => {
             {(isWorking || progress.total > 0) && (
                 <div className="h-16 bg-gray-950 border-b border-gray-800 px-4 flex items-center justify-between">
                     <div className="flex-1 max-w-4xl">
-                        {/* Progress Bar */}
+                        {/* Granular Progress Bar */}
                         <div className="mb-2">
                             <div className="flex justify-between text-xs text-gray-400 mb-1">
                                 <span className="font-medium">
@@ -647,6 +660,27 @@ const StartupCodeStudio: React.FC = () => {
                                 )}
                             </div>
                         </div>
+
+                        {/* Mission Progress Bar - Only if Mission Queue exists */}
+                        {missionQueue.length > 0 && (
+                            <div className="mb-2">
+                                <div className="flex justify-between text-xs text-blue-300 mb-1">
+                                    <span className="font-medium">
+                                        Mission {currentMissionIndex + 1} of {missionQueue.length}: {missionQueue[currentMissionIndex]?.title}
+                                    </span>
+                                    <span>
+                                        {Math.round(((currentMissionIndex) / missionQueue.length) * 100)}% Overall
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-800 rounded-full h-1.5">
+                                    <div
+                                        className="bg-purple-500 h-1.5 rounded-full transition-all duration-500"
+                                        style={{ width: `${((currentMissionIndex) / missionQueue.length) * 100}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         {/* Current Task Display */}
                         <div className="flex items-center gap-4 text-xs">
                             <div className="flex items-center gap-2 text-gray-300 truncate max-w-[50%]">
@@ -724,7 +758,7 @@ const StartupCodeStudio: React.FC = () => {
                                                 }`}
                                         >
                                             {isWorking ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                                            {isWorking ? 'Processing...' : product.stage === 'development' ? 'Resume' : 'Initialize'}
+                                            {isWorking ? 'building...' : 'Build Product'}
                                         </button>
                                     </div>
 

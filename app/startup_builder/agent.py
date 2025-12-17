@@ -1107,7 +1107,32 @@ class MultiAgentSystem:
         elif status == "qa_failed":
             logs.append("Overseer: QA Failed. Re-activating Planning Team for fix.")
         elif status == "qa_passed":
-            logs.append("Overseer: QA Passed. Task Completed Successfully.")
+            # --- MISSION SWITCHING LOGIC ---
+            mission_queue = state.get("mission_queue", [])
+            current_index = state.get("current_mission_index", 0)
+            
+            # Check if there is a next mission
+            if current_index + 1 < len(mission_queue):
+                next_mission = mission_queue[current_index + 1]
+                new_goal = next_mission.get("goal")
+                logs.append(f"Overseer: Mission {current_index + 1} Complete. Starting Mission {current_index + 2}: {next_mission.get('title', 'Next Mission')}")
+                
+                return {
+                    "goal": new_goal,
+                    "current_mission_index": current_index + 1,
+                    # Reset State for new mission
+                    "plan": [],
+                    "task_queue": [],
+                    "completed_tasks": 0,
+                    "total_tasks": 0,
+                    "current_step_index": 0,
+                    "current_step": {},
+                    "error_history": [],
+                    "status": "start", # Restart the loop
+                    "logs": logs
+                }
+            else:
+                logs.append("Overseer: All Missions Completed.")
             
         return {"logs": logs}
 
