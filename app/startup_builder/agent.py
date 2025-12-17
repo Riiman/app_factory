@@ -1417,7 +1417,23 @@ class MultiAgentSystem:
         # 0. Check for Verification Script (Test-First Strategy)
         check_script = self.docker_manager.run_command(startup_id, "ls verify_task.py")
         if check_script.get("exit_code") == 0:
-            print("Tester: Found verification script. Running it...")
+            print("Tester: Found verification script. Ensuring environment is ready...")
+            
+            # --- AGENT LOOP FIX ---
+            # Explicitly start/restart servers before running the script
+            # because the script likely fails if localhost:3000 is down.
+            print("Tester: Force-restarting servers to ensure fresh state...")
+            self.docker_manager.stop_server(startup_id)
+            start_result = self.docker_manager.start_server(startup_id)
+            
+            if start_result.get("error"):
+                logs.append(f"Tester: Warning - Server start had issues: {start_result['error']}")
+            
+            # Give it a moment to boot
+            import time
+            time.sleep(5) 
+            
+            print("Tester: Running verification script...")
             # Run the script
             verify_result = self.docker_manager.run_command(startup_id, "python3 verify_task.py")
             output = verify_result.get("output", "")
