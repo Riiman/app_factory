@@ -691,16 +691,24 @@ class MultiAgentSystem:
         logger.info(f"Debugger: Analyzing error in task '{current_task}': {last_error}")
         
         system_prompt = """You are a Senior Debugger.
-        Analyze the error and the failed task.
-        Provide a SINGLE step to fix the issue.
+        Analyze the error and the failed task. Determine if you have enough information to fix it immediately, or if you need to run diagnostic commands first.
         
         CRITICAL RULES:
-        1. Return a JSON OBJECT with a single key "fix".
-        2. The "fix" value must be a single step object (command or write_file).
+        1. Return a JSON OBJECT.
+        2. CHOICE A: If you know the fix, return `{"fix": <step_object>}`.
+           - The "fix" value must be a single step object (command or write_file).
+        3. CHOICE B: If you need more info, return `{"diagnose": {"tasks": ["Check X", "Check Y"]}}`.
+           - Provide a list of 1-3 short, specific diagnostic task titles.
+           - Example: `["Check port usage", "Read server logs", "Verify config file"]`
         
-        Example Output:
+        Example Output (Fix):
         {
             "fix": {"id": 1, "description": "Install missing dependency", "action": "command", "command": "npm install axios"}
+        }
+        
+        Example Output (Diagnose):
+        {
+            "diagnose": {"tasks": ["Check if port 3000 is open", "Read backend logs"]}
         }
         """
         
@@ -718,8 +726,8 @@ class MultiAgentSystem:
             
             logs.append(json.dumps({
                 "agent": "Debugger",
-                "message": f"Proposed fix for error: {last_error[:50]}...",
-                "details": f"Error:\n{last_error}\n\nFix Proposal:\n{content}"
+                "message": f"Analyzed error: {last_error[:50]}...",
+                "details": f"Error:\n{last_error}\n\nDecision:\n{content}"
             }))
             
             if "```json" in content:
@@ -728,6 +736,35 @@ class MultiAgentSystem:
                 content = content.split("```")[1]
             
             data = json.loads(content)
+            
+            # --- CHOICE B: DIAGNOSE ---
+            if "diagnose" in data:
+                diagnostic_tasks = data["diagnose"].get("tasks", [])
+                logger.info(f"Debugger: recursive diagnosis requested: {diagnostic_tasks}")
+                
+                 # 1. Create Diagnosis Tasks
+                new_tasks = [f"[Diagnosis] {t}" for t in diagnostic_tasks]
+                
+                # 2. Create Recovery Task (The original goal, deferred)
+                recovery_task = f"[Recovery] Fix: {current_task}"
+                
+                # 3. Inject into Queue (LIFO / Stack Behavior)
+                # We put Diagnostic tasks first, then the Recovery task, then the rest of the queue
+                current_queue = state.get("task_queue", [])
+                updated_queue = new_tasks + [recovery_task] + current_queue
+                
+                # 4. Update Total Tasks Count
+                total_tasks = state.get("total_tasks", 0) + len(new_tasks) + 1
+                
+                return {
+                    "task_queue": updated_queue,
+                    "total_tasks": total_tasks,
+                    "logs": logs + [f"Debugger: Insufficient info. Added {len(new_tasks)} diagnostic tasks."],
+                    "status": "planning_needed", # Route back to Developer/Planner to pick up the first new task
+                    "current_task": None # Clear current task so Developer picks up the new top
+                }
+
+            # --- CHOICE A: FIX ---
             fix_step = data.get("fix")
             if not fix_step and isinstance(data, dict) and "action" in data:
                  fix_step = data # Fallback if model returned the step directly
