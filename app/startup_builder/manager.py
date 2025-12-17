@@ -14,10 +14,20 @@ class DockerManager:
         """
         Returns the container name for a startup.
         If container_name is provided, returns it.
-        Otherwise generates a default name (for backward compatibility).
+        Otherwise queries the database.
+        Finally generates a default name (for backward compatibility).
         """
         if container_name:
             return container_name
+            
+        try:
+            from app.models import Startup
+            startup = Startup.query.get(startup_id)
+            if startup and startup.container_name:
+                return startup.container_name
+        except Exception as e:
+            print(f"Error fetching container name from DB: {e}")
+            
         return f"startup_dev_{startup_id}"
     
     def generate_container_name(self):
@@ -154,12 +164,7 @@ class DockerManager:
 
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
         
         try:
             container = self.client.containers.get(container_name)
@@ -203,12 +208,7 @@ class DockerManager:
         
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
         
         try:
             container = self.client.containers.get(container_name)
@@ -257,12 +257,7 @@ class DockerManager:
         
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
             
         try:
             container = self.client.containers.get(container_name)
@@ -291,12 +286,7 @@ class DockerManager:
 
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
         
         try:
             container = self.client.containers.get(container_name)
@@ -331,12 +321,7 @@ class DockerManager:
         
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
             
         try:
             container = self.client.containers.get(container_name)
@@ -354,12 +339,7 @@ class DockerManager:
         
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
             
         try:
             container = self.client.containers.get(container_name)
@@ -426,12 +406,7 @@ class DockerManager:
 
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
 
         try:
             container = self.client.containers.get(container_name)
@@ -525,12 +500,7 @@ class DockerManager:
 
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
 
         try:
             container = self.client.containers.get(container_name)

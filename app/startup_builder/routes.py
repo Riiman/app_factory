@@ -27,6 +27,7 @@ graph = create_graph(
 import threading
 
 building_tasks = {}
+stop_signals = set()
 
 @builder_bp.route('/<startup_id>/start', methods=['POST'])
 def start_env(startup_id):
@@ -233,6 +234,11 @@ def get_status(startup_id):
         })
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)})
+
+@builder_bp.route('/<startup_id>/pause', methods=['POST'])
+def pause_task(startup_id):
+    stop_signals.add(startup_id)
+    return jsonify({"status": "success", "message": "Pause signal sent"})
 
 @builder_bp.route('/<startup_id>/features', methods=['GET'])
 def get_features(startup_id):
@@ -444,6 +450,10 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
             except:
                 pass
             
+            # Clear any existing stop signal before starting
+            if startup_id in stop_signals:
+                stop_signals.remove(startup_id)
+            
             # Update with new input
             state_tracker.update(initial_state)
             current_input = initial_state
@@ -451,6 +461,21 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
             
             try:
                 while True:
+                    # Check for pause signal
+                    if startup_id in stop_signals:
+                        print(f"Pausing task for {startup_id}")
+                        stop_signals.remove(startup_id)
+                        
+                        from app.extensions import socketio
+                        # Update status to paused in state
+                        # Note: We can't easily update langgraph state without a transition, 
+                        # but we can just stop the loop. The state remains at the last step.
+                        socketio.emit('agent_update', {
+                            'task_status': 'paused',
+                            'logs': state_tracker.get("logs", []) + ["Process paused by user."]
+                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        return
+
                     for event in graph.stream(current_input, config=config):
                         for key, value in event.items():
                             if key == "__interrupt__":

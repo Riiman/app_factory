@@ -103,6 +103,8 @@ const StartupCodeStudio: React.FC = () => {
             } else {
                 setIsRunning(false);
                 setPorts(null);
+                // Sync state: if environment stops, we can't be working in it
+                setIsWorking(false);
             }
         });
 
@@ -165,6 +167,11 @@ const StartupCodeStudio: React.FC = () => {
             // Mission Tracking
             if (data.mission_queue) setMissionQueue(data.mission_queue);
             if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
+
+            if (data.task_status === 'paused') {
+                setIsWorking(false);
+                addLog('Process paused.');
+            }
         });
 
         socket.on('disconnect', () => {
@@ -186,9 +193,25 @@ const StartupCodeStudio: React.FC = () => {
             const data = await res.json();
             setIsRunning(false);
             setPorts(null);
+            // Explicitly stop working state
+            setIsWorking(false);
             addLog(`Environment stopped: ${data.status || 'Success'}`);
         } catch (e) {
             addLog(`Error: ${e}`);
+        }
+    };
+
+    const handlePause = async () => {
+        if (!isWorking) return;
+        addLog('Pausing process...');
+        try {
+            const res = await fetch(`/api/builder/${id}/pause`, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                // Wait for socket update to confirm pause, but optimistic update is fine
+            }
+        } catch (e) {
+            addLog(`Error pausing: ${e}`);
         }
     };
 
@@ -630,7 +653,7 @@ const StartupCodeStudio: React.FC = () => {
 
             {/* Progress Bar Section */}
             {(isWorking || progress.total > 0) && (
-                <div className="h-16 bg-gray-950 border-b border-gray-800 px-4 flex items-center justify-between">
+                <div className="min-h-16 h-auto py-2 bg-gray-950 border-b border-gray-800 px-4 flex items-center justify-between">
                     <div className="flex-1 max-w-4xl">
                         {/* Granular Progress Bar */}
                         <div className="mb-2">
@@ -702,9 +725,24 @@ const StartupCodeStudio: React.FC = () => {
 
                     <div className="flex items-center gap-4 ml-4">
                         {isWorking && (
-                            <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>Working...</span>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Working...</span>
+                                </div>
+                                <button
+                                    onClick={handlePause}
+                                    className="flex items-center gap-1 bg-yellow-900/50 hover:bg-yellow-900 text-yellow-200 border border-yellow-800 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                >
+                                    <Square className="w-3 h-3 fill-current" /> Pause
+                                </button>
+                            </div>
+                        )}
+                        {!isWorking && taskStatus === 'paused' && (
+                            <div className="flex items-center gap-2 text-yellow-400 text-sm">
+                                <span className="flex items-center gap-1 bg-yellow-900/30 px-2 py-1 rounded border border-yellow-800/50">
+                                    <Square className="w-3 h-3 fill-current" /> Paused
+                                </span>
                             </div>
                         )}
                     </div>
