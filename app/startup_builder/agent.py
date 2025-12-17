@@ -477,6 +477,10 @@ class MultiAgentSystem:
           - Example: After starting a server, use `curl` or `netstat` in a loop to confirm it is actually listening.
           - If the verification fails, the script MUST exit with non-zero code (e.g., `sys.exit(1)`).
         - **VERBOSE LOGGING**: Your script MUST use `print()` statements generously to indicate what it is doing (e.g., 'Checking port...', 'Service found on PID...'). Do not run silently.
+        - **PIP ENVIRONMENT**: If you need to install python packages (e.g., `pip install requests`):
+          - **ALWAYS** use a virtual environment: `python3 -m venv venv && source venv/bin/activate && pip install ...`
+          - **OR** (if a quick check script) use `--break-system-packages` as a LAST RESORT: `pip install requests --break-system-packages`.
+          - **NEVER** run plain `pip install` on the system python, it will fail with "externally-managed-environment".
         - Example Task: "Start server if not running".
           - Bad Plan: Step 1: `ps aux`, Step 2: `npm start`.
           - Good Plan: Step 1: `write_file check_and_start.py` (Script checks PID/Port, starts if needed, verifies with curl, prints logs), Step 2: `python3 check_and_start.py`.
@@ -1136,7 +1140,8 @@ class MultiAgentSystem:
         CRITICAL RULES:
         1. **TRUST OUTPUT OVER EXIT CODE**: The "Exit Code" is often WRONG (e.g. pip exits with 0 even when it fails).
         2. **SEARCH FOR ERRORS**: Scan the "Output" for keywords: "error", "failed", "exception", "externally-managed-environment", "command not found".
-        3. **IF ERROR FOUND -> FAIL**: If ANY of those keywords appear in a failure context, you MUST return "status": "failed", even if Exit Code is 0.
+        3. **PIP/ENV ERRORS**: If you see "externally-managed-environment" or "This environment is externally managed", YOU MUST FAIL THE STEP.
+        4. **IF ERROR FOUND -> FAIL**: If ANY of those keywords appear in a failure context, you MUST return "status": "failed", even if Exit Code is 0.
         4. **Idempotency**: If a creation command fails because it already exists (e.g., "mkdir: File exists"), mark it as SUCCESS.
         5. **Warnings**: If the output contains ONLY warnings (e.g., "npm warn") but otherwise completed, mark it as SUCCESS.
         
