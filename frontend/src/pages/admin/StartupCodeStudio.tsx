@@ -685,8 +685,8 @@ const StartupCodeStudio: React.FC = () => {
                         <div className="flex items-center gap-4 text-xs">
                             <div className="flex items-center gap-2 text-gray-300 truncate max-w-[50%]">
                                 <span className="text-blue-400 font-semibold">Current:</span>
-                                <span className="truncate" title={currentStep?.description || "Planning..."}>
-                                    {currentStep?.description || "Planning..."}
+                                <span className="truncate" title={currentStep?.description || (missionQueue.length > 0 ? `Planning: ${missionQueue[currentMissionIndex]?.title}` : "Planning...")}>
+                                    {currentStep?.description || (missionQueue.length > 0 ? `Planning: ${missionQueue[currentMissionIndex]?.title}` : "Planning...")}
                                 </span>
                             </div>
                             {plan.length > (progress.completed + 1) && (

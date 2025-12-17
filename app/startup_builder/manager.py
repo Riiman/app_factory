@@ -482,6 +482,40 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
+    def ensure_app_running(self, startup_id, container_name=None):
+        """
+        Ensures the application server is running inside the container.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+            
+        # 1. Check if running (check PID)
+        # Query database for container name if not provided
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            
+            # Check for server.pid
+            exit_code, output = container.exec_run("cat server.pid", workdir="/app")
+            if exit_code == 0:
+                pid = output.decode('utf-8').strip()
+                # Check if process exists
+                check_exit, _ = container.exec_run(f"ps -p {pid}", workdir="/app")
+                if check_exit == 0:
+                     return {"status": "running", "pid": pid}
+                else:
+                    # Stale PID file
+                    container.exec_run("rm server.pid", workdir="/app")
+            
+            # Not running, start it
+            print(f"App not running for {startup_id}. Auto-starting...")
+            return self.start_server(startup_id, container_name)
+            
+        except Exception as e:
+            return {"error": str(e)}
+
     def stop_server(self, startup_id, container_name=None):
         """
         Stops the application server using the saved PID.

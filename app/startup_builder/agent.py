@@ -245,7 +245,11 @@ class MultiAgentSystem:
              
              return {
                  "task_queue": [fix_task],
+                 "total_tasks": len(all_tasks), # Update total tasks count
                  "status": "developer",
+                 "current_task": None, # Force Developer to pick the new fix task
+                 "plan": [], # Clear previous plan
+                 "current_step_index": 0, # Reset step index
                  "logs": state.get("logs", []) + [f"Task Manager: Added fix task: {fix_task}"]
              }
         
@@ -384,11 +388,18 @@ class MultiAgentSystem:
         # We re-fetch context here because the Planner might need more detail than Reasoning
         context = self._get_relevant_context(startup_id, current_task)
         
+        running_processes = state.get("running_processes", [])
+        running_processes_str = json.dumps(running_processes, indent=2) if running_processes else "None"
+        
         system_prompt = """You are a Senior DevOps Engineer & Developer.
         Create a detailed, step-by-step execution plan for the given task.
         
         CONTEXT:
         The project files and their contents are provided below. Use them to verify paths and existing code.
+        
+        RUNNING PROCESSES:
+        The following background services are currently running. Do NOT try to start them again unless necessary.
+        {running_processes}
         
         CRITICAL RULES:
         1. Return a JSON OBJECT with a single key "steps".
@@ -405,14 +416,20 @@ class MultiAgentSystem:
         6. **Output Format**: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or explanations.
         7. **Interactive Commands**: Prefer non-interactive commands. However, if an interactive command is absolutely necessary (e.g. `npm login`, `cypress open`), set `"interactive": true` in the step object.
         
+        WEB APP CONFIGURATION RULES:
+        1. **Port**: Always configure web servers (React, Vite, Next.js, Express) to run on **Port 3000**.
+        2. **Host**: Always bind to **0.0.0.0** (required for Docker).
+        3. **Vite**: Update `vite.config.js` to set `server: { host: true, port: 3000 }`.
+        4. **Scripts**: Ensure `package.json` has a `dev` or `start` script.
+        
         Example Output:
         {
             "steps": [
                 {"id": 1, "description": "Install axios", "action": "command", "command": "npm install axios"},
-                {"id": 2, "description": "Open Cypress", "action": "command", "command": "npx cypress open", "interactive": true}
+                {"id": 2, "description": "Update vite config", "action": "write_file", "file_path": "frontend/vite.config.js", "content": "..."}
             ]
         }
-        """
+        """.replace("{running_processes}", running_processes_str)
         
         messages = [
             SystemMessage(content=system_prompt),
@@ -787,6 +804,23 @@ class MultiAgentSystem:
                 logger.info(f"Executor: Detaching server command: {cmd}")
                 
             result = self.docker_manager.run_command(startup_id, cmd, detach=detach)
+            
+            # Update Running Processes List
+            running_processes = state.get("running_processes", [])
+            if detach and result.get("exit_code") == 0:
+                # Assuming result['output'] might contain "Command started in background" or PID placeholder
+                # We store metadata
+                new_process = {
+                    "command": cmd,
+                    "timestamp": "now", # Could use real timestamp
+                    "status": "running"
+                }
+                running_processes.append(new_process)
+                logger.info(f"Executor: Added processed to memory: {cmd}")
+                
+            elif not detach and result.get("exit_code") == 0:
+                # Remove if it was a kill command? Complexity for another day.
+                pass
         
         elif action == "write_file":
             path = step.get("file_path")
@@ -831,6 +865,7 @@ class MultiAgentSystem:
         
         return {
             "last_result": result,
+            "running_processes": running_processes if 'running_processes' in locals() else state.get("running_processes", []),
             "logs": state.get("logs", []) + [json.dumps(log_entry)]
         }
 
@@ -1085,6 +1120,82 @@ class MultiAgentSystem:
             "logs": logs
         }
 
+    def mission_verifier(self, state):
+        """Verifies if the entire mission goal is met using integration tests."""
+        logger.info("--- Mission Verifier Node ---")
+        startup_id = state["startup_id"]
+        mission_queue = state.get("mission_queue", [])
+        current_index = state.get("current_mission_index", 0)
+        current_mission = mission_queue[current_index] if current_index < len(mission_queue) else {}
+        mission_goal = current_mission.get("goal", "Current Mission")
+        
+        logger.info(f"Mission Verifier: Verifying goal: {mission_goal}")
+        
+        # 1. Generate Integration Test
+        spec_path = "artifacts/spec.md"
+        spec_data = self.docker_manager.read_file(startup_id, spec_path)
+        spec = spec_data.get("content", "")
+        
+        system_prompt = """You are a QA Lead Automation Engineer.
+        Generate a python integration test script to verify if the Mission Goal has been achieved.
+        
+        CONTEXT:
+        - Mission Goal: {goal}
+        - Specification: {spec}
+        
+        CRITICAL RULES:
+        1. Return a JSON OBJECT with a single key "test_script".
+        2. "test_script" must contain the full python code using `requests` or `selenium` (headless) to verify the app.
+        3. Use `unittest`.
+        4. Assume the app is running on http://localhost:3000 (React) or http://localhost:8000 (API).
+        5. Include assertions that strictly validate the user story.
+        """
+        
+        messages = [
+            SystemMessage(content=system_prompt.replace("{goal}", mission_goal).replace("{spec}", spec)),
+            HumanMessage(content="Generate the integration test code.")
+        ]
+        
+        # Use JSON Mode
+        json_llm = self.llm.bind(response_format={"type": "json_object"})
+        
+        try:
+            response = json_llm.invoke(messages)
+            content = json.loads(response.content)
+            test_code = content.get("test_script", "")
+            
+            if not test_code:
+                 return {"status": "qa_failed", "logs": state.get("logs", []) + ["Mission Verifier: Failed to generate test code."]}
+            
+            # Write test file
+            test_path = "tests/mission_integration_test.py"
+            self.docker_manager.run_command(startup_id, "mkdir -p tests")
+            self.docker_manager.write_file(startup_id, test_path, test_code)
+            
+            # Run Test
+            # Ensure requests is installed (Redundancy check)
+            self.docker_manager.run_command(startup_id, "pip3 install requests --break-system-packages")
+            
+            result = self.docker_manager.run_command(startup_id, f"python3 {test_path}")
+            
+            if result.get("exit_code") == 0:
+                logger.info("Mission Verifier: Mission Passed!")
+                return {
+                    "status": "mission_complete",
+                    "logs": state.get("logs", []) + ["Mission Verifier: Integration tests passed. Mission Success!"]
+                }
+            else:
+                logger.warning(f"Mission Verifier: Mission Failed. Output: {result.get('output')}")
+                return {
+                    "status": "qa_failed", 
+                    "error_history": state.get("error_history", []) + [f"Mission Integration Test Failed: {result.get('output')[:200]}"],
+                    "logs": state.get("logs", []) + [f"Mission Verification Failed. Output: {result.get('output')[:100]}..."]
+                }
+                
+        except Exception as e:
+            logger.error(f"Mission Verifier Error: {e}")
+            return {"status": "qa_failed", "logs": state.get("logs", []) + [f"Mission Verifier Exception: {e}"]}
+
     def overseer_node(self, state):
         """The Supervisor that decides which team works next."""
         print("--- Overseer Node ---")
@@ -1096,18 +1207,28 @@ class MultiAgentSystem:
         
         if status == "start" or status == "planning_needed":
             logs.append("Overseer: Activating Planning Team.")
-        elif status == "plan_ready":
-            logs.append("Overseer: Plan approved. Activating Execution Team.")
-        elif status == "execution_done":
-            logs.append("Overseer: Execution complete. Activating QA Team.")
-        elif status == AgentStateEnum.TEST_GEN:
-            logs.append("Overseer: Generating Verification Script (Test-First).")
-        elif status == AgentStateEnum.VERIFY:
-            logs.append("Overseer: Running Verification Script.")
-        elif status == "qa_failed":
-            logs.append("Overseer: QA Failed. Re-activating Planning Team for fix.")
-        elif status == "qa_passed":
-            # --- MISSION SWITCHING LOGIC ---
+        status = state.get("status")
+        logs = state.get("logs", [])
+        
+        # --- MISSION VERIFICATION INTERCEPT ---
+        # If all tasks are done (QA passed), we must verify the mission goal before switching.
+        if status == "qa_passed":
+            task_queue = state.get("task_queue", [])
+            if not task_queue:
+                logger.info("Overseer: All tasks completed. Requesting Mission Verification.")
+                return {
+                    "status": "verify_mission",
+                    "logs": logs + ["Overseer: All tasks done. Verifying Mission Goal..."]
+                }
+
+        # --- MISSION SWITCHING LOGIC ---
+        # Proceed only if status is "mission_complete" (Verification Passed) or if we are skipping verification
+        # For backward compatibility or safeguards, we might strictly check "mission_complete"
+        
+        # NOTE: If status is 'qa_passed' and queue is empty, we ALREADY returned 'verify_mission' above.
+        # So we only reach here if status == 'mission_complete' OR if there are still tasks (in which case we shouldn't switch).
+        
+        if status == "mission_complete":
             mission_queue = state.get("mission_queue", [])
             current_index = state.get("current_mission_index", 0)
             
@@ -1117,6 +1238,15 @@ class MultiAgentSystem:
                 new_goal = next_mission.get("goal")
                 logs.append(f"Overseer: Mission {current_index + 1} Complete. Starting Mission {current_index + 2}: {next_mission.get('title', 'Next Mission')}")
                 
+                # Cleanup artifacts for next mission to prevent Task Manager from reading old tasks
+                startup_id = state.get("startup_id")
+                if startup_id:
+                    try:
+                        self.docker_manager.run_command(startup_id, "rm artifacts/tasks.json artifacts/spec.md")
+                        logs.append("Overseer: Cleared previous mission artifacts.")
+                    except Exception as e:
+                        logs.append(f"Overseer: Warning - Failed to clear artifacts: {e}")
+
                 return {
                     "goal": new_goal,
                     "current_mission_index": current_index + 1,

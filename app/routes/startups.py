@@ -945,6 +945,18 @@ def proxy_to_container(startup_id, subpath):
     
     if container_info.get("status") != "running":
         return jsonify({"error": "Container is not running"}), 502
+
+    # Auto-start app if needed
+    app_status = manager.ensure_app_running(startup_id, container_name=startup.container_name)
+    if "error" in app_status:
+         # Log warning but try to proceed? Or fail?
+         # Proceeding might fail if port not bound yet.
+         print(f"Warning: Failed to ensure app running: {app_status['error']}")
+         
+    # Reload ports in case app start bound new ones (unlikely for mapped ports, but good practice)
+    # Actually, mapped ports are set at container creation. app binding to internal 3000 is what matters.
+    # But manager.ensure_container returns ports.
+
         
     # Get mapped port for 3000 (React)
     # Ports format: {'3000/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '32768'}], ...}
