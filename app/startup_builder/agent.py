@@ -99,16 +99,23 @@ class MultiAgentSystem:
                 context_str += f"File: {kf}\n{summary}\n\n"
         
         # 3. Decision
+        # Gather execution history to inform the planner
+        last_logs = logs[-5:] if logs else []
+        execution_history = "\n".join(last_logs)
+
         system_prompt = """You are the Lead Architect & Planner.
         Your Mission: {mission}
         
         Current Plan Status:
         {current_plan}
         
+        Last Execution Logs (Review this to see what was just done):
+        {execution_history}
+        
         JOB:
-        1. If plan is empty, generate detailed steps.
-        2. If tasks are pending, pick the NEXT one.
-        3. If specific request comes in, insert it into plan.
+        1. UPDATE THE PLAN: Mark the last task as "completed" if the logs show success.
+        2. PICK NEXT: Select the immediate next pending task.
+        3. IF DONE: Set status to "done".
         
         OUTPUT JSON:
         {
@@ -120,7 +127,7 @@ class MultiAgentSystem:
         """
         
         messages = [
-            SystemMessage(content=system_prompt.replace("{mission}", mission).replace("{current_plan}", json.dumps(current_plan))),
+            SystemMessage(content=system_prompt.replace("{mission}", mission).replace("{current_plan}", json.dumps(current_plan)).replace("{execution_history}", execution_history)),
             HumanMessage(content=f"Context:\n{context_str}\n\nWhat should we do next?")
         ]
         
@@ -134,7 +141,7 @@ class MultiAgentSystem:
             updated_plan = data.get("updated_plan_json")
             status = data.get("status", "coding")
             
-            # Save Plan
+            # Save Plan (Critical: This persists the "completed" status)
             if updated_plan:
                 self.docker_manager.write_file(startup_id, "artifacts/plan.json", json.dumps(updated_plan, indent=2))
                 
