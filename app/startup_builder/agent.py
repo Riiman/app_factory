@@ -196,7 +196,7 @@ class MultiAgentSystem:
             # ... (LLM Call to get steps) ...
             # Simplified for brevity in this single-shot write
             
-            messages = [SystemMessage(content=system_prompt.format(task=task)), HumanMessage(content="Start Implementation.")]
+            messages = [SystemMessage(content=system_prompt.replace("{task}", task)), HumanMessage(content="Start Implementation.")]
             json_llm = self.llm.bind(response_format={"type": "json_object"})
             
             # Retry Loop for implementation
