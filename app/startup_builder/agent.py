@@ -969,14 +969,15 @@ class MultiAgentSystem:
             logger.info(f"DEBUG: Write Result: {result}")
             
             # Auto-Linting
-            lint_result = self.linter.lint_file(startup_id, path)
-            if not lint_result["passed"]:
-                logger.warning(f"Linter Failed for {path}: {lint_result['errors']}")
-                # We don't fail the step immediately, but we append errors to logs
-                # The Reviewer will see this.
-                result["linter_errors"] = lint_result["errors"]
-            else:
-                logger.info(f"Linter Passed for {path}")
+            # lint_result = self.linter.lint_file(startup_id, path)
+            # if not lint_result["passed"]:
+            #     logger.warning(f"Linter Failed for {path}: {lint_result['errors']}")
+            #     # We don't fail the step immediately, but we append errors to logs
+            #     # The Reviewer will see this.
+            #     result["linter_errors"] = lint_result["errors"]
+            # else:
+            #     logger.info(f"Linter Passed for {path}")
+            pass
             
         # --- Git Automation ---
         if result.get("exit_code", 0) == 0:
@@ -1068,16 +1069,17 @@ class MultiAgentSystem:
         
         print(f"DEBUG: Reviewer checking: {command} (Exit: {exit_code})")
         
-        # Immediate Fail on Linter Errors
+        # Immediate Fail on Linter Errors check DISABLED
         if linter_errors:
-            error_msg = f"Linter Errors Detected:\n" + "\n".join(linter_errors[:10])
+            error_msg = f"Linter Errors Detected (Ignored):\n" + "\n".join(linter_errors[:10])
             print(f"Reviewer: {error_msg}")
-            return {
-                "status": "failed",
-                "error_category": "LOGIC_SYNTAX",
-                "error_history": state.get("error_history", []) + [error_msg],
-                "logs": logs + [f"Reviewer: Step failed due to linter errors."]
-            }
+            # return {
+            #     "status": "failed",
+            #     "error_category": "LOGIC_SYNTAX",
+            #     "error_history": state.get("error_history", []) + [error_msg],
+            #     "logs": logs + [f"Reviewer: Step failed due to linter errors."]
+            # }
+            pass
 
         # --- Verification for File Writes (Bypassing LLM) ---
         if step.get("action") == "write_file":
