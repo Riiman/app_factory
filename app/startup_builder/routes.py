@@ -8,20 +8,9 @@ from .agent import MultiAgentSystem
 manager = DockerManager()
 agent = MultiAgentSystem()
 graph = create_graph(
-    agent.architect_node,
-    agent.spec_approval_node,
-    agent.task_manager_node,
-    agent.reasoning_node,
     agent.planner_node,
-    agent.developer_node,
-    agent.executor_node,
-    agent.reviewer_node,
-    agent.debugger_node,
-    agent.strategist_node, # New Node
-    agent.mission_verifier, # New Node
-    agent.overseer_node,
-    agent.tester_node,
-    agent.test_gen_node
+    agent.creator_node,
+    agent.reviewer_node
 )
 
 import threading
