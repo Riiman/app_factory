@@ -4,6 +4,7 @@ import { ArrowLeft, Play, Square, Terminal as TerminalIcon, Send, Loader2, Check
 import TerminalComponent from '../../components/TerminalComponent';
 import FileExplorer from '../../components/FileExplorer';
 import ChatModal from '../../components/ChatModal';
+import AgentBrain from '../../components/AgentBrain'; // New Component
 import api, { getWebSocketUrl } from '../../utils/api';
 import { io, Socket } from 'socket.io-client';
 
@@ -31,6 +32,11 @@ const StartupCodeStudio: React.FC = () => {
     const logsEndRef = useRef<HTMLDivElement>(null);
     const socketRef = useRef<Socket | null>(null);
 
+    // V3 V3 V3: New Thought States
+    const [activeNode, setActiveNode] = useState<string>('idle');
+    const [thoughts, setThoughts] = useState<string[]>([]);
+
+
     // New State for Refactor
     const [showChatModal, setShowChatModal] = useState(false);
     const [products, setProducts] = useState<any[]>([]);
@@ -46,12 +52,15 @@ const StartupCodeStudio: React.FC = () => {
     const handleStart = async () => {
         addLog('Starting environment...');
         try {
-            const res = await fetch(`/api/builder/${id}/start`, {
+            const res = await fetch(`/api/builder/v3/start`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ stack_type: 'MERN' })
+                body: JSON.stringify({
+                    startup_id: id,
+                    mission: "Initialize project and wait for instructions." // Default V3 start
+                })
             });
             let data;
             try {
@@ -130,6 +139,9 @@ const StartupCodeStudio: React.FC = () => {
             if (data.plan) setPlan(data.plan);
             if (data.task_status) setTaskStatus(data.task_status);
 
+            // V3: Sync Node State
+            if (data.node) setActiveNode(data.node);
+
             if (data.total_tasks) {
                 setProgress({
                     completed: data.completed_tasks || 0,
@@ -172,6 +184,13 @@ const StartupCodeStudio: React.FC = () => {
                 setIsWorking(false);
                 addLog('Process paused.');
             }
+        });
+
+        // V3: Thinking Listener
+        socket.on('agent_thought', (data) => {
+            console.log('Thought received:', data);
+            if (data.content) setThoughts(prev => [...prev, data.content]);
+            if (data.node) setActiveNode(data.node);
         });
 
         socket.on('disconnect', () => {
@@ -288,16 +307,29 @@ const StartupCodeStudio: React.FC = () => {
     const triggerAgent = async (taskPrompt: string) => {
         setPrompt(taskPrompt);
         setShowChatModal(true);
-        // We need to wait for state update or pass directly.
-        // runTask uses 'prompt' state.
-        // We can call runTaskInternal directly.
         setIsWorking(true);
         setWaitingApproval(false);
         setPlan([]);
         setLogs([]);
-        setProgress({ completed: 0, total: 0 });
-        addLog(`Auto-Triggered Task: "${taskPrompt}" (YOLO: ${yoloMode})`);
-        await runTaskInternal(taskPrompt, yoloMode);
+        setThoughts([]); // Clear thoughts for new task
+        setActiveNode("planning"); // Reset node
+
+        addLog(`Auto-Triggered Task: "${taskPrompt}"`);
+
+        // V3 API Call
+        try {
+            await fetch(`/api/builder/v3/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startup_id: id,
+                    mission: taskPrompt
+                })
+            });
+        } catch (e) {
+            addLog(`Error triggering agent: ${e}`);
+            setIsWorking(false);
+        }
     };
 
     const initProduct = async (product: any) => {
@@ -406,18 +438,32 @@ const StartupCodeStudio: React.FC = () => {
         setWaitingApproval(false);
         setPlan([]);
         setLogs([]);
-        setProgress({ completed: 0, total: 0 });
-        addLog(`Team assigned to task: "${currentPrompt}" (YOLO: ${yoloMode})`);
+        setThoughts([]);
+        setActiveNode("planning");
 
-        // Add placeholder response (since we don't have real streaming chat yet)
+        addLog(`Team assigned to task: "${currentPrompt}"`);
+
+        // Add placeholder response
         setTimeout(() => {
             setChatMessages(prev => [...prev, {
                 role: 'assistant',
-                content: `I've started working on: "${currentPrompt}". check the Team Activity Log for detailed progress.`
+                content: `I've started working on: "${currentPrompt}". check the Brain View for real-time thoughts.`
             }]);
         }, 500);
 
-        await runTaskInternal(currentPrompt, yoloMode);
+        try {
+            await fetch(`/api/builder/v3/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startup_id: id,
+                    mission: currentPrompt
+                })
+            });
+        } catch (e) {
+            addLog(`Error running task: ${e}`);
+            setIsWorking(false);
+        }
     };
 
     const approveStep = async () => {

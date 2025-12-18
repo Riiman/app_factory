@@ -87,16 +87,31 @@ class MultiAgentSystem:
                 pass
                 
         # 2. Get Context
-        # Compact context to save tokens while keeping High-Level structure
-        # We assume standard file structure for key files
-        key_files = ["README.md", "backend/app.py", "backend/routes.py", "frontend/src/App.js", "frontend/package.json"]
-        context_str = "--- Project High-Level Overview ---\n"
-        for kf in key_files:
-            fdata = self.docker_manager.read_file(startup_id, kf)
-            if "content" in fdata:
-                # Use compacting
-                summary = cm.compact_file(fdata["content"], kf)
-                context_str += f"File: {kf}\n{summary}\n\n"
+        # 2. Get Context
+        # Inspect the actual file system to understand what exists
+        # We'll list files up to depth 3 to get a good overview without too much noise
+        # Excluding hidden files and node_modules/venv
+        
+        fs_check = self.docker_manager.run_command(startup_id, "find . -maxdepth 3 -not -path '*/.*' -not -path './node_modules*' -not -path './venv*' -not -path './__pycache__*'")
+        file_structure = fs_check.get("output", "")
+        
+        context_str = "--- Current File Structure ---\n"
+        context_str += file_structure + "\n\n"
+        
+        # Optionally read README if it exists in the list
+        if "README.md" in file_structure:
+             fdata = self.docker_manager.read_file(startup_id, "README.md")
+             if "content" in fdata:
+                 context_str += f"--- README.md ---\n{fdata['content']}\n\n"
+        
+        # Try to read likely main files if they appear in structure
+        potential_main_files = ["package.json", "requirements.txt", "app.py", "index.js", "server.js", "frontend/package.json", "backend/package.json"]
+        for p in potential_main_files:
+             if p in file_structure:
+                 fdata = self.docker_manager.read_file(startup_id, p)
+                 if "content" in fdata:
+                      summary = cm.compact_file(fdata["content"], p)
+                      context_str += f"File: {p}\n{summary}\n\n"
         
         # 3. Decision
         # Gather execution history to inform the planner

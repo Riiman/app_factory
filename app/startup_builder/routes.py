@@ -4,6 +4,7 @@ from . import builder_bp
 from .manager import DockerManager
 from .graph import create_graph
 from .agent import MultiAgentSystem
+from .v3.orchestrator import create_v3_graph
 
 manager = DockerManager()
 agent = MultiAgentSystem()
@@ -431,6 +432,79 @@ def build_feature(startup_id):
 
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)})
+
+# --- V3 Endpoints ---
+
+@builder_bp.route('/v3/start', methods=['POST'])
+def start_v3_agent():
+    data = request.json
+    startup_id = data.get('startup_id')
+    mission = data.get('mission')
+    
+    if not startup_id or not mission:
+        return jsonify({'error': 'Startup ID and Mission required'}), 400
+        
+    # Initial State
+    initial_state = {
+        "startup_id": startup_id,
+        "mission": mission,
+        "status": "planning",
+        "plan": [],
+        "logs": ["V3 Agent Initialized."]
+    }
+    
+    # Run in background
+    run_v3_agent_bg(startup_id, initial_state)
+    
+    return jsonify({"status": "success", "message": "V3 Agent Started"})
+
+def run_v3_agent_bg(startup_id, initial_state):
+    """Runs the V3 Agent Graph in background."""
+    from flask import current_app
+    app = current_app._get_current_object()
+    
+    def task():
+        with app.app_context():
+            from app.extensions import socketio
+            
+            # Callback for Thoughts
+            def log_callback(content, node):
+                socketio.emit('agent_thought', {
+                    'content': content, 
+                    'node': node
+                }, room=f"startup_{startup_id}", namespace='/builder')
+
+            # Create V3 Graph on the fly (lightweight)
+            # or cache it if expensive. We need log_callback bound though.
+            v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=log_callback)
+            
+            config = {"configurable": {"thread_id": startup_id}, "recursion_limit": 100}
+            
+            try:
+                for event in v3_graph.stream(initial_state, config=config):
+                    for key, value in event.items():
+                        # Emit Updated State
+                        socketio.emit('agent_update', {
+                            'node': key,
+                            'task_status': value.get('status', 'processing'),
+                            'plan': value.get('plan', []),
+                            'logs': value.get('logs', [])
+                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        
+                socketio.emit('agent_update', {
+                    'task_status': 'done',
+                    'logs': ['V3 Mission Complete']
+                }, room=f"startup_{startup_id}", namespace='/builder')
+                
+            except Exception as e:
+                print(f"V3 Error: {e}")
+                socketio.emit('agent_update', {
+                    'task_status': 'failed',
+                    'logs': [f"Critical Error: {e}"]
+                }, room=f"startup_{startup_id}", namespace='/builder')
+
+    thread = threading.Thread(target=task)
+    thread.start()
 
 def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
     """Runs the agent graph in a background thread."""

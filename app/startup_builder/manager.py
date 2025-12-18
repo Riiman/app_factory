@@ -5,10 +5,15 @@ import time
 class DockerManager:
     def __init__(self):
         try:
-            self.client = docker.from_env()
-        except Exception as e:
-            print(f"Error initializing Docker client: {e}")
-            self.client = None
+            # Force local socket for Linux environment to avoid SSH hangs
+            self.client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        except Exception:
+            try:
+                # Fallback to env
+                self.client = docker.from_env()
+            except Exception as e:
+                print(f"Error initializing Docker client: {e}")
+                self.client = None
 
     def get_container_name(self, startup_id, container_name=None):
         """
