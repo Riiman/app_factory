@@ -20,7 +20,7 @@ class V3Planner:
         active_mission = next((m for m in missions if m["id"] == current_mission_id), None)
         
         if not active_mission:
-             return {"logs": ["Planner Error: No active mission found."]}
+             return {"status": "failed", "logs": ["Planner Error: No active mission found."]}
              
         mission_title = active_mission["title"]
         mission_desc = active_mission["description"]
