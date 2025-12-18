@@ -236,13 +236,16 @@ class MultiAgentSystem:
                     return {"status": "success", "logs": logs} # Go to Reviewer
                     
                 except Exception as e:
-                    logs.append(f"Creator Crash (Left Loop): {e}")
+                    import traceback
+                    tb = traceback.format_exc()
+                    logs.append(f"Creator Crash (Loop {attempt}): {e}\nTraceback:\n{tb}\nResponse Content:\n{res.content}")
             
             return {"status": "failed", "logs": logs}
             
         except Exception as e:
-            # Catch errors that happen BEFORE the loop (e.g. init, llm bind, state access)
-            error_msg = f"Creator System Crash: {str(e)}"
+            import traceback
+            tb = traceback.format_exc()
+            error_msg = f"Creator System Crash: {str(e)}\nTraceback:\n{tb}"
             logger.error(error_msg)
             return {"status": "failed", "logs": logs + [error_msg]}
 
