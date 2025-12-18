@@ -15,6 +15,15 @@ class DockerManager:
                 print(f"Error initializing Docker client: {e}")
                 self.client = None
 
+        # Fix: Initialize base_work_dir
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.base_work_dir = os.path.join(base_path, 'temp_workspaces')
+        if not os.path.exists(self.base_work_dir):
+            try:
+                os.makedirs(self.base_work_dir, exist_ok=True)
+            except Exception as e:
+                print(f"Error creating base_work_dir: {e}")
+
     def get_container_name(self, startup_id, container_name=None):
         """
         Returns the container name for a startup.

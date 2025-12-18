@@ -416,12 +416,22 @@ def start_v3_agent():
         return jsonify({'error': 'Startup ID and Mission required'}), 400
         
     # Initial State
+    # Fix: Wrap single mission in a list for V3 Planner
+    synthetic_mission = {
+        "id": 0,
+        "title": "Ad-Hoc Task",
+        "description": mission,
+        "status": "pending"
+    }
+    
     initial_state = {
         "startup_id": startup_id,
-        "mission": mission,
-        "status": "analyzing",
+        "missions": [synthetic_mission],
+        "current_mission_id": 0,
+        "tech_stack": "Existing",
+        "status": "mission_selector",
         "plan": [],
-        "logs": ["V3 Agent Initialized."]
+        "logs": ["V3 Agent Initialized with Ad-Hoc Mission."]
     }
     
     # Run in background

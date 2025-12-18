@@ -44,13 +44,16 @@ class V3AgentState(TypedDict):
 # --- Routing Logic ---
 def orchestrator_router(state: V3AgentState):
     status = state.get("status", "init") # Default start is init now
+    missions = state.get("missions", [])
+    logger.info(f"--- ROUTER: Status={status}, Missions={len(missions)} ---")
     
     if status == "init":
         return "initializer"
         
-    # Router Logic: Pick Next Mission if in "routed" or "done" state from previous mission
+    # Router Logic: Pick Next Mission if in "routed" or "done_mission" state from previous mission
     if status in ["routed", "done_mission"]:
         missions = state.get("missions", [])
+        logger.info(f"ROUTER: Checking {len(missions)} missions for next pending...")
         next_mission = None
         for m in missions:
             if m["status"] == "pending":
