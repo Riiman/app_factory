@@ -468,6 +468,8 @@ class MultiAgentSystem:
         7. **Interactive Commands**: Prefer non-interactive commands. However, if an interactive command is absolutely necessary (e.g. `npm login`, `cypress open`), set `"interactive": true` in the step object.
         8. **System Capabilities**: You have full access to the shell.
            - Use `action: "command"` for system diagnostics (`ps aux`, `netstat -tuln`, `curl -I localhost:3000`).
+        9. **MISSING TOOLS**: If a tool or dependency is missing, PLAN TO INSTALL IT. Do not plan verification steps unless the installation fails.
+           - If `pip install` or `apt-get` is needed, just do it. Don't ask for permission or verify existence first if the error is clear.
         
         CONDITIONAL LOGIC & SCRIPTS (CRITICAL):
         If the task involves "Checking if X, then do Y", or any logic that depends on a runtime state:
@@ -720,6 +722,7 @@ class MultiAgentSystem:
         1. Return a JSON OBJECT.
         2. CHOICE A: If you know the fix, return `{"fix": <step_object>}`.
            - The "fix" value must be a single step object (command or write_file).
+           - **MISSING DEPENDENCIES**: If the error is 'command not found' or 'ModuleNotFoundError', propose a FIX (install command) immediately. Do NOT request diagnosis.
         3. CHOICE B: If you need more info, return `{"diagnose": {"tasks": ["Check X", "Check Y"]}}`.
            - Provide a list of 1-3 short, specific diagnostic task titles.
            - Example: `["Check port usage (netstat)", "Read logs via tail", "Verify config file"]`.
