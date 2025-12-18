@@ -550,8 +550,8 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                     snapshot = graph.get_state(config)
                     
                     if not snapshot.next:
-                        # Graph finished (End of all missions?)
-                        # Mark last mission as completed if done
+                        # Graph finished (Planner said "done")
+                        # 1. Mark current mission as COMPLETED
                         try:
                              mission_queue = state_tracker.get("mission_queue", [])
                              current_index = state_tracker.get("current_mission_index", 0)
@@ -564,9 +564,52 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                                        if f:
                                             f.status = FeatureStatus.COMPLETED
                                             db.session.commit()
-                        except:
-                            pass
-                        break
+                        except Exception as e:
+                            print(f"Error marking mission complete: {e}")
+
+                        # 2. Check for NEXT Mission
+                        mission_queue = state_tracker.get("mission_queue", [])
+                        next_index = current_index + 1
+                        
+                        if next_index < len(mission_queue):
+                            print(f"--- Advancing to Mission {next_index} ---")
+                            # Prepare state for next mission
+                            next_mission_data = mission_queue[next_index]
+                            
+                            # Update tracker
+                            state_tracker["current_mission_index"] = next_index
+                            last_mission_index = next_index # Sync local tracker
+                            
+                            # Reset Status for next run
+                            # We can't "reset" the graph easily, but we can pass new input that updates the state.
+                            # The Planner will read the new 'goal' from the state update.
+                            
+                            new_input = {
+                                "goal": next_mission_data["goal"],
+                                "current_mission_index": next_index,
+                                "status": "planning", # Reset status to trigger Planner
+                                "current_task": "plan_next_mission", # Dummy task to wake up
+                                "plan": [] # Clear plan for new mission? Or keep history? 
+                                           # Ideally keep history but Planner prompt might get confused. 
+                                           # For V2, let's clear plan to force fresh planning for new mission.
+                            }
+                            
+                            # We need to UPDATE the state, then CONTINUE stream
+                            # LangGraph checkpointer will verify this state update
+                            # But wait, 'graph.stream' finished. We need to call it again.
+                            current_input = new_input
+                            
+                            # IMPORTANT: Update config thread_id if we want separate threads?
+                            # No, keep same thread_id to share context/logs?
+                            # Yes, keep same thread.
+                            
+                            # We must update the state via a "fake" invocation or just pass input to stream?
+                            # Passing input to stream(..., input=new_input) updates the state.
+                            continue 
+                        else:
+                            # No more missions
+                            print("All missions completed.")
+                            break
                         
                     if yolo:
                         current_input = None
