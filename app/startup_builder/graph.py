@@ -146,7 +146,7 @@ def strategist_route(state):
     action = state.get("strategy_action", "ABORT")
     if action == "REPLAN":
         return "planner"
-    elif action == "PIVOT":
+    elif action == "PIVOT" or action == "SEARCH":
         return "reasoning"
     elif action == "SKIP":
         return "developer" # Skip step, go back to dev

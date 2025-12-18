@@ -826,10 +826,12 @@ class MultiAgentSystem:
         1. **REPLAN**: The current plan is flawed. Instruct the Planner to generate a NEW plan for this task.
         2. **PIVOT**: The underlying approach is wrong (e.g., wrong library). Instruct the Reasoning node to change strategy.
         3. **SKIP**: The error is non-critical (e.g., optional linting). Instruct the Developer to skip this step.
-        4. **ABORT**: The issue is fatal and unsolvable. Fail the task.
+        4. **SEARCH**: The error requires external knowledge. Search the internet for a solution.
+        5. **ABORT**: The issue is fatal and unsolvable. Fail the task.
         
         CRITICAL RULES:
-        1. Return a JSON OBJECT with "action" (REPLAN, PIVOT, SKIP, ABORT) and "directive" (explanation).
+        CRITICAL RULES:
+        1. Return a JSON OBJECT with "action" (REPLAN, PIVOT, SKIP, SEARCH, ABORT) and "directive" (explanation).
         2. Be decisive.
         
         Example Output:
@@ -871,6 +873,23 @@ class MultiAgentSystem:
             
             logger.info(f"Strategist Decision: {action} - {directive}")
             
+            if action == "SEARCH":
+                try:
+                    from duckduckgo_search import DDGS
+                    logs.append("Strategist: Performing internet search for solution...")
+                    results = DDGS().text(f"{last_error} {current_task} solution", max_results=3)
+                    search_summary = "\n".join([f"- {r['title']}: {r['href']}\n  {r['body']}" for r in results])
+                    logs.append(f"Strategist Search Results:\n{search_summary}")
+                    
+                    # We pass the search results as a 'directive' or separate field to Reasoning
+                    # Reasoning node needs to see this. We'll append it to the directive for simplicity.
+                    directive = f"Research Findings:\n{search_summary}\n\nOriginal Directive: {directive}"
+                    
+                except Exception as e:
+                    logger.error(f"Strategist Search Failed: {e}")
+                    logs.append(f"Strategist: Search failed ({e}). Defaulting to replan.")
+                    action = "REPLAN" # Fallback
+
             return {
                 "status": "strategizing", # Intermediate status
                 "strategy_action": action,
