@@ -294,146 +294,82 @@ def run_task(startup_id):
 
 @builder_bp.route('/<startup_id>/build-product', methods=['POST'])
 def build_product(startup_id):
+    from app.models import Product, ProductStage
+    from app.extensions import db
+    from .v3.orchestrator import create_v3_graph
+    
     data = request.json
     product_id = data.get('product_id')
     yolo = data.get('yolo', False)
     
-    if not product_id:
-        return jsonify({'error': 'Product ID required'}), 400
-
     product = Product.query.get(product_id)
     if not product:
-        return jsonify({'error': 'Product not found'}), 404
+        return jsonify({"error": "Product not found"}), 404
         
-    features = Feature.query.filter_by(product_id=product_id).all()
+    # Update stage
+    product.stage = ProductStage.DEVELOPMENT
+    db.session.commit()
     
-    # 1. Initialization Mission
-    # Only add if product is new (no features completed yet)
-    completed_features_count = Feature.query.filter_by(product_id=product_id, status=FeatureStatus.COMPLETED).count()
-    mission_queue = []
+    # Synthesize V3 Mission
+    mission_prompt = (
+        f"Build the MVP for product '{product.name}'.\n"
+        f"Description: {product.description}\n"
+        f"Tech Stack: {product.tech_stack or 'MERN'}\n"
+        f"Break this down into essential tasks and implement the core structure."
+    )
     
-    if completed_features_count == 0:
-        mission_queue.append({
-            "id": 0,
-            "title": f"Initialize {product.name}",
-            "goal": f"Initialize project structure for {product.name}. Tech Stack: {product.tech_stack or 'MERN'}. Create basic scaffold."
-        })
-    
-    # 2. Feature Missions - Filter out COMPLETED
-    pending_features = [f for f in features if f.status != FeatureStatus.COMPLETED]
-    
-    if not pending_features and completed_features_count > 0:
-         return jsonify({'status': 'completed', 'message': 'All features are already completed.'})
-
-    for i, feature in enumerate(pending_features):
-        goal = f"""
-        Implement Feature: {feature.name}
-        Context: Product '{product.name}'
-        Feature Description: {feature.description}
-        Acceptance Criteria: {feature.acceptance_criteria}
-        Tech Stack: {product.tech_stack}
-        
-        Task:
-        1. Analyze existing codebase.
-        2. Implement feature.
-        3. Verify.
-        """
-        mission_queue.append({
-            "id": feature.id,
-            "title": f"Build Feature: {feature.name}",
-            "goal": goal,
-            "feature_id": feature.id # Store ID for status updates
-        })
-        
-    # Initialize State with Queue
     initial_state = {
         "startup_id": startup_id,
-        "goal": mission_queue[0]["goal"], # Start with first mission
-        "mission_queue": mission_queue,
-        "current_mission_index": 0,
-        "context": "",
+        "mission": mission_prompt,
+        "status": "planning",
         "plan": [],
-        "current_step_index": 0,
-        "current_step": {},
-        "code_changes": {},
-        "error_history": [],
-        "logs": [],
-        "status": "start",
-        "total_tasks": 0,
-        "completed_tasks": 0
+        "logs": [f"Starting V3 Build for Product: {product.name}"]
     }
     
-    # Update Product Stage
-    try:
-        product.stage = ProductStage.DEVELOPMENT
-        db.session.commit()
-    except Exception:
-        pass
-    
     # Run in background
-    run_agent_bg(startup_id, initial_state, yolo)
+    run_v3_agent_bg(startup_id, initial_state)
     
-    return jsonify({
-        "status": "success", 
-        "message": f"Started product build with {len(mission_queue)} missions.",
-        "mission_queue": mission_queue
-    })
+    return jsonify({"status": "success", "message": f"Build started for {product.name}"})
 
 @builder_bp.route('/<startup_id>/build-feature', methods=['POST'])
 def build_feature(startup_id):
+    from app.models import Feature, FeatureStatus
+    from app.extensions import db
+    
     data = request.json
     feature_id = data.get('feature_id')
     yolo = data.get('yolo', False)
     
     feature = Feature.query.get(feature_id)
     if not feature:
-        return jsonify({'error': 'Feature not found'}), 404
+        return jsonify({"error": "Feature not found"}), 404
         
+    # Update status
+    feature.status = FeatureStatus.IN_PROGRESS
+    db.session.commit()
+    
     product = feature.product
     
-    # Construct a detailed goal for the agent
-    goal = f"""
-    Implement Feature: {feature.name}
-    Context: Product '{product.name}' - {product.description}
-    Feature Description: {feature.description}
-    Acceptance Criteria: {feature.acceptance_criteria}
+    # Synthesize V3 Mission
+    mission_prompt = (
+        f"Implement Feature: '{feature.name}' for Product: '{product.name}'.\n"
+        f"Description: {feature.description}\n"
+        f"Acceptance Criteria: {feature.acceptance_criteria}\n"
+        f"Ensure it integrates with the existing codebase."
+    )
     
-    Tech Stack: {product.tech_stack}
-    
-    Task:
-    1. Analyze the existing codebase.
-    2. Implement the feature '{feature.name}' following the description.
-    3. Ensure it meets the acceptance criteria.
-    """
-    
-    # Initialize State
     initial_state = {
         "startup_id": startup_id,
-        "goal": goal,
-        "context": "",
+        "mission": mission_prompt,
+        "status": "planning",
         "plan": [],
-        "current_step_index": 0,
-        "current_step": {},
-        "code_changes": {},
-        "error_history": [],
-        "logs": [],
-        "status": "planning"
+        "logs": [f"Starting V3 Build for Feature: {feature.name}"]
     }
     
-    try:
-        # Update feature status
-        feature.status = FeatureStatus.IN_PROGRESS
-        db.session.commit()
-        
-        # Run in background
-        run_agent_bg(startup_id, initial_state, yolo, feature_id=feature.id)
-        
-        return jsonify({"status": "success", "message": "Feature build started in background"})
-
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)})
-
-# --- V3 Endpoints ---
+    # Run in background
+    run_v3_agent_bg(startup_id, initial_state)
+    
+    return jsonify({"status": "success", "message": f"V3 Agent started building feature: {feature.name}"})
 
 @builder_bp.route('/v3/start', methods=['POST'])
 def start_v3_agent():
