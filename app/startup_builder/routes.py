@@ -330,6 +330,18 @@ def build_product(startup_id):
              if snapshot.values and snapshot.values.get("missions"):
                   print(f"Resuming existing missions for {startup_id}")
                   initial_state = None # None triggers resume
+                  
+                  # SMART RESUME: Checks if stuck in terminal state
+                  current_status = snapshot.values.get("status")
+                  missions = snapshot.values.get("missions", [])
+                  pending_work = any(m["status"] == "pending" for m in missions)
+                  
+                  if (current_status in ["done", "failed", "stopped"]) and pending_work:
+                      print(f"Auto-Recovering: Resetting status from '{current_status}' to 'routed'")
+                      # Check if we can patch the state via update_state?
+                      # For now, we will pass a partial state update as 'initial_state' to .stream()!
+                      # LangGraph allows passing input to overwrite state keys.
+                      initial_state = {"status": "routed"}
     
         except Exception as e:
             print(f"Error checking existing state: {e}")
