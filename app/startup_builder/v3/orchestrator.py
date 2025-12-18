@@ -83,8 +83,8 @@ def orchestrator_router(state: V3AgentState):
     elif status == "done":
         return END
     elif status == "failed":
-        # Maybe go back to planner to fix?
-        return "planner"
+    elif status == "failed":
+        return END
     
     return "mission_selector" # Default fallback
 
