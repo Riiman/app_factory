@@ -1046,13 +1046,8 @@ class MultiAgentSystem:
     def reviewer_node(self, state):
         """Checks the execution result using an LLM."""
         print("--- Reviewer Node (Smart) ---")
-        if state.get("last_result"):
-             debug_msg = f"DEBUG UI: Reviewer Input - output length: {len(state['last_result'].get('output', ''))}"
-             logs.append(debug_msg)
-             # Also verify command matches
-             cmd_debug = f"DEBUG UI: Reviewer Command: {command}"
-             logs.append(cmd_debug)
-
+    
+        # Initialize variables first
         result = state.get("last_result", {})
         step = state.get("current_step", {})
         startup_id = state.get("startup_id")
@@ -1062,6 +1057,13 @@ class MultiAgentSystem:
         output = result.get("output", "") or result.get("error", "")
         exit_code = result.get("exit_code", 0)
         linter_errors = result.get("linter_errors", [])
+        
+        if state.get("last_result"):
+             debug_msg = f"DEBUG UI: Reviewer Input - output length: {len(state['last_result'].get('output', ''))}"
+             logs.append(debug_msg)
+             # Also verify command matches
+             cmd_debug = f"DEBUG UI: Reviewer Command: {command}"
+             logs.append(cmd_debug)
         
         print(f"DEBUG: Reviewer checking: {command} (Exit: {exit_code})")
         
