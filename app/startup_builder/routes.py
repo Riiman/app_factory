@@ -720,26 +720,4 @@ def reset_agent(startup_id):
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)})
 
-@builder_bp.route('/<startup_id>/files', methods=['GET'])
-def list_files(startup_id):
-    path = request.args.get('path', '.')
-    result = manager.list_files(startup_id, path)
-    return jsonify(result)
 
-@builder_bp.route('/<startup_id>/files/content', methods=['GET'])
-def read_file(startup_id):
-    path = request.args.get('path')
-    if not path:
-        return jsonify({"error": "Path required"}), 400
-    result = manager.read_file(startup_id, path)
-    return jsonify(result)
-
-@builder_bp.route('/<startup_id>/container-logs', methods=['GET'])
-def get_container_logs(startup_id):
-    container_name = manager.get_container_name(startup_id)
-    try:
-        container = manager.client.containers.get(container_name)
-        logs = container.logs(tail=1000).decode('utf-8')
-        return jsonify({"logs": logs})
-    except Exception as e:
-        return jsonify({"error": str(e)})
