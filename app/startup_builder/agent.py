@@ -157,86 +157,94 @@ class MultiAgentSystem:
         Uses 'LSP Micro-Loop' to fix errors before finishing.
         """
         logger.info("--- Creator Node (V2) ---")
-        startup_id = state["startup_id"]
-        task = state["current_task"]
         logs = state.get("logs", [])
         
-        cm = self._get_context_manager(startup_id)
-        lsp = self._get_lsp_handler(startup_id)
-        
-        # 1. Scoped Context (Deep Dive)
-        # Get AST context for relevant symbols mentioned in task?
-        # For now, simple keyword match or just get related files.
-        # Let's assume the previous context + specific files related to task.
-        context_str = f"Task: {task}\n"
-        
-        system_prompt = """You are a Senior Full-Stack Developer.
-        Implement the task: {task}
-        
-        ENVIRONMENT:
-        - Running on Host, controlling Docker Container.
-        - NO SUDO in container.
-        
-        STRATEGY:
-        1. Write/Modify files to implement features.
-        2. Use `ls` or `cat` to verify paths if unsure.
-        
-        OUTPUT JSON:
-        {
-            "thoughts": "Implementation strategy...",
-            "steps": [
-                {"action": "write_file", "path": "...", "content": "..."},
-                {"action": "command", "command": "..."} 
-            ]
-        }
-        """
-        
-        # ... (LLM Call to get steps) ...
-        # Simplified for brevity in this single-shot write
-        
-        messages = [SystemMessage(content=system_prompt.format(task=task)), HumanMessage(content="Start Implementation.")]
-        json_llm = self.llm.bind(response_format={"type": "json_object"})
-        
-        # Retry Loop for implementation
-        for attempt in range(3):
-            try:
-                res = json_llm.invoke(messages)
-                plan = JsonRepair.parse(res.content)
-                steps = plan.get("steps", [])
-                
-                execution_logs = []
-                failed = False
-                
-                for step in steps:
-                    if step["action"] == "write_file":
-                        path = step["path"]
-                        content = step["content"]
-                        self.docker_manager.write_file(startup_id, path, content)
-                        execution_logs.append(f"Wrote {path}")
-                        
-                        # --- LSP MICRO-LOOP ---
-                        # Check syntax immediately
-                        syntax = lsp.check_syntax(path)
-                        if not syntax["valid"]:
-                            execution_logs.append(f"LSP Error in {path}: {syntax['error']}")
-                            # Self-Correction opportunity?
-                            # For MVP V2, we just log it and maybe fail the step so Reviewer sees it.
-                            # Ideally we loop here.
-                            pass
+        try:
+            startup_id = state["startup_id"]
+            task = state["current_task"]
+            
+            cm = self._get_context_manager(startup_id)
+            lsp = self._get_lsp_handler(startup_id)
+            
+            # 1. Scoped Context (Deep Dive)
+            # Get AST context for relevant symbols mentioned in task?
+            # For now, simple keyword match or just get related files.
+            # Let's assume the previous context + specific files related to task.
+            context_str = f"Task: {task}\n"
+            
+            system_prompt = """You are a Senior Full-Stack Developer.
+            Implement the task: {task}
+            
+            ENVIRONMENT:
+            - Running on Host, controlling Docker Container.
+            - NO SUDO in container.
+            
+            STRATEGY:
+            1. Write/Modify files to implement features.
+            2. Use `ls` or `cat` to verify paths if unsure.
+            
+            OUTPUT JSON:
+            {
+                "thoughts": "Implementation strategy...",
+                "steps": [
+                    {"action": "write_file", "path": "...", "content": "..."},
+                    {"action": "command", "command": "..."} 
+                ]
+            }
+            """
+            
+            # ... (LLM Call to get steps) ...
+            # Simplified for brevity in this single-shot write
+            
+            messages = [SystemMessage(content=system_prompt.format(task=task)), HumanMessage(content="Start Implementation.")]
+            json_llm = self.llm.bind(response_format={"type": "json_object"})
+            
+            # Retry Loop for implementation
+            for attempt in range(3):
+                try:
+                    res = json_llm.invoke(messages)
+                    plan = JsonRepair.parse(res.content)
+                    steps = plan.get("steps", [])
+                    
+                    execution_logs = []
+                    failed = False
+                    
+                    for step in steps:
+                        if step["action"] == "write_file":
+                            path = step["path"]
+                            content = step["content"]
+                            self.docker_manager.write_file(startup_id, path, content)
+                            execution_logs.append(f"Wrote {path}")
                             
-                    elif step["action"] == "command":
-                        cmd = step["command"]
-                        # Run via Docker Exec
-                        out = self.docker_manager.run_command(startup_id, cmd)
-                        execution_logs.append(f"Ran {cmd}: {out.get('exit_code')}")
-                
-                logs.extend(execution_logs)
-                return {"status": "success", "logs": logs} # Go to Reviewer
-                
-            except Exception as e:
-                logs.append(f"Creator Crash: {e}")
-        
-        return {"status": "failed", "logs": logs}
+                            # --- LSP MICRO-LOOP ---
+                            # Check syntax immediately
+                            syntax = lsp.check_syntax(path)
+                            if not syntax["valid"]:
+                                execution_logs.append(f"LSP Error in {path}: {syntax['error']}")
+                                # Self-Correction opportunity?
+                                # For MVP V2, we just log it and maybe fail the step so Reviewer sees it.
+                                # Ideally we loop here.
+                                pass
+                                
+                        elif step["action"] == "command":
+                            cmd = step["command"]
+                            # Run via Docker Exec
+                            out = self.docker_manager.run_command(startup_id, cmd)
+                            execution_logs.append(f"Ran {cmd}: {out.get('exit_code')}")
+                    
+                    logs.extend(execution_logs)
+                    return {"status": "success", "logs": logs} # Go to Reviewer
+                    
+                except Exception as e:
+                    logs.append(f"Creator Crash (Left Loop): {e}")
+            
+            return {"status": "failed", "logs": logs}
+            
+        except Exception as e:
+            # Catch errors that happen BEFORE the loop (e.g. init, llm bind, state access)
+            error_msg = f"Creator System Crash: {str(e)}"
+            logger.error(error_msg)
+            return {"status": "failed", "logs": logs + [error_msg]}
 
     def reviewer_node(self, state):
         """
