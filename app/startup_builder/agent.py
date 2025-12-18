@@ -1046,10 +1046,13 @@ class MultiAgentSystem:
     def reviewer_node(self, state):
         """Checks the execution result using an LLM."""
         print("--- Reviewer Node (Smart) ---")
-        # DEBUG: Print exact state input to debug "Empty Output" mystery
         if state.get("last_result"):
-             print(f"DEBUG: Reviewer Input - last_result keys: {list(state['last_result'].keys())}")
-             print(f"DEBUG: Reviewer Input - output length: {len(state['last_result'].get('output', ''))}")
+             debug_msg = f"DEBUG UI: Reviewer Input - output length: {len(state['last_result'].get('output', ''))}"
+             logs.append(debug_msg)
+             # Also verify command matches
+             cmd_debug = f"DEBUG UI: Reviewer Command: {command}"
+             logs.append(cmd_debug)
+
         result = state.get("last_result", {})
         step = state.get("current_step", {})
         startup_id = state.get("startup_id")
