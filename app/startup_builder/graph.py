@@ -36,6 +36,7 @@ class AgentState(TypedDict):
     current_mission_index: int # Current mission index in the queue
     status: str # "planning", "coding", "reviewing", "done", "failed", "waiting_approval"
     running_processes: List[dict] # Tracks background processes: [{"pid": "123", "command": "npm start"}]
+    last_result: dict # Output from the last execution step
 
 
     
