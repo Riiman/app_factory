@@ -2,6 +2,9 @@ import logging
 import json
 from ..agents.core import V3CoPilot
 from ...manager import DockerManager
+from ...context import ContextManager
+from ..tools import V3Tools
+from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +12,10 @@ class V3Developer:
     def __init__(self, log_callback=None):
         self.copilot = V3CoPilot(use_thinking=False, log_callback=log_callback) # Execution mode = fast
         self.docker_manager = DockerManager() # Reuse V2 Infrastructure
+        # Startup ID is not available in __init__ usually, but we need it for ContextManager.
+        # But ContextManager takes startup_id in __init__.
+        # We should instantiate ContextManager inside developer_node where we have startup_id.
+        self.context_manager = None
 
     def developer_node(self, state):
         """
@@ -17,79 +24,116 @@ class V3Developer:
         """
         current_plan = state.get("plan", [])
         startup_id = state.get("startup_id")
+        current_mission_id = state.get("current_mission_id")
+        missions = state.get("missions", [])
         
-        # 1. Find the next pending task
-        # Simplified: We assume Orchestrator sets 'current_task' or we find the first non-done.
-        # Let's iterate.
+        # 1. Find the next pending task FOR THIS MISSION
         next_task = None
         for task in current_plan:
-            if not task.get("completed"):
+            # Check mission ownership + status
+            if task.get("mission_id") == current_mission_id and not task.get("completed"):
                 next_task = task
                 break
         
         if not next_task:
-            return {"status": "verification", "logs": ["All tasks implemented."]}
+            # No more tasks for this mission!
+            # Mark mission as complete
+            for m in missions:
+                if m["id"] == current_mission_id:
+                    m["status"] = "completed"
             
+            return {
+                "status": "done_mission", # Router will pick next mission
+                "missions": missions,
+                "logs": [f"Mission {current_mission_id} Complete!"]
+            }
+            
+        # 1.5 Setup ContextManager
+        if not self.context_manager or self.context_manager.startup_id != startup_id:
+            self.context_manager = ContextManager(self.docker_manager, startup_id)
+            
+        # 1.6 Retrieve Local Context (RAG)
+        local_context = self.context_manager.retrieve_local_context(next_task['description'])
+        state["local_context"] = local_context
+        
         logger.info(f"--- V3 Developer: Working on '{next_task['description']}' ---")
         
-        # 2. Generate Execution Steps
-        # We ask the CoPilot to write the code.
+        # 2. Setup Tools
+        tools_factory = V3Tools(self.docker_manager, startup_id)
+        tools = tools_factory.get_tool_list()
         
+        # 3. System Prompt
         system_prompt = """You are a Senior Full-Stack Developer (Expert Level).
         Your job is to EXECUTE the given task with PRODUCTION-QUALITY code.
         
-        CRITICAL RULES:
-        1. NO PLACEHOLDERS. Do NOT write comments like "<!-- form fields -->". Write the ACTUAL code.
-        2. COMPLETE IMPLEMENTATION. If creating a login page, write the full HTML/CSS/JS.
-        3. MODERN & PREMIUM. Use clean, modern styling (e.g., flexbox, gradients, rounded corners).
-        4. ROBUST. Handle edge cases where obvious. 
+        YOU HAVE ACCESS TO TOOLS:
+        - read_file: READ a file before modifying it.
+        - write_file: Write the complete file content.
+        - run_shell: Run commands like 'npm install'.
+        - list_files: Check directory structure.
         
-        OUTPUT FORMAT (JSON):
-        {
-            "action": "write_file", // or "command"
-            "file": "path/to/file",
-            "content": "Full, complete file content...",
-            "command": "shell command if action is command"
-        }
+        STRATEGY:
+        1. Explore relevant files if needed.
+        2. Write/Update the code (Full Implementation).
+        3. Verify checks passed if applicable.
+        
+        When you are done, just output the final confirmation message.
         """
         
-        user_prompt = f"Task: {next_task['description']}\nDetails: {next_task.get('content_sketch', '')}"
+        user_prompt = f"Task: {next_task['description']}\nDetails: {next_task.get('content_sketch', '')}\n\nLocal Context:\n{local_context}"
         
-        result = self.copilot.think_and_plan(system_prompt, user_prompt, active_node="developer") # Reuse thought wrapper for JSON
+        messages = [HumanMessage(content=user_prompt)]
         
-        logs = []
-        if result["error"]:
-            logs.append(f"Developer Error: {result['error']}")
-            # Mark failed? Or retry?
-            return {"status": "failed", "logs": logs}
+        # 4. Tool Loop (Max 10 turns to prevent infinite loops)
+        executed_actions = []
+        for i in range(10):
+            res = self.copilot.act(system_prompt, messages, tools, active_node="developer")
             
-        try:
-            execution_step = json.loads(result["content"])
-            action = execution_step.get("action")
+            if res["error"]:
+                 return {"status": "failed", "logs": [f"CoPilot Error: {res['error']}"]}
             
-            if action == "write_file":
-                file_path = execution_step["file"]
-                content = execution_step["content"]
-                self.docker_manager.write_file(startup_id, file_path, content)
-                logs.append(f"Developer: Wrote {file_path}")
+            ai_msg = res["content"]
+            messages.append(ai_msg) # Add AI response to history
+            
+            # Check for tool calls
+            if ai_msg.tool_calls:
+                for tool_call in ai_msg.tool_calls:
+                    tool_name = tool_call["name"]
+                    args = tool_call["args"]
+                    tool_id = tool_call["id"]
+                    
+                    self.copilot.emit_thought(f"Invoking {tool_name}...", "developer")
+                    
+                    # Execute locally (since we have the bound functions in `tools` list)
+                    # We need to find the matching tool instance
+                    selected_tool = next((t for t in tools if t.name == tool_name), None)
+                    
+                    tool_result = "Error: Tool not found"
+                    if selected_tool:
+                        try:
+                            # Invoke the tool
+                            tool_result = selected_tool.invoke(args)
+                        except Exception as e:
+                            tool_result = f"Tool Execution Error: {str(e)}"
+                    
+                    # Append ToolMessage
+                    messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
+                    executed_actions.append(f"Ran {tool_name}")
+            else:
+                # No tool calls -> Final Answer
+                break
                 
-            elif action == "command":
-                cmd = execution_step["command"]
-                out = self.docker_manager.run_command(startup_id, cmd)
-                logs.append(f"Developer: Ran '{cmd}'. Exit: {out.get('exit_code')}")
-                
-            # Mark task as done in the plan (Local update, Orchestrator will save)
-            next_task["completed"] = True
+        # Mark task as done
+        next_task["completed"] = True
+        
+        summary = f"Completed task: {next_task['description']} via tools."
+        new_global_context = self.context_manager.update_global_context(state.get("global_context", ""), summary)
             
-            # Loop back to see if more tasks exist?
-            # Or return to Orchestrator to save state?
-            # Let's return to Orchestrator to checkpoint.
-            
-            return {
-                "plan": current_plan, # Updated with completed=True
-                "status": "coding", # Continue coding loop logic
-                "logs": logs
-            }
-            
-        except Exception as e:
-            return {"status": "failed", "logs": [f"Execution Error: {e}"]}
+        return {
+            "plan": current_plan,
+            "status": "coding",
+            "logs": [f"Developer Loop: Completed {next_task['description']}"],
+            "local_context": local_context,
+            "global_context": new_global_context
+        }
+

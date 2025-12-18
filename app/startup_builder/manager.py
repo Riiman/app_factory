@@ -243,6 +243,10 @@ class DockerManager:
                 is_dir = line.endswith('/')
                 name = line[:-1] if is_dir else line
                 
+                # Check Hidden Folders
+                if name in ["node_modules", ".git", "__pycache__", "artifacts"]:
+                    continue
+                
                 files.append({
                     "name": name,
                     "type": "directory" if is_dir else "file",
@@ -250,6 +254,41 @@ class DockerManager:
                 })
                 
             return {"files": files}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def search_files(self, startup_id, query, path=".", container_name=None):
+        """
+        Searches for a string pattern in files using grep.
+        Returns: dict with matches or error.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+        
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            if container.status != 'running':
+                return {"error": "Container not running"}
+            
+            # Use grep -rnC 2 to get recursive, line numbers, and context
+            # -I ignores binary files
+            # --exclude-dir to skip node_modules, .git, artifacts
+            cmd = f"grep -rnC 2 -I --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=artifacts '{query}' '{path}'"
+            
+            exit_code, output = container.exec_run(
+                f"bash -c \"{cmd}\"",
+                workdir="/app"
+            )
+            
+            # grep returns 1 if no matches found, which is not an error for us
+            if exit_code > 1:
+                return {"error": f"Error searching files: {output.decode('utf-8')}"}
+                
+            return {"output": output.decode('utf-8')}
             
         except Exception as e:
             return {"error": str(e)}
@@ -279,6 +318,61 @@ class DockerManager:
                 return {"error": f"Error reading file: {output.decode('utf-8')}"}
                 
             return {"content": output.decode('utf-8')}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def replace_in_file(self, startup_id, path, target_text, replacement_text, container_name=None):
+        """
+        Replaces exact target_text with replacement_text in the file.
+        Safety Checks:
+        - Target must exist.
+        - Target must be unique (appear exactly once).
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+
+        # Query database for container name if not provided
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+        
+        try:
+            container = self.client.containers.get(container_name)
+            if container.status != 'running':
+                return {"error": "Container not running"}
+            
+            # 1. Read File
+            exit_code, output = container.exec_run(f"cat '{path}'", workdir="/app")
+            if exit_code != 0:
+                return {"error": f"Read failed: {output.decode('utf-8')}"}
+            
+            content = output.decode('utf-8')
+            
+            # 2. Safety Checks
+            count = content.count(target_text)
+            if count == 0:
+                # Try to be helpful: check if it's a whitespace issue
+                # Normalize spaces (simple check)
+                if target_text.strip() in content:
+                    return {"error": "Target not found (exact match failed, but stripped match found. Check indentation)."}
+                return {"error": "Target text not found in file."}
+            elif count > 1:
+                return {"error": f"Ambiguous target: Code block found {count} times. Include more context."}
+            
+            # 3. Apply Replacement
+            new_content = content.replace(target_text, replacement_text)
+            
+            # 4. Write Back (reuse write_file logic but avoid circular dep if possible, or just reimplement)
+            import base64
+            encoded_content = base64.b64encode(new_content.encode('utf-8')).decode('utf-8')
+            cmd = f"echo '{encoded_content}' | base64 -d > '{path}'"
+            
+            exit_code, output = container.exec_run(f"bash -c \"{cmd}\"", workdir="/app")
+            
+            if exit_code != 0:
+                 return {"error": f"Write failed: {output.decode('utf-8')}"}
+                 
+            return {"status": "success"}
             
         except Exception as e:
             return {"error": str(e)}
@@ -402,7 +496,7 @@ class DockerManager:
             print(f"Error copying from container: {e}")
             return False
 
-    def start_server(self, startup_id, container_name=None):
+    def start_server(self, startup_id, container_name=None, start_command=None):
         """
         Starts the application server in the background.
         Detects package.json or requirements.txt to determine start command.
@@ -420,29 +514,37 @@ class DockerManager:
                 return {"error": "Container not running"}
 
             # 1. Determine Start Command
-            start_cmd = "npm start" # Default
-            
-            # Check for package.json
-            exit_code, output = container.exec_run("cat package.json", workdir="/app")
-            if exit_code == 0:
-                import json
-                try:
-                    pkg = json.loads(output.decode('utf-8'))
-                    if "scripts" in pkg and "dev" in pkg["scripts"]:
-                        start_cmd = "npm run dev"
-                    elif "scripts" in pkg and "start" in pkg["scripts"]:
-                        start_cmd = "npm start"
-                except:
-                    pass
+            if start_command:
+                start_cmd = start_command
             else:
-                # Check for python
-                exit_code, _ = container.exec_run("ls app.py", workdir="/app")
+                start_cmd = "npm start" # Default
+                
+                # Check for package.json
+                exit_code, output = container.exec_run("cat package.json", workdir="/app")
                 if exit_code == 0:
-                    start_cmd = "python app.py"
+                    import json
+                    try:
+                        pkg = json.loads(output.decode('utf-8'))
+                        if "scripts" in pkg and "dev" in pkg["scripts"]:
+                            start_cmd = "npm run dev"
+                        elif "scripts" in pkg and "start" in pkg["scripts"]:
+                            start_cmd = "npm start"
+                    except:
+                        pass
                 else:
-                    exit_code, _ = container.exec_run("ls main.py", workdir="/app")
+                    # Check for python
+                    exit_code, _ = container.exec_run("ls app.py", workdir="/app")
                     if exit_code == 0:
-                        start_cmd = "python main.py"
+                        start_cmd = "python app.py"
+                    else:
+                        exit_code, _ = container.exec_run("ls main.py", workdir="/app")
+                        if exit_code == 0:
+                            start_cmd = "python main.py"
+                        else:
+                            # Flask specific check
+                            exit_code, _ = container.exec_run("ls wsgi.py", workdir="/app")
+                            if exit_code == 0:
+                                start_cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
 
             print(f"Starting server with command: {start_cmd}")
 
@@ -463,7 +565,7 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
-    def ensure_app_running(self, startup_id, container_name=None):
+    def ensure_app_running(self, startup_id, container_name=None, start_command=None):
         """
         Ensures the application server is running inside the container.
         """
@@ -492,7 +594,7 @@ class DockerManager:
             
             # Not running, start it
             print(f"App not running for {startup_id}. Auto-starting...")
-            return self.start_server(startup_id, container_name)
+            return self.start_server(startup_id, container_name, start_command)
             
         except Exception as e:
             return {"error": str(e)}

@@ -219,8 +219,8 @@ def get_status(startup_id):
             "completed_tasks": state.get("completed_tasks", 0),
             "waiting_approval": not snapshot.next, # If no next step, it's waiting
             "waiting_interaction": state.get("status") == "waiting_interaction",
-            "mission_queue": state.get("mission_queue", []),
-            "current_mission_index": state.get("current_mission_index", 0)
+            "mission_queue": state.get("missions", []), # New V3 field mapped to V2 frontend
+            "current_mission_index": state.get("current_mission_id", 0) # ID is effectively index
         })
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)})
@@ -310,21 +310,44 @@ def build_product(startup_id):
     product.stage = ProductStage.DEVELOPMENT
     db.session.commit()
     
-    # Synthesize V3 Mission
-    mission_prompt = (
-        f"Build the MVP for product '{product.name}'.\n"
-        f"Description: {product.description}\n"
-        f"Tech Stack: {product.tech_stack or 'MERN'}\n"
-        f"Break this down into essential tasks and implement the core structure."
-    )
-    
-    initial_state = {
-        "startup_id": startup_id,
-        "mission": mission_prompt,
-        "status": "planning",
-        "plan": [],
-        "logs": [f"Starting V3 Build for Product: {product.name}"]
+    # Synthesize V3 Initial State
+    product_context = {
+        "name": product.name,
+        "description": product.description,
+        "features": [f.to_dict() for f in product.features]
     }
+    
+    # Check for existing state/missions
+    force_rebuild = data.get('force_rebuild', False)
+    initial_state = None
+    
+    if not force_rebuild:
+        try:
+             # Look for existing checkpoint
+             v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
+             config = {"configurable": {"thread_id": startup_id}}
+             snapshot = v3_graph.get_state(config)
+             if snapshot.values and snapshot.values.get("missions"):
+                  print(f"Resuming existing missions for {startup_id}")
+                  initial_state = None # None triggers resume
+    
+        except Exception as e:
+            print(f"Error checking existing state: {e}")
+            
+    if initial_state is None and not force_rebuild:
+         # Resume confirmed
+         pass
+    else:
+        # Start fresh
+        initial_state = {
+            "startup_id": startup_id,
+            "product_context": product_context, # Passed to V3Initializer
+            "status": "init", # Trigger Initializer
+            "plan": [],
+            "missions": [], # Will be populated by Initializer
+            "logs": [f"Starting V3 Build for Product: {product.name}"]
+        }
+
     
     # Run in background
     run_v3_agent_bg(startup_id, initial_state)
@@ -361,7 +384,7 @@ def build_feature(startup_id):
     initial_state = {
         "startup_id": startup_id,
         "mission": mission_prompt,
-        "status": "planning",
+        "status": "analyzing", # Start with analysis
         "plan": [],
         "logs": [f"Starting V3 Build for Feature: {feature.name}"]
     }
@@ -384,7 +407,7 @@ def start_v3_agent():
     initial_state = {
         "startup_id": startup_id,
         "mission": mission,
-        "status": "planning",
+        "status": "analyzing",
         "plan": [],
         "logs": ["V3 Agent Initialized."]
     }
@@ -423,8 +446,12 @@ def run_v3_agent_bg(startup_id, initial_state):
                         socketio.emit('agent_update', {
                             'node': key,
                             'task_status': value.get('status', 'processing'),
+                            # Analyzer returns status='planning', so it will show 'planning' after analyzer is done.
+                            # During analyzer run, it's 'analyzing'.
                             'plan': value.get('plan', []),
-                            'logs': value.get('logs', [])
+                            'logs': value.get('logs', []),
+                            'mission_queue': value.get('missions', []),
+                            'current_mission_index': value.get('current_mission_id', 0)
                         }, room=f"startup_{startup_id}", namespace='/builder')
                         
                 socketio.emit('agent_update', {

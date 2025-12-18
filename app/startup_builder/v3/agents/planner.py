@@ -13,24 +13,30 @@ class V3Planner:
         The Planner Node for LangGraph.
         Analyzes the mission and updates the plan.
         """
-        mission = state.get("mission")
-        current_plan = state.get("plan", [])
+        # 1. Get Active Mission
+        missions = state.get("missions", [])
+        current_mission_id = state.get("current_mission_id")
         
-        logger.info(f"--- V3 Planner: Analyzing '{mission}' ---")
+        active_mission = next((m for m in missions if m["id"] == current_mission_id), None)
         
-        # 1. Context Gathering (Inner Loop)
-        # For V3 Speed, we assume the Orchestrator has populated basic context or we fetch it briefly.
-        # Let's assume we have a clean slate or existing plan.
+        if not active_mission:
+             return {"logs": ["Planner Error: No active mission found."]}
+             
+        mission_title = active_mission["title"]
+        mission_desc = active_mission["description"]
+        tech_stack = state.get("tech_stack", "General")
+        
+        logger.info(f"--- V3 Planner: Analyzing '{mission_title}' ---")
         
         system_prompt = """You are the Lead Architect & Planner for a Code Studio.
-        Your goal is to break down the User's Mission into atomic, executable coding tasks.
+        Your goal is to break down the Active Mission into atomic, executable coding tasks.
+        
+        TECH STACK: {tech_stack}
         
         CRITICAL:
-        1. Sequential Logic: Build dependencies correctly (e.g., install -> config -> app).
+        1. Sequential Logic: Build dependencies correctly.
         2. Granularity: Each task must be a single file write or a focused command.
         3. DETAIL: The 'description' and 'content_sketch' must be VERY detailed.
-           - Bad: "Create login page"
-           - Good: "Create login.html with email/password inputs, a submit button, and a modern blue CSS card layout."
         
         OUTPUT FORMAT (JSON):
         {
@@ -41,22 +47,19 @@ class V3Planner:
                     "description": "Initialize Node.js project",
                     "action": "command", 
                     "command": "npm init -y"
-                },
-                {
-                    "id": 2,
-                    "description": "Create server.js",
-                    "action": "write_file",
-                    "file": "server.js",
-                    "content_sketch": "Express server with /health endpoint"
                 }
             ]
         }
         """
         
-        user_prompt = f"Mission: {mission}\nCurrent Status: {state.get('status')}"
+        user_prompt = f"Active Mission: {mission_title}\nDescription: {mission_desc}\nStatus: {state.get('status')}"
+        
+        codebase_analysis = state.get("codebase_analysis")
+        if codebase_analysis:
+             user_prompt += f"\n\nCODEBASE CONTEXT (File Tree & Config):\n{codebase_analysis}\n\nINSTRUCTION: Use existing files where possible. Do not create duplicates."
         
         # 2. Sequential Thinking & Planning (One-Shot)
-        result = self.copilot.think_and_plan(system_prompt, user_prompt, active_node="planner")
+        result = self.copilot.think_and_plan(system_prompt.replace("{tech_stack}", tech_stack), user_prompt, active_node="planner")
         
         if result["error"]:
             logger.error(f"Planner Error: {result['error']}")
@@ -64,18 +67,31 @@ class V3Planner:
             
         try:
             content = json.loads(result["content"])
-            new_plan = content.get("plan", [])
+            new_plan_steps = content.get("plan", [])
             thoughts = content.get("thoughts", [])
             
-            # Update state
-            # If we already have a plan, we might need to merge or replace.
-            # V3 MVP: Replace/Append.
+            # Enrich tasks with mission_id
+            for step in new_plan_steps:
+                step["mission_id"] = current_mission_id
+                step["completed"] = False
+            
+            # Append to master plan
+            # We assume 'plan' in state is the MASTER list of all tasks from all missions
+            master_plan = state.get("plan", [])
+            master_plan.extend(new_plan_steps)
+            
+            # Update Mission status to 'in_progress' (reflected in state by orchestrator?)
+            # Actually, we should update the specific mission's status in the list.
+            for m in missions:
+                if m["id"] == current_mission_id:
+                     m["status"] = "in_progress"
             
             return {
-                "plan": new_plan,
+                "plan": master_plan,
+                "missions": missions, # Update status
                 "thoughts": thoughts,
                 "status": "coding", # Proceed to execution
-                "logs": [f"Planner: Designed {len(new_plan)} tasks."]
+                "logs": [f"Planner: Designed {len(new_plan_steps)} tasks for '{mission_title}'."]
             }
         except Exception as e:
             return {"status": "failed", "logs": [f"Plan Parsing Error: {e}"]}

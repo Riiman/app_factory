@@ -87,13 +87,20 @@ class V3CoPilot:
         # Simple invocation for now (MVP V3)
         return self.llm.invoke(messages)
 
-    def think_and_plan(self, system_prompt: str, user_prompt: str, active_node: str = "planner") -> Dict:
+    def think_and_plan(self, system_prompt: str, user_prompt: str, active_node: str = "planner", local_context: str = "", global_context: str = "") -> Dict:
         """
         Specialized method for the Planning Phase.
         Forces a structured JSON output with reasoning.
         """
         
         self.emit_thought("Analyzing requirements...", active_node)
+        
+        # Inject Context if available
+        if global_context:
+            system_prompt += f"\n\nGLOBAL PROJECT CONTEXT (HISTORY):\n{global_context}"
+            
+        if local_context:
+            system_prompt += f"\n\nLOCAL TASK CONTEXT (RELEVANT FILES):\n{local_context}"
         
         json_llm = self.llm.bind(response_format={"type": "json_object"})
         
@@ -119,3 +126,27 @@ class V3CoPilot:
         except Exception as e:
             self.emit_thought(f"Error: {e}", active_node)
             return {"content": None, "error": str(e)}
+
+    def act(self, system_prompt: str, messages: List[Any], tools: List[Any], active_node: str = "unknown") -> Dict:
+        """
+        Executes the LLM with tool binding.
+        Returns the raw AIMessage (which might contain tool_calls).
+        """
+        if not self.llm:
+            return {"error": "LLM not initialized"}
+            
+        # Bind Tools
+        llm_with_tools = self.llm.bind_tools(tools)
+        
+        # Construct Messages
+        # Only add system prompt if it's the start (heuristically) 
+        # But actually, 'messages' arg should contain the full history including HumanMessage.
+        # So we just prepend SystemMessage.
+        full_history = [SystemMessage(content=system_prompt)] + messages
+        
+        try:
+            res = llm_with_tools.invoke(full_history)
+            return {"content": res, "error": None}
+        except Exception as e:
+            return {"content": None, "error": str(e)}
+
