@@ -85,19 +85,17 @@ class DockerManager:
                 print(f"Building image for {stack_type}...")
                 self.client.images.build(path=stack_dir, tag=image_tag)
 
-                # Create a volume for persistence
-                volume_name = f"startup_vol_{startup_id}"
-                try:
-                    self.client.volumes.get(volume_name)
-                except docker.errors.NotFound:
-                    self.client.volumes.create(name=volume_name)
+                # Create workspace directory on host
+                workspace_path = os.path.join(self.base_work_dir, str(startup_id))
+                os.makedirs(workspace_path, exist_ok=True)
+                print(f"Using workspace at: {workspace_path}")
 
                 container = self.client.containers.run(
                     image_tag,
                     command="tail -f /dev/null", # Keep alive
                     detach=True,
                     name=container_name,
-                    volumes={volume_name: {'bind': '/app', 'mode': 'rw'}},
+                    volumes={workspace_path: {'bind': '/app', 'mode': 'rw'}},
                     working_dir="/app",
                     ports={'3000/tcp': None, '8000/tcp': None, '8888/tcp': None}, # Allow mapping for various ports
                     environment={'HOST': '0.0.0.0'}

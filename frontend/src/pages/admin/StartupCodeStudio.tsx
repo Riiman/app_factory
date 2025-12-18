@@ -259,10 +259,25 @@ const StartupCodeStudio: React.FC = () => {
         if (id) {
             fetchData();
             checkAgentStatus(); // Check persistence on load
+            checkEnvStatus(); // Check container status
         }
     }, [id]);
 
     // Polling removed in favor of WebSockets
+
+    const checkEnvStatus = async () => {
+        try {
+            const res = await fetch(`/api/builder/${id}/env-status`);
+            const data = await res.json();
+            if (data.status === 'running') {
+                setIsRunning(true);
+                setPorts(data.ports);
+                addLog(`Environment is active. Container ID: ${data.container_id}`);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const checkAgentStatus = async () => {
         try {
@@ -273,6 +288,7 @@ const StartupCodeStudio: React.FC = () => {
                 setLogs(data.logs || []);
                 setPlan(data.plan || []);
                 setTaskStatus(data.task_status || 'unknown');
+                setThoughts(data.thoughts || []); // Restore thoughts if available
 
                 if (data.total_tasks > 0) {
                     setProgress({
