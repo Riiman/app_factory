@@ -69,10 +69,10 @@ const StartupCodeStudio: React.FC = () => {
                 addLog(`Error parsing response: ${res.status} ${res.statusText}`);
                 return;
             }
-            if (data.status === 'running' || data.status === 'created') {
+            if (data.status === 'running' || data.status === 'created' || data.status === 'success') {
                 setIsRunning(true);
-                setPorts(data.ports);
-                addLog(`Environment started. Container ID: ${data.container_id}`);
+                if (data.ports) setPorts(data.ports);
+                addLog(`Environment started. ${data.message || ''}`);
             } else if (data.status === 'building') {
                 addLog(`Environment is building... this may take a few minutes. (${data.message})`);
             } else {
@@ -135,7 +135,16 @@ const StartupCodeStudio: React.FC = () => {
         });
 
         socket.on('agent_update', (data) => {
-            if (data.logs) setLogs(data.logs);
+            if (data.logs) {
+                // Check if backend sends full history or partial.
+                // Assuming backend sends partial/new logs to avoid massive payloads.
+                // If backend sends strings, we append.
+                setLogs(prev => {
+                    // Avoid duplicates if possible (simple dedup by last item)
+                    const newLogs = data.logs;
+                    return [...prev, ...newLogs];
+                });
+            }
             if (data.plan) setPlan(data.plan);
             if (data.task_status) setTaskStatus(data.task_status);
 

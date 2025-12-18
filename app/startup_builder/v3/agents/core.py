@@ -59,6 +59,11 @@ class V3CoPilot:
 
     def emit_thought(self, content: str, node: str = "unknown"):
         """Emits a thought to the UI via callback."""
+        from app.startup_builder.v3.logger import log_event
+        
+        # Log to file
+        log_event("THOUGHT", content, node)
+
         if self.log_callback:
             self.log_callback(content, node)
         else:
