@@ -1046,6 +1046,10 @@ class MultiAgentSystem:
     def reviewer_node(self, state):
         """Checks the execution result using an LLM."""
         print("--- Reviewer Node (Smart) ---")
+        # DEBUG: Print exact state input to debug "Empty Output" mystery
+        if state.get("last_result"):
+             print(f"DEBUG: Reviewer Input - last_result keys: {list(state['last_result'].keys())}")
+             print(f"DEBUG: Reviewer Input - output length: {len(state['last_result'].get('output', ''))}")
         result = state.get("last_result", {})
         step = state.get("current_step", {})
         startup_id = state.get("startup_id")
