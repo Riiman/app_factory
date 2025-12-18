@@ -875,7 +875,8 @@ class MultiAgentSystem:
                 "status": "strategizing", # Intermediate status
                 "strategy_action": action,
                 "strategy_directive": directive,
-                "logs": logs
+                "logs": logs,
+                "error_history": [] # Reset error history to avoid immediate loop detection again
             }
             
         except Exception as e:

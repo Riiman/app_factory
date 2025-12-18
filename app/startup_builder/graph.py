@@ -134,6 +134,14 @@ def reviewer_route(state):
         return "complete"
     return "complete"
 
+def debugger_route(state):
+    status = state.get("status")
+    if status == "coding":
+        return "executor" # Apply Fix
+    elif status == "planning_needed":
+        return "developer" # Schedule Diagnosis
+    return "executor"
+
 def strategist_route(state):
     action = state.get("strategy_action", "ABORT")
     if action == "REPLAN":
@@ -233,8 +241,15 @@ def create_graph(architect_node, spec_approval_node, task_manager_node, reasonin
         }
     )
     
-    # Debugger -> Executor (Try the fix)
-    workflow.add_edge("debugger", "executor")
+    # Debugger Routing
+    workflow.add_conditional_edges(
+        "debugger",
+        debugger_route,
+        {
+            "executor": "executor",
+            "developer": "developer"
+        }
+    )
     
     # Strategist Routing
     workflow.add_conditional_edges(
