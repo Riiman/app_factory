@@ -202,6 +202,11 @@ class MultiAgentSystem:
            - **Architecture**: Brief overview of the approach.
            - **Files**: List of files to be created/modified.
            - **Steps**: High-level steps.
+        
+        ENVIRONMENT:
+        You are running in a restricted Docker container.
+        - **NO SUDO**: Do not use `sudo`.
+        - **NO PERSISTENCE**: Only files in `/app` are persisted.
         """
         
         messages = [
@@ -389,6 +394,10 @@ class MultiAgentSystem:
         1. **Initialization:** If the project is uninitialized (no README.md), your FIRST step must be to initialize it (e.g., `npx create-react-app .`) and create a `README.md`.
         2. **Context:** Always plan to update `PROGRESS.md` at the end of the task with a summary of what was done.
         3. **Server Management:** You are responsible for the server. If the server is not running (or if you just initialized it), you MUST plan a final step to start it (e.g., `npm start` or `python app.py`).
+        4. **Environment:** You are running in a restricted Docker container.
+           - **NO SUDO**: Do not use `sudo`.
+           - **Python**: Use virtual environments (`python3 -m venv venv`) for installing packages. Never use global `pip install`.
+
         
         Think step-by-step about:
         1. Architecture: How should this feature be structured?
@@ -445,6 +454,11 @@ class MultiAgentSystem:
         system_prompt = """You are a Senior DevOps Engineer & Developer.
         Create a detailed, step-by-step execution plan for the given task.
         
+        ENVIRONMENT:
+        You are running in a restricted Docker container.
+        - **NO SUDO**: Do not use `sudo`.
+        - **Python**: Use virtual environments (`python3 -m venv venv`) for installing packages.
+
         CONTEXT:
         The project files and their contents are provided below. Use them to verify paths and existing code.
         
@@ -723,6 +737,7 @@ class MultiAgentSystem:
         2. CHOICE A: If you know the fix, return `{"fix": <step_object>}`.
            - The "fix" value must be a single step object (command or write_file).
            - **MISSING DEPENDENCIES**: If the error is 'command not found' or 'ModuleNotFoundError', propose a FIX (install command) immediately. Do NOT request diagnosis.
+           - **ENVIRONMENT**: You are in a restricted Docker container. **NO SUDO**. Use virtual environments for Python packages.
         3. CHOICE B: If you need more info, return `{"diagnose": {"tasks": ["Check X", "Check Y"]}}`.
            - Provide a list of 1-3 short, specific diagnostic task titles.
            - Example: `["Check port usage (netstat)", "Read logs via tail", "Verify config file"]`.
