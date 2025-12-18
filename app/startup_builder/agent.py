@@ -1162,7 +1162,8 @@ class MultiAgentSystem:
                     # Read file from Docker
                     read_res = self.docker_manager.read_file(startup_id, script_path)
                     if not read_res.get("error"):
-                        script_content = read_res.get("content", "Empty File")[:3000] # Truncate large scripts
+                        # Truncate to 20k chars (plenty for most scripts, prevents context overflow)
+                        script_content = read_res.get("content", "Empty File")[:20000] 
         except Exception as e:
             logger.warning(f"Reviewer failed to read script content: {e}")        
 
