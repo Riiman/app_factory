@@ -173,12 +173,13 @@ class DockerManager:
             
             # Execute command
             if detach:
-                # exec_run with detach=True returns output generator? No, it returns exit_code (None) and output (None) usually?
-                # Actually python docker client exec_run(detach=True) returns output as bytes?
-                # Let's check docs or assume standard behavior: it returns immediately.
-                # We use nohup to ensure it keeps running? exec_run is not a shell, so we need sh -c.
-                exit_code, output = container.exec_run(
-                    f"bash -c 'nohup {command} > /dev/null 2>&1 &'",
+                # For detach, we still need a string slightly carefully constructed
+                # But safer to just pipe properly
+                sanitized_cmd = command.replace("'", "'\\''") # rudimentary escaping if we must use string
+                cmd_str = f"nohup bash -c '{sanitized_cmd}' > /dev/null 2>&1 &"
+                
+                container.exec_run(
+                    ["bash", "-c", cmd_str],
                     workdir="/app"
                 )
                 return {
@@ -186,8 +187,10 @@ class DockerManager:
                     "output": "Command started in background."
                 }
             else:
+                # Use list format to avoid quoting issues
+                # Docker SDK handles the escaping when a list is passed
                 exit_code, output = container.exec_run(
-                    f"bash -c '{command}'",
+                    ["bash", "-c", command],
                     workdir="/app"
                 )
                 return {

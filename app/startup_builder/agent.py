@@ -932,7 +932,8 @@ class MultiAgentSystem:
                 logger.info(f"Executor: Detaching server command: {cmd}")
                 
             result = self.docker_manager.run_command(startup_id, cmd, detach=detach)
-            
+            logger.info(f"DEBUG: Executor Output Size: {len(result.get('output', ''))} chars for command: {cmd}")
+        
             # Update Running Processes List
             running_processes = state.get("running_processes", [])
             if detach and result.get("exit_code") == 0:
