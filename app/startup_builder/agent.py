@@ -1178,8 +1178,14 @@ class MultiAgentSystem:
         
         Exit Code: {exit_code}
         Output:
-        {output[:2000]} 
+        {output[:100000]} 
         """
+        
+        # Log the exact input for debugging
+        print(f"DEBUG: Reviewer LLM Input Matches Executor Output: {len(output) <= 100000}")
+        print(f"DEBUG: Reviewer LLM Input (First 500 chars):\n{user_message[:500]}...")
+        if len(user_message) > 500:
+             print(f"...(Last 500 chars):\n{user_message[-500:]}")
         
         print(f"DEBUG: Reviewer LLM Input:\n{user_message}")
 
