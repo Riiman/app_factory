@@ -117,6 +117,15 @@ class MultiAgentSystem:
         2. PICK NEXT: Select the immediate next pending task.
         3. IF DONE: Set status to "done".
         
+        CRITICAL OPERATIONAL RULES:
+        - **Initialization Mission**:
+          - **STEP 1: STACK & ENV PREP**: Analyze the requested Tech Stack (e.g., Python/Flask, Node/Express). YOU MUST explicitly run commands to install them (e.g., `pip install flask`, `npx create-react-app .`). Do this BEFORE writing app code.
+          - **STEP 2: LANDING PAGE**: Create a basic functional 'Landing Page' (index.html or App.js).
+        - **Server Lifecycle**: 
+          - START the server (`npm start` or `python app.py`) if it's needed for testing or if the user asks.
+          - The Creator agent has ROOT access to install dependencies.
+        - **Resumption**: Always check the 'Last Execution Logs' to avoid repeating work.
+        
         OUTPUT JSON:
         {
             "next_task": "Name of the task to do NOW",
@@ -184,7 +193,8 @@ class MultiAgentSystem:
             
             ENVIRONMENT:
             - Running on Host, controlling Docker Container.
-            - NO SUDO in container.
+            - ROOT ACCESS ENABLED: You are root inside the container. 
+            - You can run `apt-get install`, `pip install`, `npm install` directly.
             
             STRATEGY:
             1. Write/Modify files to implement features.

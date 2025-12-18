@@ -173,14 +173,13 @@ class DockerManager:
             
             # Execute command
             if detach:
-                # For detach, we still need a string slightly carefully constructed
-                # But safer to just pipe properly
-                sanitized_cmd = command.replace("'", "'\\''") # rudimentary escaping if we must use string
+                sanitized_cmd = command.replace("'", "'\\''") 
                 cmd_str = f"nohup bash -c '{sanitized_cmd}' > /dev/null 2>&1 &"
                 
                 container.exec_run(
                     ["bash", "-c", cmd_str],
-                    workdir="/app"
+                    workdir="/app",
+                    user="root" # Always root if requested? Or simple default
                 )
                 return {
                     "exit_code": 0,
@@ -188,10 +187,11 @@ class DockerManager:
                 }
             else:
                 # Use list format to avoid quoting issues
-                # Docker SDK handles the escaping when a list is passed
+                # Run as root to allow installs
                 exit_code, output = container.exec_run(
                     ["bash", "-c", command],
-                    workdir="/app"
+                    workdir="/app",
+                    user="root" 
                 )
                 return {
                     "exit_code": exit_code,
