@@ -4,7 +4,7 @@ import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 
 const FinalizeSubmissionPage = () => {
-    const { submissionData, handleLogout } = useAuth();
+    const { submissionData, handleLogout, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -15,8 +15,8 @@ const FinalizeSubmissionPage = () => {
         setError('');
         try {
             await api.submitSubmission(submissionData.id);
-            // Force reload to update auth context and redirect
-            window.location.reload();
+            // Refresh user to update context and redirect
+            await refreshUser();
         } catch (err: any) {
             console.error("Failed to submit:", err);
             setError(err.message || 'Failed to submit application.');
@@ -41,8 +41,8 @@ const FinalizeSubmissionPage = () => {
         if (!submissionData?.id) return;
         try {
             await api.updateSubmission(submissionData.id, { [key]: tempValue });
-            // Ideally refresh data here without full reload, but for now reload works or use refreshUser if available
-            window.location.reload();
+            // Refresh user to reflect changes
+            await refreshUser();
         } catch (err: any) {
             console.error("Failed to update field:", err);
             setError(err.message || 'Failed to update field.');

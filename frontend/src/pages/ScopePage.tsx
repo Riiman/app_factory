@@ -67,7 +67,7 @@ const ScopePage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState('product');
 
-  const { token, startupStage } = useAuth(); // Get token for WebSocket
+  const { token, startupStage, refreshUser } = useAuth(); // Get token for WebSocket
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -340,7 +340,7 @@ const ScopePage: React.FC = () => {
     try {
       await api.acceptScope();
       alert('Scope Accepted! Waiting for other party to accept.');
-      window.location.reload();
+      await refreshUser();
     } catch (err) {
       console.error("Failed to accept scope:", err);
       alert("Failed to accept scope.");

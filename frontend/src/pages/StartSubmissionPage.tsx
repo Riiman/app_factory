@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const StartSubmissionPage = () => {
     const navigate = useNavigate();
-    const { submissionStatus, isLoading: isAuthLoading, handleLogout } = useAuth();
+    const { submissionStatus, isLoading: isAuthLoading, handleLogout, refreshUser } = useAuth();
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState('');
 
@@ -27,9 +27,8 @@ const StartSubmissionPage = () => {
         setError('');
         try {
             await api.post('/submissions/start', {});
-            // Force a reload. The useAuth and useAuthRedirect hooks will now have the
-            // updated "PENDING" status and redirect to the /submission page automatically.
-            window.location.reload();
+            // Use refreshUser to update context state without full reload
+            await refreshUser();
         } catch (err: any) {
             setError(err.message || 'Failed to start a new submission. Please try again.');
             setIsCreating(false);
