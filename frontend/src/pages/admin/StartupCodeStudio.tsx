@@ -42,6 +42,7 @@ const StartupCodeStudio: React.FC = () => {
     const [products, setProducts] = useState<any[]>([]);
     const [issues, setIssues] = useState<any[]>([]);
     const [expandedProducts, setExpandedProducts] = useState<Record<number, boolean>>({});
+    const [fileRefreshKey, setFileRefreshKey] = useState(0);
 
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -934,13 +935,17 @@ const StartupCodeStudio: React.FC = () => {
                     ) : (
                         // Files Tab
                         <div className="flex-1 bg-black overflow-hidden">
-                            {id && <FileExplorer startupId={id} />}
+                            {id && <FileExplorer startupId={id} refreshKey={fileRefreshKey} />}
                         </div>
                     )}
                 </div >
 
                 {/* Right Panel: Team Logs */}
-                < div className="flex-1 flex flex-col bg-black font-mono text-sm" >
+                <div className="flex-1 flex flex-col bg-black font-mono text-sm">
+                    {/* V3 Brain View */}
+                    <div className="p-2 bg-gray-950 border-b border-gray-800">
+                        <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} />
+                    </div>
                     <div className="h-8 bg-gray-800 flex items-center px-4 text-xs text-gray-400 border-b border-gray-700 justify-between">
                         <div className="flex items-center">
                             <TerminalIcon className="w-3 h-3 mr-2" /> Team Activity Log

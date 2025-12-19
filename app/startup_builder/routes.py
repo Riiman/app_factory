@@ -201,8 +201,38 @@ def approve_step(startup_id):
 
 @builder_bp.route('/<startup_id>/status', methods=['GET'])
 def get_status(startup_id):
-    """Returns the current state of the agent for UI persistence."""
+    """Returns the current state of the agent for UI persistence (Supports V3 & V2)."""
     config = {"configurable": {"thread_id": startup_id}}
+    
+    # 1. Try V3 State
+    try:
+        from .v3.orchestrator import create_v3_graph
+        # Log callback not needed for reading state
+        v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
+        snapshot = v3_graph.get_state(config)
+        
+        if snapshot.values and snapshot.values.get("status") != "init":
+             # Found active V3 state
+             state = snapshot.values
+             return jsonify({
+                "status": "active",
+                "version": "v3",
+                "task_status": state.get("status", "unknown"),
+                "logs": state.get("logs", []),
+                "thoughts": state.get("thoughts", []), # Return thoughts for Brain
+                "node": snapshot.next[0] if snapshot.next else "idle", # Current Active Node
+                "plan": state.get("plan", []),
+                # Map V3 fields to Frontend expectations
+                "total_tasks": len(state.get("plan", [])),
+                "completed_tasks": len([t for t in state.get("plan", []) if t.get("status") == "completed"]),
+                "waiting_approval": False, # V3 Auto-runs for now
+                "mission_queue": state.get("missions", []), 
+                "current_mission_index": state.get("current_mission_id", 0) 
+            })
+    except Exception as e:
+        print(f"V3 Status Check Error: {e}")
+
+    # 2. Fallback to V2 State
     try:
         snapshot = graph.get_state(config)
         if not snapshot.values:
@@ -211,16 +241,17 @@ def get_status(startup_id):
         state = snapshot.values
         return jsonify({
             "status": "active",
+            "version": "v2",
             "task_status": state.get("status", "unknown"),
             "current_task": state.get("current_task"),
             "logs": state.get("logs", []),
             "plan": state.get("plan", []),
             "total_tasks": state.get("total_tasks", 0),
             "completed_tasks": state.get("completed_tasks", 0),
-            "waiting_approval": not snapshot.next, # If no next step, it's waiting
+            "waiting_approval": not snapshot.next, 
             "waiting_interaction": state.get("status") == "waiting_interaction",
-            "mission_queue": state.get("missions", []), # New V3 field mapped to V2 frontend
-            "current_mission_index": state.get("current_mission_id", 0) # ID is effectively index
+            "mission_queue": state.get("missions", []), 
+            "current_mission_index": state.get("current_mission_id", 0) 
         })
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)})
@@ -347,18 +378,45 @@ def build_product(startup_id):
             print(f"Error checking existing state: {e}")
             
     if initial_state is None and not force_rebuild:
-         # Resume confirmed
+         # Resume confirmed from DB checkpoint
          pass
     else:
-        # Start fresh
-        initial_state = {
-            "startup_id": startup_id,
-            "product_context": product_context, # Passed to V3Initializer
-            "status": "init", # Trigger Initializer
-            "plan": [],
-            "missions": [], # Will be populated by Initializer
-            "logs": [f"Starting V3 Build for Product: {product.name}"]
-        }
+        # Check for File-Based Persistence (artifacts/missions.json)
+        # This allows resuming even if DB checkpoint is missing/cleared but workspace is intact.
+        import json
+        missions_file = manager.read_file(startup_id, "artifacts/missions.json")
+        
+        if not force_rebuild and not missions_file.get("error"):
+            try:
+                data = json.loads(missions_file["content"])
+                print(f"Resuming from missions.json for {startup_id}")
+                
+                initial_state = {
+                    "startup_id": startup_id,
+                    "product_context": product_context,
+                    # "missions": data.get("missions", []), # REMOVED: State doesn't track full list
+                    "current_mission": None, # Selector will populate
+                    "tech_stack": data.get("tech_stack", "Existing"),
+                    "status": "routed", # Go to Router -> Mission Selector
+                    "plan": [],
+                    "logs": [f"Resumed V3 Build from persistence file."]
+                }
+            except Exception as e:
+                print(f"Error parsing missions.json: {e}")
+                # Fallback to fresh start
+                initial_state = None
+        
+        if not initial_state:
+            # Start fresh (Initializer will run)
+            initial_state = {
+                "startup_id": startup_id,
+                "product_context": product_context, # Passed to V3Initializer
+                "status": "init", # Trigger Initializer
+                "plan": [],
+                # "missions": [], # REMOVED
+                "current_mission": None,
+                "logs": [f"Starting V3 Build for Product: {product.name}"]
+            }
 
     
     # Run in background
@@ -464,16 +522,23 @@ def run_v3_agent_bg(startup_id, initial_state):
             try:
                 for event in v3_graph.stream(initial_state, config=config):
                     for key, value in event.items():
+                        # Compute Progress for Frontend
+                        plan = value.get('plan', [])
+                        total_tasks = len(plan)
+                        completed_tasks = len([t for t in plan if t.get("status") == "completed"])
+                        
                         # Emit Updated State
                         socketio.emit('agent_update', {
                             'node': key,
                             'task_status': value.get('status', 'processing'),
                             # Analyzer returns status='planning', so it will show 'planning' after analyzer is done.
                             # During analyzer run, it's 'analyzing'.
-                            'plan': value.get('plan', []),
+                            'plan': plan,
                             'logs': value.get('logs', []),
                             'mission_queue': value.get('missions', []),
-                            'current_mission_index': value.get('current_mission_id', 0)
+                            'current_mission_index': value.get('current_mission_id', 0),
+                            'total_tasks': total_tasks,
+                            'completed_tasks': completed_tasks
                         }, room=f"startup_{startup_id}", namespace='/builder')
                         
                 socketio.emit('agent_update', {

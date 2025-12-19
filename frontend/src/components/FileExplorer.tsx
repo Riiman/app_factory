@@ -9,9 +9,10 @@ interface FileNode {
 
 interface FileExplorerProps {
     startupId: string;
+    refreshKey?: number;
 }
 
-const FileExplorer: React.FC<FileExplorerProps> = ({ startupId }) => {
+const FileExplorer: React.FC<FileExplorerProps> = ({ startupId, refreshKey }) => {
     const [currentPath, setCurrentPath] = useState('.');
     const [files, setFiles] = useState<FileNode[]>([]);
     const [loading, setLoading] = useState(false);
@@ -21,7 +22,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ startupId }) => {
 
     useEffect(() => {
         fetchFiles(currentPath);
-    }, [currentPath, startupId]);
+    }, [currentPath, startupId, refreshKey]);
 
     const fetchFiles = async (path: string) => {
         setLoading(true);

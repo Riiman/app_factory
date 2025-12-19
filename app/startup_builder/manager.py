@@ -82,16 +82,13 @@ class DockerManager:
         except docker.errors.NotFound:
             # Create new container
             try:
-                # Build Image based on stack
-                stack_dir = os.path.join(os.path.dirname(__file__), 'stacks', stack_type)
-                if not os.path.exists(stack_dir):
-                    # Fallback to MERN if stack not found
-                    stack_dir = os.path.join(os.path.dirname(__file__), 'stacks', 'MERN')
-                
-                image_tag = f"startup_builder_{stack_type.lower()}"
+                # Force Universal Stack (V3 Architecture)
+                # We ignore the requested stack_type for the image, but keep it for metadata if needed.
+                stack_dir = os.path.join(os.path.dirname(__file__), 'stacks', 'Universal')
+                image_tag = "startup_builder_universal"
                 
                 # Build the image
-                print(f"Building image for {stack_type}...")
+                print(f"Building Universal Image...")
                 self.client.images.build(path=stack_dir, tag=image_tag)
 
                 # Create workspace directory on host
@@ -262,6 +259,8 @@ class DockerManager:
                     "path": os.path.join(path, name) if path != "." else name
                 })
                 
+            if not files:
+                 return {"files": [], "info": "Directory is empty (or contains only hidden files)."}
             return {"files": files}
             
         except Exception as e:

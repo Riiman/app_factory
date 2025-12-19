@@ -3,20 +3,79 @@ from langchain_core.tools import tool
 from ..context import ContextManager
 
 class V3Tools:
-    def __init__(self, docker_manager, startup_id):
+    def __init__(self, docker_manager, startup_id, runtime_context: Optional[Dict] = None):
         self.docker_manager = docker_manager
         self.startup_id = startup_id
         # We also need context manager to trigger summaries on write
         self.context_manager = ContextManager(docker_manager, startup_id)
+        self.runtime_context = runtime_context or {}
 
-    def get_tools(self):
-        """Returns the list of tools to be bound to the LLM."""
-        return [
-            self.run_shell,
-            self.read_file,
-            self.write_file,
-            self.list_files
+    def get_tool_list(self, include_context_tools=False):
+        """Returns the actual bound tool instances for the LLM."""
+        base_tools = [
+            self.create_run_shell(),
+            self.create_read_file(),
+            self.create_write_file(),
+            self.create_list_files(),
+            self.create_edit_file(),
+            self.create_search_files(),
+            self.create_read_logs(),
+            self.create_restart_server(),
+            self.create_refresh_memory()
         ]
+        
+        if include_context_tools:
+            base_tools.extend([
+                self.create_get_mission_context(),
+                self.create_get_task_context(),
+                self.create_get_product_context()
+            ])
+            
+        return base_tools
+
+    # --- Context Tools (For Fixer/Audit) ---
+    
+    def create_get_mission_context(self):
+        @tool
+        def get_mission_context() -> str:
+            """
+            Retrieves the full context/history of the current Mission.
+            Use this to understand what has been achieved so far.
+            """
+            mission = self.runtime_context.get("current_mission", {})
+            ctx = mission.get("mission_context", [])
+            return json.dumps(ctx, indent=2) if ctx else "No mission context available."
+        return get_mission_context
+
+    def create_get_task_context(self):
+        @tool
+        def get_task_context() -> str:
+            """
+            Retrieves the execution log (retries/errors) of the LAST failed task.
+            Use this to analyze why the previous attempt failed.
+            """
+            mission = self.runtime_context.get("current_mission", {})
+            tasks = mission.get("tasks", [])
+            
+            # Find the last task (presumably the failed one)
+            # Or pass a Task ID? For now, last active task.
+            if not tasks:
+                return "No tasks found."
+            
+            # Assuming the last one is the one we are fixing
+            target_task = tasks[-1]
+            ctx = target_task.get("task_context", [])
+            return f"Task: {target_task.get('description')}\nContext:\n{json.dumps(ctx, indent=2)}"
+        return get_task_context
+
+    def create_get_product_context(self):
+        @tool
+        def get_product_context() -> str:
+            """
+            Retrieves the Global Product Context (history of all missions).
+            """
+            return self.runtime_context.get("global_context", "No global context.")
+        return get_product_context
 
     # --- Tool Definitions ---
 
@@ -84,6 +143,15 @@ class V3Tools:
             
             # Post-action: Update Summary
             self.context_manager.update_file_summary(path)
+
+            try:
+                from flask import current_app
+                with current_app.app_context():
+                    from app.extensions import socketio
+                    socketio.emit('files_updated', {'path': path}, room=f"startup_{self.startup_id}", namespace='/builder')
+            except Exception as e:
+                # Log but don't fail the tool execution
+                print(f"Failed to emit file update event: {e}")
             
             return f"Successfully wrote to {path}"
         return write_file
@@ -124,19 +192,34 @@ class V3Tools:
             return output[:3000] # Truncate to avoid context overflow
         return search_files
 
-    def get_tool_list(self):
-        """Returns the actual bound tool instances for the LLM."""
-        return [
-            self.create_run_shell(),
-            self.create_read_file(),
-            self.create_write_file(),
-            self.create_list_files(),
-            self.create_edit_file(),
-            self.create_search_files(),
-            self.create_read_logs(),
-            self.create_restart_server(),
-            self.create_refresh_memory()
-        ]
+    def create_edit_file(self):
+        @tool
+        def edit_file(path: str, target: str, replacement: str) -> str:
+            """
+            Replaces exact occurrences of 'target' with 'replacement' in the file.
+            Use this for precise code modifications without overwriting the whole file.
+            Target must match exactly (including whitespace/indentation).
+            Returns success message or error.
+            """
+            res = self.docker_manager.replace_in_file(self.startup_id, path, target, replacement)
+            if res.get("error"):
+                return f"Error editing file: {res['error']}"
+            
+            # Post-action: Update Summary
+            self.context_manager.update_file_summary(path)
+
+            try:
+                from flask import current_app
+                with current_app.app_context():
+                    from app.extensions import socketio
+                    socketio.emit('files_updated', {'path': path}, room=f"startup_{self.startup_id}", namespace='/builder')
+            except Exception as e:
+                print(f"Failed to emit file update event: {e}")
+            
+            return f"Successfully edited {path}"
+        return edit_file
+
+
 
     def create_read_logs(self):
         @tool
