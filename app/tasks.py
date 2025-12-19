@@ -4,7 +4,7 @@ from app.services.document_generator_service import generate_scope_document
 from app.services.contract_generator_service import generate_contract_document
 from app.services.product_generator_service import generate_product_from_scope
 from app.services.generation_service import generate_startup_assets
-from app.models import Product, Feature, Startup, Contract
+from app.models import Product, Feature, Startup, Contract, StartupStage
 from app.services.notification_service import publish_update
 
 @celery.task(name='app.tasks.generate_startup_assets_task')
@@ -64,7 +64,18 @@ def generate_scope_document_task(startup_id):
     error_details = None
 
     try:
+        # Update status to in-progress and notify
         startup = Startup.query.get(startup_id)
+        if startup:
+            startup.is_generating_scope = True
+            db.session.commit()
+            publish_update("scope_generation_started", 
+                           {
+                               "startup_id": startup.id, 
+                               "message": "Scope document generation started."
+                           }, 
+                           rooms=[f"user_{startup.user_id}", "admin"])
+        
         if startup:
             generate_scope_document(startup)
         else:
@@ -81,11 +92,18 @@ def generate_scope_document_task(startup_id):
             startup = Startup.query.get(startup_id)
             if startup:
                 startup.is_generating_scope = False
+                
+                # Move to SCOPING stage only if generation was successful
+                if status == "success":
+                    startup.current_stage = StartupStage.SCOPING
+                    print(f"--- [Celery Task] Moved startup {startup.id} to SCOPING stage ---")
+                
                 db.session.commit()
                 publish_update("scope_generation_completed", 
                                {
                                    "startup_id": startup.id, 
                                    "scope_document": startup.scope_document.to_dict() if startup.scope_document else None,
+                                   "startup": startup.to_dict(), # Send updated startup with new stage
                                    "status": status,
                                    "message": message,
                                    "error": error_details
@@ -103,6 +121,18 @@ def generate_contract_task(startup_id):
     error_details = None
     
     try:
+        # Update status to in-progress and notify
+        startup = Startup.query.get(startup_id)
+        if startup:
+            startup.is_generating_contract = True
+            db.session.commit()
+            publish_update("contract_generation_started", 
+                           {
+                               "startup_id": startup.id, 
+                               "message": "Contract generation started."
+                           }, 
+                           rooms=[f"user_{startup.user_id}", "admin"])
+
         generate_contract_document(startup_id)
     except Exception as e:
         print(f"Error in generate_contract_task: {e}")
@@ -114,6 +144,12 @@ def generate_contract_task(startup_id):
             startup = Startup.query.get(startup_id)
             if startup:
                 startup.is_generating_contract = False
+                
+                # Move to CONTRACT stage only if generation was successful
+                if status == "success":
+                    startup.current_stage = StartupStage.CONTRACT
+                    print(f"--- [Celery Task] Moved startup {startup.id} to CONTRACT stage ---")
+
                 db.session.commit()
                 # Assuming contract is linked to startup, fetch it to send in update
                 contract = Contract.query.filter_by(startup_id=startup.id).first()
@@ -121,6 +157,7 @@ def generate_contract_task(startup_id):
                                {
                                    "startup_id": startup.id, 
                                    "contract": contract.to_dict() if contract else None,
+                                   "startup": startup.to_dict(), # Send updated startup with new stage
                                    "status": status,
                                    "message": message,
                                    "error": error_details

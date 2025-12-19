@@ -47,6 +47,13 @@ def run_analysis(submission_id):
     db.session.commit()
     print(f"--- [Celery Task] Evaluation status set to 'in_progress' for submission ID: {submission_id} ---")
 
+    publish_update("analysis_started", 
+                   {
+                       "submission_id": submission_id, 
+                       "message": "Analysis started."
+                   }, 
+                   rooms=[f"user_{submission.user_id}", "admin"])
+
     try:
         formatted_startup_data = format_startup_data_for_analyzer(submission.to_dict())
         print(f"--- [Celery Task] Formatted startup data for submission ID: {submission_id} ---")
@@ -90,20 +97,64 @@ def run_analysis(submission_id):
         print(f"--- [Celery Task] LLM chains executed for submission ID: {submission_id} ---")
 
         # --- Save analysis to Evaluation record ---
-        # In a real scenario, you would parse the markdown from the content.
-        # For now, we store the raw markdown output in a JSON structure.
         evaluation.problem_analysis = {"summary": problem_analysis_content}
         evaluation.solution_analysis = {"summary": solution_analysis_content}
         evaluation.market_analysis = {"summary": market_analysis_content}
-        evaluation.growth_potential = {"summary": growth_analysis_content}
+        evaluation.growth_analysis = {"summary": growth_analysis_content} # FIXED: was growth_potential
         evaluation.competitor_analysis = {"summary": competitor_analysis_content}
-        evaluation.risk_analysis = {"summary": risks_analysis_content}
-
-        # Placeholder for final scoring and decision logic
-        evaluation.overall_score = 85.0
-        evaluation.final_decision = "Proceed"
-        evaluation.overall_summary = "This is a promising startup with a clear problem and solution."
+        evaluation.risks_analysis = {"summary": risks_analysis_content} # FIXED: was risk_analysis
         
+        print(f"--- [Celery Task] Individual analyses completed for submission ID: {submission_id} ---")
+
+        # --- Synthesis & Scoring ---
+        synthesis_prompt = PromptTemplate.from_template("""
+        You are an expert venture capital analyst. Review the following analysis of a startup:
+        
+        Problem: {problem}
+        Solution: {solution}
+        Market: {market}
+        Growth: {growth}
+        Competitors: {competitors}
+        Risks: {risks}
+        
+        Based on this, provide a JSON output with the following keys:
+        - "overall_score": A number between 0 and 100 representing the startup's potential.
+        - "final_decision": "Proceed" or "Reject".
+        - "overall_summary": A concise executive summary justifying the score and decision.
+        
+        Ensure the output is valid JSON.
+        """)
+        
+        synthesis_chain = synthesis_prompt | llm
+        
+        synthesis_input = {
+            "problem": problem_analysis_content,
+            "solution": solution_analysis_content,
+            "market": market_analysis_content,
+            "growth": growth_analysis_content,
+            "competitors": competitor_analysis_content,
+            "risks": risks_analysis_content
+        }
+        
+        synthesis_result_content = synthesis_chain.invoke(synthesis_input).content
+        
+        # Simple JSON parsing (in production, use a more robust parser or output parser)
+        try:
+            # removing potential markdown code block format
+            clean_json = synthesis_result_content.replace('```json', '').replace('```', '').strip()
+            synthesis_data = json.loads(clean_json)
+            
+            evaluation.overall_score = synthesis_data.get("overall_score", 0)
+            evaluation.final_decision = synthesis_data.get("final_decision", "Pending")
+            evaluation.overall_summary = synthesis_data.get("overall_summary", "Summary generation failed.")
+            
+        except json.JSONDecodeError as e:
+            print(f"--- [Celery Task] Error parsing synthesis JSON: {e} ---")
+            # Fallback
+            evaluation.overall_score = 0
+            evaluation.final_decision = "Error"
+            evaluation.overall_summary = "Failed to parse analysis results."
+
         evaluation.status = 'completed'
         db.session.commit()
         

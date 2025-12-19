@@ -144,6 +144,8 @@ const AdminDashboardPage: React.FC = () => {
     socket.on('scope_generation_completed', (data: any) => handleEvent('Scope Gen', data, "Scope document generated!", "Failed to generate scope."));
     socket.on('contract_generation_completed', (data: any) => handleEvent('Contract Gen', data, "Contract generated!", "Failed to generate contract."));
     socket.on('analysis_completed', (data: any) => handleEvent('Analysis', data, "Evaluation analysis completed!", "Analysis failed."));
+    socket.on('product_generated', (data: any) => handleEvent('Product Gen', data, "Product generated for startup!", "Failed to generate product."));
+    socket.on('campaigns_generated', (data: any) => handleEvent('Campaigns Gen', data, "Marketing campaigns generated for startup!", "Failed to generate campaigns."));
     socket.on('analysis_failed', (data: any) => handleEvent('Analysis Failed', data, "", "Evaluation analysis failed.")); // Redundant if captured above, but good for safety
 
     return () => {

@@ -202,6 +202,39 @@ const DashboardPage: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
         });
 
+        socket.on('product_generated', (data: any) => {
+            console.log('Product generated:', data);
+            if (data.startup_id === user.startup_id) {
+                toast.success("Product generated successfully!");
+                queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                // Optimistic update if needed
+                setProducts(prev => {
+                    const newProduct = data.product;
+                    if (!prev) return [newProduct];
+                    if (prev.find(p => p.id === newProduct.id)) return prev;
+                    return [...prev, newProduct];
+                });
+            }
+        });
+
+        socket.on('campaigns_generated', (data: any) => {
+            console.log('Campaigns generated:', data);
+            if (data.startup_id === user.startup_id) {
+                toast.success("Marketing campaigns generated successfully!");
+                queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                // Optimistic update for campaigns
+                setMarketingCampaigns(prev => {
+                    // Since we receive all campaigns or a list, we might want to just refetch or merge
+                    // For simplicity, refetching is safer as handled by invalidateQueries. 
+                    // But we can update local state if data.campaigns is provided
+                    if (data.campaigns) {
+                        return data.campaigns;
+                    }
+                    return prev;
+                });
+            }
+        });
+
         return () => {
             socket.disconnect();
         };

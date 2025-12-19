@@ -41,14 +41,12 @@ def update_scope_status(startup_id):
         if scope_doc.admin_accepted and scope_doc.founder_accepted:
             # Both parties accepted - transition to CONTRACT stage
             scope_doc.status = ScopeStatus.ACCEPTED.name
-            startup.current_stage = StartupStage.CONTRACT
             startup.is_generating_contract = True
             generate_contract_task.delay(startup.id)
             print(f"--- [API] Both parties accepted. Triggered contract generation for startup ID: {startup.id} ---")
         elif scope_doc.founder_accepted:
             # Only founder accepted previously, now admin accepted too
             scope_doc.status = ScopeStatus.ACCEPTED.name
-            startup.current_stage = StartupStage.CONTRACT
             startup.is_generating_contract = True
             generate_contract_task.delay(startup.id)
             print(f"--- [API] Founder already accepted. Admin accepted. Triggered contract generation for startup ID: {startup.id} ---")
