@@ -78,12 +78,21 @@ def update_submission_status(submission_id):
     except KeyError:
         return jsonify({'success': False, 'error': f'Invalid status: {new_status_str}'}), 400
 
-    submission.status = new_status
-    
     # If submission is moved to review, trigger the analysis task
     if new_status == SubmissionStatus.IN_REVIEW:
         # ASYNC: Use Celery task
-        analyze_submission_task.delay(submission.id)
+        # Do not set status to IN_REVIEW yet. The task will do it when analysis is complete.
+        # However, we need to know that analysis is triggered. 
+        # For now, we will NOT update the status here if it is IN_REVIEW.
+        pass
+    else:
+        submission.status = new_status
+    
+    # Trigger analysis if the *requested* status was IN_REVIEW
+    if new_status == SubmissionStatus.IN_REVIEW:
+         analyze_submission_task.delay(submission.id)
+         # Optionally, return a specialized message
+         return jsonify({'success': True, 'message': 'Analysis started. Status will update to IN_REVIEW upon completion.'}), 200
 
     # If submission is approved, create a startup entry and trigger scope document generation
     if new_status == SubmissionStatus.APPROVED:

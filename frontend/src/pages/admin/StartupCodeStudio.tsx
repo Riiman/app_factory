@@ -53,14 +53,13 @@ const StartupCodeStudio: React.FC = () => {
     const handleStart = async () => {
         addLog('Starting environment...');
         try {
-            const res = await fetch(`/api/builder/v3/start`, {
+            const res = await fetch(`/api/builder/${id}/start`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    startup_id: id,
-                    mission: "Initialize project and wait for instructions." // Default V3 start
+                    stack_type: 'Universal' // Explicitly request Universal (though backend defaults to it)
                 })
             });
             let data;

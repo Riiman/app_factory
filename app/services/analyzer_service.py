@@ -1,7 +1,7 @@
 import os
 import json
 from app import db
-from app.models import Submission, Evaluation
+from app.models import Submission, Evaluation, SubmissionStatus
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import AzureChatOpenAI
 from app.services.notification_service import publish_update
@@ -154,20 +154,25 @@ def run_analysis(submission_id):
             evaluation.overall_score = 0
             evaluation.final_decision = "Error"
             evaluation.overall_summary = "Failed to parse analysis results."
+        finally:
+            evaluation.status = 'completed'
+            
+            # Set submission status to IN_REVIEW now that analysis is complete
+            submission.status = SubmissionStatus.IN_REVIEW
 
-        evaluation.status = 'completed'
-        db.session.commit()
-        
-        publish_update("analysis_completed", 
-                       {
-                           "submission_id": submission_id, 
-                           "evaluation": evaluation.to_dict(),
-                           "status": "success",
-                           "message": "Analysis completed successfully!"
-                       }, 
-                       rooms=[f"user_{submission.user_id}", "admin"])
-        
-        print(f"--- [Celery Task] Analysis for submission {submission_id} completed successfully. ---")
+            db.session.commit()
+            
+            publish_update("analysis_completed", 
+                        {
+                            "submission_id": submission_id, 
+                            "evaluation": evaluation.to_dict(),
+                            "submission_status": submission.status.value,
+                            "status": "success",
+                            "message": "Analysis completed successfully!"
+                        }, 
+                        rooms=[f"user_{submission.user_id}", "admin"])
+            
+            print(f"--- [Celery Task] Analysis for submission {submission_id} completed successfully. ---")
 
     except Exception as e:
         print(f"--- [Celery Task] An error occurred during analysis for submission {submission_id}: {e} ---")
