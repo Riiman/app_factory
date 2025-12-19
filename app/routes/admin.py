@@ -102,7 +102,6 @@ def update_submission_status(submission_id):
                 submission_id=submission.id,
                 name=submission.startup_name,
                 slug=slug,
-                slug=slug,
                 current_stage=StartupStage.EVALUATION.value
             )
             db.session.add(startup)
