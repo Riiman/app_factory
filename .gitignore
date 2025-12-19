@@ -454,3 +454,4 @@ reproduce_issue.py
 reset_db_data.py
 reset_startup.py
 scripts/reset_startup_build.py
+startupos_key.pem
