@@ -1,76 +1,166 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
+import Tabs from '../components/ui/Tabs';
 import {
-  Lightbulb as LightbulbIcon,
-  Rocket as RocketIcon,
-  BarChart as ChartBarIcon,
-  DollarSign as DollarIcon,
-  CheckCircle,
+  Zap,
+  Shield,
+  BarChart3,
+  Rocket,
+  Code2,
+  Layout,
+  Database,
+  Globe,
+  CheckCircle2,
   ArrowRight,
-  TrendingUp,
-  Users,
-  ShieldCheck,
   ChevronDown,
-  ChevronUp
-} from 'lucide-react'; // Using lucide-react which is likely installed, or will fallback to components/Icons if not
-
-// Fallback icons if lucide-react is not available (assuming standard project setup might use either)
-// If these cause errors, I will revert to the original imports.
-// For now, I'll attempt to use the existing Icon components if Lucide fails, but standardizing on Lucide is better for the new design.
+  ChevronUp,
+  Building2,
+  Users
+} from 'lucide-react';
 
 const HomePage: FC = () => {
-
   // FAQ State
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    document.title = "VentureStackAI — Idea to MVP & Pilots for Enterprises and Cohorts";
+  }, []);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  const features = [
-    {
-      icon: <LightbulbIcon className="w-8 h-8 text-white" />,
-      title: 'Validate & Refine',
-      description: 'Stop guessing. Use our AI-driven validation tools to test your assumptions against real market data before you write a single line of code.',
-      color: 'bg-brand-500'
-    },
-    {
-      icon: <RocketIcon className="w-8 h-8 text-white" />,
-      title: 'Build & Launch',
-      description: 'Instant MVP generation. Our VentureStack engine generates your backend, frontend, and deployment infrastructure in minutes, not months.',
-      color: 'bg-indigo-500'
-    },
-    {
-      icon: <TrendingUp className="w-8 h-8 text-white" />,
-      title: 'Grow & Scale',
-      description: 'Integrated analytics and growth hacking tools to help you acquire your first 1,000 customers and optimize your funnel.',
-      color: 'bg-purple-500'
-    },
-    {
-      icon: <DollarIcon className="w-8 h-8 text-white" />,
-      title: 'Fund & Succeed',
-      description: 'Get matched with investors who are looking for startups just like yours. Automated due diligence reports make funding easier.',
-      color: 'bg-accent-500'
-    },
-  ];
+  const EnterpriseTabContent = (
+    <div className="animate-fade-in space-y-12">
+      <div className="text-center max-w-3xl mx-auto">
+        <h3 className="text-2xl font-bold text-brand-900 mb-4">Ship innovation that the business can use</h3>
+        <p className="text-lg text-gray-600">
+          Stop collecting slideware. VentureStackAI gives your innovation team a repeatable system to scout opportunities, prototype with AI, pilot with business units, and scale on secure cloud—so the roadmap turns into revenue.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h4 className="text-xl font-bold text-brand-800 mb-4 flex items-center">
+            <Zap className="w-5 h-5 mr-2 text-accent-500" /> Value Props
+          </h4>
+          <ul className="space-y-3">
+            {[
+              "From problem to pilot in weeks: AI blueprints + reusable modules.",
+              "Enterprise-grade: SSO/SCIM, RBAC, audit logs, private cloud.",
+              "On-ramp to scale: Templates for production hardening & handover.",
+              "Measurable outcomes: Live dashboard for cost, cycle time, ROI."
+            ].map((item, i) => (
+              <li key={i} className="flex items-start text-gray-600">
+                <CheckCircle2 className="w-5 h-5 mr-3 text-brand-500 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h4 className="text-xl font-bold text-brand-800 mb-4 flex items-center">
+            <BarChart3 className="w-5 h-5 mr-2 text-accent-500" /> Featured Use Cases
+          </h4>
+          <ul className="space-y-3 text-gray-600">
+            <li><strong>Manufacturing:</strong> Quality Copilot, predictive maintenance.</li>
+            <li><strong>BFSI:</strong> Credit underwriting, KYC automation.</li>
+            <li><strong>Retail/CPG:</strong> Demand forecasting, store ops Copilot.</li>
+            <li><strong>Shared Services:</strong> GenAI knowledge assistant, doc automation.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="bg-brand-50 p-6 rounded-xl border border-brand-100 text-center">
+        <p className="text-brand-800 font-semibold mb-4">
+          “Time-to-pilot ↓ 50–70% • Prototype→Pilot conversion ↑ • Portfolio visibility for CXOs”
+        </p>
+        <Link to="/contact">
+          <Button variant="primary" className="bg-brand-700 hover:bg-brand-800">
+            Talk to our enterprise team
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+
+  const IncubatorTabContent = (
+    <div className="animate-fade-in space-y-12">
+      <div className="text-center max-w-3xl mx-auto">
+        <h3 className="text-2xl font-bold text-brand-900 mb-4">Your cohort, shipped</h3>
+        <p className="text-lg text-gray-600">
+          VentureStackAI is the operating system for programs that measure outcomes, not attendance. Standardize idea→MVP→GTM with AI blueprints, reusable code, and a live portfolio console.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h4 className="text-xl font-bold text-brand-800 mb-4 flex items-center">
+            <Rocket className="w-5 h-5 mr-2 text-accent-500" /> Value Props
+          </h4>
+          <ul className="space-y-3">
+            {[
+              "MVPs in weeks: Next.js/Supabase templates with auth & payments.",
+              "GTM on day one: Landing generator, CRM sync, automations.",
+              "Portfolio console: Real-time progress, risks, quality gates.",
+              "Repeatable excellence: Cohort playbooks, QA checklists."
+            ].map((item, i) => (
+              <li key={i} className="flex items-start text-gray-600">
+                <CheckCircle2 className="w-5 h-5 mr-3 text-brand-500 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h4 className="text-xl font-bold text-brand-800 mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2 text-accent-500" /> Program Outcomes
+          </h4>
+          <p className="mb-2 text-sm text-gray-500">Per 20-team cohort:</p>
+          <ul className="space-y-3 text-gray-600 font-medium">
+            <li className="flex items-center"><span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span> ≥18 MVPs shipped</li>
+            <li className="flex items-center"><span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> ≥12 teams with first users/LOIs</li>
+            <li className="flex items-center"><span className="w-2 h-2 rounded-full bg-purple-500 mr-2"></span> ≥6 investor-ready</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="bg-accent-50 p-6 rounded-xl border border-accent-100 text-center">
+        <p className="text-accent-900 font-semibold mb-4">
+          Standardize your program success with real shipping power.
+        </p>
+        <Link to="/contact">
+          <Button variant="primary" className="bg-accent-600 hover:bg-accent-700 text-white">
+            Run your next cohort on VentureStackAI
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
 
   const faqs = [
     {
-      question: "Is this really free to start?",
-      answer: "Yes! You can build your entire MVP and validate your idea on VentureStack Platform. We take a small equity/revenue share."
+      question: "Is it low/no-code or code?",
+      answer: "Both: AI blueprints + code templates. Teams can extend in JS/TS, Python, or your enterprise stack."
     },
     {
-      question: "Do I need to know how to code?",
-      answer: "Not at all. VentureStack is designed for non-technical founders. You describe your vision, and our AI agents handle the technical architecture, coding, and deployment."
+      question: "Can we host on our cloud?",
+      answer: "Yes. Private cloud on AWS/Azure with SSO/SCIM, RBAC, audit logs, and data residency."
     },
     {
-      question: "Who owns the IP?",
-      answer: "You do. 100%. Everything you build on VentureStack is your intellectual property. We just provide the tools to build it."
+      question: "What stacks do you support?",
+      answer: "Next.js/React, Supabase/AWS, Python/Node, Fabric/Power BI, HubSpot/Zoho, n8n/Make."
     },
     {
-      question: "Can I export my code?",
-      answer: "Absolutely. We believe in no lock-in. You can export your full codebase (React, Python/Node, Docker configs) at any time."
+      question: "How do you measure success?",
+      answer: "Time-to-MVP/pilot, adoption & activation, prototype→pilot conversion, funnel metrics, and business KPIs."
+    },
+    {
+      question: "Do you help after launch?",
+      answer: "Yes—traction experiments, partner pilots, investor/exec packs, and scale handover."
     }
   ];
 
@@ -78,259 +168,222 @@ const HomePage: FC = () => {
     <div className="font-sans text-slate-800">
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-brand-900 pt-20 pb-32 lg:pt-32 lg:pb-48">
-        <div className="absolute inset-0 opacity-20">
-          {/* Abstract background pattern could go here */}
-          <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0 100 C 20 0 50 0 100 100 Z" fill="url(#gradient)" />
-            <defs>
-              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#0ea5e9" />
-                <stop offset="100%" stopColor="#f97316" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+      <section className="relative overflow-hidden bg-brand-900 pt-20 pb-32 lg:pt-32 lg:pb-48 text-center text-white">
+        <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-brand-900/90"></div>
 
-        <div className="relative container mx-auto px-4 text-center z-10">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-brand-800 border border-brand-700 text-brand-300 font-medium text-sm mb-8 animate-fade-in-up">
-            <span className="flex h-2 w-2 rounded-full bg-accent-500 mr-2"></span>
-            Now in Public Beta v2.0
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight leading-tight mb-8">
-            Turn Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-accent-500">Vision</span> Into <br className="hidden md:block" /> A Venture.
+        <div className="relative container mx-auto px-4 z-10">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight mb-6">
+            VentureStackAI <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 to-accent-400 text-4xl md:text-6xl block mt-2">
+              Build real products, not just plans
+            </span>
           </h1>
-
-          <p className="mt-4 max-w-2xl mx-auto text-xl text-brand-100 mb-10 leading-relaxed">
-            VentureStack is the comprehensive operating system for founders.
-            From idea validation to series A funding, we automate the chaos so you can focus on the product.
+          <p className="mt-6 max-w-2xl mx-auto text-xl text-brand-100 mb-10 leading-relaxed">
+            The platform that turns ideas into working MVPs and first users—fast. For corporate innovation teams and cohort programs.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/signup">
-              <Button className="w-full sm:w-auto px-8 py-4 text-lg bg-gradient-to-r from-brand-600 to-accent-500 hover:from-brand-500 hover:to-accent-400 text-white font-bold shadow-lg shadow-brand-900/20 transition-all transform hover:scale-105">
-                Start Building Free
+            <Link to="/contact">
+              <Button className="w-full sm:w-auto px-8 py-4 text-lg bg-accent-600 hover:bg-accent-500 text-white font-bold shadow-lg transition-transform hover:scale-105">
+                Book a demo
               </Button>
             </Link>
-            <Link to="#features">
-              <button className="w-full sm:w-auto px-8 py-4 text-lg bg-transparent border border-brand-500 text-white font-medium hover:bg-brand-800/50 transition-all rounded-lg">
-                Explore Features
-              </button>
+            <Link to="/overview">
+              <Button variant="secondary" className="w-full sm:w-auto px-8 py-4 text-lg bg-transparent border border-white text-white hover:bg-white/10">
+                Download the overview
+              </Button>
             </Link>
           </div>
+        </div>
+      </section>
 
-          <div className="mt-16 relative mx-auto max-w-5xl">
-            <div className="rounded-xl bg-brand-800/50 p-2 backdrop-blur-sm border border-brand-700 shadow-2xl">
-              <div className="rounded-lg bg-slate-900 aspect-video flex items-center justify-center overflow-hidden relative">
-                {/* Placeholder for Dashboard UI Screenshot */}
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900"></div>
-                <div className="text-brand-400 text-center z-10 p-8">
-                  <div className="w-full h-full border-2 border-dashed border-brand-700/50 rounded flex flex-col items-center justify-center">
-                    <p className="text-lg font-mono">Interactive Dashboard Preview</p>
-                    <p className="text-sm text-slate-500 mt-2">Visualization of Startup Health</p>
-                  </div>
+      {/* Value SwitcherTabs */}
+      <section className="py-20 bg-slate-50">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <Tabs
+            tabs={[
+              { id: 'enterprise', label: 'For Enterprises', content: EnterpriseTabContent },
+              { id: 'incubators', label: 'For Incubators & Accelerators', content: IncubatorTabContent },
+            ]}
+          />
+        </div>
+      </section>
+
+      {/* How VentureStackAI Works */}
+      <section className="py-24 bg-white border-y border-gray-100">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-gray-900">How VentureStackAI Works</h2>
+            <p className="mt-4 text-gray-600">From idea to traction in 4 steps</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+            <div className="absolute hidden lg:block top-12 left-0 w-full h-0.5 bg-gray-200 -z-10"></div>
+
+            {[
+              {
+                step: "01",
+                title: "Scope",
+                desc: "Align problem, ICP, success metrics.",
+                icon: <Layout className="w-6 h-6" />
+              },
+              {
+                step: "02",
+                title: "Blueprint",
+                desc: "AI-generated PRD, schema, API map, UI skeleton.",
+                icon: <Code2 className="w-6 h-6" />
+              },
+              {
+                step: "03",
+                title: "Build",
+                desc: "Reusable modules for auth, data, files, payments.",
+                icon: <Database className="w-6 h-6" />
+              },
+              {
+                step: "04",
+                title: "GTM & Traction",
+                desc: "Site, CRM, outbound, dashboards.",
+                icon: <Globe className="w-6 h-6" />
+              }
+            ].map((item, i) => (
+              <div key={i} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-center">
+                <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center font-bold text-lg mx-auto mb-4 border-4 border-white relative z-10">
+                  {item.step}
                 </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-500">{item.desc}</p>
               </div>
-            </div>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <span className="inline-flex items-center px-4 py-2 rounded-full bg-green-50 text-green-700 text-sm font-medium border border-green-100">
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Quality Gates: Blueprint ✓ • MVP DoD ✓ • GTM Ready ✓ • Launch ✓
+            </span>
           </div>
         </div>
       </section>
 
-      {/* Stats / Social Proof */}
-      <section className="py-10 bg-slate-50 border-b border-gray-200">
+      {/* Platform Capabilities */}
+      <section className="py-24 bg-brand-900 text-white">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-gray-200">
-            <div>
-              <div className="text-4xl font-bold text-brand-600">150+</div>
-              <div className="text-sm text-gray-500 uppercase tracking-wide mt-1">Startups Built</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-brand-600">$2M+</div>
-              <div className="text-sm text-gray-500 uppercase tracking-wide mt-1">Funding Raised</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-brand-600">500+</div>
-              <div className="text-sm text-gray-500 uppercase tracking-wide mt-1">Founders Joined</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-brand-600">94%</div>
-              <div className="text-sm text-gray-500 uppercase tracking-wide mt-1">Success Rate</div>
-            </div>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold">Platform Capabilities</h2>
+            <p className="mt-4 text-brand-200">Everything you need to build and scale.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {[
+              { title: "AI Blueprinting", desc: "Prompt → PRD, schema, API map, UI drafts." },
+              { title: "Build Stack", desc: "Next.js/Tailwind • Supabase/AWS • serverless APIs." },
+              { title: "Data & Analytics", desc: "GA4, PostHog, Sentry; Fabric/Power BI optional." },
+              { title: "GTM Kit", desc: "Landing generator, CRM sync, WhatsApp/email automations." },
+              { title: "Security & Gov", desc: "SSO/SAML, RBAC, audit logs, VPC/VNet isolation." },
+              { title: "Portfolio Console", desc: "Velocity, burn, adoption, funnel, risk flags." }
+            ].map((cap, i) => (
+              <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
+                <h3 className="text-xl font-bold text-accent-400 mb-2">{cap.title}</h3>
+                <p className="text-brand-100">{cap.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Main Value Proposition / Features - Solid Cards Style */}
-      <section id="features" className="py-24 bg-white">
+      {/* Results / Metrics Band */}
+      <section className="py-16 bg-accent-600 text-white">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-base text-accent-500 font-bold tracking-wide uppercase">The Platform</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold text-brand-900 sm:text-4xl">
-              Your Startup Journey, Accelerated
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            {/* Card 1: Orange */}
-            <div className="bg-accent-500 rounded-2xl p-10 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-6 bg-white/20 p-3 rounded-lg w-fit">
-                <LightbulbIcon className="w-8 h-8 text-white" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-accent-500">
+            {[
+              { val: "50–70%", label: "Faster time-to-MVP" },
+              { val: "2–3×", label: "Higher pilot conversion" },
+              { val: "100%", label: "Unified visibility" },
+              { val: "↓ Waste", label: "Via reusable components" }
+            ].map((stat, i) => (
+              <div key={i} className="pt-8 md:pt-0">
+                <div className="text-4xl md:text-5xl font-bold mb-2">{stat.val}</div>
+                <div className="text-accent-100 text-sm font-medium uppercase tracking-wide">{stat.label}</div>
               </div>
-              <h3 className="text-2xl font-bold mb-4">Validate & Refine</h3>
-              <p className="text-accent-50 text-lg leading-relaxed">
-                Don't just have an idea. Have a validated one. Our tools help you refine your concept for maximum market fit before you build.
-              </p>
-            </div>
-
-            {/* Card 2: Deep Blue */}
-            <div className="bg-brand-700 rounded-2xl p-10 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-6 bg-white/20 p-3 rounded-lg w-fit">
-                <RocketIcon className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Build & Launch</h3>
-              <p className="text-brand-100 text-lg leading-relaxed">
-                From wireframes to a working MVP. Access our network or use our AI builder to bring your product to life in record time.
-              </p>
-            </div>
-
-            {/* Card 3: Royal Blue */}
-            <div className="bg-brand-600 rounded-2xl p-10 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-6 bg-white/20 p-3 rounded-lg w-fit">
-                <TrendingUp className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Grow & Scale</h3>
-              <p className="text-brand-100 text-lg leading-relaxed">
-                Acquire your first users and find your growth engine. We provide the strategies and analytics to scale effectively.
-              </p>
-            </div>
-
-            {/* Card 4: Accent Darker */}
-            <div className="bg-accent-600 rounded-2xl p-10 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-6 bg-white/20 p-3 rounded-lg w-fit">
-                <DollarIcon className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Fund & Succeed</h3>
-              <p className="text-accent-100 text-lg leading-relaxed">
-                Get investor-ready. We connect you with our network of VCs and angel investors to secure the funding you need.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Interactive "How it Works" Path */}
+      {/* Implementation & Timelines (Simplified Unified View for now as scaffold) */}
       <section className="py-24 bg-slate-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">From Zero to One</h2>
-            <p className="mt-4 text-lg text-gray-600">The structured path to building a unicorn.</p>
-          </div>
-
-          <div className="relative">
-            {/* Connecting Line (Desktop) */}
-            <div className="hidden md:block absolute top-1/2 left-0 w-full h-1 bg-gray-200 -translate-y-1/2 z-0"></div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative z-10">
-              {[
-                { step: "01", title: "Ideation", desc: "Submit your raw idea." },
-                { step: "02", title: "Validation", desc: "Get market feedback." },
-                { step: "03", title: "Development", desc: "AI builds your MVP." },
-                { step: "04", title: "Launch", desc: "Go live to the world." }
-              ].map((item, i) => (
-                <div key={i} className="bg-white p-6 rounded-xl border border-gray-200 text-center shadow-sm hover:-translate-y-2 transition-transform">
-                  <div className="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold text-xl mx-auto mb-4 border-4 border-white shadow-sm">
-                    {item.step}
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">{item.title}</h3>
-                  <p className="text-gray-500 mt-2">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section - "What founders say about us" */}
-      <section className="py-24 bg-white border-b border-gray-100">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">What founders say about us</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-              <p className="text-gray-700 text-lg italic leading-relaxed mb-6">
-                "VentureStack was instrumental in our seed round. They're more than a platform; they're a partner. The guidance and network access were invaluable."
-              </p>
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 font-bold mr-3">H</div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Himanshu Goyal</p>
-                  <p className="text-xs text-gray-500">CEO of BioHealthOrg</p>
-                </div>
+        <div className="container mx-auto px-4 max-w-4xl text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-12">Implementation & Timelines</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+              <div className="p-8">
+                <h3 className="text-xl font-bold text-brand-900 mb-4 flex items-center justify-center"><Building2 className="w-5 h-5 mr-2" /> Enterprises</h3>
+                <ul className="text-left space-y-4 text-sm text-gray-600 mb-8">
+                  <li className="flex"><span className="font-bold min-w-[80px]">2 weeks:</span> Intake, metrics, secure setup</li>
+                  <li className="flex"><span className="font-bold min-w-[80px]">Wks 3–6:</span> Prototyping sprints (1-3 pilots)</li>
+                  <li className="flex"><span className="font-bold min-w-[80px]">Wks 7–12:</span> Pilot validation & scale path</li>
+                </ul>
+                <Link to="/contact"><Button variant="secondary" size="sm" className="w-full">Start a 90-day pilot</Button></Link>
               </div>
-            </div>
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-              <p className="text-gray-700 text-lg italic leading-relaxed mb-6">
-                "Without VentureStack, we would still be stuck in validation hell. The automated reports helped us pivot early and find true product-market fit."
-              </p>
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-accent-100 rounded-full flex items-center justify-center text-accent-600 font-bold mr-3">S</div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Sarah Jenkins</p>
-                  <p className="text-xs text-gray-500">Founder, FinFlow</p>
-                </div>
+              <div className="p-8">
+                <h3 className="text-xl font-bold text-brand-900 mb-4 flex items-center justify-center"><Rocket className="w-5 h-5 mr-2" /> Accelerators</h3>
+                <ul className="text-left space-y-4 text-sm text-gray-600 mb-8">
+                  <li className="flex"><span className="font-bold min-w-[80px]">T-2 wks:</span> Setup, mentor calendar</li>
+                  <li className="flex"><span className="font-bold min-w-[80px]">Wks 1–6:</span> Build + GTM sprints</li>
+                  <li className="flex"><span className="font-bold min-w-[80px]">Wks 7–8:</span> Traction shaping + Demo Day</li>
+                </ul>
+                <Link to="/contact"><Button variant="secondary" size="sm" className="w-full">Launch a 20-startup cohort</Button></Link>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Media Section */}
-      <section className="py-24 bg-brand-900 text-brand-600">
-        <div className="container mx-auto px-4">
-          <div className="text-white text-center mb-12">
-            <h2 className="text-4xl font-bold">Media</h2>
+      {/* Plans & Packaging */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900">Plans & Packaging</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-8 rounded-xl h-64 flex flex-col justify-between hover:bg-brand-300 transition-colors cursor-pointer">
-              <div>
-                <h3 className="text-xl font-bold leading-tight">TurningIdeas Venture to help startups with early investments</h3>
-                <p className="text-brand-600 text-xs mt-4">February 2024</p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { title: "SaaS", desc: "Per tenant (enterprise) / per cohort or seat" },
+              { title: "Managed", desc: "Add PMO, mentors, weekly clinics, playbooks" },
+              { title: "Enterprise", desc: "SSO/SCIM, private cloud, white-label" },
+              { title: "Outcome Add-ons", desc: "Success bonus per MVP/pilot milestones" }
+            ].map((plan, i) => (
+              <div key={i} className="border border-gray-200 p-6 rounded-lg text-center hover:border-brand-300 transition-colors">
+                <h3 className="text-lg font-bold text-brand-800 mb-2">{plan.title}</h3>
+                <p className="text-sm text-gray-500">{plan.desc}</p>
               </div>
-              <div className="flex items-center text-sm font-medium">
-                READ ARTICLE <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-xl h-64 flex flex-col justify-between hover:bg-brand-300 transition-colors cursor-pointer">
-              <div>
-                <h3 className="text-xl font-bold leading-tight">42 per cent of Indian Startups Plan to Go Global</h3>
-                <p className="text-brand-600 text-xs mt-4">January 2025</p>
-              </div>
-              <div className="flex items-center text-sm font-medium">
-                READ ARTICLE <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-xl h-64 flex flex-col justify-between hover:bg-brand-300 transition-colors cursor-pointer">
-              <div>
-                <h3 className="text-xl font-bold leading-tight">Student housing Startup Your-space raises Angel Funding</h3>
-                <p className="text-brand-600 text-xs mt-4">January 2024</p>
-              </div>
-              <div className="flex items-center text-sm font-medium">
-                READ ARTICLE <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-16 bg-gray-50 border-t border-gray-200">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <blockquote className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+              <p className="text-gray-700 italic mb-4">“Built our first production-grade Copilot in 6 weeks.”</p>
+              <cite className="not-italic text-sm font-bold text-brand-900">— VP Innovation, Manufacturing</cite>
+            </blockquote>
+            <blockquote className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+              <p className="text-gray-700 italic mb-4">“Our Demo Day finally had products users could touch.”</p>
+              <cite className="not-italic text-sm font-bold text-brand-900">— Accelerator Director</cite>
+            </blockquote>
           </div>
         </div>
       </section>
 
       {/* FAQ Section */}
       <section className="py-24 bg-white">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 max-w-3xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">Frequently Asked Questions</h2>
+            <h2 className="text-3xl font-bold text-gray-900">FAQ</h2>
           </div>
-
           <div className="space-y-4">
             {faqs.map((faq, index) => (
               <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -358,36 +411,86 @@ const HomePage: FC = () => {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-20 bg-brand-900 text-white relative overflow-hidden">
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 bg-blue-500 rounded-full opacity-20 blur-3xl"></div>
+      {/* Contact Form & Footer CTA */}
+      <section id="contact" className="py-24 bg-brand-50">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <div className="bg-white p-8 md:p-12 rounded-2xl shadow-lg border border-gray-200">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to build real products—fast?</h2>
+              <p className="text-gray-600">Book a demo to see how VentureStackAI can transform your innovation pipeline.</p>
+            </div>
 
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to ignite your idea?</h2>
-          <p className="text-xl text-brand-100 mb-10 max-w-2xl mx-auto">
-            Join hundreds of founders who are building the future with VentureStack. No credit card required to start.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/signup">
-              <Button className="px-10 py-4 text-xl bg-white text-brand-900 hover:bg-gray-100 font-bold shadow-lg">
-                Get Started Now
+            <form className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="John Doe" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Work Email</label>
+                <input type="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="john@company.com" />
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                  <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="Company Name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
+                  <select className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors">
+                    <option>Immediately</option>
+                    <option>1-3 months</option>
+                    <option>3+ months</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Use Case</label>
+                <select className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors">
+                  <option>Corporate Innovation</option>
+                  <option>Incubator / Accelerator</option>
+                  <option>Venture Studio</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea rows={4} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="Tell us about your goals..."></textarea>
+              </div>
+
+              <Button className="w-full py-4 text-lg font-bold shadow-md bg-brand-600 hover:bg-brand-700 text-white">
+                Book a demo
               </Button>
-            </Link>
+            </form>
           </div>
-          <p className="mt-6 text-sm text-brand-300 opacity-80">
-            Free tier includes unlimited validation reports and basic MVP generation.
-          </p>
         </div>
       </section>
 
-      {/* Footer is handled by the Layout component usually, but adding a spacer if needed */}
+      {/* Footer CTA Band */}
+      <section className="py-16 bg-brand-900 text-white text-center">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl md:text-4xl font-bold mb-8">Stop planning innovation. Start shipping it.</h2>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link to="/contact">
+              <Button className="px-8 py-4 text-lg bg-accent-600 hover:bg-accent-500 text-white font-bold shadow-lg">
+                Book a demo
+              </Button>
+            </Link>
+            <Link to="/overview">
+              <Button variant="secondary" className="px-8 py-4 text-lg bg-transparent border border-white text-white hover:bg-white/10">
+                Download overview
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Footer Addition */}
       <section className="bg-white py-12 border-t border-gray-200">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
           <div className="mb-6 md:mb-0 text-center md:text-left">
-            <img src="/assets/turning_ideas_logo.png" alt="Turning Ideas Ventures" className="h-12 mx-auto md:mx-0 mb-4" />
+            <h4 className="text-xl font-bold text-brand-900 mb-1">VentureStackAI</h4>
             <p className="text-sm text-gray-500">
-              VentureStack is a product of <span className="font-semibold text-gray-900">Turning Ideas Ventures</span>.
+              A product of <span className="font-semibold text-gray-900">Turning Ideas Ventures</span>.
             </p>
             <p className="text-xs text-gray-400 mt-2">Incubation • Advisory • Investment</p>
           </div>
