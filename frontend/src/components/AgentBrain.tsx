@@ -36,7 +36,7 @@ const AgentBrain: React.FC<BrainPanelProps> = ({ node, thoughts, isThinking }) =
     };
 
     return (
-        <div className={`flex flex-col h-64 border rounded-xl overflow-hidden backdrop-blur-sm transition-all duration-300 ${getNodeColor()}`}>
+        <div className={`flex flex-col h-full border rounded-xl overflow-hidden backdrop-blur-sm transition-all duration-300 ${getNodeColor()}`}>
 
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-white/10 bg-black/20">
