@@ -79,13 +79,25 @@ class V3Developer:
         YOU HAVE ACCESS TO TOOLS:
         - read_file: READ a file before modifying it.
         - write_file: Write the complete file content.
-        - run_shell: Run commands like 'npm install'.
+        - run_shell: Run commands like 'npm install'. 
+          * CRITICAL: Each command runs in ISOLATION at the ROOT '/app'. 
+          * TO RUN IN SUBDIR: Use `cd folder_name && command`.
         - list_files: Check directory structure.
         
         STRATEGY:
         1. Explore relevant files if needed.
         2. Write/Update the code (Full Implementation).
         3. Verify checks passed if applicable.
+        
+        FAILURE RECOVERY RULES:
+        - If a tool FAILS (Error/Exit Code 1):
+          * Do NOT just run 'list_files' and claim success.
+          * You MUST fix the command and RETRY the action.
+          * Example: If `npx create-next-app .` fails because of non-empty dir, try `cd frontend && npx ...`.
+        
+        LAZY GUARD:
+        - You MUST execute the required action (e.g., 'write_file'). 
+        - Thinking is NOT working. Listing files is NOT finishing the task.
         
         MISSION CONTEXT (What has been done so far):
         {mission_context}
@@ -175,7 +187,7 @@ class V3Developer:
                       next_task["status"] = "failed"
                       next_task["task_context"] = task_context
                       # Sync Persistence
-                      self._sync_persistence(startup_id, current_mission["id"], current_mission.get("implementation_plan", ""), current_mission["mission_context"], current_mission.get("tasks", []), status="in_progress")
+                      self._sync_persistence(startup_id, current_mission["id"], current_mission.get("implementation_plan", ""), current_mission.get("mission_context", []), current_mission.get("tasks", []), status="in_progress")
                       
                       return {
                           "status": "fix_required", # Route to Fixer
@@ -183,6 +195,56 @@ class V3Developer:
                           "failed_task": next_task,
                           "logs": [f"Developer: Task '{next_task['description']}' failed. Escalating to Architect for Diagnosis & Fix Plan."]
                       }
+                 
+                 # --- LAZY / SUCCESS GUARD ---
+                 # 1. Lazy Check: Did we do ANYTHING?
+                 if not executed_actions:
+                      # Agent just "thought" and quit.
+                      # HEURISTIC: If logic requires 'write_file' or 'run_shell', reject.
+                      # If it's just 'plan' or 'read', maybe okay.
+                      logger.warning(f"Lazy Guard Triggered: No actions executed.")
+                      rejection_msg = "SYSTEM ERROR: You claimed completion but executed NO tools. You must execute the required action."
+                      messages.append(HumanMessage(content=rejection_msg))
+                      task_context.append("System: Rejected empty completion.")
+                      continue # Retry
+                 
+                 # 2. Success Check: Did we do the RIGHT thing successfully?
+                 required_action = next_task.get("action")
+                 critical_actions = ["write_file", "run_shell", "edit_file", "command"]
+                 
+                 # Check if the REQUIRED tool was ever successfully run
+                 # We need to track successful executions in the loop.
+                 # Let's count success for the required tool.
+                 tool_success_count = 0
+                 if required_action in critical_actions:
+                      # Scan task_context for "Action: {required_action} ... VERIFICATION: SUCCESS"
+                      # Actually, loop logic above appends to task_context.
+                      # It's safer to check task_context strings.
+                      for entry in task_context:
+                          if f"Action: {required_action}" in entry:
+                              # Check if the NEXT entry is success?
+                              # task_context structure: [Action..., Verify..., Action..., Verify...]
+                              # This is unstructured.
+                              # Better to rely on 'successful_tools' set we should have tracked.
+                              pass
+                      
+                      # Since I can't easily add a variable to the Outer Scope without rewriting the whole method,
+                      # I will use a robust string check on the LAST FEW entries or ALL entries.
+                      # Simplest: Did we EVER get a SUCCESS verification?
+                      has_success = False
+                      for i, entry in enumerate(task_context):
+                           if f"Action: {required_action}" in entry:
+                               # Look ahead for verification
+                               if i+1 < len(task_context) and "VERIFICATION: SUCCESS" in task_context[i+1]:
+                                   has_success = True
+                                   break
+                      
+                      if not has_success:
+                           rejection_msg = f"SYSTEM ERROR: You used '{required_action}' but it FAILED every time. You cannot mark the task as complete until the command succeeds. Fix the command and retry."
+                           logger.warning(f"Success Guard Triggered: {required_action} never succeeded.")
+                           messages.append(HumanMessage(content=rejection_msg))
+                           task_context.append(f"System: Rejected completion. {required_action} failed.")
+                           continue # Retry
                  
                  # Otherwise assume success/completion
                  break

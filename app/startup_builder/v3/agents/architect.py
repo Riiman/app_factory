@@ -56,6 +56,9 @@ class V3Architect:
         
         You have access to tools to read and list files. USE THEM.
         Do NOT guess. Verify the file structure and contents before planning.
+
+        CRITICAL: EXPLAIN YOUR REASONING BEFORE CALLING TOLS.
+        Example: "Thought: I need to check if the backend folder exists to avoid overwriting it." -> List Files.
         
         TECH STACK: {tech_stack}
         

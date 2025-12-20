@@ -341,6 +341,27 @@ def build_product(startup_id):
     product.stage = ProductStage.DEVELOPMENT
     db.session.commit()
     
+    # --- ENFORCE CONTAINER EXISTENCE ---
+    # Ensure a container exists before starting the build, especially for fresh builds.
+    try:
+        from app.models import Startup
+        resp = manager.ensure_container(startup_id)
+        if resp.get("error"):
+            print(f"Container Provisioning Error: {resp['error']}")
+            return jsonify({"error": f"Failed to provision container: {resp['error']}"}), 500
+            
+        new_container_name = resp.get("container_name")
+        if new_container_name:
+             startup = Startup.query.get(startup_id)
+             if startup.container_name != new_container_name:
+                  print(f"Binding new container {new_container_name} to Startup {startup_id}")
+                  startup.container_name = new_container_name
+                  db.session.commit()
+    except Exception as e:
+        print(f"Failed to ensure container: {e}")
+        return jsonify({"error": str(e)}), 500
+    # -----------------------------------
+    
     # Synthesize V3 Initial State
     product_context = {
         "name": product.name,
@@ -622,6 +643,15 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
             # Clear any existing stop signal before starting
             if startup_id in stop_signals:
                 stop_signals.remove(startup_id)
+            
+            # --- CRITICAL FIX: REFRESH STARTUP CONTEXT ---
+            # The container might have been created just before this thread started.
+            # We need to ensure the graph/agent knows about it (if passed in state or context).
+            # But 'initial_state' was passed by value.
+            # Currently V3 uses 'startup_id' to look up container via DockerManager?
+            # DockerManager.get_container_name(startup_id) queries the DB.
+            # So as long as DB is committed, we are fine.
+            # BUT: We should ensure we don't hold stale state.
             
             # Update with new input
             state_tracker.update(initial_state)

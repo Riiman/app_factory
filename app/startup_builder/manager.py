@@ -42,6 +42,21 @@ class DockerManager:
         except Exception as e:
             print(f"Error fetching container name from DB: {e}")
             
+        # Fallback: Check for running containers with matching volume mount
+        # This handles cases where DB update failed or is lagging
+        try:
+            if self.client:
+                target_path = f"temp_workspaces/{startup_id}"
+                containers = self.client.containers.list() # Running only
+                for c in containers:
+                    for mount in c.attrs.get("Mounts", []):
+                        source = mount.get("Source", "")
+                        if target_path in source:
+                            print(f"Recovered container {c.name} via volume check for {startup_id}")
+                            return c.name
+        except Exception as e:
+            print(f"Volume fallback search failed: {e}")
+            
         return f"startup_dev_{startup_id}"
     
     def generate_container_name(self):
