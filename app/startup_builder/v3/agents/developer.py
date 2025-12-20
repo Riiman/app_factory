@@ -1,6 +1,8 @@
+
 import logging
 import json
 from ..agents.core import V3CoPilot
+from .reflector import V3Reflector # New Import
 from ...manager import DockerManager
 from ...context import ContextManager
 from ..tools import V3Tools
@@ -10,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 class V3Developer:
     def __init__(self, log_callback=None):
-        self.copilot = V3CoPilot(use_thinking=False, log_callback=log_callback) # Execution mode = fast
+        self.copilot = V3CoPilot(use_thinking=True, log_callback=log_callback) # Execution mode = fast, changed to True
+        self.reflector = V3Reflector(log_callback=log_callback) # New Reflector
         self.docker_manager = DockerManager() # Reuse V2 Infrastructure
         # Startup ID is not available in __init__ usually, but we need it for ContextManager.
         # But ContextManager takes startup_id in __init__.
@@ -154,6 +157,11 @@ class V3Developer:
         executed_actions = []
         task_context = [] # Log of retries/errors for THIS task
         
+        # CIRCUIT BREAKER STATE
+        consecutive_failures = 0
+        last_failed_command = ""
+        last_error_log = ""
+        
         for i in range(10):
             # Inject task context if we are retrying
             # We construct the prompt dynamically
@@ -235,8 +243,21 @@ class V3Developer:
                          # For robustness, let's stick to loop limit.
                          # But enable explicit "GIVE UP" logic.
                          task_context.append(f"VERIFICATION: FAILURE. Retrying...")
+                         
+                         # CIRCUIT BREAKER LOGIC
+                         consecutive_failures += 1
+                         last_failed_command = command_str
+                         last_error_log = str(tool_result)
+                         
+                         if consecutive_failures >= 2:
+                             self._log_to_file("CIRCUIT BREAKER: Triggered Reflector.")
+                             hint = self.reflector.reflect(next_task, last_failed_command, last_error_log, consecutive_failures)
+                             task_context.append(f"SYSTEM ALERT: {hint}")
+                             self._log_to_file(f"REFLECTOR ADVICE: {hint}")
+                             
                     else:
                          task_context.append(f"VERIFICATION: SUCCESS.")
+                         consecutive_failures = 0 # Reset on success
                          # If action was successful, does it mean the TASK is done? 
                          # Not necessarily (could be multi-step). 
                          # We let the LLM decide to finish in next turn.
