@@ -351,6 +351,7 @@ def build_product(startup_id):
     # Check for existing state/missions
     force_rebuild = data.get('force_rebuild', False)
     initial_state = None
+    found_checkpoint = False
     
     if not force_rebuild:
         try:
@@ -359,6 +360,7 @@ def build_product(startup_id):
              config = {"configurable": {"thread_id": startup_id}}
              snapshot = v3_graph.get_state(config)
              if snapshot.values and snapshot.values.get("missions"):
+                  found_checkpoint = True
                   current_status = snapshot.values.get("status")
                   missions = snapshot.values.get("missions", [])
                   pending_work = any(m["status"] == "pending" for m in missions)
@@ -373,24 +375,12 @@ def build_product(startup_id):
                           initial_state = {"status": "routed"}
                   else:
                       print(f"Previous build '{current_status}' with no pending work. Starting fresh.")
-                      # leaving initial_state as None? No, we want to start fresh.
-                      # If we leave it as None (default from L353), it will fall through?
-                      # Wait, L353 initial_state = None.
-                      # If we DON'T touch it, it is None.
-                      # But L380 checks `if initial_state is None`.
-                      # We want to force it to NOT be None (so we can set it to fresh)? 
-                      # actually if it IS None, it resumes DB.
-                      # We want to FORCE FRESH.
-                      # So we should ensure we do NOT enter the resume block at L380.
-                      # But wait, L380 says `if initial_state is None: Resume`.
-                      # So we need `initial_state` to be SOMETHING to avoid Resume.
-                      # But we don't have the fresh state yet.
-                      # We can just set a flag `force_rebuild = True`.
+                      # Force fresh rebuild
                       force_rebuild = True
         except Exception as e:
             print(f"Error checking existing state: {e}")
             
-    if initial_state is None and not force_rebuild:
+    if found_checkpoint and initial_state is None and not force_rebuild:
          # Resume confirmed from DB checkpoint
          pass
     else:

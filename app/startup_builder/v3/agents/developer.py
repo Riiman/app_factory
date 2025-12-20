@@ -118,6 +118,9 @@ class V3Developer:
             
             # Check for tool calls
             if ai_msg.tool_calls:
+                if ai_msg.content:
+                    self.copilot.emit_thought(ai_msg.content, "developer")
+
                 for tool_call in ai_msg.tool_calls:
                     tool_name = tool_call["name"]
                     args = tool_call["args"]

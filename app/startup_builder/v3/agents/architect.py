@@ -158,6 +158,10 @@ class V3Architect:
             messages.append(ai_msg)
             
             if ai_msg.tool_calls:
+                # 0. Log the thought process if any
+                if ai_msg.content:
+                    self.copilot.emit_thought(ai_msg.content, "architect")
+
                 # RESET Budget on Tool Call
                 thinking_token_usage = 0
                 
