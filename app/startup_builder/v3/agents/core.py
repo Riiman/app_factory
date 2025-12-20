@@ -65,7 +65,9 @@ class V3CoPilot:
         log_event("THOUGHT", content, node)
 
         if self.log_callback:
-            self.log_callback(content, node)
+            # Prepend Agent Name for UI Clarity
+            display_content = f"[{node.upper()}] {content}" if node and node != "unknown" else content
+            self.log_callback(display_content, node)
         else:
             logger.info(f"Thinking ({node}): {content}")
 

@@ -52,7 +52,11 @@ const StartupCodeStudio: React.FC = () => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
 
-    const addLog = (msg: string) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg} `]);
+    const addLog = (msg: string) => {
+        const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
+        setLogs(prev => [...prev, logMsg]);
+        setThoughts(prev => [...prev, logMsg]);
+    };
 
     const handleStart = async () => {
         addLog('Starting environment...');

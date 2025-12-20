@@ -181,7 +181,7 @@ class V3Architect:
                     args = tool_call["args"]
                     tool_id = tool_call["id"]
                     
-                    self.copilot.emit_thought(f"Checking {tool_name}...", "architect")
+                    self.copilot.emit_thought(f"Checking {tool_name}... Args: {args}", "architect")
                     
                     selected_tool = next((t for t in tools if t.name == tool_name), None)
                     tool_result = "Tool not found"
@@ -279,7 +279,7 @@ class V3Architect:
             "plan": master_plan,
             "current_mission": current_mission,
             "status": "coding",
-            "logs": [f"Architect: Designed {len(final_tasks)} tasks for '{mission_title}'."],
+            "logs": [f"Architect: Designed {len(final_tasks)} tasks for '{mission_title}':"] + [f"- {t['description']}" for t in final_tasks],
             "failed_task": None # Clear failure context so we don't loop in recovery mode
         }
 

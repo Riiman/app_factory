@@ -89,6 +89,9 @@ class V3Developer:
         local_context = self.context_manager.retrieve_local_context(next_task['description'])
         state["local_context"] = local_context
         
+        # Emit explicit thought for UI visibility
+        self.copilot.emit_thought(f"Starting Task: {next_task['description']}", "developer")
+        
         logger.info(f"--- V3 Developer: Working on '{next_task['description']}' ---")
         
         # 2. Setup Tools
