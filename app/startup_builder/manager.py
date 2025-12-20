@@ -658,17 +658,171 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
-    def get_container_logs(self, startup_id):
-        """Returns the logs of the container."""
+    def start_background_process(self, startup_id, alias, command, container_name=None):
+        """
+        Starts a process in the background, tracks PID, and redirects logs.
+        Stores state in /tmp/process_manager.json inside the container.
+        """
         if not self.client:
             return {"error": "Docker not available"}
-            
-        container_name = self.get_container_name(startup_id)
+
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+
         try:
             container = self.client.containers.get(container_name)
-            return {"logs": container.logs().decode('utf-8')}
+            if container.status != 'running':
+                return {"error": "Container not running"}
+
+            log_file = f"/tmp/{alias}.log"
+            
+            # 1. Update/Read State File
+            state_file = "/tmp/process_manager.json"
+            # Ensure state file exists
+            container.exec_run(f"bash -c \"if [ ! -f {state_file} ]; then echo '{{}}' > {state_file}; fi\"", workdir="/app")
+            
+            # Check if alias exists
+            cat_cmd = f"cat {state_file}"
+            exit_code, output = container.exec_run(cat_cmd, workdir="/app")
+            import json
+            state = {}
+            if exit_code == 0:
+                 try:
+                    state = json.loads(output.decode('utf-8'))
+                 except:
+                    pass
+            
+            if alias in state:
+                # Check if running
+                pid = state[alias]
+                exit_code, _ = container.exec_run(f"ps -p {pid}", workdir="/app")
+                if exit_code == 0:
+                     return {"error": f"Process '{alias}' is already running (PID: {pid}). Stop it first."}
+            
+            # 2. Run Command
+            # Sanitize command for shell
+            sanitized_cmd = command.replace("'", "'\\''") 
+            full_cmd = f"nohup bash -c '{sanitized_cmd}' > {log_file} 2>&1 & echo $!"
+            
+            exit_code, output = container.exec_run(
+                ["bash", "-c", full_cmd],
+                workdir="/app"
+            )
+            
+            if exit_code != 0:
+                 return {"error": f"Failed to start process: {output.decode('utf-8')}"}
+                 
+            pid = output.decode('utf-8').strip()
+            
+            # 3. Save State
+            state[alias] = pid
+            save_cmd = f"echo '{json.dumps(state)}' > {state_file}"
+            container.exec_run(["bash", "-c", save_cmd], workdir="/app")
+            
+            return {
+                "status": "started", 
+                "alias": alias, 
+                "pid": pid, 
+                "log_file": log_file,
+                "message": f"Verified process started with PID {pid}. Logs at {log_file}."
+            }
+            
         except Exception as e:
             return {"error": str(e)}
+
+    def stop_background_process(self, startup_id, alias, container_name=None):
+        """
+        Stops a background process by alias and cleans up logs.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+
+        try:
+            container = self.client.containers.get(container_name)
+            state_file = "/tmp/process_manager.json"
+            
+            # Read State
+            exit_code, output = container.exec_run(f"cat {state_file}", workdir="/app")
+            if exit_code != 0:
+                return {"error": "No process manager state found."}
+                
+            import json
+            try:
+                state = json.loads(output.decode('utf-8'))
+            except:
+                return {"error": "Corrupt process manager state."}
+                
+            if alias not in state:
+                 return {"error": f"Process '{alias}' not found."}
+                 
+            pid = state[alias]
+            
+            # Kill
+            container.exec_run(f"kill -9 {pid}", workdir="/app")
+            
+            # Remove from State
+            del state[alias]
+            save_cmd = f"echo '{json.dumps(state)}' > {state_file}"
+            container.exec_run(["bash", "-c", save_cmd], workdir="/app")
+            
+            # Cleanup Log
+            log_file = f"/tmp/{alias}.log"
+            container.exec_run(f"rm -f {log_file}", workdir="/app")
+            
+            return {"status": "stopped", "alias": alias, "pid": pid, "message": "Process stopped and logs cleaned."}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def read_background_process_logs(self, startup_id, alias, lines=20, container_name=None):
+        """
+        Reads the tail of the log file for an alias.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            log_file = f"/tmp/{alias}.log"
+            
+            exit_code, output = container.exec_run(f"tail -n {lines} {log_file}", workdir="/app")
+            
+            if exit_code != 0:
+                 return {"error": f"Could not read logs (Process might not exist): {output.decode('utf-8')}"}
+            
+            return {"logs": output.decode('utf-8')}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def list_background_processes(self, startup_id, container_name=None):
+        if not self.client:
+            return {"error": "Docker not available"}
+
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            state_file = "/tmp/process_manager.json"
+            
+            exit_code, output = container.exec_run(f"cat {state_file}", workdir="/app")
+            if exit_code != 0:
+                return {"processes": []}
+                
+            import json
+            state = json.loads(output.decode('utf-8'))
+            return {"processes": list(state.keys())}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
 
 class Linter:
     def __init__(self, docker_manager):

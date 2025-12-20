@@ -68,9 +68,17 @@ class ContextManager:
             # Fallback: Searching widely? No, let's keep it tight for now.
             return ""
             
-        context += f"--- Local Context for: '{task_description}' ---\n"
+        context = f"--- Local Context for: '{task_description}' ---\n"
+        
+        # Budget: 6000 tokens ~ 24000 chars
+        BUDGET_CHARS = 24000
+        current_chars = len(context)
         
         for fname in unique_files:
+            if current_chars >= BUDGET_CHARS:
+                context += "\n[CONTEXT BUDGET REACHED - SKIPPING FILES]"
+                break
+                
             # Find closest match if full path not given
             cmd = f"find . -name '{fname}'"
             loc = self.docker_manager.run_command(self.startup_id, cmd)
@@ -83,33 +91,100 @@ class ContextManager:
                     
                 file_data = self.docker_manager.read_file(self.startup_id, real_path)
                 if not file_data.get("error"):
+                    # Compact content
                     compact_content = self.compact_file(file_data["content"], real_path)
                     
-                    # Fetch stored summary if available
+                    # Fetch stored summary
                     summaries = self.get_file_summaries()
                     file_summary = summaries.get(real_path, "")
                     
-                    context += f"File: {real_path}\nSummary: {file_summary}\n```\n{compact_content}\n```\n"
+                    entry = f"File: {real_path}\nSummary: {file_summary}\n```\n{compact_content}\n```\n"
+                    
+                    if current_chars + len(entry) > BUDGET_CHARS:
+                        # Try to fit partial?
+                        remaining = BUDGET_CHARS - current_chars
+                        entry = entry[:remaining] + "\n...[TRUNCATED]..."
+                        context += entry
+                        current_chars = BUDGET_CHARS
+                        break
+                    else:
+                        context += entry
+                        current_chars += len(entry)
 
         return context
 
     def update_global_context(self, current_context: str, new_summary: str) -> str:
         """
-        Appends new summary and summarizes if too long.
+        Appends new summary and enforces Global Budget (2000 tokens).
         """
         updated = (current_context or "") + f"\n- {new_summary}"
+        return self.enforce_budget(updated, 2000, "text")
+
+    def compress_mission_context(self, context_entries: List[str]) -> List[str]:
+        """
+        Enforces Mission Budget (4000 tokens).
+        If over budget, summarizes the older half of entries.
+        Returns the updated list of string entries.
+        """
+        full_text = "\n".join(context_entries)
+        # Approx check (4000 tokens ~ 16000 chars)
+        if len(full_text) < 16000:
+             return context_entries
+             
+        # Compression Triggered
+        logger.info("Mission Context Overflow. Compressing...")
         
-        # Check limit (rough char count, e.g. 4000 chars ~ 1000 tokens)
-        if len(updated) > 4000:
-            copilot = V3CoPilot(use_thinking=False)
-            system_prompt = "You are a Context Summarizer. Compress the history while keeping key technical decisions and architecture facts."
-            user_prompt = f"Current Context:\n{updated}\n\nSummarize this to under 2000 characters."
+        # Split: Oldest 50% vs Newest 50%
+        mid = len(context_entries) // 2
+        to_compress = context_entries[:mid]
+        to_keep = context_entries[mid:]
+        
+        copilot = V3CoPilot(use_thinking=False)
+        sys_p = "You are a Project Archivist. Summarize these completed tasks into a concise chronological history."
+        user_p = f"Tasks:\n" + "\n".join(to_compress)
+        
+        res = copilot.ask(sys_p, user_p)
+        summary = ""
+        if hasattr(res, 'content'):
+             summary = res.content
+        else:
+             summary = str(res)
+             
+        new_entry = f"--- ARCHIVED HISTORY (Episodes 1-{mid}) ---\n{summary}"
+        return [new_entry] + to_keep
+
+    def enforce_budget(self, text: str, token_limit: int, type: str = "text") -> str:
+        """
+        Hard enforcement of token limits.
+        Approx 1 token = 4 chars.
+        """
+        char_limit = token_limit * 4
+        if len(text) <= char_limit:
+            return text
             
-            res = copilot.ask(system_prompt, user_prompt)
+        logger.info(f"Context Budget Exceeded ({type}): {len(text)} > {char_limit}. Compressing...")
+        
+        if type == "code":
+            # 1. First pass: Compact files (remove docs/comments is implied by compact_file, but here we enforce truncation)
+            # Basic truncation for code is dangerous, but we have no choice.
+            # Better strategy: Keep imports + definitions, remove bodies? 
+            # We already did that in retrieval. 
+            # So just truncate from bottom? Or top?
+            # Truncating bottom is safer for "file context".
+            return text[:char_limit] + "\n... [TRUNCATED DUE TO BUDGET] ..."
+            
+        elif type == "text":
+            # LLM Summarization
+            copilot = V3CoPilot(use_thinking=False)
+            sys_p = f"You are a Context Compressor. Compress this text to under {token_limit} tokens while keeping key technical facts."
+            user_p = f"Text to Compress:\n{text[:char_limit*2]}" # Send 2x limit to compress down
+            
+            res = copilot.ask(sys_p, user_p)
             if hasattr(res, 'content'):
                 return res.content
+            return text[:char_limit] + "..."
             
-        return updated
+        return text[:char_limit]
 
     def compact_file(self, content: str, file_path: str) -> str:
         """

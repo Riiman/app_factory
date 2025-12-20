@@ -1,5 +1,6 @@
 import logging
 import json
+import uuid
 from ..agents.core import V3CoPilot
 from ...manager import DockerManager
 from ...context import ContextManager
@@ -231,6 +232,7 @@ class V3Architect:
         for step in final_tasks:
             step["mission_id"] = current_mission["id"]
             step["completed"] = False
+            step["id"] = str(uuid.uuid4()) # Assign unique ID
             
         master_plan = state.get("plan", [])
         
@@ -239,7 +241,8 @@ class V3Architect:
             # Find failed task index
             insert_idx = len(master_plan) # Default append
             for i, t in enumerate(master_plan):
-                if t["id"] == failed_task["id"]:
+                # Robust check for ID match
+                if t.get("id") and t.get("id") == failed_task.get("id"):
                     insert_idx = i + 1
                     break
             
@@ -299,8 +302,17 @@ class V3Architect:
                  # 3. Write
                  self.docker_manager.write_file(startup_id, save_path, json.dumps(data, indent=2))
                  logger.info(f"Architect Persistence: Saved {len(tasks)} tasks for Mission {mission_id}.")
+                 self._log_to_file(f"ARCHITECT: Saved {len(tasks)} tasks for Mission {mission_id} to persistence.")
              else:
                  logger.warning(f"Architect Persistence: Mission {mission_id} not found.")
                  
         except Exception as e:
             logger.error(f"Architect Failed to save tasks: {e}")
+
+    def _log_to_file(self, message):
+        try:
+            with open("/home/ubuntu/app_factory/agent_debug.log", "a") as f:
+                import datetime
+                f.write(f"[{datetime.datetime.now().isoformat()}] {message}\\n")
+        except:
+            pass

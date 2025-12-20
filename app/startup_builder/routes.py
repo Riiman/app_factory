@@ -736,12 +736,18 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
 
                             # Emit update via WebSocket
                             from app.extensions import socketio
+                            
+                            # Calculate Progress dynamically
+                            plan = state_tracker.get("plan", [])
+                            total_tasks = len(plan)
+                            completed_tasks = len([t for t in plan if t.get("status") == "completed"])
+                            
                             socketio.emit('agent_update', {
                                 'logs': state_tracker.get("logs", []),
-                                'plan': state_tracker.get("plan", []),
+                                'plan': plan,
                                 'task_status': state_tracker.get("status", "unknown"),
-                                'total_tasks': state_tracker.get("total_tasks", 0),
-                                'completed_tasks': state_tracker.get("completed_tasks", 0),
+                                'total_tasks': total_tasks,
+                                'completed_tasks': completed_tasks,
                                 'current_step': state_tracker.get("current_step", {}),
                                 'waiting_approval': False # Default
                             }, room=f"startup_{startup_id}", namespace='/builder')

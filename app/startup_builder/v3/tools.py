@@ -21,7 +21,11 @@ class V3Tools:
             self.create_search_files(),
             self.create_read_logs(),
             self.create_restart_server(),
-            self.create_refresh_memory()
+            self.create_refresh_memory(),
+            self.create_start_process(),
+            self.create_stop_process(),
+            self.create_read_process_logs(),
+            self.create_list_processes()
         ]
         
         if include_context_tools:
@@ -268,3 +272,57 @@ class V3Tools:
             except Exception as e:
                 return f"Error updating memory: {str(e)}"
         return refresh_memory
+    
+    # --- Process Manager Tools ---
+
+    def create_start_process(self):
+        @tool
+        def start_process(alias: str, command: str) -> str:
+            """
+            Starts a long-running process (e.g., server, watcher) in the background.
+            Use this for tasks that block the terminal. 
+            Returns the PID and log file path.
+            """
+            res = self.docker_manager.start_background_process(self.startup_id, alias, command)
+            if res.get("error"):
+                return f"Error using Start Process: {res['error']}"
+            return f"Process '{alias}' started. PID: {res.get('pid')}. Logs redirected to {res.get('log_file')}."
+        return start_process
+
+    def create_stop_process(self):
+        @tool
+        def stop_process(alias: str) -> str:
+            """
+            Stops a background process by alias.
+            Also deletes the log file to cleanup.
+            """
+            res = self.docker_manager.stop_background_process(self.startup_id, alias)
+            if res.get("error"):
+                return f"Error stopping process: {res['error']}"
+            return f"Process '{alias}' stopped. Logs cleaned."
+        return stop_process
+
+    def create_read_process_logs(self):
+        @tool
+        def read_process_logs(alias: str) -> str:
+            """
+            Reads the last 20 lines of a background process log.
+            Use this to debug why a server failed or crashed.
+            """
+            res = self.docker_manager.read_background_process_logs(self.startup_id, alias)
+            if res.get("error"):
+                return f"Error reading logs: {res['error']}"
+            return res.get("logs", "")
+        return read_process_logs
+
+    def create_list_processes(self):
+        @tool
+        def list_processes() -> str:
+            """
+            Lists all active background process aliases.
+            """
+            res = self.docker_manager.list_background_processes(self.startup_id)
+            if res.get("error"):
+                return f"Error listing processes: {res['error']}"
+            return f"Active Processes: {res.get('processes', [])}"
+        return list_processes

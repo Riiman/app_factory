@@ -107,6 +107,11 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
         try:
             from ..manager import DockerManager
             import json
+            import datetime
+            
+            def log_debug(msg):
+                with open("/home/ubuntu/app_factory/agent_debug.log", "a") as f:
+                     f.write(f"[{datetime.datetime.now().isoformat()}] {msg}\\n")
             
             startup_id = state.get("startup_id")
             manager = DockerManager()
@@ -114,6 +119,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             # Read missions from FILE
             res = manager.read_file(startup_id, "artifacts/missions.json")
             if res.get("error"):
+                log_debug("SELECTOR: No missions file found.")
                 return {"status": "done", "logs": ["Mission Selector: No missions file found."]}
                 
             data = json.loads(res["content"])
@@ -122,6 +128,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             for m in missions:
                 if m["status"] == "pending":
                     # Found one!
+                    log_debug(f"SELECTOR: Selected Mission {m['id']} '{m['title']}'")
                     return {
                         "current_mission": m, 
                         "status": "architecting", # Start architect (Merged Analyze+Plan)
@@ -129,6 +136,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
                     }
                     
             # If no pending missions
+            log_debug("SELECTOR: All missions completed.")
             return {"status": "done", "logs": ["Mission Selector: All missions completed."]}
             
         except Exception as e:

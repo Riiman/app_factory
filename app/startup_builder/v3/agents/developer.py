@@ -34,17 +34,36 @@ class V3Developer:
         
         # 1. Find the next pending task FOR THIS MISSION
         next_task = None
-        for task in current_plan:
-            # Check mission ownership + status
-            if task.get("mission_id") == current_mission_id and not task.get("completed"):
+        
+        self._log_to_file(f"DEV CHECK: Mission {current_mission_id}. Plan size: {len(current_plan)}")
+        
+        for i, task in enumerate(current_plan):
+            t_mid = task.get("mission_id")
+            t_comp = task.get("completed")
+            
+            # self._log_to_file(f"  Task {i}: mid={t_mid}, comp={t_comp}, desc={task.get('description')[:30]}")
+            
+            # Flexible type comparison for ID
+            is_id_match = (str(t_mid) == str(current_mission_id))
+            
+            if is_id_match and not t_comp:
                 next_task = task
+                self._log_to_file(f"DEV CHECK: Found next task: {task.get('description')}")
                 break
         
-            # No more tasks for this mission!
+        if not next_task:
+            self._log_to_file(f"DEV CHECK: No pending tasks for Mission {current_mission_id}. Finishing.")
             # Mark mission as complete
             for m in missions:
                 if m["id"] == current_mission_id:
                     m["status"] = "completed"
+                    
+            # --- GLOBAL CONTEXT UPDATE (Shifted here) ---
+            # Summarize the entire mission into global context
+            mission_summary_text = "\n".join(current_mission.get("mission_context", []))
+            global_summary_entry = f"Mission '{current_mission['title']}' Completed.\nDetails:\n{mission_summary_text}"
+            
+            new_global_context = self.context_manager.update_global_context(state.get("global_context", ""), global_summary_entry)
             
             # --- PERSISTENCE: Sync to file ---
             impl_plan = current_mission.get("implementation_plan", "")
@@ -55,6 +74,7 @@ class V3Developer:
             return {
                 "status": "done_mission", # Router will pick next mission
                 "missions": missions,
+                "global_context": new_global_context, # Return updated global context
                 "logs": [f"Mission {current_mission_id} Complete!"]
             }
             
@@ -79,10 +99,14 @@ class V3Developer:
         YOU HAVE ACCESS TO TOOLS:
         - read_file: READ a file before modifying it.
         - write_file: Write the complete file content.
-        - run_shell: Run commands like 'npm install'. 
-          * CRITICAL: Each command runs in ISOLATION at the ROOT '/app'. 
+        - run_shell: Run SHORT-LIVED commands (e.g., 'npm install', 'mkdir'). 
+          * CRITICAL: Do NOT run servers or long-running processes here. They will TIMEOUT.
           * TO RUN IN SUBDIR: Use `cd folder_name && command`.
         - list_files: Check directory structure.
+        - start_process: START LONG-RUNNING servers/daemons (e.g., 'npm start').
+          * Returns immediately with a PID. Logs are captured.
+        - stop_process: Kills the process and cleans logs.
+        - read_process_logs: Debug failed server start.
         
         STRATEGY:
         1. Explore relevant files if needed.
@@ -94,13 +118,29 @@ class V3Developer:
           * Do NOT just run 'list_files' and claim success.
           * You MUST fix the command and RETRY the action.
           * Example: If `npx create-next-app .` fails because of non-empty dir, try `cd frontend && npx ...`.
-        
+          
         LAZY GUARD:
         - You MUST execute the required action (e.g., 'write_file'). 
         - Thinking is NOT working. Listing files is NOT finishing the task.
         
+        PROCESS MANAGEMENT RULES (CRITICAL):
+        - FOR SHORT TASKS (install, build, migrate): Use `run_shell`.
+        - FOR LONG TASKS (start server, watch mode): Use `start_process`.
+          * NEVER use `&` or `nohup` manually in `run_shell`. Use `start_process`.
+        
+        VERIFICATION WORKFLOW (Start -> Wait -> Verify):
+        1. START: `start_process('frontend', 'npm run dev')`
+        2. WAIT: `run_shell('sleep 5')` (Give it time to boot!)
+        3. VERIFY: `run_shell('curl http://localhost:3000')`
+        4. DEBUG (If verify fails): `read_process_logs('frontend')` -> Fix -> Retry.
+        
+        
+        
         MISSION CONTEXT (What has been done so far):
         {mission_context}
+        
+        TASK CONTEXT (EXECUTION LOG):
+        {task_context_str}
         
         When you are done, just output the final confirmation message.
         """
@@ -116,9 +156,14 @@ class V3Developer:
         
         for i in range(10):
             # Inject task context if we are retrying
-            current_prompt = system_prompt.replace("{mission_context}", mission_context)
-            if task_context:
-                 current_prompt += f"\n\nCURRENT TASK ATTEMPTS/ERRORS:\n{json.dumps(task_context, indent=2)}\n\n(Learn from these mistakes!)"
+            # We construct the prompt dynamically
+            task_context_str = json.dumps(task_context, indent=2) if task_context else "No actions yet."
+            
+            current_prompt = system_prompt.replace("{mission_context}", mission_context).replace("{task_context_str}", task_context_str)
+            
+            # Note: We do NOT inject global_context anymore.
+            # Local context is in 'messages' (HumanMessage).
+            pass # Just formatting logic above
             
             res = self.copilot.act(current_prompt, messages, tools, active_node="developer")
             
@@ -138,7 +183,27 @@ class V3Developer:
                     args = tool_call["args"]
                     tool_id = tool_call["id"]
                     
-                    self.copilot.emit_thought(f"Invoking {tool_name}...", "developer")
+                    # Prettify Args for User Visibility
+                    pretty_args = str(args)
+                    try:
+                        if tool_name == "run_shell":
+                            pretty_args = f"Running: `{args.get('command')}`"
+                        elif tool_name == "write_file":
+                            pretty_args = f"Writing to `{args.get('path')}`"
+                        elif tool_name == "read_file":
+                            pretty_args = f"Reading `{args.get('path')}`"
+                        elif tool_name == "list_files":
+                            pretty_args = f"Listing `{args.get('path')}`"
+                        elif tool_name == "start_process":
+                             pretty_args = f"Starting Process: `{args.get('alias')}` ({args.get('command')})"
+                        elif tool_name == "stop_process":
+                             pretty_args = f"Stopping Process: `{args.get('alias')}`"
+                        elif tool_name == "read_process_logs":
+                             pretty_args = f"Checking Logs: `{args.get('alias')}`"
+                    except:
+                        pass
+                        
+                    self.copilot.emit_thought(f"Invoking {tool_name}... {pretty_args}", "developer")
                     
                     # Execute locally (since we have the bound functions in `tools` list)
                     selected_tool = next((t for t in tools if t.name == tool_name), None)
@@ -247,7 +312,17 @@ class V3Developer:
                            continue # Retry
                  
                  # Otherwise assume success/completion
+                 self._log_to_file(f"GUARD ACCEPT: Task {next_task['description']} passed.")
                  break
+        
+        # --- LOOP EXIT CHECK ---
+        else:
+             logger.error("Developer Loop Exhausted. Task Failed.")
+             self._log_to_file("LOOP EXHAUSTED: Task Failed.")
+             next_task["status"] = "failed"
+             next_task["task_context"] = task_context
+             self._sync_persistence(startup_id, current_mission["id"], current_mission.get("implementation_plan", ""), current_mission.get("mission_context", []), current_mission.get("tasks", []), status="in_progress")
+             return { "status": "fix_required", "current_mission": current_mission, "failed_task": next_task, "logs": [f"Developer: Task '{next_task['description']}' failed after 10 attempts."] }
 
         # Mark task as done
         next_task["completed"] = True
@@ -269,13 +344,18 @@ class V3Developer:
             current_mission["tasks"].append(next_task)
         
         # Update Mission Context
-        summary_entry = f"Task '{next_task['description']}' Completed. Logic Used: {next_task.get('logic', '')}"
+        # Update Mission Context with RICH SUMMARY
+        rich_summary = self._generate_rich_summary(next_task, task_context)
+        
         if "mission_context" not in current_mission:
              current_mission["mission_context"] = []
-        current_mission["mission_context"].append(summary_entry)
+        current_mission["mission_context"].append(rich_summary)
         
-        summary = f"Completed task: {next_task['description']} via tools."
-        new_global_context = self.context_manager.update_global_context(state.get("global_context", ""), summary)
+        # Enforce Mission Budget (Compress if needed)
+        current_mission["mission_context"] = self.context_manager.compress_mission_context(current_mission["mission_context"])
+        
+        # NOTE: We DO NOT update Global Context here anymore. Only on Mission Completion.
+        new_global_context = state.get("global_context", "")
         
         # PERSIST: Sync everything (Mission Status, Context, AND Tasks)
         self._sync_persistence(
@@ -304,6 +384,29 @@ class V3Developer:
         if "Error" in output or "Exception" in output or "failed" in output.lower():
              return "FAILURE"
         return "SUCCESS"
+
+    def _generate_rich_summary(self, task, context):
+        """
+        Uses LLM to generate a concise technical summary of what was accomplished.
+        Focuses on: Created endpoints, modified logic, fixed bugs.
+        """
+        try:
+             copilot = V3CoPilot(use_thinking=False) # Use fast mode
+             
+             # Extract raw logs
+             # Limit to last 2000 chars to save tokens
+             raw_logs = "\n".join(context)[-2000:]
+             
+             system_prompt = "You are a Technical Logger. Summarize the COMPLETED TASK into one concise sentence focusing on the technical outcome (e.g., 'Created POST /api/v1/users endpoint with validation'). Do not mention 'failed attempts' unless relevant to the final solution."
+             user_prompt = f"Task: {task['description']}\nExecution Log:\n{raw_logs}"
+             
+             res = copilot.ask(system_prompt, user_prompt)
+             if hasattr(res, 'content'):
+                 return f"Task '{task['description']}': {res.content.strip()}"
+             return f"Task '{task['description']}' Completed."
+             
+        except Exception as e:
+            return f"Task '{task['description']}' Completed (Summary failed: {e})."
 
     def _sync_persistence(self, startup_id, mission_id, implementation_plan="", mission_context=[], tasks=[], status=None):
         """Updates missions.json: Marks mission_id as completed and saves plan/context/tasks."""
@@ -340,4 +443,14 @@ class V3Developer:
                  
         except Exception as e:
             logger.error(f"Failed to sync persistence: {e}")
+
+    def _log_to_file(self, message):
+        """Append debug log to a local file for inspection."""
+        try:
+            with open("/home/ubuntu/app_factory/agent_debug.log", "a") as f:
+                import datetime
+                timestamp = datetime.datetime.now().isoformat()
+                f.write(f"[{timestamp}] {message}\\n")
+        except Exception:
+            pass
 

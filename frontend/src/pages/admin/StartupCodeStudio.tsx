@@ -35,7 +35,10 @@ const StartupCodeStudio: React.FC = () => {
 
     // V3 V3 V3: New Thought States
     const [activeNode, setActiveNode] = useState<string>('idle');
+
     const [thoughts, setThoughts] = useState<string[]>([]);
+
+
 
 
     // New State for Refactor
@@ -137,14 +140,19 @@ const StartupCodeStudio: React.FC = () => {
 
         socket.on('agent_update', (data) => {
             if (data.logs) {
-                // Check if backend sends full history or partial.
-                // Assuming backend sends partial/new logs to avoid massive payloads.
-                // If backend sends strings, we append.
-                setLogs(prev => {
-                    // Avoid duplicates if possible (simple dedup by last item)
-                    const newLogs = data.logs;
-                    return [...prev, ...newLogs];
+                // MERGE STRATEGY: Treat logs as thoughts.
+                // Filter out json strings if needed, or just push them.
+                // We map them to strings to be safe (AgentBrain expects string[]).
+                const newThoughts = data.logs.map((l: any) => {
+                    if (typeof l === 'object') return JSON.stringify(l);
+                    return l;
                 });
+
+                setThoughts(prev => [...prev, ...newThoughts]);
+
+                // Still keep legacy logs for internal tracking if needed, 
+                // but we won't display them in a separate panel.
+                setLogs(prev => [...prev, ...data.logs]);
             }
             if (data.plan) setPlan(data.plan);
             if (data.task_status) setTaskStatus(data.task_status);
@@ -744,6 +752,21 @@ const StartupCodeStudio: React.FC = () => {
                                                 total: data.total_tasks
                                             });
                                         }
+                                        if (data.logs) {
+                                            // MERGE STRATEGY: Treat logs as thoughts.
+                                            // Filter out json strings if needed, or just push them.
+                                            // We map them to strings to be safe (AgentBrain expects string[]).
+                                            const newThoughts = data.logs.map((l: any) => {
+                                                if (typeof l === 'object') return JSON.stringify(l);
+                                                return l;
+                                            });
+
+                                            setThoughts(prev => [...prev, ...newThoughts]);
+
+                                            // Still keep legacy logs for internal tracking if needed,
+                                            // but we won't display them in a separate panel.
+                                            setLogs(prev => [...prev, ...data.logs]);
+                                        }
                                     } else {
                                         alert("Failed to reset: " + data.error);
                                     }
@@ -977,77 +1000,16 @@ const StartupCodeStudio: React.FC = () => {
                     )}
                 </div >
 
-                {/* Right Panel: Team Logs */}
-                <div className="flex-1 flex flex-col bg-black font-mono text-sm">
-                    {/* V3 Brain View */}
-                    <div className="p-2 bg-gray-950 border-b border-gray-800">
-                        <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} />
-                    </div>
-                    <div className="h-8 bg-gray-800 flex items-center px-4 text-xs text-gray-400 border-b border-gray-700 justify-between">
-                        <div className="flex items-center">
-                            <TerminalIcon className="w-3 h-3 mr-2" /> Team Activity Log
+                {/* Right Panel: Team Logs (Merged into Brain) */}
+                <div className="flex-1 flex flex-col bg-black font-mono text-sm border-l border-gray-800">
+                    {/* V3 Brain View - Full Height */}
+                    <div className="flex-1 bg-gray-950 p-2">
+                        <div className="h-full">
+                            <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} />
                         </div>
-                        <button onClick={fetchLogs} className="hover:text-white transition-colors" title="Refresh Logs">
-                            <RefreshCw className="w-3 h-3" />
-                        </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 text-gray-300">
-                        {logs.map((log, i) => {
-                            let parsedLog = { agent: "Unknown", message: log, details: "" };
-                            let isJson = false;
-
-                            try {
-                                if (log.trim().startsWith("{")) {
-                                    parsedLog = JSON.parse(log);
-                                    isJson = true;
-                                }
-                            } catch (e) {
-                                // Not JSON, use raw string
-                            }
-
-                            // Color code logs based on agent
-                            let color = "text-gray-300";
-                            const agent = isJson ? parsedLog.agent : log;
-
-                            if (agent.includes("Architect")) color = "text-purple-400";
-                            if (agent.includes("Planner")) color = "text-blue-400";
-                            if (agent.includes("Developer")) color = "text-green-400";
-                            if (agent.includes("Reviewer")) color = "text-orange-400";
-                            if (agent.includes("Executor")) color = "text-yellow-400";
-                            if (agent.includes("Strategist")) color = "text-red-400";
-                            if (agent.includes("Tester")) color = "text-pink-400";
-
-                            return (
-                                <div key={i} className={`flex flex-col gap-1 ${color} border-b border-gray-800/50 pb-2 last:border-0`}>
-                                    <div className="flex justify-between items-start gap-2">
-                                        <span className="break-words">
-                                            {isJson ? (
-                                                <>
-                                                    <span className="font-bold">[{parsedLog.agent}]:</span> {parsedLog.message}
-                                                </>
-                                            ) : (
-                                                log
-                                            )}
-                                        </span>
-                                        {isJson && parsedLog.details && (
-                                            <button
-                                                onClick={() => {
-                                                    setContainerLogs(parsedLog.details); // Reuse container logs modal for simplicity
-                                                    setShowContainerLogs(true);
-                                                }}
-                                                className="shrink-0 text-[10px] bg-gray-800 hover:bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded border border-gray-700 transition-colors"
-                                            >
-                                                View Output
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        <div ref={logsEndRef} />
-                    </div>
-                </div >
-            </div >
+                </div>
+            </div>
 
             {/* Chat Modal */}
             <ChatModal
