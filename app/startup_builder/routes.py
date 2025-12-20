@@ -359,21 +359,34 @@ def build_product(startup_id):
              config = {"configurable": {"thread_id": startup_id}}
              snapshot = v3_graph.get_state(config)
              if snapshot.values and snapshot.values.get("missions"):
-                  print(f"Resuming existing missions for {startup_id}")
-                  initial_state = None # None triggers resume
-                  
-                  # SMART RESUME: Checks if stuck in terminal state
                   current_status = snapshot.values.get("status")
                   missions = snapshot.values.get("missions", [])
                   pending_work = any(m["status"] == "pending" for m in missions)
                   
-                  if (current_status in ["done", "failed", "stopped"]) and pending_work:
-                      print(f"Auto-Recovering: Resetting status from '{current_status}' to 'routed'")
-                      # Check if we can patch the state via update_state?
-                      # For now, we will pass a partial state update as 'initial_state' to .stream()!
-                      # LangGraph allows passing input to overwrite state keys.
-                      initial_state = {"status": "routed"}
-    
+                  if pending_work:
+                      print(f"Resuming existing missions for {startup_id}")
+                      initial_state = None # Default Resume
+                      
+                      # SMART RESUME: Recover from terminal states if work remains
+                      if current_status in ["done", "failed", "stopped"]:
+                          print(f"Auto-Recovering: Resetting status from '{current_status}' to 'routed'")
+                          initial_state = {"status": "routed"}
+                  else:
+                      print(f"Previous build '{current_status}' with no pending work. Starting fresh.")
+                      # leaving initial_state as None? No, we want to start fresh.
+                      # If we leave it as None (default from L353), it will fall through?
+                      # Wait, L353 initial_state = None.
+                      # If we DON'T touch it, it is None.
+                      # But L380 checks `if initial_state is None`.
+                      # We want to force it to NOT be None (so we can set it to fresh)? 
+                      # actually if it IS None, it resumes DB.
+                      # We want to FORCE FRESH.
+                      # So we should ensure we do NOT enter the resume block at L380.
+                      # But wait, L380 says `if initial_state is None: Resume`.
+                      # So we need `initial_state` to be SOMETHING to avoid Resume.
+                      # But we don't have the fresh state yet.
+                      # We can just set a flag `force_rebuild = True`.
+                      force_rebuild = True
         except Exception as e:
             print(f"Error checking existing state: {e}")
             
@@ -391,18 +404,60 @@ def build_product(startup_id):
                 data = json.loads(missions_file["content"])
                 print(f"Resuming from missions.json for {startup_id}")
                 
+                existing_missions = data.get("missions", [])
+                
+                # --- SMART INCREMENTAL BUILD ---
+                # Check for new features in Product Context not in Existing Missions
+                existing_feature_ids = set()
+                for m in existing_missions:
+                    if m.get("feature_id"):
+                        existing_feature_ids.add(str(m["feature_id"])) # Ensure string comparison
+                
+                new_missions = []
+                current_timestamp = 1000 # dummy or use time
+                import time
+                base_id = len(existing_missions)
+                
+                features = product_context.get("features", [])
+                for f in features:
+                    f_id = str(f["id"])
+                    if f_id not in existing_feature_ids:
+                        print(f"Found New Feature: {f['name']} (ID: {f_id})")
+                        # Create Synthetic Mission
+                        new_missions.append({
+                            "id": base_id + len(new_missions), # increment ID
+                            "title": f"Implement Feature: {f['name']}",
+                            "description": f"Implement the feature '{f['name']}'. Description: {f['description']}",
+                            "status": "pending", # Force pending
+                            "feature_id": f_id
+                        })
+                
+                if new_missions:
+                    print(f"Adding {len(new_missions)} new missions to queue.")
+                    existing_missions.extend(new_missions)
+                    status_override = "routed" # Resumed/Active
+                else:
+                    # No new features.
+                    # Verify if pending work exists in current list
+                    if any(m["status"] == "pending" for m in existing_missions):
+                        status_override = "routed"
+                    else:
+                        print("All features built. No pending work.")
+                        # SAFETY: Do not auto-rebuild.
+                        return jsonify({"status": "no_changes", "message": "Project is already fully built. No new features found. Use 'Force Rebuild' to restart."})
+                
                 initial_state = {
                     "startup_id": startup_id,
                     "product_context": product_context,
-                    # "missions": data.get("missions", []), # REMOVED: State doesn't track full list
-                    "current_mission": None, # Selector will populate
+                    "missions": existing_missions, # RESTORED: Load missions into state
+                    "current_mission": None, 
                     "tech_stack": data.get("tech_stack", "Existing"),
-                    "status": "routed", # Go to Router -> Mission Selector
+                    "status": status_override, 
                     "plan": [],
-                    "logs": [f"Resumed V3 Build from persistence file."]
+                    "logs": [f"Smart Resume: Loaded {len(existing_missions)} missions ({len(new_missions)} new)."]
                 }
             except Exception as e:
-                print(f"Error parsing missions.json: {e}")
+                print(f"Smart Resume Failed (Starting Fresh): {e}")
                 # Fallback to fresh start
                 initial_state = None
         
@@ -413,7 +468,7 @@ def build_product(startup_id):
                 "product_context": product_context, # Passed to V3Initializer
                 "status": "init", # Trigger Initializer
                 "plan": [],
-                # "missions": [], # REMOVED
+                # "missions": [], # Initializer will populate
                 "current_mission": None,
                 "logs": [f"Starting V3 Build for Product: {product.name}"]
             }
