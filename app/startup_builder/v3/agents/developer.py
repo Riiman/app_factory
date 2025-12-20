@@ -342,8 +342,16 @@ class V3Developer:
              self._log_to_file("LOOP EXHAUSTED: Task Failed.")
              next_task["status"] = "failed"
              next_task["task_context"] = task_context
+             
+             # Sync before returning
              self._sync_persistence(startup_id, current_mission["id"], current_mission.get("implementation_plan", ""), current_mission.get("mission_context", []), current_mission.get("tasks", []), status="in_progress")
-             return { "status": "fix_required", "current_mission": current_mission, "failed_task": next_task, "logs": [f"Developer: Task '{next_task['description']}' failed after 10 attempts."] }
+             
+             return { 
+                 "status": "fix_required", # CRITICAL: Route to Architect for Plan Repair
+                 "current_mission": current_mission, 
+                 "failed_task": next_task, 
+                 "logs": [f"Developer: Task '{next_task['description']}' failed after 10 attempts. Escalating to Strategist."] 
+             }
 
         # Mark task as done
         next_task["completed"] = True

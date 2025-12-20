@@ -72,6 +72,12 @@ class V3Architect:
         FAILED TASK (CRITICAL CONTEXT):
         {failed_task_context}
         
+        STRATEGY MODE:
+        If FAILED TASK is present, you are the STRATEGIST.
+        1. Analyze the failure deeply.
+        2. Propose a DIFFERENT approach (e.g., if 'docker-compose' failed, suggest 'docker compose').
+        3. Your PLAN should focus on FIXING the issue and completing the original goal.
+        
         Phase 1: EXPLORATION / DIAGNOSIS
         - List files to see structure.
         - Read key files to understand logic.

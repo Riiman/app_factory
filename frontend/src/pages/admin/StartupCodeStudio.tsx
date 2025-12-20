@@ -1001,9 +1001,9 @@ const StartupCodeStudio: React.FC = () => {
                 </div >
 
                 {/* Right Panel: Team Logs (Merged into Brain) */}
-                <div className="flex-1 flex flex-col bg-black font-mono text-sm border-l border-gray-800">
+                <div className="flex-1 flex flex-col bg-black font-mono text-sm border-l border-gray-800 min-h-0">
                     {/* V3 Brain View - Full Height */}
-                    <div className="flex-1 bg-gray-950 p-2">
+                    <div className="flex-1 bg-gray-950 p-2 min-h-0">
                         <div className="h-full">
                             <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} />
                         </div>
