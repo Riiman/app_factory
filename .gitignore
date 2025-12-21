@@ -457,3 +457,4 @@ scripts/reset_startup_build.py
 content.txt
 debug_db.py
 repro_flow.py
+!build.log

@@ -102,6 +102,13 @@ class V3Developer:
         system_prompt = """You are a Senior Full-Stack Developer (Expert Level).
         Your job is to EXECUTE the given task with PRODUCTION-QUALITY code.
         
+        ENVIRONMENT CONSTRAINTS:
+        - You are running INSIDE a Docker container.
+        - You CANNOT run `docker`, `docker-compose`, or `systemctl`.
+        - EXPOSED PORTS (MANDATORY): 3000 (Frontend), 8000 (Backend), 5000 (Flask), 8080 (Alt).
+        - Verify code by running it DIRECTLY (e.g., `npm start`, `python main.py`).
+        - VERIFICATION RULE: Frontend is NOT valid until `npm run build` passes (Exit 0).
+        
         YOU HAVE ACCESS TO TOOLS:
         - read_file: READ a file before modifying it.
         - write_file: Write the complete file content.
@@ -131,15 +138,23 @@ class V3Developer:
         - Thinking is NOT working. Listing files is NOT finishing the task.
         
         PROCESS MANAGEMENT RULES (CRITICAL):
+        - CLEAN START: Before starting ANY server on port X, check for zombies: `lsof -t -i:X | xargs kill -9` (or `fuser -k X/tcp`).
         - FOR SHORT TASKS (install, build, migrate): Use `run_shell`.
         - FOR LONG TASKS (start server, watch mode): Use `start_process`.
           * NEVER use `&` or `nohup` manually in `run_shell`. Use `start_process`.
         
-        VERIFICATION WORKFLOW (Start -> Wait -> Verify):
-        1. START: `start_process('frontend', 'npm run dev')`
-        2. WAIT: `run_shell('sleep 5')` (Give it time to boot!)
+        VERIFICATION WORKFLOW (Build -> Start -> Smart Wait -> Verify):
+        1. BUILD: `run_shell('npm run build')` (MUST PASS for Frontend).
+        2. START: `start_process('frontend', 'npm run start')` (or dev).
+        3. SMART WAIT (Dynamic):
+           - DO NOT just `sleep 5`.
+           - Loop up to 5 times:
+             * `read_process_logs('frontend')`
+             * If logs say "Ready" or "Listening", BREAK.
+             * If logs say "Error", STOP & FIX.
+             * Else, `run_shell('sleep 2')` and Continue.
         3. VERIFY: `run_shell('curl http://localhost:3000')`
-        4. DEBUG (If verify fails): `read_process_logs('frontend')` -> Fix -> Retry.
+        4. DEBUG (If verify fails): The System will auto-provide logs. Fix -> Retry.
         
         DIAGNOSIS PRO TIP:
         If you encounter "command not found" or arguments don't work (e.g. Tailwind v4 vs v3), 
@@ -250,6 +265,16 @@ class V3Developer:
                          # Let's try explicit escalation if it seems critical.
                          # For robustness, let's stick to loop limit.
                          # But enable explicit "GIVE UP" logic.
+                         # Auto-Diagnosis: If a verification command (like curl) failed, 
+                         # check if it's because a relevant process crashed.
+                         # Heuristic: If verification failed and we recently started a process, check its logs.
+                         if "curl" in command_str or "http" in command_str:
+                             # Find process alias? Hard to guess. 
+                             # Just try to grab logs of the last started process?
+                             # Or just tell Agent to check.
+                             # Better: Append a generic hint.
+                             task_context.append(f"SYSTEM HINT: Verification failed. Did the server crash? CHECK LOGS: `read_process_logs('alias')`")
+                         
                          task_context.append(f"VERIFICATION: FAILURE. Retrying...")
                          
                          # CIRCUIT BREAKER LOGIC

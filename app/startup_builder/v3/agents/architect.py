@@ -63,6 +63,17 @@ class V3Architect:
         
         TECH STACK: {tech_stack}
         
+        ENVIRONMENT CONSTRAINTS:
+        - You are running INSIDE a Docker container.
+        - You CANNOT run `docker`, `docker-compose`, or `systemctl`.
+        - You CAN write `docker-compose.yml` for the user, but DO NOT try to run/verify it.
+        - To VERIFY the app, run it DIRECTLY (e.g., `npm start`, `python main.py`, `uvicorn`).
+        - Do NOT try to install packages that require root/system changes (like installing docker engine).
+
+        TOOL USAGE RULES:
+        - Do NOT call the same tool with identical arguments more than twice in a row.
+        - NO BLIND RECREATION: Before creating ANY file (code, config, scripts), check if it exists. If it does, READ IT first. Do NOT blindly overwrite or recreate files that might already contain valid logic.
+        
         GLOBAL PROJECT CONTEXT (HISTORY):
         {global_context}
         
@@ -244,17 +255,22 @@ class V3Architect:
         master_plan = state.get("plan", [])
         
         if failed_task:
-            # Recovery Mode: Insert tasks AFTER the failed task to ensure immediate execution
+            # Recovery Mode: Replace the failed task with the recovery plan
             # Find failed task index
-            insert_idx = len(master_plan) # Default append
+            failed_task_idx = -1
             for i, t in enumerate(master_plan):
                 # Robust check for ID match
                 if t.get("id") and t.get("id") == failed_task.get("id"):
-                    insert_idx = i # Insert BEFORE the failed task so we execute the FIX first
+                    failed_task_idx = i
                     break
             
-            # Insert the new tasks
-            master_plan[insert_idx:insert_idx] = final_tasks
+            if failed_task_idx != -1:
+                # REPLACE the failed task with the new tasks (Fix + Retry)
+                # This prevents "Fix" -> "Retry" -> "Original Failed Task" (Duplicate) loops.
+                master_plan[failed_task_idx:failed_task_idx+1] = final_tasks
+            else:
+                 # Fallback: Just append
+                 master_plan.extend(final_tasks)
             # Also reset failed_task in state? 
             # Ideally the router or developer clears it next time? 
             # Or we return it as None in the update dict?
