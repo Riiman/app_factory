@@ -131,10 +131,11 @@ class V3Architect:
                 goal_instruction = "DIAGNOSE the Logical Failure (Gap between Intent and Reality). Create a Fix Plan that corrects the code AND re-verifies."
                 diagnosis_instruction = "Compare Expected vs Actual. Identify the Logic Flaw. List specific Issues."
                 constraint_instruction = "CONSTRAINT: Your plan MUST end with a task to RE-RUN the verification."
+                constraint_instruction = "CONSTRAINT: Your plan MUST end with a task to RE-RUN the verification."
             else:
                 goal_instruction = "DIAGNOSE the Runtime Failure and CREATE a Recovery Plan."
-                diagnosis_instruction = "READ LOGS and CODE to find the crash/error source."
-                constraint_instruction = "CONSTRAINT: Ensure the fix addresses the specific error."
+                diagnosis_instruction = "READ LOGS and CODE to find the crash/error source. If the error is obscure or version-related (like 'command not found' or argument errors), use `search_web` to find the correct usage."
+                constraint_instruction = "CONSTRAINT: Ensure the fix addresses the specific error. Use Search if unsure."
 
             failed_task_context = json.dumps(failed_task, indent=2)
             logger.info(f"--- Architect: Entering Recovery Mode (Verification={is_verification}) for Task {failed_task.get('description')} ---")
@@ -249,7 +250,7 @@ class V3Architect:
             for i, t in enumerate(master_plan):
                 # Robust check for ID match
                 if t.get("id") and t.get("id") == failed_task.get("id"):
-                    insert_idx = i + 1
+                    insert_idx = i # Insert BEFORE the failed task so we execute the FIX first
                     break
             
             # Insert the new tasks

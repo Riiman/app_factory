@@ -50,6 +50,18 @@ def start_env(startup_id):
                     "ports": ports,
                     "container_name": startup.container_name
                 })
+            elif container.status == 'exited':
+                # Resume stopped container
+                print(f"Resuming stopped container {startup.container_name}")
+                container.start()
+                container.reload()
+                ports = container.attrs['NetworkSettings']['Ports']
+                return jsonify({
+                    "status": "running", 
+                    "container_id": container.id, 
+                    "ports": ports,
+                    "container_name": startup.container_name
+                })
         except:
             # Container doesn't exist anymore, clear the name from DB
             startup.container_name = None
@@ -168,11 +180,10 @@ def stop_env(startup_id):
         return jsonify({"error": "Startup not found"}), 404
     
     # Stop and remove the container
+    # Stop the container but KEEP it (and the DB record)
     if startup.container_name:
-        result = manager.cleanup_container(startup.container_name)
-        # Clear container_name from database
-        startup.container_name = None
-        db.session.commit()
+        result = manager.stop_container(startup_id, container_name=startup.container_name)
+        # Do NOT clear container_name from database
         return jsonify(result)
     else:
         return jsonify({"status": "not_found"})
@@ -587,6 +598,16 @@ def run_v3_agent_bg(startup_id, initial_state):
             
             try:
                 for event in v3_graph.stream(initial_state, config=config):
+                    # CHECK FOR PAUSE SIGNAL
+                    if startup_id in stop_signals:
+                        print(f"Pausing V3 Agent for {startup_id}")
+                        stop_signals.remove(startup_id)
+                        socketio.emit('agent_update', {
+                            'task_status': 'paused',
+                            'logs': ["Process paused by user."]
+                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        return
+
                     for key, value in event.items():
                         # Compute Progress for Frontend
                         plan = value.get('plan', [])
@@ -888,14 +909,60 @@ def get_container_logs(startup_id):
 @builder_bp.route('/<startup_id>/reset', methods=['POST'])
 def reset_agent(startup_id):
     try:
-        # 1. Clear Artifacts in Container
+        from app.models import Startup
+        from app.extensions import db
+        import sqlite3
+        import shutil
+        
+        # 1. Clear Artifacts in Container (If running)
         manager.run_command(startup_id, "rm -f artifacts/tasks.json artifacts/PROGRESS.md artifacts/spec.md")
         
-        # 2. Clear Agent State (Checkpoint)
+        # 2. Hard Cleanup: Stop & Remove Container
+        startup = Startup.query.get(startup_id)
+        if startup and startup.container_name:
+             manager.cleanup_container(startup.container_name)
+             startup.container_name = None
+             db.session.commit()
+             
+        # 3. Nuke Workspace Files
+        try:
+             workspace_path = os.path.join(manager.base_work_dir, str(startup_id))
+             if os.path.exists(workspace_path):
+                 shutil.rmtree(workspace_path)
+                 print(f"Deleted workspace: {workspace_path}")
+        except Exception as e:
+             print(f"Error deleting workspace: {e}")
+        
+        # 4. Clear Agent State (Both V3 and Default SQLite)
+        for db_file in ["v3_checkpoints.sqlite", "checkpoints.sqlite"]:
+             try:
+                 db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", db_file) # Assuming app/startup_builder layout
+                 # Safer to just use absolute path based on manager's knowledge or current working dir?
+                 # Routes runs in app context. Let's assume run from root.
+                 if not os.path.exists(db_file):
+                      # Try internal path
+                      db_path = os.path.join("/home/ubuntu/app_factory", db_file)
+                 else:
+                      db_path = db_file
+                      
+                 if os.path.exists(db_path):
+                     conn = sqlite3.connect(db_path)
+                     c = conn.cursor()
+                     # Check if tables exist first? Or just try delete
+                     try:
+                         c.execute(f"DELETE FROM checkpoints WHERE thread_id='{startup_id}'")
+                         c.execute(f"DELETE FROM writes WHERE thread_id='{startup_id}'")
+                         conn.commit()
+                         print(f"Cleared checkpoints from {db_file}")
+                     except Exception as ex:
+                         print(f"Error clearing {db_file}: {ex}")
+                     finally:
+                         conn.close()
+             except Exception as e:
+                 print(f"DB Cleanup Error: {e}")
+        
+        # 5. Reset Graph State via update
         config = {"configurable": {"thread_id": startup_id}}
-        # LangGraph doesn't have a direct "clear" method exposed easily via public API in all versions,
-        # but we can update the state to empty or just rely on the fact that we start fresh if no next step.
-        # However, to be safe, we can manually update the state to "start".
         
         graph.update_state(config, {
             "goal": "",
@@ -905,14 +972,14 @@ def reset_agent(startup_id):
             "error_history": [],
             "logs": [],
             "status": "start",
-            "task_queue": [],
-            "current_task": "",
-            "completed_tasks": 0,
-            "total_tasks": 0
+            "total_tasks": 0,
+            "completed_tasks": 0
         })
-        
-        return jsonify({"status": "success", "message": "Agent memory reset."})
+
+        return jsonify({"status": "success", "message": "Agent hard reset successfully"})
     except Exception as e:
-        return jsonify({"status": "error", "error": str(e)})
+        print(f"Reset Error: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 
 

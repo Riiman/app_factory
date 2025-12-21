@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional
 from langchain_core.tools import tool
+from langchain_community.tools import DuckDuckGoSearchRun
 from ..context import ContextManager
 
 class V3Tools:
@@ -25,7 +26,8 @@ class V3Tools:
             self.create_start_process(),
             self.create_stop_process(),
             self.create_read_process_logs(),
-            self.create_list_processes()
+            self.create_list_processes(),
+            self.create_search_web()
         ]
         
         if include_context_tools:
@@ -326,3 +328,20 @@ class V3Tools:
                 return f"Error listing processes: {res['error']}"
             return f"Active Processes: {res.get('processes', [])}"
         return list_processes
+
+    def create_search_web(self):
+        @tool
+        def search_web(query: str) -> str:
+            """
+            Performs a web search using DuckDuckGo.
+            Use this to diagnose errors, check documentation, or find solutions when internal knowledge fails.
+            Example: "latest tailwind css v4 init command error" or "python flask 502 bad gateway fix"
+            """
+            try:
+                search = DuckDuckGoSearchRun()
+                # Run search
+                res = search.invoke(query)
+                return f"Search Results for '{query}':\n{res}"
+            except Exception as e:
+                return f"Error searching web: {str(e)}"
+        return search_web

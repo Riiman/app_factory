@@ -76,8 +76,20 @@ class DockerManager:
             return {"error": "Docker not available"}
 
         # Use provided container_name or generate a new one
+        # Use provided container_name or try to find existing one
         if not container_name:
-            container_name = self.generate_container_name()
+            # Try to recover an existing container name (Volume Check / DB Check via ID)
+            # checking DB is redundant here if caller passed None, but Volume Check is vital.
+            recovered_name = self.get_container_name(startup_id)
+            try:
+                # Check if this recovered name actually refers to a running/existing container
+                self.client.containers.get(recovered_name)
+                container_name = recovered_name
+                print(f"ensure_container: Recovered existing container {container_name}")
+            except:
+                # If not found, THEN generate new random name
+                container_name = self.generate_container_name()
+                print(f"ensure_container: Generated new container name {container_name}")
         
         # Check if running
         try:

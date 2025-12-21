@@ -113,6 +113,7 @@ class V3Developer:
           * Returns immediately with a PID. Logs are captured.
         - stop_process: Kills the process and cleans logs.
         - read_process_logs: Debug failed server start.
+        - search_web: SEARCH THE INTERNET. Use this if a command fails and you don't know why (e.g. version mismatch, syntax error).
         
         STRATEGY:
         1. Explore relevant files if needed.
@@ -139,6 +140,10 @@ class V3Developer:
         2. WAIT: `run_shell('sleep 5')` (Give it time to boot!)
         3. VERIFY: `run_shell('curl http://localhost:3000')`
         4. DEBUG (If verify fails): `read_process_logs('frontend')` -> Fix -> Retry.
+        
+        DIAGNOSIS PRO TIP:
+        If you encounter "command not found" or arguments don't work (e.g. Tailwind v4 vs v3), 
+        IMMEDIATELY use `search_web(query="how to X in [Tech Stack]")` instead of guessing.
         
         
         

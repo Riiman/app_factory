@@ -699,9 +699,16 @@ const StartupCodeStudio: React.FC = () => {
                             <Play className="w-4 h-4" /> Start Env
                         </button>
                     ) : (
-                        <button onClick={handleStop} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
-                            <Square className="w-4 h-4" /> Stop Env
-                        </button>
+                        <>
+                            {isWorking && (
+                                <button onClick={handlePause} className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                                    <span className="w-4 h-4 flex items-center justify-center font-bold">||</span> Pause
+                                </button>
+                            )}
+                            <button onClick={handleStop} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                                <Square className="w-4 h-4" /> Stop Env
+                            </button>
+                        </>
                     )}
                     <a
                         href={`/api/startups/${id}/preview/`}
