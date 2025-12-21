@@ -171,13 +171,15 @@ class V3CoPilot:
             if "content_filter" in error_str or "content management policy" in error_str or "400" in error_str:
                 # self.emit_thought("Azure Content Filter triggered in Act. Retrying with sanitized context...", active_node)
                 try:
-                    # Retry with minimal context - just the last message and basic identity
-                    # Often the filter triggers on long history or specific system prompt instructions
+                    # Retry with CLEAN context - Reset to Original Prompt
+                    # We discard the intermediate broken tool chain to avoid "ToolCall without ToolMessage" errors.
+                    # messages[0] is the HumanMessage with Local Context & Goals.
                     sanitized_history = [
-                        SystemMessage(content="You are a helpful AI developer. Execute the request."),
-                        messages[-1] # Only the last user/tool message
+                        SystemMessage(content=system_prompt), # Keep the instructions
+                        messages[0] # Keep the original request
                     ]
                     res = llm_with_tools.invoke(sanitized_history)
+                    return {"content": res, "error": None}
                     return {"content": res, "error": None}
                 except Exception as e2:
                     return {"content": None, "error": f"Content Filter blocked retry: {e2}"}
