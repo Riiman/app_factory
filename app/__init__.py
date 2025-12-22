@@ -82,6 +82,9 @@ def create_app(config_class=Config):
         app.register_blueprint(admin_contract_bp)
         app.register_blueprint(notifications_bp)
 
+        from .routes.contact import contact_bp
+        app.register_blueprint(contact_bp)
+
         from .startup_builder import builder_bp
         from .startup_builder import builder_bp
         app.register_blueprint(builder_bp)

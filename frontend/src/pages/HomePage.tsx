@@ -2,6 +2,7 @@ import React, { FC, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Tabs from '../components/ui/Tabs';
+import FeaturesSection from '../components/FeaturesSection';
 import {
   Zap,
   Shield,
@@ -77,11 +78,11 @@ const HomePage: FC = () => {
         <p className="text-brand-800 font-semibold mb-4">
           “Time-to-pilot ↓ 50–70% • Prototype→Pilot conversion ↑ • Portfolio visibility for CXOs”
         </p>
-        <Link to="/contact">
+        <a href="#contact">
           <Button variant="primary" className="bg-brand-700 hover:bg-brand-800">
             Talk to our enterprise team
           </Button>
-        </Link>
+        </a>
       </div>
     </div>
   );
@@ -184,16 +185,11 @@ const HomePage: FC = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/contact">
+            <a href="#contact">
               <Button className="w-full sm:w-auto px-8 py-4 text-lg bg-accent-600 hover:bg-accent-500 text-white font-bold shadow-lg transition-transform hover:scale-105">
                 Book a demo
               </Button>
-            </Link>
-            <Link to="/overview">
-              <Button variant="secondary" className="w-full sm:w-auto px-8 py-4 text-lg bg-transparent border border-white text-white hover:bg-white/10">
-                Download the overview
-              </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -209,6 +205,9 @@ const HomePage: FC = () => {
           />
         </div>
       </section>
+
+      {/* Features Section */}
+      <FeaturesSection />
 
       {/* How VentureStackAI Works */}
       <section className="py-24 bg-white border-y border-gray-100">
@@ -266,31 +265,6 @@ const HomePage: FC = () => {
         </div>
       </section>
 
-      {/* Platform Capabilities */}
-      <section className="py-24 bg-brand-900 text-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold">Platform Capabilities</h2>
-            <p className="mt-4 text-brand-200">Everything you need to build and scale.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {[
-              { title: "AI Blueprinting", desc: "Prompt → PRD, schema, API map, UI drafts." },
-              { title: "Build Stack", desc: "Next.js/Tailwind • Supabase/AWS • serverless APIs." },
-              { title: "Data & Analytics", desc: "GA4, PostHog, Sentry; Fabric/Power BI optional." },
-              { title: "GTM Kit", desc: "Landing generator, CRM sync, WhatsApp/email automations." },
-              { title: "Security & Gov", desc: "SSO/SAML, RBAC, audit logs, VPC/VNet isolation." },
-              { title: "Portfolio Console", desc: "Velocity, burn, adoption, funnel, risk flags." }
-            ].map((cap, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
-                <h3 className="text-xl font-bold text-accent-400 mb-2">{cap.title}</h3>
-                <p className="text-brand-100">{cap.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Results / Metrics Band */}
       <section className="py-16 bg-accent-600 text-white">
@@ -420,23 +394,56 @@ const HomePage: FC = () => {
               <p className="text-gray-600">Book a demo to see how VentureStackAI can transform your innovation pipeline.</p>
             </div>
 
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.target as HTMLFormElement;
+              const formData = new FormData(form);
+              const data = Object.fromEntries(formData);
+
+              const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+              const originalText = submitBtn.innerText;
+              submitBtn.innerText = 'Sending...';
+              submitBtn.disabled = true;
+
+              fetch('/api/contact/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+              })
+                .then(res => res.json())
+                .then(res => {
+                  if (res.success) {
+                    alert('Thank you! Your request has been sent successfully.');
+                    form.reset();
+                  } else {
+                    alert(res.error || 'Failed to send request. Please try again.');
+                  }
+                })
+                .catch(err => {
+                  console.error(err);
+                  alert('An error occurred. Please try again.');
+                })
+                .finally(() => {
+                  submitBtn.innerText = originalText;
+                  submitBtn.disabled = false;
+                });
+            }}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="John Doe" />
+                <input required name="name" type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="John Doe" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Work Email</label>
-                <input type="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="john@company.com" />
+                <input required name="email" type="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="john@company.com" />
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
-                  <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="Company Name" />
+                  <input name="organization" type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="Company Name" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
-                  <select className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors">
+                  <select name="timeline" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors">
                     <option>Immediately</option>
                     <option>1-3 months</option>
                     <option>3+ months</option>
@@ -445,7 +452,7 @@ const HomePage: FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Use Case</label>
-                <select className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors">
+                <select name="useCase" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors">
                   <option>Corporate Innovation</option>
                   <option>Incubator / Accelerator</option>
                   <option>Venture Studio</option>
@@ -454,11 +461,11 @@ const HomePage: FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                <textarea rows={4} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="Tell us about your goals..."></textarea>
+                <textarea required name="message" rows={4} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="Tell us about your goals..."></textarea>
               </div>
 
-              <Button className="w-full py-4 text-lg font-bold shadow-md bg-brand-600 hover:bg-brand-700 text-white">
-                Book a demo
+              <Button type="submit" className="w-full py-4 text-lg font-bold shadow-md bg-brand-600 hover:bg-brand-700 text-white">
+                Submit Request
               </Button>
             </form>
           </div>
@@ -470,16 +477,11 @@ const HomePage: FC = () => {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold mb-8">Stop planning innovation. Start shipping it.</h2>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/contact">
+            <a href="#contact">
               <Button className="px-8 py-4 text-lg bg-accent-600 hover:bg-accent-500 text-white font-bold shadow-lg">
                 Book a demo
               </Button>
-            </Link>
-            <Link to="/overview">
-              <Button variant="secondary" className="px-8 py-4 text-lg bg-transparent border border-white text-white hover:bg-white/10">
-                Download overview
-              </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </section>
