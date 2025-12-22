@@ -57,7 +57,7 @@ const FeaturesSection: FC = () => {
 
             <div className="container mx-auto px-4 relative z-10">
                 <div className="text-center max-w-3xl mx-auto mb-16">
-                    <h2 className="text-sm font-bold tracking-wide text-brand-600 uppercase mb-2">Why VentureStackAI</h2>
+                    <h2 className="text-sm font-bold tracking-wide text-brand-600 uppercase mb-2">Why Venturestack</h2>
                     <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
                         Everything you need to build, launch, and scale
                     </h3>

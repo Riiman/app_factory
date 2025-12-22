@@ -25,7 +25,7 @@ const HomePage: FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
-    document.title = "VentureStackAI — Idea to MVP & Pilots for Enterprises and Cohorts";
+    document.title = "Venturestack — Idea to MVP & Pilots for Enterprises and Cohorts";
   }, []);
 
   const toggleFaq = (index: number) => {
@@ -37,7 +37,7 @@ const HomePage: FC = () => {
       <div className="text-center max-w-3xl mx-auto">
         <h3 className="text-2xl font-bold text-brand-900 mb-4">Ship innovation that the business can use</h3>
         <p className="text-lg text-gray-600">
-          Stop collecting slideware. VentureStackAI gives your innovation team a repeatable system to scout opportunities, prototype with AI, pilot with business units, and scale on secure cloud—so the roadmap turns into revenue.
+          Stop collecting slideware. Venturestack gives your innovation team a repeatable system to scout opportunities, prototype with AI, pilot with business units, and scale on secure cloud—so the roadmap turns into revenue.
         </p>
       </div>
 
@@ -92,7 +92,7 @@ const HomePage: FC = () => {
       <div className="text-center max-w-3xl mx-auto">
         <h3 className="text-2xl font-bold text-brand-900 mb-4">Your cohort, shipped</h3>
         <p className="text-lg text-gray-600">
-          VentureStackAI is the operating system for programs that measure outcomes, not attendance. Standardize idea→MVP→GTM with AI blueprints, reusable code, and a live portfolio console.
+          Venturestack is the operating system for programs that measure outcomes, not attendance. Standardize idea→MVP→GTM with AI blueprints, reusable code, and a live portfolio console.
         </p>
       </div>
 
@@ -133,11 +133,11 @@ const HomePage: FC = () => {
         <p className="text-accent-900 font-semibold mb-4">
           Standardize your program success with real shipping power.
         </p>
-        <Link to="/contact">
+        <a href="#contact">
           <Button variant="primary" className="bg-accent-600 hover:bg-accent-700 text-white">
-            Run your next cohort on VentureStackAI
+            Run your next cohort on Venturestack
           </Button>
-        </Link>
+        </a>
       </div>
     </div>
   );
@@ -175,13 +175,13 @@ const HomePage: FC = () => {
 
         <div className="relative container mx-auto px-4 z-10">
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight mb-6">
-            VentureStackAI <br />
+            VentureStack <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 to-accent-400 text-4xl md:text-6xl block mt-2">
               Build real products, not just plans
             </span>
           </h1>
           <p className="mt-6 max-w-2xl mx-auto text-xl text-brand-100 mb-10 leading-relaxed">
-            The platform that turns ideas into working MVPs and first users—fast. For corporate innovation teams and cohort programs.
+            The platform that turns ideas into working MVPs and onboard first users—fast. <br />For corporate innovation teams and cohort programs.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -209,11 +209,11 @@ const HomePage: FC = () => {
       {/* Features Section */}
       <FeaturesSection />
 
-      {/* How VentureStackAI Works */}
+      {/* How Venturestack Works */}
       <section className="py-24 bg-white border-y border-gray-100">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">How VentureStackAI Works</h2>
+            <h2 className="text-3xl font-bold text-gray-900">How Venturestack Works</h2>
             <p className="mt-4 text-gray-600">From idea to traction in 4 steps</p>
           </div>
 
@@ -246,12 +246,12 @@ const HomePage: FC = () => {
                 icon: <Globe className="w-6 h-6" />
               }
             ].map((item, i) => (
-              <div key={i} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-center">
+              <div key={i} className="bg-brand-800 p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-center">
                 <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center font-bold text-lg mx-auto mb-4 border-4 border-white relative z-10">
                   {item.step}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-500">{item.desc}</p>
+                <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                <p className="text-sm text-white">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -391,7 +391,7 @@ const HomePage: FC = () => {
           <div className="bg-white p-8 md:p-12 rounded-2xl shadow-lg border border-gray-200">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to build real products—fast?</h2>
-              <p className="text-gray-600">Book a demo to see how VentureStackAI can transform your innovation pipeline.</p>
+              <p className="text-gray-600">Book a demo to see how Venturestack can transform your innovation pipeline.</p>
             </div>
 
             <form className="space-y-6" onSubmit={(e) => {
@@ -490,7 +490,7 @@ const HomePage: FC = () => {
       <section className="bg-white py-12 border-t border-gray-200">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
           <div className="mb-6 md:mb-0 text-center md:text-left">
-            <h4 className="text-xl font-bold text-brand-900 mb-1">VentureStackAI</h4>
+            <h4 className="text-xl font-bold text-brand-900 mb-1">Venturestack</h4>
             <p className="text-sm text-gray-500">
               A product of <span className="font-semibold text-gray-900">Turning Ideas Ventures</span>.
             </p>
