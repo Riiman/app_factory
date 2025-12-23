@@ -78,12 +78,21 @@ def update_submission_status(submission_id):
     except KeyError:
         return jsonify({'success': False, 'error': f'Invalid status: {new_status_str}'}), 400
 
-    submission.status = new_status
-    
     # If submission is moved to review, trigger the analysis task
     if new_status == SubmissionStatus.IN_REVIEW:
         # ASYNC: Use Celery task
-        analyze_submission_task.delay(submission.id)
+        # Do not set status to IN_REVIEW yet. The task will do it when analysis is complete.
+        # However, we need to know that analysis is triggered. 
+        # For now, we will NOT update the status here if it is IN_REVIEW.
+        pass
+    else:
+        submission.status = new_status
+    
+    # Trigger analysis if the *requested* status was IN_REVIEW
+    if new_status == SubmissionStatus.IN_REVIEW:
+         analyze_submission_task.delay(submission.id)
+         # Optionally, return a specialized message
+         return jsonify({'success': True, 'message': 'Analysis started. Status will update to IN_REVIEW upon completion.'}), 200
 
     # If submission is approved, create a startup entry and trigger scope document generation
     if new_status == SubmissionStatus.APPROVED:
@@ -102,7 +111,7 @@ def update_submission_status(submission_id):
                 submission_id=submission.id,
                 name=submission.startup_name,
                 slug=slug,
-                current_stage=StartupStage.SCOPING.value
+                current_stage=StartupStage.EVALUATION.value
             )
             db.session.add(startup)
             db.session.flush() # Flush to get startup.id
@@ -118,10 +127,8 @@ def update_submission_status(submission_id):
                 )
                 db.session.add(founder)
 
-            # Trigger async scope document generation
+            # Trigger async scope document generation - MOVED TO AFTER COMMIT
             # ASYNC: Use Celery task
-            generate_scope_document_task.delay(startup.id)
-
             # Create initial Contract
             contract = Contract(
                 startup_id=startup.id,
@@ -133,6 +140,13 @@ def update_submission_status(submission_id):
 
     try:
         db.session.commit()
+        
+        # Trigger async tasks after commit to ensure data is visible to workers
+        if new_status == SubmissionStatus.APPROVED and 'startup' in locals() and startup:
+             startup.is_generating_scope = True
+             db.session.commit() # Commit the flag change
+             generate_scope_document_task.delay(startup.id)
+
         publish_update("submission_status_updated", {"submission_id": submission.id, "new_status": new_status.value, "startup_id": startup.id if 'startup' in locals() and startup else None}, rooms=["admin", f"user_{submission.user_id}"])
         
         # Send status update email

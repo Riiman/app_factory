@@ -1,76 +1,108 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/ui/Button';
-import {
-  Lightbulb as LightbulbIcon,
-  Rocket as RocketIcon,
-  BarChart as ChartBarIcon,
-  DollarSign as DollarIcon,
-  CheckCircle,
-  ArrowRight,
-  TrendingUp,
-  Users,
-  ShieldCheck,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react'; // Using lucide-react which is likely installed, or will fallback to components/Icons if not
 
-// Fallback icons if lucide-react is not available (assuming standard project setup might use either)
-// If these cause errors, I will revert to the original imports.
-// For now, I'll attempt to use the existing Icon components if Lucide fails, but standardizing on Lucide is better for the new design.
+import PersonaBentoGrid from '../components/PersonaBentoGrid';
+import FeaturesSection from '../components/FeaturesSection';
+import ProcessTimeline from '../components/ProcessTimeline';
+import AnimatedMetrics from '../components/AnimatedMetrics';
+
+import JourneySwitcherSection from '../components/JourneySwitcherSection';
+import PricingSection from '../components/PricingSection';
+import {
+  Zap,
+  Shield,
+  BarChart3,
+  Rocket,
+  Code2,
+  Layout,
+  Database,
+  Globe,
+  CheckCircle2,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Building2,
+  Users,
+  Star,
+  Quote,
+  Plus,
+  Minus
+} from 'lucide-react';
 
 const HomePage: FC = () => {
-
   // FAQ State
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    document.title = "Venturestack — Idea to MVP & Pilots for Enterprises and Cohorts";
+  }, []);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  const features = [
-    {
-      icon: <LightbulbIcon className="w-8 h-8 text-white" />,
-      title: 'Validate & Refine',
-      description: 'Stop guessing. Use our AI-driven validation tools to test your assumptions against real market data before you write a single line of code.',
-      color: 'bg-brand-500'
-    },
-    {
-      icon: <RocketIcon className="w-8 h-8 text-white" />,
-      title: 'Build & Launch',
-      description: 'Instant MVP generation. Our VentureStack engine generates your backend, frontend, and deployment infrastructure in minutes, not months.',
-      color: 'bg-indigo-500'
-    },
-    {
-      icon: <TrendingUp className="w-8 h-8 text-white" />,
-      title: 'Grow & Scale',
-      description: 'Integrated analytics and growth hacking tools to help you acquire your first 1,000 customers and optimize your funnel.',
-      color: 'bg-purple-500'
-    },
-    {
-      icon: <DollarIcon className="w-8 h-8 text-white" />,
-      title: 'Fund & Succeed',
-      description: 'Get matched with investors who are looking for startups just like yours. Automated due diligence reports make funding easier.',
-      color: 'bg-accent-500'
-    },
-  ];
+
 
   const faqs = [
     {
-      question: "Is this really free to start?",
-      answer: "Yes! You can build your entire MVP and validate your idea on VentureStack Platform. We take a small equity/revenue share."
+      question: "Is it low/no-code or code?",
+      answer: "Both. We provide AI blueprints and code templates that give you a head start, but unlike restrictive low-code platforms, you own the source code. Your teams can extend everything in standard JS/TS, Python, or your enterprise stack without hitting a ceiling."
     },
     {
-      question: "Do I need to know how to code?",
-      answer: "Not at all. VentureStack is designed for non-technical founders. You describe your vision, and our AI agents handle the technical architecture, coding, and deployment."
+      question: "Can we host on our restricted cloud?",
+      answer: "Absolutely. VentureStack is designed for enterprise compliance. We support private cloud deployments on AWS/Azure with full SSO/SCIM integration, RBAC, audit logs, and data residency guarantees."
     },
     {
-      question: "Who owns the IP?",
-      answer: "You do. 100%. Everything you build on VentureStack is your intellectual property. We just provide the tools to build it."
+      question: "What technology stacks do you support?",
+      answer: "We focus on modern, scalable stacks: Next.js/React for frontend, Supabase/AWS for backend, and Python/Node for services. We also integrate deeply with enterprise tools like Fabric, Power BI, HubSpot, and n8n/Make."
     },
     {
-      question: "Can I export my code?",
-      answer: "Absolutely. We believe in no lock-in. You can export your full codebase (React, Python/Node, Docker configs) at any time."
+      question: "How do you measure success?",
+      answer: "We move beyond 'vanity metrics' to track real impact: Time-to-MVP, prototype-to-pilot conversion rates, user activation/adoption, and specific business KPIs defined at the start of the engagement."
+    },
+    {
+      question: "Do you help after the initial launch?",
+      answer: "Yes. Our partnership doesn't end at MVP. We assist with traction experiments, setting up partner pilots, preparing investor/executive data packs, and managing the handover to internal scale-up teams."
+    }
+  ];
+
+  const testimonials = [
+    {
+      quote: "Built our first production-grade Copilot in 6 weeks. The speed was incredible, but the code quality was even better.",
+      author: "Sarah Jenkins",
+      role: "VP Innovation",
+      company: "Global Manufacturing",
+      image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      quote: "Our Demo Day finally had products users could touch, not just slide decks. VentureStack changed the game for our cohort.",
+      author: "David Chen",
+      role: "Director",
+      company: "TechNexus Accelerator",
+      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      quote: "The security compliance features saved us 3 months of legal review. We launched confident and compliant.",
+      author: "Elena Rodriguez",
+      role: "Innovation Lead",
+      company: "Fintech Enterprise",
+      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      quote: "Finally, a low-code tool that doesn't hit a ceiling when we need custom logic. It's the best of both worlds.",
+      author: "James Wilson",
+      role: "Senior Developer",
+      company: "SaaS Scale-up",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      quote: "VentureStack cut our dev costs by 60% while giving us better infrastructure than we could build internally.",
+      author: "Michael Chang",
+      role: "CTO",
+      company: "Logistics Startup",
+      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"
     }
   ];
 
@@ -78,316 +110,260 @@ const HomePage: FC = () => {
     <div className="font-sans text-slate-800">
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-brand-900 pt-20 pb-32 lg:pt-32 lg:pb-48">
-        <div className="absolute inset-0 opacity-20">
-          {/* Abstract background pattern could go here */}
-          <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0 100 C 20 0 50 0 100 100 Z" fill="url(#gradient)" />
-            <defs>
-              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#0ea5e9" />
-                <stop offset="100%" stopColor="#f97316" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+      <section className="relative overflow-hidden bg-brand-900 pt-20 pb-32 lg:pt-32 lg:pb-48 text-center text-white">
+        <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-brand-900/90"></div>
 
-        <div className="relative container mx-auto px-4 text-center z-10">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-brand-800 border border-brand-700 text-brand-300 font-medium text-sm mb-8 animate-fade-in-up">
-            <span className="flex h-2 w-2 rounded-full bg-accent-500 mr-2"></span>
-            Now in Public Beta v2.0
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight leading-tight mb-8">
-            Turn Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-accent-500">Vision</span> Into <br className="hidden md:block" /> A Venture.
+        <div className="relative container mx-auto px-4 z-10">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight mb-6">
+            VentureStack <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 to-accent-400 text-4xl md:text-6xl block mt-2">
+              Build real products, not just plans
+            </span>
           </h1>
-
-          <p className="mt-4 max-w-2xl mx-auto text-xl text-brand-100 mb-10 leading-relaxed">
-            VentureStack is the comprehensive operating system for founders.
-            From idea validation to series A funding, we automate the chaos so you can focus on the product.
+          <p className="mt-6 max-w-2xl mx-auto text-xl text-brand-100 mb-10 leading-relaxed">
+            The platform that turns ideas into working MVPs and onboard first users—fast. <br />For corporate innovation teams and cohort programs.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/signup">
-              <Button className="w-full sm:w-auto px-8 py-4 text-lg bg-gradient-to-r from-brand-600 to-accent-500 hover:from-brand-500 hover:to-accent-400 text-white font-bold shadow-lg shadow-brand-900/20 transition-all transform hover:scale-105">
-                Start Building Free
+            <a href="#contact">
+              <Button className="w-full sm:w-auto px-8 py-4 text-lg bg-accent-600 hover:bg-accent-500 text-white font-bold shadow-lg transition-transform hover:scale-105">
+                Book a demo
               </Button>
-            </Link>
-            <Link to="#features">
-              <button className="w-full sm:w-auto px-8 py-4 text-lg bg-transparent border border-brand-500 text-white font-medium hover:bg-brand-800/50 transition-all rounded-lg">
-                Explore Features
-              </button>
-            </Link>
-          </div>
-
-          <div className="mt-16 relative mx-auto max-w-5xl">
-            <div className="rounded-xl bg-brand-800/50 p-2 backdrop-blur-sm border border-brand-700 shadow-2xl">
-              <div className="rounded-lg bg-slate-900 aspect-video flex items-center justify-center overflow-hidden relative">
-                {/* Placeholder for Dashboard UI Screenshot */}
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900"></div>
-                <div className="text-brand-400 text-center z-10 p-8">
-                  <div className="w-full h-full border-2 border-dashed border-brand-700/50 rounded flex flex-col items-center justify-center">
-                    <p className="text-lg font-mono">Interactive Dashboard Preview</p>
-                    <p className="text-sm text-slate-500 mt-2">Visualization of Startup Health</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </a>
           </div>
         </div>
       </section>
 
-      {/* Stats / Social Proof */}
-      <section className="py-10 bg-slate-50 border-b border-gray-200">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-gray-200">
-            <div>
-              <div className="text-4xl font-bold text-brand-600">150+</div>
-              <div className="text-sm text-gray-500 uppercase tracking-wide mt-1">Startups Built</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-brand-600">$2M+</div>
-              <div className="text-sm text-gray-500 uppercase tracking-wide mt-1">Funding Raised</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-brand-600">500+</div>
-              <div className="text-sm text-gray-500 uppercase tracking-wide mt-1">Founders Joined</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-brand-600">94%</div>
-              <div className="text-sm text-gray-500 uppercase tracking-wide mt-1">Success Rate</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Value SwitcherTabs */}
+      <PersonaBentoGrid />
 
-      {/* Main Value Proposition / Features - Solid Cards Style */}
-      <section id="features" className="py-24 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-base text-accent-500 font-bold tracking-wide uppercase">The Platform</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold text-brand-900 sm:text-4xl">
-              Your Startup Journey, Accelerated
+      {/* Features Section */}
+      <FeaturesSection />
+
+      {/* How Venturestack Works */}
+      <ProcessTimeline />
+
+      {/* Results / Metrics Band */}
+      <AnimatedMetrics />
+
+      {/* Implementation Journey Switcher */}
+      <JourneySwitcherSection />
+
+      {/* Plans & Packaging */}
+      <PricingSection />
+
+      {/* Testimonials */}
+      {/* Testimonials */}
+      <section className="py-24 bg-slate-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5"></div>
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-brand-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-accent-500/20 rounded-full blur-3xl"></div>
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Trusted by Innovators</h2>
+            <p className="text-slate-400 max-w-2xl mx-auto text-lg">
+              From corporate innovation labs to fast-moving accelerators, see why specialized teams choose VentureStack.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            {/* Card 1: Orange */}
-            <div className="bg-accent-500 rounded-2xl p-10 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-6 bg-white/20 p-3 rounded-lg w-fit">
-                <LightbulbIcon className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Validate & Refine</h3>
-              <p className="text-accent-50 text-lg leading-relaxed">
-                Don't just have an idea. Have a validated one. Our tools help you refine your concept for maximum market fit before you build.
-              </p>
-            </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className={`p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm relative group hover:border-brand-500/30 transition-colors ${i === 3 ? "md:col-span-2 lg:col-span-1" : ""}`}
+              >
+                <Quote className="absolute top-8 right-8 w-8 h-8 text-white/5 group-hover:text-brand-500/20 transition-colors" />
 
-            {/* Card 2: Deep Blue */}
-            <div className="bg-brand-700 rounded-2xl p-10 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-6 bg-white/20 p-3 rounded-lg w-fit">
-                <RocketIcon className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Build & Launch</h3>
-              <p className="text-brand-100 text-lg leading-relaxed">
-                From wireframes to a working MVP. Access our network or use our AI builder to bring your product to life in record time.
-              </p>
-            </div>
+                <div className="flex gap-1 mb-6">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star key={star} className="w-4 h-4 text-accent-500 fill-accent-500" />
+                  ))}
+                </div>
 
-            {/* Card 3: Royal Blue */}
-            <div className="bg-brand-600 rounded-2xl p-10 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-6 bg-white/20 p-3 rounded-lg w-fit">
-                <TrendingUp className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Grow & Scale</h3>
-              <p className="text-brand-100 text-lg leading-relaxed">
-                Acquire your first users and find your growth engine. We provide the strategies and analytics to scale effectively.
-              </p>
-            </div>
+                <p className="text-slate-200 text-lg mb-8 leading-relaxed">"{t.quote}"</p>
 
-            {/* Card 4: Accent Darker */}
-            <div className="bg-accent-600 rounded-2xl p-10 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300">
-              <div className="mb-6 bg-white/20 p-3 rounded-lg w-fit">
-                <DollarIcon className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Fund & Succeed</h3>
-              <p className="text-accent-100 text-lg leading-relaxed">
-                Get investor-ready. We connect you with our network of VCs and angel investors to secure the funding you need.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive "How it Works" Path */}
-      <section className="py-24 bg-slate-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">From Zero to One</h2>
-            <p className="mt-4 text-lg text-gray-600">The structured path to building a unicorn.</p>
-          </div>
-
-          <div className="relative">
-            {/* Connecting Line (Desktop) */}
-            <div className="hidden md:block absolute top-1/2 left-0 w-full h-1 bg-gray-200 -translate-y-1/2 z-0"></div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative z-10">
-              {[
-                { step: "01", title: "Ideation", desc: "Submit your raw idea." },
-                { step: "02", title: "Validation", desc: "Get market feedback." },
-                { step: "03", title: "Development", desc: "AI builds your MVP." },
-                { step: "04", title: "Launch", desc: "Go live to the world." }
-              ].map((item, i) => (
-                <div key={i} className="bg-white p-6 rounded-xl border border-gray-200 text-center shadow-sm hover:-translate-y-2 transition-transform">
-                  <div className="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold text-xl mx-auto mb-4 border-4 border-white shadow-sm">
-                    {item.step}
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/10">
+                    <img src={t.image} alt={t.author} className="w-full h-full object-cover" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">{item.title}</h3>
-                  <p className="text-gray-500 mt-2">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section - "What founders say about us" */}
-      <section className="py-24 bg-white border-b border-gray-100">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">What founders say about us</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-              <p className="text-gray-700 text-lg italic leading-relaxed mb-6">
-                "VentureStack was instrumental in our seed round. They're more than a platform; they're a partner. The guidance and network access were invaluable."
-              </p>
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 font-bold mr-3">H</div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Himanshu Goyal</p>
-                  <p className="text-xs text-gray-500">CEO of BioHealthOrg</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-              <p className="text-gray-700 text-lg italic leading-relaxed mb-6">
-                "Without VentureStack, we would still be stuck in validation hell. The automated reports helped us pivot early and find true product-market fit."
-              </p>
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-accent-100 rounded-full flex items-center justify-center text-accent-600 font-bold mr-3">S</div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Sarah Jenkins</p>
-                  <p className="text-xs text-gray-500">Founder, FinFlow</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Media Section */}
-      <section className="py-24 bg-brand-900 text-brand-600">
-        <div className="container mx-auto px-4">
-          <div className="text-white text-center mb-12">
-            <h2 className="text-4xl font-bold">Media</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-8 rounded-xl h-64 flex flex-col justify-between hover:bg-brand-300 transition-colors cursor-pointer">
-              <div>
-                <h3 className="text-xl font-bold leading-tight">TurningIdeas Venture to help startups with early investments</h3>
-                <p className="text-brand-600 text-xs mt-4">February 2024</p>
-              </div>
-              <div className="flex items-center text-sm font-medium">
-                READ ARTICLE <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-xl h-64 flex flex-col justify-between hover:bg-brand-300 transition-colors cursor-pointer">
-              <div>
-                <h3 className="text-xl font-bold leading-tight">42 per cent of Indian Startups Plan to Go Global</h3>
-                <p className="text-brand-600 text-xs mt-4">January 2025</p>
-              </div>
-              <div className="flex items-center text-sm font-medium">
-                READ ARTICLE <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-xl h-64 flex flex-col justify-between hover:bg-brand-300 transition-colors cursor-pointer">
-              <div>
-                <h3 className="text-xl font-bold leading-tight">Student housing Startup Your-space raises Angel Funding</h3>
-                <p className="text-brand-600 text-xs mt-4">January 2024</p>
-              </div>
-              <div className="flex items-center text-sm font-medium">
-                READ ARTICLE <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-24 bg-white">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">Frequently Asked Questions</h2>
-          </div>
-
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
-                <button
-                  className="w-full flex justify-between items-center p-6 bg-white hover:bg-gray-50 text-left focus:outline-none transition-colors"
-                  onClick={() => toggleFaq(index)}
-                >
-                  <span className="text-lg font-medium text-gray-900">{faq.question}</span>
-                  {openFaq === index ? (
-                    <ChevronUp className="w-5 h-5 text-gray-500" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
-                  )}
-                </button>
-                {openFaq === index && (
-                  <div className="p-6 bg-gray-50 border-t border-gray-100 animate-fade-in">
-                    <p className="text-gray-600 leading-relaxed">
-                      {faq.answer}
-                    </p>
+                  <div>
+                    <div className="font-bold text-white">{t.author}</div>
+                    <div className="text-sm text-slate-400">{t.role}, {t.company}</div>
                   </div>
-                )}
-              </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-20 bg-brand-900 text-white relative overflow-hidden">
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 bg-blue-500 rounded-full opacity-20 blur-3xl"></div>
-
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to ignite your idea?</h2>
-          <p className="text-xl text-brand-100 mb-10 max-w-2xl mx-auto">
-            Join hundreds of founders who are building the future with VentureStack. No credit card required to start.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/signup">
-              <Button className="px-10 py-4 text-xl bg-white text-brand-900 hover:bg-gray-100 font-bold shadow-lg">
-                Get Started Now
-              </Button>
-            </Link>
+      {/* FAQ Section */}
+      {/* FAQ Section */}
+      <section className="py-24 bg-white relative">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="text-center mb-16">
+            <span className="text-brand-600 font-bold tracking-wider uppercase text-sm mb-2 block">Common Questions</span>
+            <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">Everything you need to know</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
+              Can't find the answer you're looking for? Reach out to our team directly.
+            </p>
           </div>
-          <p className="mt-6 text-sm text-brand-300 opacity-80">
-            Free tier includes unlimited validation reports and basic MVP generation.
-          </p>
+
+          <div className="space-y-4">
+            {faqs.map((faq, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`border rounded-2xl overflow-hidden transition-all duration-300 ${isOpen ? 'border-brand-200 bg-brand-50/50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                >
+                  <button
+                    className="w-full flex justify-between items-center p-6 text-left focus:outline-none"
+                    onClick={() => toggleFaq(index)}
+                  >
+                    <span className={`text-lg font-bold transition-colors ${isOpen ? 'text-brand-900' : 'text-gray-900'}`}>
+                      {faq.question}
+                    </span>
+                    <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 ${isOpen ? 'bg-brand-200 text-brand-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    </span>
+                  </button>
+
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                      >
+                        <div className="px-6 pb-6 pt-0">
+                          <p className="text-gray-600 leading-relaxed text-base border-t border-brand-100/50 pt-4">
+                            {faq.answer}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* Footer is handled by the Layout component usually, but adding a spacer if needed */}
+      {/* Contact Form & Footer CTA */}
+      <section id="contact" className="py-24 bg-brand-50">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <div className="bg-white p-8 md:p-12 rounded-2xl shadow-lg border border-gray-200">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to build real products—fast?</h2>
+              <p className="text-gray-600">Book a demo to see how Venturestack can transform your innovation pipeline.</p>
+            </div>
+
+            <form className="space-y-6" onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.target as HTMLFormElement;
+              const formData = new FormData(form);
+              const data = Object.fromEntries(formData);
+
+              const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+              const originalText = submitBtn.innerText;
+              submitBtn.innerText = 'Sending...';
+              submitBtn.disabled = true;
+
+              fetch('/api/contact/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+              })
+                .then(res => res.json())
+                .then(res => {
+                  if (res.success) {
+                    alert('Thank you! Your request has been sent successfully.');
+                    form.reset();
+                  } else {
+                    alert(res.error || 'Failed to send request. Please try again.');
+                  }
+                })
+                .catch(err => {
+                  console.error(err);
+                  alert('An error occurred. Please try again.');
+                })
+                .finally(() => {
+                  submitBtn.innerText = originalText;
+                  submitBtn.disabled = false;
+                });
+            }}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input required name="name" type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="John Doe" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Work Email</label>
+                <input required name="email" type="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="john@company.com" />
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                  <input name="organization" type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="Company Name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
+                  <select name="timeline" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors">
+                    <option>Immediately</option>
+                    <option>1-3 months</option>
+                    <option>3+ months</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Use Case</label>
+                <select name="useCase" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors">
+                  <option>Corporate Innovation</option>
+                  <option>Incubator / Accelerator</option>
+                  <option>Venture Studio</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea required name="message" rows={4} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors" placeholder="Tell us about your goals..."></textarea>
+              </div>
+
+              <Button type="submit" className="w-full py-4 text-lg font-bold shadow-md bg-brand-600 hover:bg-brand-700 text-white">
+                Submit Request
+              </Button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer CTA Band */}
+      <section className="py-16 bg-brand-900 text-white text-center">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl md:text-4xl font-bold mb-8">Stop planning innovation. Start shipping it.</h2>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+          </div>
+        </div>
+      </section>
+
       {/* Footer Addition */}
       <section className="bg-white py-12 border-t border-gray-200">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
           <div className="mb-6 md:mb-0 text-center md:text-left">
-            <img src="/assets/turning_ideas_logo.png" alt="Turning Ideas Ventures" className="h-12 mx-auto md:mx-0 mb-4" />
+            <h4 className="text-xl font-bold text-brand-900 mb-1">Venturestack</h4>
             <p className="text-sm text-gray-500">
-              VentureStack is a product of <span className="font-semibold text-gray-900">Turning Ideas Ventures</span>.
+              A product of <span className="font-semibold text-gray-900">Turning Ideas Ventures</span>.
             </p>
             <p className="text-xs text-gray-400 mt-2">Incubation • Advisory • Investment</p>
           </div>

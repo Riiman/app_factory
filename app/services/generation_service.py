@@ -67,6 +67,14 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
             print(f"--- [Generation Task] Error: Failed to decode JSON for product generation for startup ID: {startup_id}. Raw output: {product_json_str} ---")
             return
 
+        # Notify product generated
+        try:
+            publish_update("product_generated", 
+                           {"startup_id": startup.id, "product": product.to_dict()}, 
+                           rooms=[f"user_{startup.user_id}", "admin"])
+        except Exception as e:
+             print(f"Error publishing product_generated event: {e}")
+
 
         # --- Generate Product Metrics ---
         metrics_data = [] # Initialize metrics_data to an empty list
@@ -201,6 +209,17 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                     print(f"--- [Generation Task] Warning: Campaign item is not a dictionary for startup ID: {startup_id}. Item: {campaign_data_item} ---")
         else:
             print(f"--- [Generation Task] Warning: No campaigns data to process for startup ID: {startup_id}. Raw output: {campaigns_json_str} ---")
+
+        # Notify campaigns generated
+        try:
+            # Re-fetch campaigns to ensure we have all data if needed, or just send a signal
+            campaigns = MarketingCampaign.query.filter_by(startup_id=startup.id).all()
+            if campaigns:
+                publish_update("campaigns_generated", 
+                               {"startup_id": startup.id, "campaigns": [c.to_dict() for c in campaigns]}, 
+                               rooms=[f"user_{startup.user_id}", "admin"])
+        except Exception as e:
+            print(f"Error publishing campaigns_generated event: {e}")
 
 
         # --- Generate Positioning Statement ---

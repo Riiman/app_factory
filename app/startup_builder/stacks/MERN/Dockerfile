@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 RUN npm install -g nodemon create-react-app express-generator eslint
 
 # Install python packages
-RUN pip3 install flake8 --break-system-packages
+RUN pip3 install flake8 requests --break-system-packages
 
 # Set host to 0.0.0.0 to allow external access
 ENV HOST=0.0.0.0

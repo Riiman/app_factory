@@ -13,7 +13,7 @@ const ContractPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { startupStage } = useAuth();
+  const { startupStage, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,7 +60,7 @@ const ContractPage: React.FC = () => {
       await api.acceptContract();
       setDocument(prev => prev ? { ...prev, founder_accepted: true } : null);
       alert('Contract accepted successfully.');
-      window.location.reload();
+      await refreshUser();
     } catch (e) {
       console.error("Failed to accept contract:", e);
       alert("Failed to accept contract.");

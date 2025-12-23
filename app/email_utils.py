@@ -518,3 +518,72 @@ def send_submission_status_email(email, startup_name, status, message=''):
     except Exception as e:
         print(f"Error sending submission status email: {str(e)}")
         return False
+
+def send_contact_form_email(data):
+    """
+    Send contact form submission to admin
+    """
+    admin_email = os.getenv('MAIL_DEFAULT_SENDER', 'info@venturestackai.com')
+    subject = f"New Contact Request: {data.get('name', 'Unknown')}"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: #1e3a8a; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; border: 1px solid #ddd; }}
+            .field {{ margin-bottom: 15px; }}
+            .label {{ font-weight: bold; color: #555; }}
+            .value {{ margin-top: 5px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h2>New Contact Request</h2>
+            </div>
+            <div class="content">
+                <div class="field">
+                    <div class="label">Name:</div>
+                    <div class="value">{data.get('name', 'N/A')}</div>
+                </div>
+                <div class="field">
+                    <div class="label">Email:</div>
+                    <div class="value">{data.get('email', 'N/A')}</div>
+                </div>
+                <div class="field">
+                    <div class="label">Organization:</div>
+                    <div class="value">{data.get('organization', 'N/A')}</div>
+                </div>
+                <div class="field">
+                    <div class="label">Timeline:</div>
+                    <div class="value">{data.get('timeline', 'N/A')}</div>
+                </div>
+                <div class="field">
+                    <div class="label">Use Case:</div>
+                    <div class="value">{data.get('useCase', 'N/A')}</div>
+                </div>
+                <div class="field">
+                    <div class="label">Message:</div>
+                    <div class="value">{data.get('message', 'N/A')}</div>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        msg = Message(
+            subject=subject,
+            recipients=[admin_email],
+            html=html_content
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending contact form email: {str(e)}")
+        return False

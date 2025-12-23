@@ -24,7 +24,7 @@ const AdminRoute: FC = () => {
     }
   }
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || user.role !== 'admin') {
     // Redirect to login or a forbidden page if not an admin
     return <Navigate to="/login" replace />;
   }

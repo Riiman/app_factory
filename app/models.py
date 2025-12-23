@@ -247,7 +247,7 @@ class User(db.Model):
             'phone_verified': self.phone_verified,
             'full_name': self.full_name,
             'is_verified': self.is_verified,
-            'role': self.role.name,
+            'role': self.role.value,
             'created_at': self.created_at.isoformat(),
             'startup_id': startup.id if startup else None
         }
@@ -269,6 +269,13 @@ class Startup(db.Model):
     recent_activity = db.Column(db.JSON, nullable=True) # Store as JSON array of strings
     container_name = db.Column(db.String(100), nullable=True, unique=True) # Docker container name
     
+    # Status flags for async asset generation
+    is_generating_product = db.Column(db.Boolean, default=False)
+    is_generating_gtm = db.Column(db.Boolean, default=False)
+    is_analyzing_submission = db.Column(db.Boolean, default=False)
+    is_generating_scope = db.Column(db.Boolean, default=False)
+    is_generating_contract = db.Column(db.Boolean, default=False)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -309,6 +316,11 @@ class Startup(db.Model):
             'overall_progress': self.overall_progress,
             'current_stage': self.current_stage.value if self.current_stage else None,
             'next_milestone': self.next_milestone,
+            'is_generating_product': self.is_generating_product,
+            'is_generating_gtm': self.is_generating_gtm,
+            'is_analyzing_submission': self.is_analyzing_submission,
+            'is_generating_scope': self.is_generating_scope,
+            'is_generating_contract': self.is_generating_contract,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'user': self.user.to_dict() if self.user else None,

@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Fragment } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Square, Terminal as TerminalIcon, Send, Loader2, CheckCircle, AlertCircle, Users, ExternalLink, RefreshCw, X, Folder, FileText, MessageSquare, ChevronRight, ChevronDown, Bug, Box } from 'lucide-react';
+import { ArrowLeft, Play, Square, Terminal as TerminalIcon, Send, Loader2, CheckCircle, AlertCircle, Users, ExternalLink, RefreshCw, X, Folder, FileText, MessageSquare, ChevronRight, ChevronDown, Bug, Box, AlertTriangle } from 'lucide-react';
 import TerminalComponent from '../../components/TerminalComponent';
 import FileExplorer from '../../components/FileExplorer';
 import ChatModal from '../../components/ChatModal';
+import AgentBrain from '../../components/AgentBrain'; // New Component
 import api, { getWebSocketUrl } from '../../utils/api';
 import { io, Socket } from 'socket.io-client';
 
@@ -26,20 +28,35 @@ const StartupCodeStudio: React.FC = () => {
     const [isWorking, setIsWorking] = useState(false);
     const [ports, setPorts] = useState<any>(null);
     const [taskStatus, setTaskStatus] = useState<string>('idle');
+    const [missionQueue, setMissionQueue] = useState<any[]>([]);
+    const [currentMissionIndex, setCurrentMissionIndex] = useState<number>(0);
     const logsEndRef = useRef<HTMLDivElement>(null);
     const socketRef = useRef<Socket | null>(null);
+
+    // V3 V3 V3: New Thought States
+    const [activeNode, setActiveNode] = useState<string>('idle');
+
+    const [thoughts, setThoughts] = useState<string[]>([]);
+
+
+
 
     // New State for Refactor
     const [showChatModal, setShowChatModal] = useState(false);
     const [products, setProducts] = useState<any[]>([]);
     const [issues, setIssues] = useState<any[]>([]);
     const [expandedProducts, setExpandedProducts] = useState<Record<number, boolean>>({});
+    const [fileRefreshKey, setFileRefreshKey] = useState(0);
 
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
 
-    const addLog = (msg: string) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg} `]);
+    const addLog = (msg: string) => {
+        const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
+        setLogs(prev => [...prev, logMsg]);
+        setThoughts(prev => [...prev, logMsg]);
+    };
 
     const handleStart = async () => {
         addLog('Starting environment...');
@@ -49,7 +66,9 @@ const StartupCodeStudio: React.FC = () => {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ stack_type: 'MERN' })
+                body: JSON.stringify({
+                    stack_type: 'Universal' // Explicitly request Universal (though backend defaults to it)
+                })
             });
             let data;
             try {
@@ -58,10 +77,10 @@ const StartupCodeStudio: React.FC = () => {
                 addLog(`Error parsing response: ${res.status} ${res.statusText}`);
                 return;
             }
-            if (data.status === 'running' || data.status === 'created') {
+            if (data.status === 'running' || data.status === 'created' || data.status === 'success') {
                 setIsRunning(true);
-                setPorts(data.ports);
-                addLog(`Environment started. Container ID: ${data.container_id}`);
+                if (data.ports) setPorts(data.ports);
+                addLog(`Environment started. ${data.message || ''}`);
             } else if (data.status === 'building') {
                 addLog(`Environment is building... this may take a few minutes. (${data.message})`);
             } else {
@@ -101,6 +120,8 @@ const StartupCodeStudio: React.FC = () => {
             } else {
                 setIsRunning(false);
                 setPorts(null);
+                // Sync state: if environment stops, we can't be working in it
+                setIsWorking(false);
             }
         });
 
@@ -122,9 +143,26 @@ const StartupCodeStudio: React.FC = () => {
         });
 
         socket.on('agent_update', (data) => {
-            if (data.logs) setLogs(data.logs);
+            if (data.logs) {
+                // MERGE STRATEGY: Treat logs as thoughts.
+                // Filter out json strings if needed, or just push them.
+                // We map them to strings to be safe (AgentBrain expects string[]).
+                const newThoughts = data.logs.map((l: any) => {
+                    if (typeof l === 'object') return JSON.stringify(l);
+                    return l;
+                });
+
+                setThoughts(prev => [...prev, ...newThoughts]);
+
+                // Still keep legacy logs for internal tracking if needed, 
+                // but we won't display them in a separate panel.
+                setLogs(prev => [...prev, ...data.logs]);
+            }
             if (data.plan) setPlan(data.plan);
             if (data.task_status) setTaskStatus(data.task_status);
+
+            // V3: Sync Node State
+            if (data.node) setActiveNode(data.node);
 
             if (data.total_tasks) {
                 setProgress({
@@ -143,6 +181,11 @@ const StartupCodeStudio: React.FC = () => {
                 setIsWorking(false);
                 setShowTerminal(true);
             } else if (data.task_status === 'done' || data.task_status === 'qa_passed') {
+                // Determine if we are truly done or just switching missions
+                // The overseer will reset status to 'start' if switching, so 'done' might be transient.
+                // However, if we get 'done' and there is a queue, we might just wait for next update?
+                // Actually, the backend overseer returns status='start' for next mission immediately.
+                // So 'done' implies ALL done.
                 setIsWorking(false);
                 setWaitingApproval(false);
                 addLog('Task completed successfully.');
@@ -151,12 +194,25 @@ const StartupCodeStudio: React.FC = () => {
                 setIsWorking(false);
                 setWaitingApproval(false);
                 addLog('Task failed.');
-            } else if (data.task_status === 'planning_needed' || data.task_status === 'plan_ready' || data.task_status === 'coding' || data.task_status === 'strategizing') {
+            } else if (data.task_status === 'planning_needed' || data.task_status === 'plan_ready' || data.task_status === 'coding' || data.task_status === 'strategizing' || data.task_status === 'start') {
                 setIsWorking(true);
-            } else {
-                // Default fallback, but don't force true if we are unsure
-                // setIsWorking(true); 
             }
+
+            // Mission Tracking
+            if (data.mission_queue) setMissionQueue(data.mission_queue);
+            if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
+
+            if (data.task_status === 'paused') {
+                setIsWorking(false);
+                addLog('Process paused.');
+            }
+        });
+
+        // V3: Thinking Listener
+        socket.on('agent_thought', (data) => {
+            console.log('Thought received:', data);
+            if (data.content) setThoughts(prev => [...prev, data.content]);
+            if (data.node) setActiveNode(data.node);
         });
 
         socket.on('disconnect', () => {
@@ -178,9 +234,25 @@ const StartupCodeStudio: React.FC = () => {
             const data = await res.json();
             setIsRunning(false);
             setPorts(null);
+            // Explicitly stop working state
+            setIsWorking(false);
             addLog(`Environment stopped: ${data.status || 'Success'}`);
         } catch (e) {
             addLog(`Error: ${e}`);
+        }
+    };
+
+    const handlePause = async () => {
+        if (!isWorking) return;
+        addLog('Pausing process...');
+        try {
+            const res = await fetch(`/api/builder/${id}/pause`, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                // Wait for socket update to confirm pause, but optimistic update is fine
+            }
+        } catch (e) {
+            addLog(`Error pausing: ${e}`);
         }
     };
 
@@ -196,14 +268,33 @@ const StartupCodeStudio: React.FC = () => {
     // Separate logs
     const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
 
+    // Rebuild Warning Modal State
+    const [showRebuildWarning, setShowRebuildWarning] = useState(false);
+    const [targetProduct, setTargetProduct] = useState<any>(null);
+
     useEffect(() => {
         if (id) {
             fetchData();
             checkAgentStatus(); // Check persistence on load
+            checkEnvStatus(); // Check container status
         }
     }, [id]);
 
     // Polling removed in favor of WebSockets
+
+    const checkEnvStatus = async () => {
+        try {
+            const res = await fetch(`/api/builder/${id}/env-status`);
+            const data = await res.json();
+            if (data.status === 'running') {
+                setIsRunning(true);
+                setPorts(data.ports);
+                addLog(`Environment is active. Container ID: ${data.container_id}`);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const checkAgentStatus = async () => {
         try {
@@ -214,6 +305,7 @@ const StartupCodeStudio: React.FC = () => {
                 setLogs(data.logs || []);
                 setPlan(data.plan || []);
                 setTaskStatus(data.task_status || 'unknown');
+                setThoughts(data.thoughts || []); // Restore thoughts if available
 
                 if (data.total_tasks > 0) {
                     setProgress({
@@ -230,6 +322,9 @@ const StartupCodeStudio: React.FC = () => {
                     setIsWorking(false);
                     setShowTerminal(true);
                 }
+
+                if (data.mission_queue) setMissionQueue(data.mission_queue);
+                if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
             }
         } catch (e) {
             console.error("Failed to check status:", e);
@@ -254,16 +349,29 @@ const StartupCodeStudio: React.FC = () => {
     const triggerAgent = async (taskPrompt: string) => {
         setPrompt(taskPrompt);
         setShowChatModal(true);
-        // We need to wait for state update or pass directly.
-        // runTask uses 'prompt' state.
-        // We can call runTaskInternal directly.
         setIsWorking(true);
         setWaitingApproval(false);
         setPlan([]);
         setLogs([]);
-        setProgress({ completed: 0, total: 0 });
-        addLog(`Auto-Triggered Task: "${taskPrompt}" (YOLO: ${yoloMode})`);
-        await runTaskInternal(taskPrompt, yoloMode);
+        setThoughts([]); // Clear thoughts for new task
+        setActiveNode("planning"); // Reset node
+
+        addLog(`Auto-Triggered Task: "${taskPrompt}"`);
+
+        // V3 API Call
+        try {
+            await fetch(`/api/builder/v3/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startup_id: id,
+                    mission: taskPrompt
+                })
+            });
+        } catch (e) {
+            addLog(`Error triggering agent: ${e}`);
+            setIsWorking(false);
+        }
     };
 
     const initProduct = async (product: any) => {
@@ -274,20 +382,31 @@ const StartupCodeStudio: React.FC = () => {
         if (product.stage !== 'development') {
             setLogs([]);
             setPlan([]);
+            setMissionQueue([]);
+            setCurrentMissionIndex(0);
             setProgress({ completed: 0, total: 0 });
         }
 
         try {
-            const res = await fetch(`/api/builder/${id}/run-task`, {
+            // Updated to use the new 'build-product' endpoint
+            const res = await fetch(`/api/builder/${id}/build-product`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    goal: `Initialize project structure for ${product.name}. Tech Stack: ${product.tech_stack || 'React + Node.js'}. Create basic scaffold.`,
-                    yolo: yoloMode,
-                    product_id: product.id // Send ID for status update
+                    product_id: product.id, // Send ID for status update
+                    yolo: yoloMode
                 })
             });
             const data = await res.json();
+
+            if (data.status === 'no_changes') {
+                setIsWorking(false);
+                setTargetProduct(product);
+                setShowRebuildWarning(true);
+                addLog(data.message);
+                return;
+            }
+
             handleResponse(data);
             fetchData(); // Refresh to show "Resume"
         } catch (e) {
@@ -344,6 +463,30 @@ const StartupCodeStudio: React.FC = () => {
         }
     };
 
+    const confirmRebuild = async () => {
+        if (!targetProduct) return;
+        setShowRebuildWarning(false);
+        setIsWorking(true);
+        addLog(`Forcing fresh rebuild for ${targetProduct.name}...`);
+
+        try {
+            const res = await fetch(`/api/builder/${id}/build-product`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product_id: targetProduct.id,
+                    yolo: yoloMode,
+                    force_rebuild: true
+                })
+            });
+            const data = await res.json();
+            handleResponse(data);
+        } catch (e) {
+            addLog(`Error rebuilding: ${e}`);
+            setIsWorking(false);
+        }
+    };
+
     const runTaskInternal = async (goal: string, yolo: boolean) => {
         try {
             const res = await fetch(`/api/builder/${id}/run-task`, {
@@ -370,18 +513,32 @@ const StartupCodeStudio: React.FC = () => {
         setWaitingApproval(false);
         setPlan([]);
         setLogs([]);
-        setProgress({ completed: 0, total: 0 });
-        addLog(`Team assigned to task: "${currentPrompt}" (YOLO: ${yoloMode})`);
+        setThoughts([]);
+        setActiveNode("planning");
 
-        // Add placeholder response (since we don't have real streaming chat yet)
+        addLog(`Team assigned to task: "${currentPrompt}"`);
+
+        // Add placeholder response
         setTimeout(() => {
             setChatMessages(prev => [...prev, {
                 role: 'assistant',
-                content: `I've started working on: "${currentPrompt}". check the Team Activity Log for detailed progress.`
+                content: `I've started working on: "${currentPrompt}". check the Brain View for real-time thoughts.`
             }]);
         }, 500);
 
-        await runTaskInternal(currentPrompt, yoloMode);
+        try {
+            await fetch(`/api/builder/v3/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startup_id: id,
+                    mission: currentPrompt
+                })
+            });
+        } catch (e) {
+            addLog(`Error running task: ${e}`);
+            setIsWorking(false);
+        }
     };
 
     const approveStep = async () => {
@@ -542,9 +699,16 @@ const StartupCodeStudio: React.FC = () => {
                             <Play className="w-4 h-4" /> Start Env
                         </button>
                     ) : (
-                        <button onClick={handleStop} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
-                            <Square className="w-4 h-4" /> Stop Env
-                        </button>
+                        <>
+                            {isWorking && (
+                                <button onClick={handlePause} className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                                    <span className="w-4 h-4 flex items-center justify-center font-bold">||</span> Pause
+                                </button>
+                            )}
+                            <button onClick={handleStop} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                                <Square className="w-4 h-4" /> Stop Env
+                            </button>
+                        </>
                     )}
                     <a
                         href={`/api/startups/${id}/preview/`}
@@ -599,6 +763,21 @@ const StartupCodeStudio: React.FC = () => {
                                                 total: data.total_tasks
                                             });
                                         }
+                                        if (data.logs) {
+                                            // MERGE STRATEGY: Treat logs as thoughts.
+                                            // Filter out json strings if needed, or just push them.
+                                            // We map them to strings to be safe (AgentBrain expects string[]).
+                                            const newThoughts = data.logs.map((l: any) => {
+                                                if (typeof l === 'object') return JSON.stringify(l);
+                                                return l;
+                                            });
+
+                                            setThoughts(prev => [...prev, ...newThoughts]);
+
+                                            // Still keep legacy logs for internal tracking if needed,
+                                            // but we won't display them in a separate panel.
+                                            setLogs(prev => [...prev, ...data.logs]);
+                                        }
                                     } else {
                                         alert("Failed to reset: " + data.error);
                                     }
@@ -617,14 +796,14 @@ const StartupCodeStudio: React.FC = () => {
 
             {/* Progress Bar Section */}
             {(isWorking || progress.total > 0) && (
-                <div className="h-16 bg-gray-950 border-b border-gray-800 px-4 flex items-center justify-between">
+                <div className="min-h-16 h-auto py-2 bg-gray-950 border-b border-gray-800 px-4 flex items-center justify-between">
                     <div className="flex-1 max-w-4xl">
-                        {/* Progress Bar */}
+                        {/* Granular Progress Bar */}
                         <div className="mb-2">
                             <div className="flex justify-between text-xs text-gray-400 mb-1">
                                 <span className="font-medium">
                                     {progress.total > 0 ? (
-                                        `Task ${progress.completed + 1} of ${progress.total}`
+                                        `Task ${Math.min(progress.completed + 1, progress.total)} of ${progress.total}`
                                     ) : (
                                         'Initializing...'
                                     )}
@@ -647,12 +826,33 @@ const StartupCodeStudio: React.FC = () => {
                                 )}
                             </div>
                         </div>
+
+                        {/* Mission Progress Bar - Only if Mission Queue exists */}
+                        {missionQueue.length > 0 && (
+                            <div className="mb-2">
+                                <div className="flex justify-between text-xs text-blue-300 mb-1">
+                                    <span className="font-medium">
+                                        Mission {currentMissionIndex + 1} of {missionQueue.length}: {missionQueue[currentMissionIndex]?.title}
+                                    </span>
+                                    <span>
+                                        {Math.round(((currentMissionIndex) / missionQueue.length) * 100)}% Overall
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-800 rounded-full h-1.5">
+                                    <div
+                                        className="bg-purple-500 h-1.5 rounded-full transition-all duration-500"
+                                        style={{ width: `${((currentMissionIndex) / missionQueue.length) * 100}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         {/* Current Task Display */}
                         <div className="flex items-center gap-4 text-xs">
                             <div className="flex items-center gap-2 text-gray-300 truncate max-w-[50%]">
                                 <span className="text-blue-400 font-semibold">Current:</span>
-                                <span className="truncate" title={currentStep?.description || "Planning..."}>
-                                    {currentStep?.description || "Planning..."}
+                                <span className="truncate" title={currentStep?.description || (missionQueue.length > 0 ? `Planning: ${missionQueue[currentMissionIndex]?.title}` : "Planning...")}>
+                                    {currentStep?.description || (missionQueue.length > 0 ? `Planning: ${missionQueue[currentMissionIndex]?.title}` : "Planning...")}
                                 </span>
                             </div>
                             {plan.length > (progress.completed + 1) && (
@@ -668,9 +868,24 @@ const StartupCodeStudio: React.FC = () => {
 
                     <div className="flex items-center gap-4 ml-4">
                         {isWorking && (
-                            <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>Working...</span>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Working...</span>
+                                </div>
+                                <button
+                                    onClick={handlePause}
+                                    className="flex items-center gap-1 bg-yellow-900/50 hover:bg-yellow-900 text-yellow-200 border border-yellow-800 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                >
+                                    <Square className="w-3 h-3 fill-current" /> Pause
+                                </button>
+                            </div>
+                        )}
+                        {!isWorking && taskStatus === 'paused' && (
+                            <div className="flex items-center gap-2 text-yellow-400 text-sm">
+                                <span className="flex items-center gap-1 bg-yellow-900/30 px-2 py-1 rounded border border-yellow-800/50">
+                                    <Square className="w-3 h-3 fill-current" /> Paused
+                                </span>
                             </div>
                         )}
                     </div>
@@ -724,37 +939,35 @@ const StartupCodeStudio: React.FC = () => {
                                                 }`}
                                         >
                                             {isWorking ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                                            {isWorking ? 'Processing...' : product.stage === 'development' ? 'Resume' : 'Initialize'}
+                                            {isWorking ? 'building...' : 'Build Product'}
                                         </button>
                                     </div>
 
                                     {expandedProducts[product.id] && (
-                                        <div className="p-2 space-y-1 bg-gray-900/50">
+                                        <div className="bg-gray-950 p-2 border-t border-gray-800 space-y-2">
                                             {product.features?.map((feature: any) => (
-                                                <div key={feature.id} className="flex items-center justify-between p-2 rounded hover:bg-gray-800 group">
-                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${feature.status === 'COMPLETED' ? 'bg-green-500' :
-                                                            feature.status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-gray-600'
-                                                            }`} />
-                                                        <span className="text-sm text-gray-400 truncate group-hover:text-gray-200">{feature.name}</span>
+                                                <div key={feature.id} className="flex flex-col gap-1 p-2 rounded bg-gray-900 border border-gray-800">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-medium text-gray-300">{feature.name}</span>
+
+                                                        {/* Status Badge */}
+                                                        {feature.status === 'completed' ? (
+                                                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-green-900/30 text-green-400 border border-green-800">
+                                                                <CheckCircle className="w-3 h-3" /> Done
+                                                            </span>
+                                                        ) : feature.status === 'in_progress' ? (
+                                                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-blue-900/30 text-blue-400 border border-blue-800 animate-pulse">
+                                                                <Loader2 className="w-3 h-3 animate-spin" /> Building...
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-500 px-2 py-0.5">
+                                                                Pending
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <button
-                                                        onClick={() => buildFeature(feature, product.name)}
-                                                        disabled={!isRunning || isWorking || feature.status === 'COMPLETED'}
-                                                        className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded transition-colors ${!isRunning || isWorking ? 'text-gray-600 cursor-not-allowed' :
-                                                            feature.status === 'COMPLETED' ? 'text-green-500 cursor-default' :
-                                                                feature.status === 'IN_PROGRESS' ? 'bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900 border border-yellow-800/50' :
-                                                                    'bg-blue-900/30 text-blue-400 hover:bg-blue-900 border border-blue-800/50'
-                                                            }`}
-                                                    >
-                                                        {isWorking && feature.status !== 'COMPLETED' ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                                                        {feature.status === 'COMPLETED' ? 'Done' : feature.status === 'IN_PROGRESS' ? (isWorking ? 'Resuming...' : 'Resume') : 'Build'}
-                                                    </button>
+                                                    <p className="text-[10px] text-gray-500 line-clamp-2">{feature.description}</p>
                                                 </div>
                                             ))}
-                                            {(!product.features || product.features.length === 0) && (
-                                                <div className="text-xs text-gray-600 p-2 italic">No features defined.</div>
-                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -793,78 +1006,21 @@ const StartupCodeStudio: React.FC = () => {
                     ) : (
                         // Files Tab
                         <div className="flex-1 bg-black overflow-hidden">
-                            {id && <FileExplorer startupId={id} />}
+                            {id && <FileExplorer startupId={id} refreshKey={fileRefreshKey} />}
                         </div>
                     )}
                 </div >
 
-                {/* Right Panel: Team Logs */}
-                < div className="flex-1 flex flex-col bg-black font-mono text-sm" >
-                    <div className="h-8 bg-gray-800 flex items-center px-4 text-xs text-gray-400 border-b border-gray-700 justify-between">
-                        <div className="flex items-center">
-                            <TerminalIcon className="w-3 h-3 mr-2" /> Team Activity Log
+                {/* Right Panel: Team Logs (Merged into Brain) */}
+                <div className="flex-1 flex flex-col bg-black font-mono text-sm border-l border-gray-800 min-h-0">
+                    {/* V3 Brain View - Full Height */}
+                    <div className="flex-1 bg-gray-950 p-2 min-h-0">
+                        <div className="h-full">
+                            <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} />
                         </div>
-                        <button onClick={fetchLogs} className="hover:text-white transition-colors" title="Refresh Logs">
-                            <RefreshCw className="w-3 h-3" />
-                        </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 text-gray-300">
-                        {logs.map((log, i) => {
-                            let parsedLog = { agent: "Unknown", message: log, details: "" };
-                            let isJson = false;
-
-                            try {
-                                if (log.trim().startsWith("{")) {
-                                    parsedLog = JSON.parse(log);
-                                    isJson = true;
-                                }
-                            } catch (e) {
-                                // Not JSON, use raw string
-                            }
-
-                            // Color code logs based on agent
-                            let color = "text-gray-300";
-                            const agent = isJson ? parsedLog.agent : log;
-
-                            if (agent.includes("Architect")) color = "text-purple-400";
-                            if (agent.includes("Planner")) color = "text-blue-400";
-                            if (agent.includes("Developer")) color = "text-green-400";
-                            if (agent.includes("Reviewer")) color = "text-orange-400";
-                            if (agent.includes("Executor")) color = "text-yellow-400";
-                            if (agent.includes("Strategist")) color = "text-red-400";
-                            if (agent.includes("Tester")) color = "text-pink-400";
-
-                            return (
-                                <div key={i} className={`flex flex-col gap-1 ${color} border-b border-gray-800/50 pb-2 last:border-0`}>
-                                    <div className="flex justify-between items-start gap-2">
-                                        <span className="break-words">
-                                            {isJson ? (
-                                                <>
-                                                    <span className="font-bold">[{parsedLog.agent}]:</span> {parsedLog.message}
-                                                </>
-                                            ) : (
-                                                log
-                                            )}
-                                        </span>
-                                        {isJson && parsedLog.details && (
-                                            <button
-                                                onClick={() => {
-                                                    setContainerLogs(parsedLog.details); // Reuse container logs modal for simplicity
-                                                    setShowContainerLogs(true);
-                                                }}
-                                                className="shrink-0 text-[10px] bg-gray-800 hover:bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded border border-gray-700 transition-colors"
-                                            >
-                                                View Output
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        <div ref={logsEndRef} />
-                    </div>
-                </div >
-            </div >
+                </div>
+            </div>
 
             {/* Chat Modal */}
             <ChatModal
@@ -924,8 +1080,74 @@ const StartupCodeStudio: React.FC = () => {
                     </div>
                 )
             }
+
+            {/* Rebuild Warning Modal */}
+            <Transition appear show={showRebuildWarning} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setShowRebuildWarning(false)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4 text-center">
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-900 border border-red-500/30 p-6 text-left align-middle shadow-xl transition-all">
+                                    <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-white flex items-center gap-2">
+                                        <div className="p-2 rounded-full bg-orange-500/20 text-orange-400">
+                                            <AlertTriangle className="w-5 h-5" />
+                                        </div>
+                                        Project Already Built
+                                    </Dialog.Title>
+                                    <div className="mt-4">
+                                        <p className="text-sm text-gray-400">
+                                            This project has already been fully built and there are no new features to implement.
+                                        </p>
+                                        <p className="text-sm text-gray-400 mt-2">
+                                            Do you want to <span className="text-red-400 font-bold">WIPE EVERYTHING</span> and start a fresh build? This action cannot be undone.
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-6 flex justify-end gap-3">
+                                        <button
+                                            type="button"
+                                            className="inline-flex justify-center rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2"
+                                            onClick={() => setShowRebuildWarning(false)}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                                            onClick={confirmRebuild}
+                                        >
+                                            Wipe & Rebuild
+                                        </button>
+                                    </div>
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
         </div >
     );
 };
 
 export default StartupCodeStudio;
+

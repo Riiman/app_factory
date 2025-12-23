@@ -1,13 +1,18 @@
 import React, { FC, HTMLProps } from 'react';
 
-interface ButtonProps extends HTMLProps<HTMLButtonElement> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline';
-  type?: 'button' | 'submit' | 'reset';
-  children: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-const Button: FC<ButtonProps> = ({ children, variant = 'primary', className = '', ...props }) => {
-  const baseClasses = "px-6 py-3 font-semibold rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-transform transform hover:scale-105 duration-200 ease-in-out";
+const Button: FC<ButtonProps> = ({ children, variant = 'primary', size = 'md', className = '', ...props }) => {
+  const baseClasses = "font-semibold rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-transform transform hover:scale-105 duration-200 ease-in-out";
+
+  const sizeClasses = {
+    sm: "px-4 py-2 text-sm",
+    md: "px-6 py-3 text-base",
+    lg: "px-8 py-4 text-xl"
+  };
 
   const variantClasses = {
     primary: "bg-gradient-to-r from-brand-600 to-accent-500 text-white hover:from-brand-500 hover:to-accent-400 focus:ring-accent-500",
@@ -16,7 +21,7 @@ const Button: FC<ButtonProps> = ({ children, variant = 'primary', className = ''
   };
 
   return (
-    <button className={`${baseClasses} ${variantClasses[variant]} ${className}`} {...props}>
+    <button className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`} {...props}>
       {children}
     </button>
   );

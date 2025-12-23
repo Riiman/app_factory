@@ -8,14 +8,12 @@ const Header: FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center cursor-pointer">
-            <Link to="/" className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500">
+            <Link to="/" className="text-3xl font-bold bg-clip-text text-transparent animate-gradient-x">
               VentureStack
             </Link>
           </div>
           <nav className="hidden md:flex items-center space-x-4">
-            <Link to="/" className="text-gray-600 hover:text-gray-900 font-medium">Home</Link>
-            <a href="#" className="text-gray-600 hover:text-gray-900 font-medium">Features</a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 font-medium">Pricing</a>
+            <a href="#features" className="text-gray-600 hover:text-gray-900 font-medium">Features</a>
           </nav>
           <div className="flex items-center space-x-2">
             <Link to="/login">

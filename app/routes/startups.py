@@ -886,6 +886,13 @@ def generate_assets(startup_id):
     generate_product = data.get('generate_product', True)
     generate_gtm = data.get('generate_gtm', True)
 
+    
+    if generate_product:
+        startup.is_generating_product = True
+    if generate_gtm:
+        startup.is_generating_gtm = True
+    db.session.commit()
+
     from app.tasks import generate_startup_assets_task
     generate_startup_assets_task.delay(startup.id, generate_product=generate_product, generate_gtm=generate_gtm)
 
@@ -938,6 +945,18 @@ def proxy_to_container(startup_id, subpath):
     
     if container_info.get("status") != "running":
         return jsonify({"error": "Container is not running"}), 502
+
+    # Auto-start app if needed
+    app_status = manager.ensure_app_running(startup_id, container_name=startup.container_name)
+    if "error" in app_status:
+         # Log warning but try to proceed? Or fail?
+         # Proceeding might fail if port not bound yet.
+         print(f"Warning: Failed to ensure app running: {app_status['error']}")
+         
+    # Reload ports in case app start bound new ones (unlikely for mapped ports, but good practice)
+    # Actually, mapped ports are set at container creation. app binding to internal 3000 is what matters.
+    # But manager.ensure_container returns ports.
+
         
     # Get mapped port for 3000 (React)
     # Ports format: {'3000/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '32768'}], ...}
@@ -975,8 +994,38 @@ def proxy_to_container(startup_id, subpath):
         excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
         headers = [(name, value) for (name, value) in resp.raw.headers.items()
                    if name.lower() not in excluded_headers]
+        
+        content = resp.content
+        
+        # Check if content matches typical Next.js HTML and rewrite paths
+        content_type = resp.headers.get('Content-Type', '').lower()
+        if 'text/html' in content_type:
+            try:
+                text_content = content.decode('utf-8')
+                # Rewrite Next.js static asset paths to use the proxy path
+                proxy_base = f"/api/startups/{startup_id}/preview"
+                
+                # Replace src="/_next/" with src="/api/startups/ID/preview/_next/"
+                # We use specific replacements to avoid breaking other things
+                text_content = text_content.replace('src="/_next/', f'src="{proxy_base}/_next/')
+                text_content = text_content.replace('href="/_next/', f'href="{proxy_base}/_next/')
+                text_content = text_content.replace('src="/static/', f'src="{proxy_base}/static/') # Handle public folder
+                
+                # Also handle potentially other absolute paths if safe?
+                # For now, focus on Next.js criticality.
+                
+                content = text_content.encode('utf-8')
+                
+                # Update Content-Length header since size changed
+                headers = [(k, v) for k, v in headers if k.lower() != 'content-length']
+                headers.append(('Content-Length', str(len(content))))
+                
+            except Exception as e:
+                print(f"Proxy Rewrite Error: {e}")
+                # Fallback to original content
+                pass
                    
-        return Response(resp.content, resp.status_code, headers)
+        return Response(content, resp.status_code, headers)
         
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Failed to connect to container app"}), 502

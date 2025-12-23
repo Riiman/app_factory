@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, Product, Founder, MarketingCampaign, ProductMetric, ProductBusinessDetails, Investor, ActivityLog, DashboardNotification, Feature, Fundraise } from '@/types/dashboard-types';
-import api from '@/utils/api';
+import api, { getWebSocketUrl } from '@/utils/api';
+import { io } from 'socket.io-client';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
 import DashboardOverview from './dashboard/DashboardOverview';
@@ -115,6 +117,128 @@ const DashboardPage: React.FC = () => {
             setNotifications(startup.notifications || []);
         }
     }, [startup]);
+
+    // --- Socket.IO Listener for Real-time Updates ---
+    const queryClient = useQueryClient();
+
+    // Import toast - added at top of file, but for replace logic here ensuring correct context
+    // Ideally user provided full file content or I should have added import separately.
+    // I will checking imports in next step but assuming I can use toast here if imported.
+    // Wait, I need to add import first or risk error. 
+    // Let me add import in a separate replace call or assume it's done. 
+    // Actually, I'll add the import in a separate call to be safe, then update listeners.
+
+    // Changing strategy: This call just updates listeners assuming import exists.
+
+    useEffect(() => {
+        if (!user?.startup_id) return;
+
+        const socketUrl = getWebSocketUrl('');
+        const socket = io(socketUrl.replace('ws', 'http'), {
+            transports: ['websocket'],
+            path: '/socket.io'
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to global namespace');
+            // Join specific room for user/startup updates
+            socket.emit('join', { room: `user_${user.id}` });
+        });
+
+        socket.on('assets_generation_completed', (data: any) => {
+            console.log('Asset generation completed:', data);
+            if (data.startup_id === user.startup_id) {
+                if (data.status === 'error') {
+                    toast.error(data.message || "Failed to generate assets.");
+                } else {
+                    toast.success(data.message || "Assets generated successfully!");
+                    // Invalidate query to refetch fresh data
+                    queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+
+                    // Also optionally update local state immediately if preferred
+                    api.getStartupData(user.startup_id).then(updatedStartup => {
+                        setStartupData(updatedStartup);
+                        setProducts(updatedStartup.products || []);
+                        setMarketingCampaigns(updatedStartup.marketing_campaigns || []);
+                    });
+                }
+            }
+        });
+
+        socket.on('scope_generation_completed', (data: any) => {
+            console.log('Scope generation completed:', data);
+            if (data.startup_id === user.startup_id) {
+                if (data.status === 'error') {
+                    toast.error(data.message || "Failed to generate scope.");
+                } else {
+                    toast.success(data.message || "Scope generated successfully!");
+                    queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                }
+            }
+        });
+
+        socket.on('contract_generation_completed', (data: any) => {
+            console.log('Contract generation completed:', data);
+            if (data.startup_id === user.startup_id) {
+                if (data.status === 'error') {
+                    toast.error(data.message || "Failed to generate contract.");
+                } else {
+                    toast.success(data.message || "Contract generated successfully!");
+                    queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                }
+            }
+        });
+
+        socket.on('analysis_completed', (data: any) => {
+            console.log('Analysis completed:', data);
+            // User might be waiting for analysis result
+            toast.success(data.message || "Evaluation analysis completed!");
+            queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+        });
+
+        socket.on('analysis_failed', (data: any) => {
+            console.log('Analysis failed:', data);
+            toast.error(data.message || "Evaluation analysis failed.");
+            queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+        });
+
+        socket.on('product_generated', (data: any) => {
+            console.log('Product generated:', data);
+            if (data.startup_id === user.startup_id) {
+                toast.success("Product generated successfully!");
+                queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                // Optimistic update if needed
+                setProducts(prev => {
+                    const newProduct = data.product;
+                    if (!prev) return [newProduct];
+                    if (prev.find(p => p.id === newProduct.id)) return prev;
+                    return [...prev, newProduct];
+                });
+            }
+        });
+
+        socket.on('campaigns_generated', (data: any) => {
+            console.log('Campaigns generated:', data);
+            if (data.startup_id === user.startup_id) {
+                toast.success("Marketing campaigns generated successfully!");
+                queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                // Optimistic update for campaigns
+                setMarketingCampaigns(prev => {
+                    // Since we receive all campaigns or a list, we might want to just refetch or merge
+                    // For simplicity, refetching is safer as handled by invalidateQueries. 
+                    // But we can update local state if data.campaigns is provided
+                    if (data.campaigns) {
+                        return data.campaigns;
+                    }
+                    return prev;
+                });
+            }
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [user?.startup_id, user?.id, queryClient]);
 
     // --- Asset Generation Modal Logic ---
     const [isAssetGenerationModalOpen, setIsAssetGenerationModalOpen] = useState(false);
@@ -500,7 +624,7 @@ const DashboardPage: React.FC = () => {
                             }}
                         />;
                     }
-                    return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} />;
+                    return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} isGeneratingProduct={startupData.is_generating_product} />;
                 }
                 if (activeSubPage === 'Product Metrics') {
                     return <ProductMetricsPage startupId={startupData.id} products={products || []} setProducts={setProducts} onAddNewMetric={() => setIsCreateMetricModalOpen(true)} />;
@@ -508,7 +632,7 @@ const DashboardPage: React.FC = () => {
                 if (activeSubPage === 'Issues & Feedback') {
                     return <ProductIssuesPage startupId={startupData.id} products={products} setProducts={setProducts} onAddNewIssue={() => setIsCreateIssueModalOpen(true)} />;
                 }
-                return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} />;
+                return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} isGeneratingProduct={startupData.is_generating_product} />;
 
             case Scope.BUSINESS:
                 if (activeSubPage === 'Overview & Model') {
@@ -615,6 +739,7 @@ const DashboardPage: React.FC = () => {
                         setCampaigns={setMarketingCampaigns}
                         onSelectCampaign={handleSelectCampaign}
                         onAddNewCampaign={() => setIsCreateCampaignModalOpen(true)}
+                        isGeneratingGtm={startupData.is_generating_gtm}
                     />;
                 }
                 if (activeSubPage === 'Content Calendar') {

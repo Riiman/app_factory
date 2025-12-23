@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { FileText, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
+import ChatInterface from '../components/chat/ChatInterface';
+import Button from '../components/ui/Button';
 
 const SubmissionPage = () => {
     const { user, submissionData, nextQuestion, isLoading, handleLogout, refreshUser } = useAuth();
@@ -71,68 +74,92 @@ const SubmissionPage = () => {
     }
 
     return (
-        <div className="flex h-screen bg-gray-100">
-            {/* Chat Window */}
-            <div className="flex-1 flex flex-col">
-                <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto">
-                    {messages.map((msg, index) => (
-                        <div key={index} className={`my-2 flex ${msg.sender === 'bot' ? 'justify-start' : 'justify-end'}`}>
-                            <div className={`p-3 rounded-lg max-w-lg ${msg.sender === 'bot' ? 'bg-white text-gray-800' : 'bg-blue-500 text-white'}`}>
-                                {msg.text}
-                            </div>
-                        </div>
-                    ))}
-                    {isChatLoading && <div className="text-center text-gray-500">Bot is thinking...</div>}
-                </div>
-                <div className="border-t p-4 bg-white">
-                    <form onSubmit={handleSendMessage} className="flex">
-                        <input
-                            type="text"
-                            value={userInput}
-                            onChange={(e) => setUserInput(e.target.value)}
-                            className="flex-1 p-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Type your message..."
-                            disabled={isChatLoading}
-                        />
-                        <button
-                            type="submit"
-                            className="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 disabled:bg-blue-300"
-                            disabled={isChatLoading}
-                        >
-                            Send
-                        </button>
-                    </form>
-                </div>
-            </div>
+        <div className="flex flex-col h-screen bg-slate-50">
+            <header className="sticky top-0 bg-white/80 backdrop-blur-md shadow-sm z-50 shrink-0">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between h-16 relative">
+                        {/* Empty left side to balance the absolute centering if using flex, 
+                            but for true centering with a right-side element, relative/absolute is best. 
+                        */}
 
-            {/* Submission Summary Sidebar */}
-            <div className="w-1/3 bg-white border-l p-6 overflow-y-auto">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Your Submission Details</h2>
-                    <button
-                        onClick={handleLogout}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium"
-                    >
-                        Logout
-                    </button>
-                </div>
-                {submissionData ? (
-                    <div>
-                        {Object.entries(submissionData).map(([key, value]) => {
-                            if (['id', 'user_id', 'status', 'submitted_at', 'raw_chat_data', 'chat_progress_step', 'user', 'evaluation', 'startup'].includes(key)) {
-                                return null;
-                            }
-                            return (
-                                <div key={key} className="mb-4">
-                                    <h3 className="font-semibold capitalize">{key.replace(/_/g, ' ')}</h3>
-                                    <p className="text-gray-700 whitespace-pre-wrap">{value ? String(value) : <span className="text-gray-400">Not yet provided</span>}</p>
-                                </div>
-                            );
-                        })}
+                        {/* Centered Logo */}
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500">
+                            VentureStack
+                        </div>
+
+                        {/* Right-aligned content */}
+                        <div className="ml-auto">
+                            <Button
+                                className="flex items-center gap-2 text-sm bg-gradient-to-r from-brand-600 to-accent-500 text-white hover:opacity-90 shadow-sm border-0"
+                                onClick={handleLogout}
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span className="hidden sm:inline">Logout</span>
+                            </Button>
+                        </div>
                     </div>
-                ) : (
-                    <p>Your extracted data will appear here...</p>
-                )}
+                </div>
+            </header>
+
+            <div className="flex flex-1 overflow-hidden">
+                {/* Chat Window */}
+                <div className="flex-1 flex flex-col relative">
+                    <ChatInterface
+                        messages={messages as any[]} // explicit cast if needed, though interface overlaps
+                        inputValue={userInput}
+                        onInputChange={setUserInput}
+                        onSendMessage={() => handleSendMessage({ preventDefault: () => { } } as any)}
+                        isLoading={isChatLoading}
+                        isTyping={isChatLoading}
+                        placeholder="Describe your startup idea..."
+                        emptyStateMessage={
+                            <div className="text-center">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Let's build your startup!</h2>
+                                <p className="text-gray-600">Tell me about your idea, and I'll help you create a plan.</p>
+                            </div>
+                        }
+                    />
+                </div>
+
+                {/* Submission Summary Sidebar */}
+                <div className="w-1/3 min-w-[320px] bg-white border-l border-gray-200 flex flex-col shadow-xl z-40">
+                    <div className="p-6 border-b border-gray-100 bg-white flex justify-between items-center sticky top-0 z-10">
+                        <h2 className="text-xl font-bold text-brand-900 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-brand-600" />
+                            Submission Details
+                        </h2>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+                        {submissionData ? (
+                            <div className="space-y-4">
+                                {Object.entries(submissionData).map(([key, value]) => {
+                                    if (['id', 'user_id', 'status', 'submitted_at', 'raw_chat_data', 'chat_progress_step', 'user', 'evaluation', 'startup'].includes(key)) {
+                                        return null;
+                                    }
+                                    return (
+                                        <div key={key} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-brand-200 transition-colors group">
+                                            <h3 className="text-xs uppercase tracking-wide text-brand-600 font-bold mb-2 flex items-center gap-1 group-hover:text-brand-700">
+                                                {key.replace(/_/g, ' ')}
+                                            </h3>
+                                            <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+                                                {value ? String(value) : <span className="text-gray-400 italic">Not yet provided</span>}
+                                            </p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-64 text-center">
+                                <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mb-4">
+                                    <FileText className="w-8 h-8 text-brand-200" />
+                                </div>
+                                <p className="text-gray-900 font-medium">No details yet</p>
+                                <p className="text-sm text-gray-500 mt-1 max-w-[200px]">As you chat, extracted details about your startup will appear here.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

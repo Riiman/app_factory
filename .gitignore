@@ -454,4 +454,7 @@ reproduce_issue.py
 reset_db_data.py
 reset_startup.py
 scripts/reset_startup_build.py
-startupos_key.pem
+content.txt
+debug_db.py
+repro_flow.py
+!build.log

@@ -5,19 +5,58 @@ import time
 class DockerManager:
     def __init__(self):
         try:
-            self.client = docker.from_env()
-        except Exception as e:
-            print(f"Error initializing Docker client: {e}")
-            self.client = None
+            # Force local socket for Linux environment to avoid SSH hangs
+            self.client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        except Exception:
+            try:
+                # Fallback to env
+                self.client = docker.from_env()
+            except Exception as e:
+                print(f"Error initializing Docker client: {e}")
+                self.client = None
+
+        # Fix: Initialize base_work_dir
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.base_work_dir = os.path.join(base_path, 'temp_workspaces')
+        if not os.path.exists(self.base_work_dir):
+            try:
+                os.makedirs(self.base_work_dir, exist_ok=True)
+            except Exception as e:
+                print(f"Error creating base_work_dir: {e}")
 
     def get_container_name(self, startup_id, container_name=None):
         """
         Returns the container name for a startup.
         If container_name is provided, returns it.
-        Otherwise generates a default name (for backward compatibility).
+        Otherwise queries the database.
+        Finally generates a default name (for backward compatibility).
         """
         if container_name:
             return container_name
+            
+        try:
+            from app.models import Startup
+            startup = Startup.query.get(startup_id)
+            if startup and startup.container_name:
+                return startup.container_name
+        except Exception as e:
+            print(f"Error fetching container name from DB: {e}")
+            
+        # Fallback: Check for running containers with matching volume mount
+        # This handles cases where DB update failed or is lagging
+        try:
+            if self.client:
+                target_path = f"temp_workspaces/{startup_id}"
+                containers = self.client.containers.list() # Running only
+                for c in containers:
+                    for mount in c.attrs.get("Mounts", []):
+                        source = mount.get("Source", "")
+                        if target_path in source:
+                            print(f"Recovered container {c.name} via volume check for {startup_id}")
+                            return c.name
+        except Exception as e:
+            print(f"Volume fallback search failed: {e}")
+            
         return f"startup_dev_{startup_id}"
     
     def generate_container_name(self):
@@ -37,8 +76,20 @@ class DockerManager:
             return {"error": "Docker not available"}
 
         # Use provided container_name or generate a new one
+        # Use provided container_name or try to find existing one
         if not container_name:
-            container_name = self.generate_container_name()
+            # Try to recover an existing container name (Volume Check / DB Check via ID)
+            # checking DB is redundant here if caller passed None, but Volume Check is vital.
+            recovered_name = self.get_container_name(startup_id)
+            try:
+                # Check if this recovered name actually refers to a running/existing container
+                self.client.containers.get(recovered_name)
+                container_name = recovered_name
+                print(f"ensure_container: Recovered existing container {container_name}")
+            except:
+                # If not found, THEN generate new random name
+                container_name = self.generate_container_name()
+                print(f"ensure_container: Generated new container name {container_name}")
         
         # Check if running
         try:
@@ -58,31 +109,26 @@ class DockerManager:
         except docker.errors.NotFound:
             # Create new container
             try:
-                # Build Image based on stack
-                stack_dir = os.path.join(os.path.dirname(__file__), 'stacks', stack_type)
-                if not os.path.exists(stack_dir):
-                    # Fallback to MERN if stack not found
-                    stack_dir = os.path.join(os.path.dirname(__file__), 'stacks', 'MERN')
-                
-                image_tag = f"startup_builder_{stack_type.lower()}"
+                # Force Universal Stack (V3 Architecture)
+                # We ignore the requested stack_type for the image, but keep it for metadata if needed.
+                stack_dir = os.path.join(os.path.dirname(__file__), 'stacks', 'Universal')
+                image_tag = "startup_builder_universal"
                 
                 # Build the image
-                print(f"Building image for {stack_type}...")
+                print(f"Building Universal Image...")
                 self.client.images.build(path=stack_dir, tag=image_tag)
 
-                # Create a volume for persistence
-                volume_name = f"startup_vol_{startup_id}"
-                try:
-                    self.client.volumes.get(volume_name)
-                except docker.errors.NotFound:
-                    self.client.volumes.create(name=volume_name)
+                # Create workspace directory on host
+                workspace_path = os.path.join(self.base_work_dir, str(startup_id))
+                os.makedirs(workspace_path, exist_ok=True)
+                print(f"Using workspace at: {workspace_path}")
 
                 container = self.client.containers.run(
                     image_tag,
                     command="tail -f /dev/null", # Keep alive
                     detach=True,
                     name=container_name,
-                    volumes={volume_name: {'bind': '/app', 'mode': 'rw'}},
+                    volumes={workspace_path: {'bind': '/app', 'mode': 'rw'}},
                     working_dir="/app",
                     ports={'3000/tcp': None, '8000/tcp': None, '8888/tcp': None}, # Allow mapping for various ports
                     environment={'HOST': '0.0.0.0'}
@@ -154,12 +200,7 @@ class DockerManager:
 
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
         
         try:
             container = self.client.containers.get(container_name)
@@ -168,22 +209,25 @@ class DockerManager:
             
             # Execute command
             if detach:
-                # exec_run with detach=True returns output generator? No, it returns exit_code (None) and output (None) usually?
-                # Actually python docker client exec_run(detach=True) returns output as bytes?
-                # Let's check docs or assume standard behavior: it returns immediately.
-                # We use nohup to ensure it keeps running? exec_run is not a shell, so we need sh -c.
-                exit_code, output = container.exec_run(
-                    f"bash -c 'nohup {command} > /dev/null 2>&1 &'",
-                    workdir="/app"
+                sanitized_cmd = command.replace("'", "'\\''") 
+                cmd_str = f"nohup bash -c '{sanitized_cmd}' > /dev/null 2>&1 &"
+                
+                container.exec_run(
+                    ["bash", "-c", cmd_str],
+                    workdir="/app",
+                    user="root" # Always root if requested? Or simple default
                 )
                 return {
                     "exit_code": 0,
                     "output": "Command started in background."
                 }
             else:
+                # Use list format to avoid quoting issues
+                # Run as root to allow installs
                 exit_code, output = container.exec_run(
-                    f"bash -c '{command}'",
-                    workdir="/app"
+                    ["bash", "-c", command],
+                    workdir="/app",
+                    user="root" 
                 )
                 return {
                     "exit_code": exit_code,
@@ -203,12 +247,7 @@ class DockerManager:
         
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
         
         try:
             container = self.client.containers.get(container_name)
@@ -237,13 +276,54 @@ class DockerManager:
                 is_dir = line.endswith('/')
                 name = line[:-1] if is_dir else line
                 
+                # Check Hidden Folders
+                if name in ["node_modules", ".git", "__pycache__", "artifacts"]:
+                    continue
+                
                 files.append({
                     "name": name,
                     "type": "directory" if is_dir else "file",
                     "path": os.path.join(path, name) if path != "." else name
                 })
                 
+            if not files:
+                 return {"files": [], "info": "Directory is empty (or contains only hidden files)."}
             return {"files": files}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def search_files(self, startup_id, query, path=".", container_name=None):
+        """
+        Searches for a string pattern in files using grep.
+        Returns: dict with matches or error.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+        
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            if container.status != 'running':
+                return {"error": "Container not running"}
+            
+            # Use grep -rnC 2 to get recursive, line numbers, and context
+            # -I ignores binary files
+            # --exclude-dir to skip node_modules, .git, artifacts
+            cmd = f"grep -rnC 2 -I --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=artifacts '{query}' '{path}'"
+            
+            exit_code, output = container.exec_run(
+                f"bash -c \"{cmd}\"",
+                workdir="/app"
+            )
+            
+            # grep returns 1 if no matches found, which is not an error for us
+            if exit_code > 1:
+                return {"error": f"Error searching files: {output.decode('utf-8')}"}
+                
+            return {"output": output.decode('utf-8')}
             
         except Exception as e:
             return {"error": str(e)}
@@ -257,12 +337,7 @@ class DockerManager:
         
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
             
         try:
             container = self.client.containers.get(container_name)
@@ -282,6 +357,61 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
+    def replace_in_file(self, startup_id, path, target_text, replacement_text, container_name=None):
+        """
+        Replaces exact target_text with replacement_text in the file.
+        Safety Checks:
+        - Target must exist.
+        - Target must be unique (appear exactly once).
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+
+        # Query database for container name if not provided
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+        
+        try:
+            container = self.client.containers.get(container_name)
+            if container.status != 'running':
+                return {"error": "Container not running"}
+            
+            # 1. Read File
+            exit_code, output = container.exec_run(f"cat '{path}'", workdir="/app")
+            if exit_code != 0:
+                return {"error": f"Read failed: {output.decode('utf-8')}"}
+            
+            content = output.decode('utf-8')
+            
+            # 2. Safety Checks
+            count = content.count(target_text)
+            if count == 0:
+                # Try to be helpful: check if it's a whitespace issue
+                # Normalize spaces (simple check)
+                if target_text.strip() in content:
+                    return {"error": "Target not found (exact match failed, but stripped match found. Check indentation)."}
+                return {"error": "Target text not found in file."}
+            elif count > 1:
+                return {"error": f"Ambiguous target: Code block found {count} times. Include more context."}
+            
+            # 3. Apply Replacement
+            new_content = content.replace(target_text, replacement_text)
+            
+            # 4. Write Back (reuse write_file logic but avoid circular dep if possible, or just reimplement)
+            import base64
+            encoded_content = base64.b64encode(new_content.encode('utf-8')).decode('utf-8')
+            cmd = f"echo '{encoded_content}' | base64 -d > '{path}'"
+            
+            exit_code, output = container.exec_run(f"bash -c \"{cmd}\"", workdir="/app")
+            
+            if exit_code != 0:
+                 return {"error": f"Write failed: {output.decode('utf-8')}"}
+                 
+            return {"status": "success"}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
     def write_file(self, startup_id, path, content, container_name=None):
         """
         Writes content to a file in the container using base64 encoding.
@@ -291,12 +421,7 @@ class DockerManager:
 
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
         
         try:
             container = self.client.containers.get(container_name)
@@ -331,12 +456,7 @@ class DockerManager:
         
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
             
         try:
             container = self.client.containers.get(container_name)
@@ -354,12 +474,7 @@ class DockerManager:
         
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
             
         try:
             container = self.client.containers.get(container_name)
@@ -416,7 +531,7 @@ class DockerManager:
             print(f"Error copying from container: {e}")
             return False
 
-    def start_server(self, startup_id, container_name=None):
+    def start_server(self, startup_id, container_name=None, start_command=None):
         """
         Starts the application server in the background.
         Detects package.json or requirements.txt to determine start command.
@@ -426,12 +541,7 @@ class DockerManager:
 
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
 
         try:
             container = self.client.containers.get(container_name)
@@ -439,29 +549,37 @@ class DockerManager:
                 return {"error": "Container not running"}
 
             # 1. Determine Start Command
-            start_cmd = "npm start" # Default
-            
-            # Check for package.json
-            exit_code, output = container.exec_run("cat package.json", workdir="/app")
-            if exit_code == 0:
-                import json
-                try:
-                    pkg = json.loads(output.decode('utf-8'))
-                    if "scripts" in pkg and "dev" in pkg["scripts"]:
-                        start_cmd = "npm run dev"
-                    elif "scripts" in pkg and "start" in pkg["scripts"]:
-                        start_cmd = "npm start"
-                except:
-                    pass
+            if start_command:
+                start_cmd = start_command
             else:
-                # Check for python
-                exit_code, _ = container.exec_run("ls app.py", workdir="/app")
+                start_cmd = "npm start" # Default
+                
+                # Check for package.json
+                exit_code, output = container.exec_run("cat package.json", workdir="/app")
                 if exit_code == 0:
-                    start_cmd = "python app.py"
+                    import json
+                    try:
+                        pkg = json.loads(output.decode('utf-8'))
+                        if "scripts" in pkg and "dev" in pkg["scripts"]:
+                            start_cmd = "npm run dev"
+                        elif "scripts" in pkg and "start" in pkg["scripts"]:
+                            start_cmd = "npm start"
+                    except:
+                        pass
                 else:
-                    exit_code, _ = container.exec_run("ls main.py", workdir="/app")
+                    # Check for python
+                    exit_code, _ = container.exec_run("ls app.py", workdir="/app")
                     if exit_code == 0:
-                        start_cmd = "python main.py"
+                        start_cmd = "python app.py"
+                    else:
+                        exit_code, _ = container.exec_run("ls main.py", workdir="/app")
+                        if exit_code == 0:
+                            start_cmd = "python main.py"
+                        else:
+                            # Flask specific check
+                            exit_code, _ = container.exec_run("ls wsgi.py", workdir="/app")
+                            if exit_code == 0:
+                                start_cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
 
             print(f"Starting server with command: {start_cmd}")
 
@@ -482,6 +600,40 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
+    def ensure_app_running(self, startup_id, container_name=None, start_command=None):
+        """
+        Ensures the application server is running inside the container.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+            
+        # 1. Check if running (check PID)
+        # Query database for container name if not provided
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            
+            # Check for server.pid
+            exit_code, output = container.exec_run("cat server.pid", workdir="/app")
+            if exit_code == 0:
+                pid = output.decode('utf-8').strip()
+                # Check if process exists
+                check_exit, _ = container.exec_run(f"ps -p {pid}", workdir="/app")
+                if check_exit == 0:
+                     return {"status": "running", "pid": pid}
+                else:
+                    # Stale PID file
+                    container.exec_run("rm server.pid", workdir="/app")
+            
+            # Not running, start it
+            print(f"App not running for {startup_id}. Auto-starting...")
+            return self.start_server(startup_id, container_name, start_command)
+            
+        except Exception as e:
+            return {"error": str(e)}
+
     def stop_server(self, startup_id, container_name=None):
         """
         Stops the application server using the saved PID.
@@ -491,12 +643,7 @@ class DockerManager:
 
         # Query database for container name if not provided
         if not container_name:
-            from app.models import Startup
-            startup = Startup.query.get(startup_id)
-            if startup and startup.container_name:
-                container_name = startup.container_name
-            else:
-                container_name = self.get_container_name(startup_id)
+            container_name = self.get_container_name(startup_id)
 
         try:
             container = self.client.containers.get(container_name)
@@ -523,17 +670,171 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
-    def get_container_logs(self, startup_id):
-        """Returns the logs of the container."""
+    def start_background_process(self, startup_id, alias, command, container_name=None):
+        """
+        Starts a process in the background, tracks PID, and redirects logs.
+        Stores state in /tmp/process_manager.json inside the container.
+        """
         if not self.client:
             return {"error": "Docker not available"}
-            
-        container_name = self.get_container_name(startup_id)
+
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+
         try:
             container = self.client.containers.get(container_name)
-            return {"logs": container.logs().decode('utf-8')}
+            if container.status != 'running':
+                return {"error": "Container not running"}
+
+            log_file = f"/tmp/{alias}.log"
+            
+            # 1. Update/Read State File
+            state_file = "/tmp/process_manager.json"
+            # Ensure state file exists
+            container.exec_run(f"bash -c \"if [ ! -f {state_file} ]; then echo '{{}}' > {state_file}; fi\"", workdir="/app")
+            
+            # Check if alias exists
+            cat_cmd = f"cat {state_file}"
+            exit_code, output = container.exec_run(cat_cmd, workdir="/app")
+            import json
+            state = {}
+            if exit_code == 0:
+                 try:
+                    state = json.loads(output.decode('utf-8'))
+                 except:
+                    pass
+            
+            if alias in state:
+                # Check if running
+                pid = state[alias]
+                exit_code, _ = container.exec_run(f"ps -p {pid}", workdir="/app")
+                if exit_code == 0:
+                     return {"error": f"Process '{alias}' is already running (PID: {pid}). Stop it first."}
+            
+            # 2. Run Command
+            # Sanitize command for shell
+            sanitized_cmd = command.replace("'", "'\\''") 
+            full_cmd = f"nohup bash -c '{sanitized_cmd}' > {log_file} 2>&1 & echo $!"
+            
+            exit_code, output = container.exec_run(
+                ["bash", "-c", full_cmd],
+                workdir="/app"
+            )
+            
+            if exit_code != 0:
+                 return {"error": f"Failed to start process: {output.decode('utf-8')}"}
+                 
+            pid = output.decode('utf-8').strip()
+            
+            # 3. Save State
+            state[alias] = pid
+            save_cmd = f"echo '{json.dumps(state)}' > {state_file}"
+            container.exec_run(["bash", "-c", save_cmd], workdir="/app")
+            
+            return {
+                "status": "started", 
+                "alias": alias, 
+                "pid": pid, 
+                "log_file": log_file,
+                "message": f"Verified process started with PID {pid}. Logs at {log_file}."
+            }
+            
         except Exception as e:
             return {"error": str(e)}
+
+    def stop_background_process(self, startup_id, alias, container_name=None):
+        """
+        Stops a background process by alias and cleans up logs.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+
+        try:
+            container = self.client.containers.get(container_name)
+            state_file = "/tmp/process_manager.json"
+            
+            # Read State
+            exit_code, output = container.exec_run(f"cat {state_file}", workdir="/app")
+            if exit_code != 0:
+                return {"error": "No process manager state found."}
+                
+            import json
+            try:
+                state = json.loads(output.decode('utf-8'))
+            except:
+                return {"error": "Corrupt process manager state."}
+                
+            if alias not in state:
+                 return {"error": f"Process '{alias}' not found."}
+                 
+            pid = state[alias]
+            
+            # Kill
+            container.exec_run(f"kill -9 {pid}", workdir="/app")
+            
+            # Remove from State
+            del state[alias]
+            save_cmd = f"echo '{json.dumps(state)}' > {state_file}"
+            container.exec_run(["bash", "-c", save_cmd], workdir="/app")
+            
+            # Cleanup Log
+            log_file = f"/tmp/{alias}.log"
+            container.exec_run(f"rm -f {log_file}", workdir="/app")
+            
+            return {"status": "stopped", "alias": alias, "pid": pid, "message": "Process stopped and logs cleaned."}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def read_background_process_logs(self, startup_id, alias, lines=20, container_name=None):
+        """
+        Reads the tail of the log file for an alias.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            log_file = f"/tmp/{alias}.log"
+            
+            exit_code, output = container.exec_run(f"tail -n {lines} {log_file}", workdir="/app")
+            
+            if exit_code != 0:
+                 return {"error": f"Could not read logs (Process might not exist): {output.decode('utf-8')}"}
+            
+            return {"logs": output.decode('utf-8')}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def list_background_processes(self, startup_id, container_name=None):
+        if not self.client:
+            return {"error": "Docker not available"}
+
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            state_file = "/tmp/process_manager.json"
+            
+            exit_code, output = container.exec_run(f"cat {state_file}", workdir="/app")
+            if exit_code != 0:
+                return {"processes": []}
+                
+            import json
+            state = json.loads(output.decode('utf-8'))
+            return {"processes": list(state.keys())}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
 
 class Linter:
     def __init__(self, docker_manager):

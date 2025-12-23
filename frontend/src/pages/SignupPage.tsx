@@ -1,12 +1,13 @@
 import React, { FC, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Footer from '../components/layout/Footer';
 import AuthFormWrapper from '../components/AuthFormWrapper';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import api from '../utils/api';
 import { GoogleIcon, LinkedInIcon } from '../components/Icons';
 import { auth } from '../firebase';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, RecaptchaVerifier, linkWithPhoneNumber, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, RecaptchaVerifier, linkWithPhoneNumber, GoogleAuthProvider, signOut, signInWithPopup } from "firebase/auth";
 import { useAuth } from '../contexts/AuthContext';
 
 const SignupPage: FC = () => {
@@ -42,36 +43,20 @@ const SignupPage: FC = () => {
     }
   }, [user, confirmationResult, navigate, isSigningUp, isMockVerification]);
 
-  // Handle Google Redirect Result
-  useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          // Existing logic handles creating the user record in simple login,
-          // but for signup, we technically need more fields (phone, name).
-          // For now, let's treat it as a login/signup hybrid same as Login page
-          // or we could prompt for more info.
-          // Assuming Google provides enough info to start.
-          const firebaseUser = result.user;
-          const idToken = await firebaseUser.getIdToken();
 
-          // Reuse login endpoint which creates user if missing
-          await api.post('/auth/login', { firebase_id_token: idToken });
-          navigate('/start-submission');
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to sign in with Google.');
-      }
-    };
-    checkRedirect();
-  }, [navigate]);
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+      const idToken = await firebaseUser.getIdToken();
+
+      // Reuse login endpoint which creates user if missing
+      await api.post('/auth/login', { firebase_id_token: idToken });
+      navigate('/start-submission');
     } catch (err: any) {
+      console.error("Google Sign-In Error:", err);
       setError(err.message || 'Failed to sign in with Google.');
     }
   };
@@ -164,46 +149,60 @@ const SignupPage: FC = () => {
   };
 
   return (
-    <AuthFormWrapper
-      title="Create your new account"
-      footer={<>Already a member? <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">Sign in</Link></>}
-    >
-      {!confirmationResult ? (
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <Input id="name-signup" label="Full Name" type="text" required value={fullName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)} />
-          <Input id="email-signup" label="Email address" type="email" required value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} />
-          <Input id="password-signup" label="Password" type="password" required value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} />
-          <Input id="phone-signup" label="Phone Number (e.g., +15551234567)" type="tel" required value={phoneNumber} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhoneNumber(e.target.value)} />
-          <div id="recaptcha-container"></div>
-          <div><Button type="submit" className="w-full justify-center">Create Account</Button></div>
-        </form>
-      ) : (
-        <form className="space-y-6" onSubmit={handlePhoneVerification}>
-          <Input id="sms-code" label="Verification Code" type="text" required value={verificationCode} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVerificationCode(e.target.value)} />
-          <Button type="submit" className="w-full justify-center">Verify Phone</Button>
-        </form>
-      )}
-      {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-      {message && <p className="text-green-500 text-sm text-center mt-4">{message}</p>}
-      <div className="mt-6">
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
-          <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500">Or sign up with</span></div>
-        </div>
-        <div className="mt-6 grid grid-cols-1 gap-3">
-          <div>
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-            >
-              <span className="sr-only">Sign up with Google</span>
-              <GoogleIcon />
-            </button>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <header className="sticky top-0 bg-white/80 backdrop-blur-md shadow-sm z-50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 justify-center">
+            <div className="flex items-center cursor-pointer">
+              <Link to="/" className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500">
+                VentureStack
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
-    </AuthFormWrapper>
+      </header>
+      <AuthFormWrapper
+        title="Create your new account"
+        footer={<>Already a member? <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">Sign in</Link></>}
+      >
+        {!confirmationResult ? (
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <Input id="name-signup" label="Full Name" type="text" required value={fullName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)} />
+            <Input id="email-signup" label="Email address" type="email" required value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} />
+            <Input id="password-signup" label="Password" type="password" required value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} />
+            <Input id="phone-signup" label="Phone Number (e.g., +15551234567)" type="tel" required value={phoneNumber} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhoneNumber(e.target.value)} />
+            <div id="recaptcha-container"></div>
+            <div><Button type="submit" className="w-full justify-center">Create Account</Button></div>
+          </form>
+        ) : (
+          <form className="space-y-6" onSubmit={handlePhoneVerification}>
+            <Input id="sms-code" label="Verification Code" type="text" required value={verificationCode} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVerificationCode(e.target.value)} />
+            <Button type="submit" className="w-full justify-center">Verify Phone</Button>
+          </form>
+        )}
+        {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+        {message && <p className="text-green-500 text-sm text-center mt-4">{message}</p>}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
+            <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500">Or sign up with</span></div>
+          </div>
+          <div className="mt-6 grid grid-cols-1 gap-3">
+            <div>
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+              >
+                <span className="sr-only">Sign up with Google</span>
+                <GoogleIcon />
+              </button>
+            </div>
+          </div>
+        </div>
+      </AuthFormWrapper>
+      <Footer />
+    </div>
   );
 };
 
