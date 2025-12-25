@@ -91,7 +91,7 @@ def update_submission_status(submission_id):
     if new_status == SubmissionStatus.IN_REVIEW:
          analyze_submission_task.delay(submission.id)
          # Optionally, return a specialized message
-         return jsonify({'success': True, 'message': 'Analysis started. Status will update to IN_REVIEW upon completion.'}), 200
+         return jsonify({'success': True, 'message': 'Analysis started. Status will update to IN_REVIEW upon completion.', 'submission': submission.to_dict()}), 200
 
     # If submission is approved, create a startup entry and trigger scope document generation
     if new_status == SubmissionStatus.APPROVED:
