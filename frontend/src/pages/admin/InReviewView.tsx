@@ -215,7 +215,7 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
                 </Card>
                 <Card title="Growth Potential Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.growth_potential?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown>{selectedDetails.evaluation.growth_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Competitor Analysis">
@@ -225,7 +225,7 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
                 </Card>
                 <Card title="Risks Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.risk_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown>{selectedDetails.evaluation.risks_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
               </>

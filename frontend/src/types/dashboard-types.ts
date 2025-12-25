@@ -201,9 +201,9 @@ export interface Evaluation {
   problem_analysis: Record<string, any>;
   solution_analysis: Record<string, any>;
   market_analysis: Record<string, any>;
-  growth_potential: Record<string, any>;
+  growth_analysis: Record<string, any>;
   competitor_analysis: Record<string, any>;
-  risk_analysis: Record<string, any>;
+  risks_analysis: Record<string, any>;
   overall_score: number;
   final_decision: string;
   overall_summary: string;
