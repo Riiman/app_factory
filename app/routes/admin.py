@@ -9,8 +9,7 @@ from datetime import datetime
 import json
 from app.services.analyzer_service import run_analysis
 from app.services.document_generator_service import generate_scope_document
-from app.tasks import generate_product_task, analyze_submission_task, generate_scope_document_task
-from app.services.product_generator_service import generate_product_from_scope
+from app.tasks import analyze_submission_task, generate_scope_document_task
 from app.models import Product, Feature, ActivityLog
 from app.services.notification_service import publish_update
 from app.email_utils import send_submission_status_email
