@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Submission, Evaluation, User, SubmissionStatus, Startup, Scope } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
@@ -193,39 +194,39 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
                     <div className="md:col-span-2 bg-gray-50 p-4 rounded-md">
                       <h5 className="font-bold text-gray-600">Overall Summary</h5>
                       <div className="prose prose-sm max-w-none text-gray-700">
-                        <ReactMarkdown>{selectedDetails.evaluation.overall_summary || 'No summary provided.'}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.overall_summary || 'No summary provided.'}</ReactMarkdown>
                       </div>
                     </div>
                   </div>
                 </Card>
                 <Card title="Problem Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.problem_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.problem_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Solution Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.solution_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.solution_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Market Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.market_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.market_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Growth Potential Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.growth_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.growth_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Competitor Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.competitor_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.competitor_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Risks Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.risks_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.risks_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
               </>
