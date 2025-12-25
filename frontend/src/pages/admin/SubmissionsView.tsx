@@ -102,13 +102,7 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdate
                     >
                       {updatingSubmissionId === selectedDetails.id ? 'Processing...' : <><FileClock className="mr-2 h-4 w-4" /> Move to Review</>}
                     </button>
-                    <button
-                      onClick={() => handleStatusUpdate(selectedDetails.id, SubmissionStatus.APPROVED)}
-                      disabled={updatingSubmissionId !== null}
-                      className="flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {updatingSubmissionId === selectedDetails.id ? 'Processing...' : <><FileCheck className="mr-2 h-4 w-4" /> Approve</>}
-                    </button>
+
                   </div>
                 )}
               </div>
