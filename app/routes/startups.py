@@ -887,6 +887,11 @@ def generate_assets(startup_id):
     generate_gtm = data.get('generate_gtm', True)
 
     
+    if generate_product and startup.is_generating_product:
+        return jsonify({'success': False, 'error': 'Product generation is already in progress.'}), 400
+    if generate_gtm and startup.is_generating_gtm:
+        return jsonify({'success': False, 'error': 'GTM generation is already in progress.'}), 400
+
     if generate_product:
         startup.is_generating_product = True
     if generate_gtm:
@@ -894,6 +899,9 @@ def generate_assets(startup_id):
     db.session.commit()
 
     from app.tasks import generate_startup_assets_task
+    # Broadcast "Started" event immediately for UI responsiveness
+    publish_update("assets_generation_started", {"startup_id": startup.id, "message": "Asset generation started..."}, rooms=[f"user_{startup.user_id}", "admin"])
+    
     generate_startup_assets_task.delay(startup.id, generate_product=generate_product, generate_gtm=generate_gtm)
 
     return jsonify({'success': True, 'message': 'Asset generation triggered.'}), 200

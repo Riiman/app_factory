@@ -2,9 +2,8 @@ from app.extensions import celery, db
 from app.services.analyzer_service import run_analysis
 from app.services.document_generator_service import generate_scope_document
 from app.services.contract_generator_service import generate_contract_document
-from app.services.product_generator_service import generate_product_from_scope
 from app.services.generation_service import generate_startup_assets
-from app.models import Product, Feature, Startup, Contract, StartupStage
+from app.models import Product, Feature, Startup, Contract, StartupStage, SubmissionStatus
 from app.services.notification_service import publish_update
 
 @celery.task(name='app.tasks.generate_startup_assets_task')
@@ -97,16 +96,27 @@ def generate_scope_document_task(startup_id):
                 if status == "success":
                     startup.current_stage = StartupStage.SCOPING
                     print(f"--- [Celery Task] Moved startup {startup.id} to SCOPING stage ---")
+                    
+                    # ALSO update the Submission status to APPROVED now that it's ready
+                    if startup.submission:
+                        startup.submission.status = SubmissionStatus.APPROVED
+                        print(f"--- [Celery Task] Updated submission {startup.submission.id} status to APPROVED ---")
+
                 
                 db.session.commit()
-                publish_update("scope_generation_completed", 
+                
+                event_type = "scope_generation_completed"
+                
+                publish_update(event_type, 
                                {
                                    "startup_id": startup.id, 
                                    "scope_document": startup.scope_document.to_dict() if startup.scope_document else None,
                                    "startup": startup.to_dict(), # Send updated startup with new stage
                                    "status": status,
                                    "message": message,
-                                   "error": error_details
+                                   "error": error_details,
+                                   "submission_id": startup.submission.id if startup.submission else None, # Include submission ID for frontend updates
+                                   "new_submission_status": startup.submission.status.value if startup.submission else None
                                }, 
                                rooms=[f"user_{startup.user_id}", "admin"])
         except Exception as e:
@@ -166,48 +176,4 @@ def generate_contract_task(startup_id):
         except Exception as e:
             print(f"Error resetting contract generation flag: {e}")
 
-@celery.task(name='app.tasks.generate_product_task')
-def generate_product_task(startup_id):
-    """
-    Celery task to trigger product generation from a scope document and save
-    the results to the database.
-    """
-    print(f"--- [Celery Task] Starting product generation for startup ID: {startup_id} ---")
-    product_data = generate_product_from_scope(startup_id)
 
-    if not product_data:
-        print(f"--- [Celery Task] Error: Failed to generate product data for startup ID: {startup_id}. Aborting. ---")
-        return
-
-    try:
-        # Create the main Product record
-        new_product = Product(
-            startup_id=startup_id,
-            name=product_data.get('name', 'Unnamed Product'),
-            description=product_data.get('description', '')
-        )
-        db.session.add(new_product)
-        db.session.flush()  # Flush to get the new_product.id for the features
-
-        # Create the associated Feature records
-        features_data = product_data.get('features', [])
-        for feature_item in features_data:
-            new_feature = Feature(
-                product_id=new_product.id,
-                name=feature_item.get('name', 'Unnamed Feature'),
-                description=feature_item.get('description', ''),
-                acceptance_criteria=feature_item.get('acceptance_criteria', '')
-            )
-            db.session.add(new_feature)
-
-        db.session.commit()
-        
-        startup = Startup.query.get(startup_id)
-        if startup:
-            publish_update("product_generated", {"startup_id": startup_id, "product": new_product.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
-        
-        print(f"--- [Celery Task] Successfully created product '{new_product.name}' for startup ID: {startup_id} ---")
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"--- [Celery Task] Error creating product in database for startup ID: {startup_id}. Error: {e} ---")

@@ -101,6 +101,7 @@ const MarketingCampaignsPage: React.FC<MarketingCampaignsPageProps> = ({ startup
                 <div className="flex space-x-2">
                     {(campaigns || []).length === 0 && (
                         <button
+                            onClick={handleGenerateGtm}
                             disabled={isGeneratingGtm}
                             className={`flex items-center px-4 py-2 text-white rounded-md transition-colors ${isGeneratingGtm ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'}`}
                         >

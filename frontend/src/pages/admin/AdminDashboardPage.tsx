@@ -148,6 +148,22 @@ const AdminDashboardPage: React.FC = () => {
     socket.on('campaigns_generated', (data: any) => handleEvent('Campaigns Gen', data, "Marketing campaigns generated for startup!", "Failed to generate campaigns."));
     socket.on('analysis_failed', (data: any) => handleEvent('Analysis Failed', data, "", "Evaluation analysis failed.")); // Redundant if captured above, but good for safety
 
+    // -- Newly Added Listeners --
+    socket.on('scope_generation_started', (data: any) => handleEvent('Scope Gen Started', data, data.message || "Scope generation started...", "Failed to start scope generation."));
+    socket.on('contract_generation_started', (data: any) => handleEvent('Contract Gen Started', data, data.message || "Contract generation started...", "Failed to start contract generation."));
+    socket.on('assets_generation_started', (data: any) => handleEvent('Assets Gen Started', data, data.message || "Asset generation started...", "Failed to start asset generation."));
+
+    // Status update listener - primarily to invalidate queries so UI refreshes
+    socket.on('submission_status_updated', (data: any) => {
+      console.log('Submission Status Updated:', data);
+      // We generally don't need a toast for status updates unless important, 
+      // but invalidating data is crucial to move items between tabs
+      queryClient.invalidateQueries({ queryKey: ['adminData'] });
+      if (data.is_generating_scope) {
+        toast.success("Scope generation initialized.");
+      }
+    });
+
     return () => {
       socket.disconnect();
     };
