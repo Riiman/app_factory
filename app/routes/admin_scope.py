@@ -39,17 +39,25 @@ def update_scope_status(startup_id):
         
         # Check if both admin and founder have accepted
         if scope_doc.admin_accepted and scope_doc.founder_accepted:
-            # Both parties accepted - transition to CONTRACT stage
-            scope_doc.status = ScopeStatus.ACCEPTED.name
-            startup.is_generating_contract = True
-            generate_contract_task.delay(startup.id)
-            print(f"--- [API] Both parties accepted. Triggered contract generation for startup ID: {startup.id} ---")
+             # Both parties accepted - transition to CONTRACT stage
+             if startup.is_generating_contract:
+                 print(f"--- [API] Contract generation already in progress for startup ID: {startup.id} ---")
+                 return jsonify({'success': False, 'error': 'Contract generation is already in progress.'}), 400
+                 
+             scope_doc.status = ScopeStatus.ACCEPTED.name
+             startup.is_generating_contract = True
+             generate_contract_task.delay(startup.id)
+             print(f"--- [API] Both parties accepted. Triggered contract generation for startup ID: {startup.id} ---")
         elif scope_doc.founder_accepted:
-            # Only founder accepted previously, now admin accepted too
-            scope_doc.status = ScopeStatus.ACCEPTED.name
-            startup.is_generating_contract = True
-            generate_contract_task.delay(startup.id)
-            print(f"--- [API] Founder already accepted. Admin accepted. Triggered contract generation for startup ID: {startup.id} ---")
+             # Only founder accepted previously, now admin accepted too
+             if startup.is_generating_contract:
+                 print(f"--- [API] Contract generation already in progress for startup ID: {startup.id} ---")
+                 return jsonify({'success': False, 'error': 'Contract generation is already in progress.'}), 400
+
+             scope_doc.status = ScopeStatus.ACCEPTED.name
+             startup.is_generating_contract = True
+             generate_contract_task.delay(startup.id)
+             print(f"--- [API] Founder already accepted. Admin accepted. Triggered contract generation for startup ID: {startup.id} ---")
         else:
             # Only admin accepted, waiting for founder
             scope_doc.status = 'Pending Founder Acceptance'

@@ -145,6 +145,14 @@ const DashboardPage: React.FC = () => {
             socket.emit('join', { room: `user_${user.id}` });
         });
 
+        socket.on('assets_generation_started', (data: any) => {
+            console.log('Asset generation started:', data);
+            if (data.startup_id === user.startup_id) {
+                toast.success(data.message || "Asset generation started...");
+                queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+            }
+        });
+
         socket.on('assets_generation_completed', (data: any) => {
             console.log('Asset generation completed:', data);
             if (data.startup_id === user.startup_id) {

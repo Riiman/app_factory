@@ -97,6 +97,11 @@ def update_submission_status(submission_id):
     # If submission is approved, create a startup entry and trigger scope document generation
     if new_status == SubmissionStatus.APPROVED:
         print(f"--- DEBUG: Checking if submission {submission.id} has a startup: {submission.startup} ---")
+        
+        # Check if already generating
+        if submission.startup and submission.startup.is_generating_scope:
+             return jsonify({'success': False, 'error': 'Scope generation is already in progress.'}), 400
+
         if not submission.startup:
             base_slug = re.sub(r'[^a-z0-9-]', '', submission.startup_name.lower().replace(' ', '-'))
             slug = base_slug
@@ -111,7 +116,8 @@ def update_submission_status(submission_id):
                 submission_id=submission.id,
                 name=submission.startup_name,
                 slug=slug,
-                current_stage=StartupStage.EVALUATION.value
+                current_stage=StartupStage.EVALUATION.value,
+                is_generating_scope=True # Set flag immediately
             )
             db.session.add(startup)
             db.session.flush() # Flush to get startup.id
@@ -127,8 +133,6 @@ def update_submission_status(submission_id):
                 )
                 db.session.add(founder)
 
-            # Trigger async scope document generation - MOVED TO AFTER COMMIT
-            # ASYNC: Use Celery task
             # Create initial Contract
             contract = Contract(
                 startup_id=startup.id,
@@ -137,26 +141,43 @@ def update_submission_status(submission_id):
                 status=ContractStatus.DRAFT.name # Convert Enum to string
             )
             db.session.add(contract)
-
-    try:
-        db.session.commit()
         
-        # Trigger async tasks after commit to ensure data is visible to workers
-        if new_status == SubmissionStatus.APPROVED and 'startup' in locals() and startup:
-             startup.is_generating_scope = True
-             db.session.commit() # Commit the flag change
-             generate_scope_document_task.delay(startup.id)
-
-        publish_update("submission_status_updated", {"submission_id": submission.id, "new_status": new_status.value, "startup_id": startup.id if 'startup' in locals() and startup else None}, rooms=["admin", f"user_{submission.user_id}"])
-        
-        # Send status update email
-        user = User.query.get(submission.user_id)
-        if user:
-            send_submission_status_email(user.email, submission.startup_name, new_status.name)
+        else:
+            # Startup exists (maybe from a retry), just reset flag
+            startup = submission.startup
+            startup.is_generating_scope = True
             
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': 'A startup already exists for this submission.'}), 409
+        try:
+            db.session.commit()
+            
+            # ASYNC: Use Celery task
+            generate_scope_document_task.delay(startup.id)
+
+            # Notify admins that generation started (so they see the spinner)
+            publish_update("submission_status_updated", {
+                "submission_id": submission.id, 
+                "new_status": submission.status.value, # Status hasn't changed yet
+                "startup_id": startup.id,
+                "is_generating_scope": True
+            }, rooms=["admin"])
+
+            return jsonify({'success': True, 'message': 'Scope generation started. Status will update upon completion.', 'submission': submission.to_dict()}), 200
+            
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': 'Database error during startup creation.'}), 500
+
+    # For other statuses (REJECTED, etc.), update immediately as before
+    submission.status = new_status
+    db.session.commit()
+
+    publish_update("submission_status_updated", {"submission_id": submission.id, "new_status": new_status.value, "startup_id": submission.startup.id if submission.startup else None}, rooms=["admin", f"user_{submission.user_id}"])
+    
+    # Send status update email
+    user = User.query.get(submission.user_id)
+    if user:
+        send_submission_status_email(user.email, submission.startup_name, new_status.name)
+        
     return jsonify({'success': True, 'submission': submission.to_dict()}), 200
     
     @admin_bp.route('/submissions/<int:submission_id>/tasks', methods=['POST'])
@@ -317,22 +338,7 @@ def add_contract_comment(startup_id):
     
     return jsonify({'success': True, 'comment': comment.to_dict()}), 201
 
-@admin_bp.route('/startups/<int:startup_id>/generate-product', methods=['POST'])
-@admin_required
-def generate_product_for_startup(startup_id):
-    """
-    Triggers the asynchronous Celery task to generate a product and its features
-    from the startup's scope document.
-    """
-    startup = Startup.query.get_or_404(startup_id)
-    
-    # Dispatch the background task
-    generate_product_task.delay(startup.id)
-    
-    return jsonify({
-        'success': True,
-        'message': 'Product generation has been queued and will start shortly.'
-    }), 202
+
 
 @admin_bp.route('/activity', methods=['GET'])
 @admin_required
