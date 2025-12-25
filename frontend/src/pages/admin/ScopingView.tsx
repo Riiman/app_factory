@@ -98,8 +98,19 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
   };
 
   useEffect(() => {
+    // If no startup is selected, default to the first one
     if (!selectedStartup && startupsInScoping.length > 0) {
       setSelectedStartup(startupsInScoping[0]);
+    }
+    // If a startup IS selected, verify it's still in the list and sync data
+    else if (selectedStartup) {
+      const updated = startupsInScoping.find(s => s.id === selectedStartup.id);
+      if (updated && updated !== selectedStartup) {
+        setSelectedStartup(updated);
+      } else if (!updated) {
+        // If the selected startup disappeared (e.g. stage changed), clear or reselect
+        setSelectedStartup(startupsInScoping.length > 0 ? startupsInScoping[0] : null);
+      }
     }
   }, [startupsInScoping, selectedStartup]);
 
@@ -479,6 +490,14 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
                 </div>
               </Card>
 
+            </div>
+          ) : selectedStartup?.is_generating_scope ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mx-auto"></div>
+                <h2 className="mt-4 text-xl font-semibold">Generating Scope Document...</h2>
+                <p className="text-brand-text-secondary mt-1">Our AI is analyzing the submission and drafting the initial scope. This may take a moment.</p>
+              </div>
             </div>
           ) : (
             <div className="h-full flex items-center justify-center">

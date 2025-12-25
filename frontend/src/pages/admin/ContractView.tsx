@@ -96,12 +96,21 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
   };
 
   useEffect(() => {
-    // When startupsInContract changes, try to keep the selected startup if it still exists
-    if (selectedStartup) {
-      const updatedSelected = startupsInContract.find(s => s.id === selectedStartup.id);
-      setSelectedStartup(updatedSelected || null);
+    // If no startup is selected, default to the first one
+    if (!selectedStartup && startupsInContract.length > 0) {
+      setSelectedStartup(startupsInContract[0]);
     }
-  }, [startupsInContract]);
+    // If a startup IS selected, verify it's still in the list and sync data
+    else if (selectedStartup) {
+      const updated = startupsInContract.find(s => s.id === selectedStartup.id);
+      if (updated && updated !== selectedStartup) {
+        setSelectedStartup(updated);
+      } else if (!updated) {
+        // If the selected startup disappeared (e.g. stage changed), clear or reselect
+        setSelectedStartup(startupsInContract.length > 0 ? startupsInContract[0] : null);
+      }
+    }
+  }, [startupsInContract, selectedStartup]);
 
   const handleSelectStartup = (startup: Startup) => {
     setSelectedStartup(startup);
