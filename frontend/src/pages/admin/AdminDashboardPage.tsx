@@ -115,6 +115,20 @@ const AdminDashboardPage: React.FC = () => {
     }
   }, [adminData]);
 
+  // --- State Declarations ---
+  const [analyzingSubmissionIds, setAnalyzingSubmissionIds] = useState<number[]>([]);
+  const [activeView, setActiveView] = useState<ActiveView>('overview');
+  const [selectedStartupId, setSelectedStartupId] = useState<number | null>(null);
+
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [isCreateExperimentModalOpen, setIsCreateExperimentModalOpen] = useState(false);
+  const [isCreateArtifactModalOpen, setIsCreateArtifactModalOpen] = useState(false);
+  const [isEditFeatureModalOpen, setIsEditFeatureModalOpen] = useState(false);
+  const [selectedFeatureToEdit, setSelectedFeatureToEdit] = useState<Feature | null>(null);
+  const [selectedProductForFeatureEdit, setSelectedProductForFeatureEdit] = useState<number | null>(null);
+
+  const selectedStartup = selectedStartupId ? startups.find(s => s.id === selectedStartupId) || null : null;
+
   // --- Socket.IO Listener for Admin Updates ---
   // Using a separate effect for socket connection
   // --- Socket.IO Listener for Admin Updates ---
@@ -143,10 +157,26 @@ const AdminDashboardPage: React.FC = () => {
     socket.on('assets_generation_completed', (data: any) => handleEvent('Assets Gen', data, "Assets generated for startup!", "Failed to generate assets."));
     socket.on('scope_generation_completed', (data: any) => handleEvent('Scope Gen', data, "Scope document generated!", "Failed to generate scope."));
     socket.on('contract_generation_completed', (data: any) => handleEvent('Contract Gen', data, "Contract generated!", "Failed to generate contract."));
-    socket.on('analysis_completed', (data: any) => handleEvent('Analysis', data, "Evaluation analysis completed!", "Analysis failed."));
+
+    // --- Analysis Listeners ---
+    socket.on('analysis_started', (data: any) => {
+      handleEvent('Analysis Started', data, "Analysis started...", "Failed to start analysis.");
+      setAnalyzingSubmissionIds(prev => [...prev, data.submission_id]);
+    });
+
+    socket.on('analysis_completed', (data: any) => {
+      handleEvent('Analysis', data, "Evaluation analysis completed!", "Analysis failed.");
+      setAnalyzingSubmissionIds(prev => prev.filter(id => id !== data.submission_id));
+    });
+
+    socket.on('analysis_failed', (data: any) => {
+      handleEvent('Analysis Failed', data, "", "Evaluation analysis failed.");
+      setAnalyzingSubmissionIds(prev => prev.filter(id => id !== data.submission_id));
+    });
+    // ---------------------------
+
     socket.on('product_generated', (data: any) => handleEvent('Product Gen', data, "Product generated for startup!", "Failed to generate product."));
     socket.on('campaigns_generated', (data: any) => handleEvent('Campaigns Gen', data, "Marketing campaigns generated for startup!", "Failed to generate campaigns."));
-    socket.on('analysis_failed', (data: any) => handleEvent('Analysis Failed', data, "", "Evaluation analysis failed.")); // Redundant if captured above, but good for safety
 
     // -- Newly Added Listeners --
     socket.on('scope_generation_started', (data: any) => handleEvent('Scope Gen Started', data, data.message || "Scope generation started...", "Failed to start scope generation."));
@@ -168,18 +198,6 @@ const AdminDashboardPage: React.FC = () => {
       socket.disconnect();
     };
   }, [queryClient]);
-
-  const [activeView, setActiveView] = useState<ActiveView>('overview');
-  const [selectedStartupId, setSelectedStartupId] = useState<number | null>(null);
-
-  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
-  const [isCreateExperimentModalOpen, setIsCreateExperimentModalOpen] = useState(false);
-  const [isCreateArtifactModalOpen, setIsCreateArtifactModalOpen] = useState(false);
-  const [isEditFeatureModalOpen, setIsEditFeatureModalOpen] = useState(false);
-  const [selectedFeatureToEdit, setSelectedFeatureToEdit] = useState<Feature | null>(null);
-  const [selectedProductForFeatureEdit, setSelectedProductForFeatureEdit] = useState<number | null>(null);
-
-  const selectedStartup = selectedStartupId ? startups.find(s => s.id === selectedStartupId) || null : null;
 
   const handleSelectStartup = useCallback((startup: Startup) => {
     setSelectedStartupId(startup.id);
@@ -344,7 +362,7 @@ const AdminDashboardPage: React.FC = () => {
           </div>
         );
       case 'submissions':
-        return <SubmissionsView submissions={submissions} onUpdateStatus={handleUpdateSubmissionStatus} />;
+        return <SubmissionsView submissions={submissions} onUpdateStatus={handleUpdateSubmissionStatus} analyzingSubmissionIds={analyzingSubmissionIds} />;
       case 'in-review':
         return <InReviewView submissions={submissions} users={users} startups={startups} onUpdateStatus={handleUpdateSubmissionStatus} onOpenCreateTaskModal={(id) => { setSelectedStartupId(id); setIsCreateTaskModalOpen(true); }} />;
       case 'scoping':

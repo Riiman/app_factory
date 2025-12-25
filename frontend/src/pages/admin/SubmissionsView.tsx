@@ -8,9 +8,10 @@ import EvaluationDetailModal from '../../components/admin/EvaluationDetailModal'
 interface SubmissionsViewProps {
   submissions: Submission[];
   onUpdateStatus: (submissionId: number, status: SubmissionStatus) => Promise<void>;
+  analyzingSubmissionIds: number[];
 }
 
-const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdateStatus }) => {
+const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdateStatus, analyzingSubmissionIds }) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updatingSubmissionId, setUpdatingSubmissionId] = useState<number | null>(null);
@@ -35,6 +36,8 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdate
       setUpdatingSubmissionId(null);
     }
   };
+
+  const isAnalyzing = (id: number) => analyzingSubmissionIds.includes(id) || updatingSubmissionId === id;
 
   const selectedDetails = selectedSubmission ? submissionsWithDetails.find(s => s.id === selectedSubmission.id) : null;
 
@@ -90,17 +93,17 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdate
                   <div className="flex space-x-2">
                     <button
                       onClick={() => handleStatusUpdate(selectedDetails.id, SubmissionStatus.REJECTED)}
-                      disabled={updatingSubmissionId !== null}
+                      disabled={isAnalyzing(selectedDetails.id)}
                       className="flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {updatingSubmissionId === selectedDetails.id ? 'Processing...' : <><FileX className="mr-2 h-4 w-4" /> Reject</>}
                     </button>
                     <button
                       onClick={() => handleStatusUpdate(selectedDetails.id, SubmissionStatus.IN_REVIEW)}
-                      disabled={updatingSubmissionId !== null}
+                      disabled={isAnalyzing(selectedDetails.id)}
                       className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {updatingSubmissionId === selectedDetails.id ? 'Processing...' : <><FileClock className="mr-2 h-4 w-4" /> Move to Review</>}
+                      {isAnalyzing(selectedDetails.id) ? 'Processing...' : <><FileClock className="mr-2 h-4 w-4" /> Move to Review</>}
                     </button>
 
                   </div>
