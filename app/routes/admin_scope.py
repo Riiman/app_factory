@@ -60,7 +60,7 @@ def update_scope_status(startup_id):
              print(f"--- [API] Founder already accepted. Admin accepted. Triggered contract generation for startup ID: {startup.id} ---")
         else:
             # Only admin accepted, waiting for founder
-            scope_doc.status = 'Pending Founder Acceptance'
+            scope_doc.status = ScopeStatus.IN_DISCUSSION.name
             print(f"--- [API] Admin accepted. Waiting for founder acceptance for startup ID: {startup.id} ---")
     else:
         # For other status changes (PROPOSED, IN_REVIEW, REJECTED, etc.)

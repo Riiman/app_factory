@@ -173,10 +173,10 @@ def accept_scope():
             db.session.add(new_contract)
             
     elif scope_doc.admin_accepted:
-         scope_doc.status = 'Pending Founder Acceptance'
+         scope_doc.status = ScopeStatus.IN_DISCUSSION.name
          print(f"--- [API] Admin accepted. Waiting for founder acceptance for startup ID: {startup.id} ---")
     elif scope_doc.founder_accepted:
-         scope_doc.status = 'Pending Admin Acceptance'
+         scope_doc.status = ScopeStatus.IN_DISCUSSION.name
          print(f"--- [API] Founder accepted. Waiting for admin acceptance for startup ID: {startup.id} ---")
 
     db.session.commit()
