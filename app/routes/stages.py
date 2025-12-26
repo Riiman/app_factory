@@ -124,23 +124,35 @@ def accept_scope():
     if not user:
         return jsonify({'success': False, 'error': 'User not found'}), 404
 
-    is_admin = user.role == UserRole.ADMIN
+    is_user_admin = user.role == UserRole.ADMIN
     data = request.get_json() or {}
     startup_id = data.get('startup_id')
 
+    # Determine if user is acting as Admin or Founder
+    act_as_admin = False
+
+    if is_user_admin:
+        if startup_id:
+            act_as_admin = True
+        else:
+            # Admin user acting as founder (e.g. testing their own submission)
+            submission = Submission.query.filter_by(user_id=user.id).first()
+            if submission and submission.startup:
+                act_as_admin = False
+            else:
+                return jsonify({'success': False, 'error': 'Startup ID required for admin'}), 400
+    
     try:
         scope_doc = None
         startup = None
 
-        if is_admin:
-            if not startup_id:
-                 return jsonify({'success': False, 'error': 'Startup ID required for admin'}), 400
+        if act_as_admin:
             startup = Startup.query.get(startup_id)
             if not startup:
                  return jsonify({'success': False, 'error': 'Startup not found'}), 404
             scope_doc = ScopeDocument.query.filter_by(startup_id=startup.id).first()
         else:
-            # Founder logic
+            # Founder logic (or Admin acting as Founder)
             submission = Submission.query.filter_by(user_id=user.id).first()
             if not submission or not submission.startup:
                  return jsonify({'success': False, 'error': 'Submission/Startup not found'}), 404
@@ -151,7 +163,7 @@ def accept_scope():
             return jsonify({'success': False, 'error': 'Scope document not found'}), 404
 
         # Update acceptance
-        if is_admin:
+        if act_as_admin:
             scope_doc.admin_accepted = True
             print(f"--- [API] Admin accepted scope for startup ID: {startup.id} ---")
         else:
