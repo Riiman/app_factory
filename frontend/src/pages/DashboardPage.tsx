@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, Product, Founder, MarketingCampaign, ProductMetric, ProductBusinessDetails, Investor, ActivityLog, DashboardNotification, Feature, Fundraise } from '@/types/dashboard-types';
 import api, { getWebSocketUrl } from '@/utils/api';
-import { io } from 'socket.io-client';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
 import DashboardOverview from './dashboard/DashboardOverview';
@@ -131,122 +130,99 @@ const DashboardPage: React.FC = () => {
     // Changing strategy: This call just updates listeners assuming import exists.
 
     useEffect(() => {
-        if (!user?.startup_id) return;
+        if (!user?.startup_id || !user?.token || !startupData) return;
 
-        const socketUrl = getWebSocketUrl('');
-        const socket = io(socketUrl.replace('ws', 'http'), {
-            transports: ['websocket'],
-            path: '/socket.io'
-        });
+        // NEW: Native WebSocket Connection
+        const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
+        const ws = new WebSocket(`${wsUrl}?token=${user.token}`);
 
-        socket.on('connect', () => {
-            console.log('Connected to global namespace');
-            // Join specific room for user/startup updates
-            socket.emit('join', { room: `user_${user.id}` });
-        });
+        ws.onopen = () => {
+            console.log('Connected to dashboard notifications WebSocket (Native)');
+        };
 
-        socket.on('assets_generation_started', (data: any) => {
-            console.log('Asset generation started:', data);
-            if (data.startup_id === user.startup_id) {
-                toast.success(data.message || "Asset generation started...");
-                queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-            }
-        });
+        ws.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                console.log("Received WS message:", message);
+                const { type, data } = message;
 
-        socket.on('assets_generation_completed', (data: any) => {
-            console.log('Asset generation completed:', data);
-            if (data.startup_id === user.startup_id) {
-                if (data.status === 'error') {
-                    toast.error(data.message || "Failed to generate assets.");
-                } else {
-                    toast.success(data.message || "Assets generated successfully!");
-                    // Invalidate query to refetch fresh data
-                    queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                // Helper to handle standard success/error toasts + query invalidation
+                const handleUpdate = (successMsg: string, errorMsg: string) => {
+                    if (data.startup_id !== user.startup_id) return;
 
-                    // Also optionally update local state immediately if preferred
-                    api.getStartupData(user.startup_id).then(updatedStartup => {
-                        setStartupData(updatedStartup);
-                        setProducts(updatedStartup.products || []);
-                        setMarketingCampaigns(updatedStartup.marketing_campaigns || []);
-                    });
-                }
-            }
-        });
-
-        socket.on('scope_generation_completed', (data: any) => {
-            console.log('Scope generation completed:', data);
-            if (data.startup_id === user.startup_id) {
-                if (data.status === 'error') {
-                    toast.error(data.message || "Failed to generate scope.");
-                } else {
-                    toast.success(data.message || "Scope generated successfully!");
-                    queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-                }
-            }
-        });
-
-        socket.on('contract_generation_completed', (data: any) => {
-            console.log('Contract generation completed:', data);
-            if (data.startup_id === user.startup_id) {
-                if (data.status === 'error') {
-                    toast.error(data.message || "Failed to generate contract.");
-                } else {
-                    toast.success(data.message || "Contract generated successfully!");
-                    queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-                }
-            }
-        });
-
-        socket.on('analysis_completed', (data: any) => {
-            console.log('Analysis completed:', data);
-            // User might be waiting for analysis result
-            toast.success(data.message || "Evaluation analysis completed!");
-            queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-        });
-
-        socket.on('analysis_failed', (data: any) => {
-            console.log('Analysis failed:', data);
-            toast.error(data.message || "Evaluation analysis failed.");
-            queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-        });
-
-        socket.on('product_generated', (data: any) => {
-            console.log('Product generated:', data);
-            if (data.startup_id === user.startup_id) {
-                toast.success("Product generated successfully!");
-                queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-                // Optimistic update if needed
-                setProducts(prev => {
-                    const newProduct = data.product;
-                    if (!prev) return [newProduct];
-                    if (prev.find(p => p.id === newProduct.id)) return prev;
-                    return [...prev, newProduct];
-                });
-            }
-        });
-
-        socket.on('campaigns_generated', (data: any) => {
-            console.log('Campaigns generated:', data);
-            if (data.startup_id === user.startup_id) {
-                toast.success("Marketing campaigns generated successfully!");
-                queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-                // Optimistic update for campaigns
-                setMarketingCampaigns(prev => {
-                    // Since we receive all campaigns or a list, we might want to just refetch or merge
-                    // For simplicity, refetching is safer as handled by invalidateQueries. 
-                    // But we can update local state if data.campaigns is provided
-                    if (data.campaigns) {
-                        return data.campaigns;
+                    if (data.status === 'error') {
+                        toast.error(data.message || errorMsg);
+                    } else {
+                        toast.success(data.message || successMsg);
+                        queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
                     }
-                    return prev;
-                });
+                };
+
+                switch (type) {
+                    case 'assets_generation_completed':
+                        handleUpdate("Assets generated successfully!", "Failed to generate assets.");
+                        if (data.status !== 'error') {
+                            // Optimistic update for assets if needed
+                            api.getStartupData(user.startup_id).then(updatedStartup => {
+                                setStartupData(updatedStartup);
+                                setProducts(updatedStartup.products || []);
+                                setMarketingCampaigns(updatedStartup.marketing_campaigns || []);
+                            });
+                        }
+                        break;
+                    case 'scope_generation_completed':
+                        handleUpdate("Scope generated successfully!", "Failed to generate scope.");
+                        break;
+                    case 'contract_generation_completed':
+                        handleUpdate("Contract generated successfully!", "Failed to generate contract.");
+                        break;
+                    case 'analysis_completed':
+                        toast.success(data.message || "Evaluation analysis completed!");
+                        queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                        break;
+                    case 'analysis_failed':
+                        toast.error(data.message || "Evaluation analysis failed.");
+                        queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                        break;
+                    case 'product_generated':
+                        if (data.startup_id === user.startup_id) {
+                            toast.success("Product generated successfully!");
+                            queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                            setProducts(prev => {
+                                const newProduct = data.product;
+                                if (!prev) return [newProduct];
+                                if (prev.find(p => p.id === newProduct.id)) return prev;
+                                return [...prev, newProduct];
+                            });
+                        }
+                        break;
+                    case 'campaigns_generated':
+                        if (data.startup_id === user.startup_id) {
+                            toast.success("Marketing campaigns generated successfully!");
+                            queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                            if (data.campaigns) setMarketingCampaigns(data.campaigns);
+                        }
+                        break;
+                    default:
+                        // Ignore unknown events
+                        break;
+                }
+
+            } catch (error) {
+                console.error("Failed to parse WebSocket message:", error);
             }
-        });
+        };
+
+        ws.onclose = () => {
+            console.log('Disconnected from dashboard notifications WebSocket');
+        };
 
         return () => {
-            socket.disconnect();
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
         };
-    }, [user?.startup_id, user?.id, queryClient]);
+    }, [user?.startup_id, user?.token, startupData, queryClient, setStartupData, setProducts, setMarketingCampaigns]);
 
     // --- Asset Generation Modal Logic ---
     const [isAssetGenerationModalOpen, setIsAssetGenerationModalOpen] = useState(false);

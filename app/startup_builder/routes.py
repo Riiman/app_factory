@@ -23,6 +23,7 @@ stop_signals = set()
 def start_env(startup_id):
     from app.models import Startup
     from app.extensions import db
+    from app.services.notification_service import publish_update
     
     print(f"Received start_env request for {startup_id}")
     data = request.json or {}
@@ -73,25 +74,24 @@ def start_env(startup_id):
 
     def build_task():
         with app.app_context():
-            from app.extensions import socketio
             room = f"startup_{startup_id}"
             
             try:
                 # Emit build started event
-                socketio.emit('build_started', {
+                publish_update('build_started', {
                     'startup_id': startup_id,
                     'stack_type': stack_type
-                }, room=room, namespace='/builder')
+                }, rooms=[room])
                 
                 # Re-fetch startup within this thread's app context
                 from app.models import Startup
                 startup_obj = Startup.query.get(startup_id)
                 if not startup_obj:
                     print(f"Startup {startup_id} not found in build task")
-                    socketio.emit('build_failed', {
+                    publish_update('build_failed', {
                         'startup_id': startup_id,
                         'error': 'Startup not found'
-                    }, room=room, namespace='/builder')
+                    }, rooms=[room])
                     return
                 
                 start_container_name = startup_obj.container_name
@@ -105,10 +105,10 @@ def start_env(startup_id):
                 # Check for errors
                 if result.get("error"):
                     print(f"Build failed: {result['error']}")
-                    socketio.emit('build_failed', {
+                    publish_update('build_failed', {
                         'startup_id': startup_id,
                         'error': result['error']
-                    }, room=room, namespace='/builder')
+                    }, rooms=[room])
                     return
                 
                 # Save container_name to database if it was generated
@@ -127,13 +127,13 @@ def start_env(startup_id):
                 print(f"Async build finished for {startup_id}")
                 
                 # Emit build complete event
-                socketio.emit('build_complete', {
+                publish_update('build_complete', {
                     'startup_id': startup_id,
                     'status': result.get('status'),
                     'container_id': result.get('container_id'),
                     'ports': result.get('ports'),
                     'container_name': result.get('container_name')
-                }, room=room, namespace='/builder')
+                }, rooms=[room])
                 
             except Exception as e:
                 print(f"Async build failed for {startup_id}: {e}")
@@ -141,10 +141,10 @@ def start_env(startup_id):
                 traceback.print_exc()
                 
                 # Emit build failed event
-                socketio.emit('build_failed', {
+                publish_update('build_failed', {
                     'startup_id': startup_id,
                     'error': str(e)
-                }, room=room, namespace='/builder')
+                }, rooms=[room])
     
     thread = threading.Thread(target=build_task)
     thread.start()

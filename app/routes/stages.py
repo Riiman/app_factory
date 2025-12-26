@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from app import db
-from app.models import User, Submission, EvaluationTask, ScopeDocument, ScopeComment, Contract, Startup, UserRole, ContractStatus, ContractSignatory, ContractComment
+from app.models import User, Submission, EvaluationTask, ScopeDocument, ScopeComment, Contract, Startup, UserRole, ContractStatus, ContractSignatory, ContractComment, ScopeStatus, StartupStage
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 
@@ -128,58 +128,64 @@ def accept_scope():
     data = request.get_json() or {}
     startup_id = data.get('startup_id')
 
-    scope_doc = None
-    startup = None
+    try:
+        scope_doc = None
+        startup = None
 
-    if is_admin:
-        if not startup_id:
-             return jsonify({'success': False, 'error': 'Startup ID required for admin'}), 400
-        startup = Startup.query.get(startup_id)
-        if not startup:
-             return jsonify({'success': False, 'error': 'Startup not found'}), 404
-        scope_doc = ScopeDocument.query.filter_by(startup_id=startup.id).first()
-    else:
-        # Founder logic
-        submission = Submission.query.filter_by(user_id=user.id).first()
-        if not submission or not submission.startup:
-             return jsonify({'success': False, 'error': 'Submission/Startup not found'}), 404
-        startup = submission.startup
-        scope_doc = ScopeDocument.query.filter_by(startup_id=startup.id).first()
+        if is_admin:
+            if not startup_id:
+                 return jsonify({'success': False, 'error': 'Startup ID required for admin'}), 400
+            startup = Startup.query.get(startup_id)
+            if not startup:
+                 return jsonify({'success': False, 'error': 'Startup not found'}), 404
+            scope_doc = ScopeDocument.query.filter_by(startup_id=startup.id).first()
+        else:
+            # Founder logic
+            submission = Submission.query.filter_by(user_id=user.id).first()
+            if not submission or not submission.startup:
+                 return jsonify({'success': False, 'error': 'Submission/Startup not found'}), 404
+            startup = submission.startup
+            scope_doc = ScopeDocument.query.filter_by(startup_id=startup.id).first()
 
-    if not scope_doc:
-        return jsonify({'success': False, 'error': 'Scope document not found'}), 404
+        if not scope_doc:
+            return jsonify({'success': False, 'error': 'Scope document not found'}), 404
 
-    # Update acceptance
-    if is_admin:
-        scope_doc.admin_accepted = True
-        print(f"--- [API] Admin accepted scope for startup ID: {startup.id} ---")
-    else:
-        scope_doc.founder_accepted = True
-        print(f"--- [API] Founder accepted scope for startup ID: {startup.id} ---")
+        # Update acceptance
+        if is_admin:
+            scope_doc.admin_accepted = True
+            print(f"--- [API] Admin accepted scope for startup ID: {startup.id} ---")
+        else:
+            scope_doc.founder_accepted = True
+            print(f"--- [API] Founder accepted scope for startup ID: {startup.id} ---")
 
-    # Check if both accepted
-    if scope_doc.admin_accepted and scope_doc.founder_accepted:
-        scope_doc.status = 'Accepted'
-        startup.current_stage = 'CONTRACT' # Update startup stage
-        print(f"--- [API] Both parties accepted. Transitioning to CONTRACT stage for startup ID: {startup.id} ---")
-        
-        # Create initial contract if not exists
-        if not startup.contract:
-            new_contract = Contract(
-                startup_id=startup.id,
-                title=f"Contract for {startup.name}",
-                status='DRAFT'
-            )
-            db.session.add(new_contract)
+        # Check if both accepted
+        if scope_doc.admin_accepted and scope_doc.founder_accepted:
+            scope_doc.status = ScopeStatus.ACCEPTED
+            startup.current_stage = StartupStage.CONTRACT # Update startup stage
+            print(f"--- [API] Both parties accepted. Transitioning to CONTRACT stage for startup ID: {startup.id} ---")
             
-    elif scope_doc.admin_accepted:
-         scope_doc.status = ScopeStatus.IN_DISCUSSION.name
-         print(f"--- [API] Admin accepted. Waiting for founder acceptance for startup ID: {startup.id} ---")
-    elif scope_doc.founder_accepted:
-         scope_doc.status = ScopeStatus.IN_DISCUSSION.name
-         print(f"--- [API] Founder accepted. Waiting for admin acceptance for startup ID: {startup.id} ---")
+            # Create initial contract if not exists
+            if not startup.contract:
+                new_contract = Contract(
+                    startup_id=startup.id,
+                    title=f"Contract for {startup.name}",
+                    status=ContractStatus.DRAFT
+                )
+                db.session.add(new_contract)
+                
+        elif scope_doc.admin_accepted:
+             scope_doc.status = ScopeStatus.IN_DISCUSSION
+             print(f"--- [API] Admin accepted. Waiting for founder acceptance for startup ID: {startup.id} ---")
+        elif scope_doc.founder_accepted:
+             scope_doc.status = ScopeStatus.IN_DISCUSSION
+             print(f"--- [API] Founder accepted. Waiting for admin acceptance for startup ID: {startup.id} ---")
 
-    db.session.commit()
+        db.session.commit()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Internal Error: {str(e)}'}), 500
     
     publish_update("scope_accepted", {"startup_id": startup.id, "scope_document": scope_doc.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
     

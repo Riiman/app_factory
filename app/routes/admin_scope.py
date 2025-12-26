@@ -44,7 +44,7 @@ def update_scope_status(startup_id):
                  print(f"--- [API] Contract generation already in progress for startup ID: {startup.id} ---")
                  return jsonify({'success': False, 'error': 'Contract generation is already in progress.'}), 400
                  
-             scope_doc.status = ScopeStatus.ACCEPTED.name
+             scope_doc.status = ScopeStatus.ACCEPTED
              startup.is_generating_contract = True
              generate_contract_task.delay(startup.id)
              print(f"--- [API] Both parties accepted. Triggered contract generation for startup ID: {startup.id} ---")
@@ -54,17 +54,17 @@ def update_scope_status(startup_id):
                  print(f"--- [API] Contract generation already in progress for startup ID: {startup.id} ---")
                  return jsonify({'success': False, 'error': 'Contract generation is already in progress.'}), 400
 
-             scope_doc.status = ScopeStatus.ACCEPTED.name
+             scope_doc.status = ScopeStatus.ACCEPTED
              startup.is_generating_contract = True
              generate_contract_task.delay(startup.id)
              print(f"--- [API] Founder already accepted. Admin accepted. Triggered contract generation for startup ID: {startup.id} ---")
         else:
             # Only admin accepted, waiting for founder
-            scope_doc.status = ScopeStatus.IN_DISCUSSION.name
+            scope_doc.status = ScopeStatus.IN_DISCUSSION
             print(f"--- [API] Admin accepted. Waiting for founder acceptance for startup ID: {startup.id} ---")
     else:
         # For other status changes (PROPOSED, IN_REVIEW, REJECTED, etc.)
-        scope_doc.status = new_status.name
+        scope_doc.status = new_status
         # Reset acceptance flags if status is changed to something other than ACCEPTED
         if new_status != ScopeStatus.ACCEPTED:
             scope_doc.admin_accepted = False

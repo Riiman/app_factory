@@ -5,9 +5,9 @@ import { ArrowLeft, Play, Square, Terminal as TerminalIcon, Send, Loader2, Check
 import TerminalComponent from '../../components/TerminalComponent';
 import FileExplorer from '../../components/FileExplorer';
 import ChatModal from '../../components/ChatModal';
-import AgentBrain from '../../components/AgentBrain'; // New Component
+import AgentBrain from '../../components/AgentBrain';
 import api, { getWebSocketUrl } from '../../utils/api';
-import { io, Socket } from 'socket.io-client';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PlanStep {
     id: number;
@@ -21,6 +21,7 @@ interface PlanStep {
 const StartupCodeStudio: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [isRunning, setIsRunning] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
     const [prompt, setPrompt] = useState('');
@@ -31,7 +32,7 @@ const StartupCodeStudio: React.FC = () => {
     const [missionQueue, setMissionQueue] = useState<any[]>([]);
     const [currentMissionIndex, setCurrentMissionIndex] = useState<number>(0);
     const logsEndRef = useRef<HTMLDivElement>(null);
-    const socketRef = useRef<Socket | null>(null);
+    const socketRef = useRef<WebSocket | null>(null);
 
     // V3 V3 V3: New Thought States
     const [activeNode, setActiveNode] = useState<string>('idle');
@@ -93,139 +94,140 @@ const StartupCodeStudio: React.FC = () => {
 
     // WebSocket connection for real-time environment updates
     useEffect(() => {
-        if (!id) return;
+        if (!id || !user?.token) return;
 
-        // Connect to /builder namespace
-        // Connect to /builder namespace
-        const socketUrl = getWebSocketUrl('/builder');
-        const socket = io(socketUrl.replace('ws', 'http'), {
-            transports: ['websocket'],
-            path: '/socket.io'
-        });
+        // Connect to Native WebSocket (Subscription Base)
+        const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
+        const socket = new WebSocket(`${wsUrl}?token=${user.token}`);
 
         socketRef.current = socket;
 
-        socket.on('connect', () => {
-            console.log('Connected to builder namespace');
+        socket.onopen = () => {
+            console.log('Connected to notification server');
             // Subscribe to updates for this startup
-            socket.emit('subscribe', { startup_id: id });
-        });
+            socket.send(JSON.stringify({
+                type: 'subscribe',
+                startup_id: id
+            }));
 
-        socket.on('env_status', (data) => {
-            console.log('Received env_status:', data);
-            if (data.status === 'running') {
-                setIsRunning(true);
-                setPorts(data.ports);
-                addLog(`Environment is running. Container ID: ${data.container_id}`);
-            } else {
-                setIsRunning(false);
-                setPorts(null);
-                // Sync state: if environment stops, we can't be working in it
-                setIsWorking(false);
-            }
-        });
+            // Also request initial status via REST (already done in other effects, but good to ensure)
+        };
 
-        socket.on('build_started', (data) => {
-            console.log('Build started:', data);
-            addLog(`Building ${data.stack_type} environment...`);
-        });
+        socket.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                const data = msg.data; // Payload is in data field
 
-        socket.on('build_complete', (data) => {
-            console.log('Build complete:', data);
-            setIsRunning(true);
-            setPorts(data.ports);
-            addLog(`Environment ready! Container ID: ${data.container_id}`);
-        });
+                switch (msg.type) {
+                    case 'env_status':
+                        console.log('Received env_status:', data);
+                        if (data.status === 'running') {
+                            setIsRunning(true);
+                            setPorts(data.ports);
+                            addLog(`Environment is running. Container ID: ${data.container_id}`);
+                        } else {
+                            setIsRunning(false);
+                            setPorts(null);
+                            setIsWorking(false);
+                        }
+                        break;
 
-        socket.on('build_failed', (data) => {
-            console.log('Build failed:', data);
-            addLog(`Build failed: ${data.error}`);
-        });
+                    case 'build_started':
+                        console.log('Build started:', data);
+                        addLog(`Building ${data.stack_type} environment...`);
+                        break;
 
-        socket.on('agent_update', (data) => {
-            if (data.logs) {
-                // MERGE STRATEGY: Treat logs as thoughts.
-                // Filter out json strings if needed, or just push them.
-                // We map them to strings to be safe (AgentBrain expects string[]).
-                const newThoughts = data.logs.map((l: any) => {
-                    if (typeof l === 'object') return JSON.stringify(l);
-                    return l;
-                });
+                    case 'build_complete':
+                        console.log('Build complete:', data);
+                        setIsRunning(true);
+                        setPorts(data.ports);
+                        addLog(`Environment ready! Container ID: ${data.container_id}`);
+                        break;
 
-                setThoughts(prev => [...prev, ...newThoughts]);
+                    case 'build_failed':
+                        console.log('Build failed:', data);
+                        addLog(`Build failed: ${data.error}`);
+                        break;
 
-                // Still keep legacy logs for internal tracking if needed, 
-                // but we won't display them in a separate panel.
-                setLogs(prev => [...prev, ...data.logs]);
-            }
-            if (data.plan) setPlan(data.plan);
-            if (data.task_status) setTaskStatus(data.task_status);
+                    case 'agent_update':
+                        if (data.logs) {
+                            const newThoughts = data.logs.map((l: any) => {
+                                if (typeof l === 'object') return JSON.stringify(l);
+                                return l;
+                            });
+                            setThoughts(prev => [...prev, ...newThoughts]);
+                            setLogs(prev => [...prev, ...data.logs]);
+                        }
+                        if (data.plan) setPlan(data.plan);
+                        if (data.task_status) setTaskStatus(data.task_status);
+                        if (data.node) setActiveNode(data.node);
+                        if (data.total_tasks) {
+                            setProgress({
+                                completed: data.completed_tasks || 0,
+                                total: data.total_tasks
+                            });
+                        }
 
-            // V3: Sync Node State
-            if (data.node) setActiveNode(data.node);
+                        if (data.waiting_approval) {
+                            setWaitingApproval(true);
+                            setIsWorking(false);
+                            if (data.current_step) setCurrentStep(data.current_step);
+                            addLog("System paused. Waiting for approval.");
+                        } else if (data.task_status === 'waiting_interaction') {
+                            setWaitingApproval(true);
+                            setIsWorking(false);
+                            setShowTerminal(true);
+                        } else if (data.task_status === 'done' || data.task_status === 'qa_passed') {
+                            setIsWorking(false);
+                            setWaitingApproval(false);
+                            addLog('Task completed successfully.');
+                            fetchData();
+                        } else if (data.task_status === 'failed') {
+                            setIsWorking(false);
+                            setWaitingApproval(false);
+                            addLog('Task failed.');
+                        } else if (['planning_needed', 'plan_ready', 'coding', 'strategizing', 'start'].includes(data.task_status)) {
+                            setIsWorking(true);
+                        }
 
-            if (data.total_tasks) {
-                setProgress({
-                    completed: data.completed_tasks || 0,
-                    total: data.total_tasks
-                });
-            }
+                        if (data.mission_queue) setMissionQueue(data.mission_queue);
+                        if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
 
-            if (data.waiting_approval) {
-                setWaitingApproval(true);
-                setIsWorking(false);
-                if (data.current_step) setCurrentStep(data.current_step);
-                addLog("System paused. Waiting for approval.");
-            } else if (data.task_status === 'waiting_interaction') {
-                setWaitingApproval(true);
-                setIsWorking(false);
-                setShowTerminal(true);
-            } else if (data.task_status === 'done' || data.task_status === 'qa_passed') {
-                // Determine if we are truly done or just switching missions
-                // The overseer will reset status to 'start' if switching, so 'done' might be transient.
-                // However, if we get 'done' and there is a queue, we might just wait for next update?
-                // Actually, the backend overseer returns status='start' for next mission immediately.
-                // So 'done' implies ALL done.
-                setIsWorking(false);
-                setWaitingApproval(false);
-                addLog('Task completed successfully.');
-                fetchData();
-            } else if (data.task_status === 'failed') {
-                setIsWorking(false);
-                setWaitingApproval(false);
-                addLog('Task failed.');
-            } else if (data.task_status === 'planning_needed' || data.task_status === 'plan_ready' || data.task_status === 'coding' || data.task_status === 'strategizing' || data.task_status === 'start') {
-                setIsWorking(true);
-            }
+                        if (data.task_status === 'paused') {
+                            setIsWorking(false);
+                            addLog('Process paused.');
+                        }
+                        break;
 
-            // Mission Tracking
-            if (data.mission_queue) setMissionQueue(data.mission_queue);
-            if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
-
-            if (data.task_status === 'paused') {
-                setIsWorking(false);
-                addLog('Process paused.');
-            }
-        });
-
-        // V3: Thinking Listener
-        socket.on('agent_thought', (data) => {
-            console.log('Thought received:', data);
-            if (data.content) setThoughts(prev => [...prev, data.content]);
-            if (data.node) setActiveNode(data.node);
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Disconnected from builder namespace');
-        });
-
-        return () => {
-            if (socketRef.current) {
-                socketRef.current.emit('unsubscribe', { startup_id: id });
-                socketRef.current.disconnect();
+                    case 'agent_thought':
+                        console.log('Thought received:', data);
+                        if (data.content) setThoughts(prev => [...prev, data.content]);
+                        if (data.node) setActiveNode(data.node);
+                        break;
+                }
+            } catch (e) {
+                console.error("WS Parse Error:", e);
             }
         };
-    }, [id]);
+
+        socket.onclose = () => {
+            console.log('Disconnected from notification server');
+        };
+
+        socket.onerror = (e) => {
+            console.error('WebSocket error:', e);
+        };
+
+        return () => {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'unsubscribe',
+                    startup_id: id
+                }));
+                socket.close();
+            }
+        };
+    }, [id, user?.token]);
 
     const handleStop = async () => {
         addLog('Stopping environment...');

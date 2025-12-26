@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
-import { io, Socket } from 'socket.io-client';
 import { getWebSocketUrl } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
 import 'xterm/css/xterm.css';
 
 interface TerminalComponentProps {
@@ -11,12 +11,14 @@ interface TerminalComponentProps {
 
 const TerminalComponent: React.FC<TerminalComponentProps> = ({ startupId }) => {
     const terminalRef = useRef<HTMLDivElement>(null);
-    const socketRef = useRef<Socket | null>(null);
     const termRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
+    const { user } = useAuth();
+    // Using a ref to track socket to avoid re-creation issues if we used state, though effect dependency handles it.
+    const socketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        if (!terminalRef.current) return;
+        if (!terminalRef.current || !user?.token) return;
 
         // Initialize Terminal
         const term = new Terminal({
@@ -38,80 +40,80 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ startupId }) => {
         termRef.current = term;
         fitAddonRef.current = fitAddon;
 
-        // Connect Socket
-        // Use helper to get correct URL for production/dev
-        const socketUrl = getWebSocketUrl('/terminal');
-        // socket.io-client expects the base URL, not the full WS URL with protocol if we want it to handle upgrades, 
-        // but getWebSocketUrl returns ws://... 
-        // Actually, io() can take a URL string. 
-        // However, getWebSocketUrl returns 'ws://host/path'. socket.io might prefer 'http://host/path' or just 'host/path'
-        // Let's check getWebSocketUrl implementation. It returns `ws://...` or `wss://...`.
-        // socket.io client `io(url)` works with http/https/ws/wss.
-
-        const socket = io(socketUrl.replace('ws', 'http'), {
-            transports: ['websocket'],
-            path: '/socket.io'
-        });
-
+        // Connect Native Socket
+        const wsUrl = getWebSocketUrl('/ws/terminal');
+        // We pass authentication and startup_id via query params
+        // Cast user to any to avoid type error if token isn't in definition yet
+        const token = (user as any).token || '';
+        const socket = new WebSocket(`${wsUrl}?startup_id=${startupId}&token=${token}`);
         socketRef.current = socket;
 
-        socket.on('connect', () => {
+        socket.onopen = () => {
             term.write('\r\n\x1b[32mConnected to Startup Environment\x1b[0m\r\n');
-            socket.emit('start_terminal', { startup_id: startupId });
-        });
+        };
 
-        socket.on('disconnect', () => {
+        socket.onclose = () => {
             term.write('\r\n\x1b[31mDisconnected\x1b[0m\r\n');
-        });
+        };
 
-        socket.on('output', (data: { data: string }) => {
-            term.write(data.data);
-        });
+        socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                if (message.data) {
+                    term.write(message.data);
+                }
+            } catch (e) {
+                console.error("Terminal WS parse error:", e);
+            }
+        };
+
+        socket.onerror = (e) => {
+            console.error("Terminal WS Error:", e);
+            term.write('\r\n\x1b[31mConnection Error\x1b[0m\r\n');
+        };
 
         // Handle Input
-        // Handle Input - Forward raw data to PTY
         term.onData((data) => {
-            socket.emit('input', { startup_id: startupId, data: data });
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'input', data: data }));
+            }
         });
 
         // Handle Resize
         const handleResize = () => {
             if (fitAddonRef.current && termRef.current) {
-                // Wrap in requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
-                // and ensure the DOM is ready.
                 requestAnimationFrame(() => {
                     try {
                         fitAddonRef.current?.fit();
-                        // Emit resize event to backend if socket is connected
-                        if (socketRef.current && termRef.current) {
-                            socketRef.current.emit('resize', {
+                        if (socket.readyState === WebSocket.OPEN && termRef.current) {
+                            socket.send(JSON.stringify({
+                                type: 'resize',
                                 cols: termRef.current.cols,
                                 rows: termRef.current.rows
-                            });
+                            }));
                         }
                     } catch (e) {
-                        // Ignore resize errors if terminal is hidden or not yet rendered
-                        console.log("Terminal fit error (likely hidden or not ready):", e);
+                        console.log("Terminal fit error:", e);
                     }
                 });
             }
         };
         window.addEventListener('resize', handleResize);
 
-        // Initial fit after a short delay to ensure container is rendered
+        // Initial fit
         setTimeout(() => {
             handleResize();
         }, 100);
 
         return () => {
-            socket.disconnect();
+            socket.close();
             if (termRef.current) {
                 termRef.current.dispose();
                 termRef.current = null;
             }
             window.removeEventListener('resize', handleResize);
         };
-    }, [startupId]);
+    }, [startupId, user]); // Depend on user object
 
     return (
         <div className="h-full w-full bg-slate-900 p-2 overflow-hidden">

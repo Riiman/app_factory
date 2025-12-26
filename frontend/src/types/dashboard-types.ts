@@ -173,6 +173,7 @@ export interface User {
   role: UserRole;
   created_at: string;
   startup_id?: number;
+  token?: string;
 }
 
 export interface Submission {
