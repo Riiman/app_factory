@@ -91,7 +91,6 @@ def create_app(config_class=Config):
         
         # Import sockets to register events
         from .startup_builder import sockets
-        from . import socket_events
 
 
         # Import tasks so that they are registered with Celery

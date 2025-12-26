@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Startup, Submission, Evaluation, User, SubmissionStatus, ScopeStatus, Contract, ContractStatus, Scope, ArtifactType, StartupStage, ActivityLog, DashboardNotification, Feature } from '../../types/dashboard-types';
 import api, { getWebSocketUrl } from '../../utils/api';
-import { io } from 'socket.io-client';
+// Socket.IO removed in favor of native WebSocket
 import StartupDetailView from './StartupDetailView';
 import StartupListView from './StartupListView';
 import SubmissionsView from './SubmissionsView';
@@ -21,7 +21,7 @@ type ActiveView = 'overview' | 'submissions' | 'in-review' | 'scoping' | 'contra
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-// ... (imports remain the same, ensure useQuery is imported if not already)
+// ... (imports remain the same)
 import CreateTaskModal from '../../components/dashboard/CreateTaskModal';
 import CreateExperimentModal from '../../components/dashboard/CreateExperimentModal';
 import CreateArtifactModal from '../../components/dashboard/CreateArtifactModal';
@@ -56,7 +56,7 @@ const NavItem: React.FC<{
   </li>
 );
 const AdminDashboardPage: React.FC = () => {
-  const { handleLogout } = useAuth();
+  const { handleLogout, token } = useAuth();
   const queryClient = useQueryClient();
 
   // --- React Query for Data Fetching ---
@@ -101,20 +101,6 @@ const AdminDashboardPage: React.FC = () => {
   const activity = adminData?.activity || [];
   const notifications = adminData?.notifications || [];
 
-  useEffect(() => {
-    if (adminData) {
-      console.log('Admin Data Fetched:', adminData);
-      console.log('Startups:', adminData.startups);
-      console.log('Submissions:', adminData.submissions);
-      if (adminData.startups.length > 0) {
-        console.log('First Startup Stage:', adminData.startups[0].current_stage);
-      }
-      if (adminData.submissions.length > 0) {
-        console.log('First Submission Status:', adminData.submissions[0].status);
-      }
-    }
-  }, [adminData]);
-
   // --- State Declarations ---
   const [analyzingSubmissionIds, setAnalyzingSubmissionIds] = useState<number[]>([]);
   const [activeView, setActiveView] = useState<ActiveView>('overview');
@@ -129,75 +115,112 @@ const AdminDashboardPage: React.FC = () => {
 
   const selectedStartup = selectedStartupId ? startups.find(s => s.id === selectedStartupId) || null : null;
 
-  // --- Socket.IO Listener for Admin Updates ---
-  // Using a separate effect for socket connection
-  // --- Socket.IO Listener for Admin Updates ---
+  // --- Native WebSocket Listener for Admin Updates ---
   useEffect(() => {
-    const socketUrl = getWebSocketUrl('');
-    const socket = io(socketUrl.replace('ws', 'http'), {
-      transports: ['websocket'],
-      path: '/socket.io'
-    });
+    if (!token) return;
 
-    socket.on('connect', () => {
-      console.log('Connected to global namespace (Admin)');
-      socket.emit('join', { room: 'admin' });
-    });
+    // Use the native WebSocket endpoint (FastAPI) just like App.tsx
+    const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
+    const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
-    const handleEvent = (eventName: string, data: any, successMsg: string, errorMsg: string) => {
-      console.log(`${eventName} received:`, data);
-      if (data.status === 'error') {
-        toast.error(data.message || errorMsg);
-      } else {
-        toast.success(data.message || successMsg);
-        queryClient.invalidateQueries({ queryKey: ['adminData'] });
+    ws.onopen = () => {
+      console.log('Admin connected to dashboard notifications WebSocket.');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log("Admin received WS message:", message);
+
+        const { type, data } = message;
+
+        // Shared helper for success/error handling
+        const handleEvent = (prefix: string, d: any, successMsg: string, errorMsg: string) => {
+          if (d.status === 'error' || type.endsWith('_failed')) {
+            toast.error(d.message || errorMsg);
+          } else {
+            toast.success(d.message || successMsg);
+            queryClient.invalidateQueries({ queryKey: ['adminData'] });
+          }
+        };
+
+        switch (type) {
+          case 'analysis_started':
+            handleEvent('Analysis Started', data, "Analysis started...", "Failed to start analysis.");
+            setAnalyzingSubmissionIds(prev => [...prev, data.submission_id]);
+            break;
+
+          case 'analysis_completed':
+            handleEvent('Analysis', data, "Evaluation analysis completed!", "Analysis failed.");
+            setAnalyzingSubmissionIds(prev => prev.filter(id => id !== data.submission_id));
+            break;
+
+          case 'analysis_failed':
+            handleEvent('Analysis Failed', data, "", "Evaluation analysis failed.");
+            setAnalyzingSubmissionIds(prev => prev.filter(id => id !== data.submission_id));
+            break;
+
+          case 'scope_generation_started':
+            handleEvent('Scope Gen Started', data, data.message || "Scope generation started...", "Failed to start scope generation.");
+            break;
+
+          case 'scope_generation_completed':
+            handleEvent('Scope Gen', data, "Scope document generated!", "Failed to generate scope.");
+            break;
+
+          case 'contract_generation_started':
+            handleEvent('Contract Gen Started', data, data.message || "Contract generation started...", "Failed to start contract generation.");
+            break;
+
+          case 'contract_generation_completed':
+            handleEvent('Contract Gen', data, "Contract generated!", "Failed to generate contract.");
+            break;
+
+          case 'assets_generation_started':
+            handleEvent('Assets Gen Started', data, data.message || "Asset generation started...", "Failed to start asset generation.");
+            break;
+
+          case 'assets_generation_completed':
+            handleEvent('Assets Gen', data, "Assets generated!", "Failed to generate assets.");
+            break;
+
+          case 'product_generated':
+            handleEvent('Product Gen', data, "Product generated for startup!", "Failed to generate product.");
+            break;
+
+          case 'campaigns_generated':
+            handleEvent('Campaigns Gen', data, "Marketing campaigns generated for startup!", "Failed to generate campaigns.");
+            break;
+
+          case 'submission_status_updated':
+            console.log('Submission Status Updated:', data);
+            queryClient.invalidateQueries({ queryKey: ['adminData'] });
+            if (data.is_generating_scope) {
+              toast.success("Scope generation initialized.");
+            }
+            break;
+
+          // Catch-all for other dashboard updates that App.tsx might handle but we also want to refresh on
+          case 'dashboard_update':
+            queryClient.invalidateQueries({ queryKey: ['adminData'] });
+            break;
+        }
+
+      } catch (error) {
+        console.error("Failed to parse WebSocket message in Admin:", error);
       }
     };
 
-    socket.on('assets_generation_completed', (data: any) => handleEvent('Assets Gen', data, "Assets generated for startup!", "Failed to generate assets."));
-    socket.on('scope_generation_completed', (data: any) => handleEvent('Scope Gen', data, "Scope document generated!", "Failed to generate scope."));
-    socket.on('contract_generation_completed', (data: any) => handleEvent('Contract Gen', data, "Contract generated!", "Failed to generate contract."));
-
-    // --- Analysis Listeners ---
-    socket.on('analysis_started', (data: any) => {
-      handleEvent('Analysis Started', data, "Analysis started...", "Failed to start analysis.");
-      setAnalyzingSubmissionIds(prev => [...prev, data.submission_id]);
-    });
-
-    socket.on('analysis_completed', (data: any) => {
-      handleEvent('Analysis', data, "Evaluation analysis completed!", "Analysis failed.");
-      setAnalyzingSubmissionIds(prev => prev.filter(id => id !== data.submission_id));
-    });
-
-    socket.on('analysis_failed', (data: any) => {
-      handleEvent('Analysis Failed', data, "", "Evaluation analysis failed.");
-      setAnalyzingSubmissionIds(prev => prev.filter(id => id !== data.submission_id));
-    });
-    // ---------------------------
-
-    socket.on('product_generated', (data: any) => handleEvent('Product Gen', data, "Product generated for startup!", "Failed to generate product."));
-    socket.on('campaigns_generated', (data: any) => handleEvent('Campaigns Gen', data, "Marketing campaigns generated for startup!", "Failed to generate campaigns."));
-
-    // -- Newly Added Listeners --
-    socket.on('scope_generation_started', (data: any) => handleEvent('Scope Gen Started', data, data.message || "Scope generation started...", "Failed to start scope generation."));
-    socket.on('contract_generation_started', (data: any) => handleEvent('Contract Gen Started', data, data.message || "Contract generation started...", "Failed to start contract generation."));
-    socket.on('assets_generation_started', (data: any) => handleEvent('Assets Gen Started', data, data.message || "Asset generation started...", "Failed to start asset generation."));
-
-    // Status update listener - primarily to invalidate queries so UI refreshes
-    socket.on('submission_status_updated', (data: any) => {
-      console.log('Submission Status Updated:', data);
-      // We generally don't need a toast for status updates unless important, 
-      // but invalidating data is crucial to move items between tabs
-      queryClient.invalidateQueries({ queryKey: ['adminData'] });
-      if (data.is_generating_scope) {
-        toast.success("Scope generation initialized.");
-      }
-    });
+    ws.onclose = () => {
+      console.log('Admin disconnected from dashboard notifications WebSocket.');
+    };
 
     return () => {
-      socket.disconnect();
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
     };
-  }, [queryClient]);
+  }, [token, queryClient]);
 
   const handleSelectStartup = useCallback((startup: Startup) => {
     setSelectedStartupId(startup.id);
