@@ -17,7 +17,7 @@ const ContractPage: React.FC = () => {
 
   const { data: document, isLoading: loading, error: queryError } = useQuery({
     queryKey: ['contract'],
-    queryFn: api.getContractDetails,
+    queryFn: () => api.getContractDetails(),
     retry: 1,
   });
 
