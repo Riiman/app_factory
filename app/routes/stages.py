@@ -160,8 +160,8 @@ def accept_scope():
 
         # Check if both accepted
         if scope_doc.admin_accepted and scope_doc.founder_accepted:
-            scope_doc.status = ScopeStatus.ACCEPTED
-            startup.current_stage = StartupStage.CONTRACT # Update startup stage
+            scope_doc.status = ScopeStatus.ACCEPTED.value
+            startup.current_stage = StartupStage.CONTRACT.value # Update startup stage
             print(f"--- [API] Both parties accepted. Transitioning to CONTRACT stage for startup ID: {startup.id} ---")
             
             # Create initial contract if not exists
@@ -169,15 +169,15 @@ def accept_scope():
                 new_contract = Contract(
                     startup_id=startup.id,
                     title=f"Contract for {startup.name}",
-                    status=ContractStatus.DRAFT
+                    status=ContractStatus.DRAFT # Contract.status IS db.Enum, so member is fine! CHECK!
                 )
                 db.session.add(new_contract)
                 
         elif scope_doc.admin_accepted:
-             scope_doc.status = ScopeStatus.IN_DISCUSSION
+             scope_doc.status = ScopeStatus.IN_DISCUSSION.value
              print(f"--- [API] Admin accepted. Waiting for founder acceptance for startup ID: {startup.id} ---")
         elif scope_doc.founder_accepted:
-             scope_doc.status = ScopeStatus.IN_DISCUSSION
+             scope_doc.status = ScopeStatus.IN_DISCUSSION.value
              print(f"--- [API] Founder accepted. Waiting for admin acceptance for startup ID: {startup.id} ---")
 
         db.session.commit()
