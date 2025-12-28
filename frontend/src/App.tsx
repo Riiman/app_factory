@@ -81,9 +81,7 @@ const AppRoutes: FC = () => {
 
     // Cleanup function: Close WebSocket connection when component unmounts
     return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
+      ws.close();
     };
   }, [queryClient, token, refreshUser]); // Add queryClient, token, and refreshUser to the dependency array
 

@@ -340,9 +340,7 @@ const AdminDashboardPage: React.FC = () => {
     };
 
     return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
+      ws.close();
     };
   }, [token, queryClient]);
 
