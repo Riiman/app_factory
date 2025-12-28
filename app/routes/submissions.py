@@ -109,7 +109,11 @@ def submit_submission(submission_id):
     submission.status = SubmissionStatus.PENDING
     db.session.commit()
 
-    publish_update("submission_submitted", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
+    publish_update("submission_submitted", {
+        "submission_id": submission.id, 
+        "user_id": user_id,
+        "submission": submission.to_dict()
+    }, rooms=[f"user_{user_id}", "admin"])
     
     # Send confirmation email
     user = User.query.get(user_id)

@@ -214,6 +214,23 @@ const AdminDashboardPage: React.FC = () => {
             handleEvent('Campaigns Gen', data, "Marketing campaigns generated for startup!", "Failed to generate campaigns.");
             break;
 
+          case 'submission_submitted':
+            console.log('New Submission Received:', data);
+            handleEvent('New Submission', data, `New submission from ${data.submission.startup_name}`, "Failed to process new submission.");
+
+            queryClient.setQueryData(['adminData'], (oldData: any) => {
+              if (!oldData) return oldData;
+              // Check if submission already exists to avoid duplicates
+              if (oldData.submissions.find((s: Submission) => s.id === data.submission.id)) {
+                return oldData;
+              }
+              return {
+                ...oldData,
+                submissions: [data.submission, ...oldData.submissions] // Add new submission to the top
+              };
+            });
+            break;
+
           case 'submission_status_updated':
             console.log('Submission Status Updated:', data);
 
