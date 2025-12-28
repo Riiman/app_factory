@@ -17,7 +17,13 @@ interface ContractViewProps {
 }
 
 const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdateContract, onActivateStartup, fetchData }) => {
-  const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
+  const [selectedStartupId, setSelectedStartupId] = useState<number | null>(null);
+
+  // Derived state - Single Source of Truth
+  const selectedStartup = React.useMemo(() =>
+    selectedStartupId ? startupsInContract.find(s => s.id === selectedStartupId) || null : null
+    , [selectedStartupId, startupsInContract]);
+
   const [newSignatoryName, setNewSignatoryName] = useState('');
   const [newSignatoryEmail, setNewSignatoryEmail] = useState('');
   const [newComment, setNewComment] = useState('');
@@ -79,7 +85,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
     } else {
       setContractContent('');
     }
-  }, [selectedStartup]);
+  }, [selectedStartup?.id, selectedStartup?.contract?.content]); // Reset when startup or content changes
 
   const handleSaveContract = async () => {
     if (selectedStartup && contractContent) {
@@ -97,26 +103,17 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
 
   useEffect(() => {
     // If no startup is selected, default to the first one
-    if (!selectedStartup && startupsInContract.length > 0) {
-      setSelectedStartup(startupsInContract[0]);
+    if (!selectedStartupId && startupsInContract.length > 0) {
+      setSelectedStartupId(startupsInContract[0].id);
     }
-    // If a startup IS selected, verify it's still in the list and sync data
-    else if (selectedStartup) {
-      const updated = startupsInContract.find(s => s.id === selectedStartup.id);
-      if (updated && updated !== selectedStartup) {
-        setSelectedStartup(updated);
-      } else if (!updated) {
-        // If the selected startup disappeared (e.g. stage changed), clear or reselect
-        setSelectedStartup(startupsInContract.length > 0 ? startupsInContract[0] : null);
-      }
+    // If selected startup disappears (e.g. stage changed), clear or reselect
+    else if (selectedStartupId && !startupsInContract.find(s => s.id === selectedStartupId)) {
+      setSelectedStartupId(startupsInContract.length > 0 ? startupsInContract[0].id : null);
     }
-  }, [startupsInContract, selectedStartup]);
+  }, [startupsInContract, selectedStartupId]);
 
   const handleSelectStartup = (startup: Startup) => {
-    setSelectedStartup(startup);
-    if (startup.contract) {
-
-    }
+    setSelectedStartupId(startup.id);
   };
 
   const handleAddSignatory = useCallback(async () => {
@@ -125,7 +122,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
         await api.addContractSignatory(selectedStartup.id, newSignatoryName.trim(), newSignatoryEmail.trim());
         setNewSignatoryName('');
         setNewSignatoryEmail('');
-        fetchData(); // Re-fetch data to update the selected startup with new signatory
+        fetchData();
       } catch (error) {
         console.error("Failed to add signatory:", error);
         alert("Failed to add signatory.");
@@ -138,7 +135,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
       try {
         await api.addContractComment(selectedStartup.id, newComment.trim());
         setNewComment('');
-        fetchData(); // Re-fetch data to update the selected startup with new comment
+        fetchData();
       } catch (error) {
         console.error("Failed to add comment:", error);
         alert("Failed to add comment.");
@@ -199,42 +196,8 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
     );
   }, [selectedStartup, fetchData]);
 
-  const { token } = useAuth();
+  // Note: WebSocket listener removed as data updates are handled by parent component and props
 
-  useEffect(() => {
-    if (!token) return;
-
-    const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
-    const ws = new WebSocket(`${wsUrl}?token=${token}`);
-
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'contract_accepted' || message.type === 'contract_signed' || message.type === 'contract_updated') {
-          const updatedContract = message.data.contract;
-          const startupId = message.data.startup_id;
-
-          if (selectedStartup && selectedStartup.id === startupId) {
-            setSelectedStartup(prev => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                contract: updatedContract
-              };
-            });
-          }
-        }
-      } catch (error) {
-        console.error("WebSocket message error:", error);
-      }
-    };
-
-    return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-    };
-  }, [token, selectedStartup]);
 
   return (
     <>

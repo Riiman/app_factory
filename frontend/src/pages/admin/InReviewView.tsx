@@ -15,7 +15,7 @@ interface InReviewViewProps {
 }
 
 const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startups, onUpdateStatus, onOpenCreateTaskModal }) => {
-  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const submissionsWithDetails = useMemo(() => {
@@ -31,21 +31,25 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
     }).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
   }, [submissions, users, startups]);
 
+  const selectedSubmission = useMemo(() =>
+    selectedSubmissionId ? submissionsWithDetails.find(s => s.id === selectedSubmissionId) || null : null
+    , [selectedSubmissionId, submissionsWithDetails]);
+
   useEffect(() => {
     // If there's no selected submission but there are submissions in the list,
     // default to selecting the first one.
-    if (!selectedSubmission && submissionsWithDetails.length > 0) {
-      setSelectedSubmission(submissionsWithDetails[0]);
+    if (!selectedSubmissionId && submissionsWithDetails.length > 0) {
+      setSelectedSubmissionId(submissionsWithDetails[0].id);
     }
     // If a submission was selected, but it's no longer in the list (e.g., status changed),
     // clear the selection or select the first one again.
-    if (selectedSubmission && !submissionsWithDetails.find(s => s.id === selectedSubmission.id)) {
-      setSelectedSubmission(submissionsWithDetails.length > 0 ? submissionsWithDetails[0] : null);
+    else if (selectedSubmissionId && !submissionsWithDetails.find(s => s.id === selectedSubmissionId)) {
+      setSelectedSubmissionId(submissionsWithDetails.length > 0 ? submissionsWithDetails[0].id : null);
     }
-  }, [submissionsWithDetails, selectedSubmission]);
+  }, [submissionsWithDetails, selectedSubmissionId]);
 
   const handleSelectSubmission = (submission: Submission) => {
-    setSelectedSubmission(submission);
+    setSelectedSubmissionId(submission.id);
   };
 
   const handleUpdateStatus = async (submissionId: number, status: SubmissionStatus) => {

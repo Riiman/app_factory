@@ -200,6 +200,75 @@ const AdminDashboardPage: React.FC = () => {
             }
             break;
 
+          case 'scope_accepted':
+            // Update the specific startup's scope document status in the cache
+            queryClient.setQueryData(['adminData'], (oldData: any) => {
+              if (!oldData) return oldData;
+              return {
+                ...oldData,
+                startups: oldData.startups.map((s: Startup) => {
+                  if (s.id === data.startup_id) {
+                    return { ...s, scope_document: data.scope_document }; // data.scope_document is the full updated object
+                  }
+                  return s;
+                })
+              };
+            });
+            toast.success("Scope accepted!");
+            break;
+
+          case 'scope_comment_added':
+            // Update cache with new comment
+            queryClient.setQueryData(['adminData'], (oldData: any) => {
+              if (!oldData) return oldData;
+              return {
+                ...oldData,
+                startups: oldData.startups.map((s: Startup) => {
+                  if (s.id === data.startup_id && s.scope_document) {
+                    // specific check to avoid duplicate comments
+                    if (s.scope_document.comments.some((c: any) => c.id === data.comment.id)) return s;
+
+                    return {
+                      ...s,
+                      scope_document: {
+                        ...s.scope_document,
+                        comments: [...s.scope_document.comments, data.comment]
+                      }
+                    };
+                  }
+                  return s;
+                })
+              };
+            });
+            //  toast.success("New comment on scope."); // Optional: might be too noisy
+            break;
+
+          case 'contract_accepted':
+          case 'contract_updated':
+          case 'contract_signed':
+            // Update the specific startup's contract in the cache
+            queryClient.setQueryData(['adminData'], (oldData: any) => {
+              if (!oldData) return oldData;
+              return {
+                ...oldData,
+                startups: oldData.startups.map((s: Startup) => {
+                  if (s.id === data.startup_id) {
+                    // For contract_signed, we might also need to update startup stage if it changed
+                    const updatedStartup = { ...s, contract: data.contract };
+                    if (type === 'contract_signed') {
+                      // Assuming the backend handles the stage transition, but if the WS sends it, we should use it.
+                      // Ideally the 'startup_stage_updated' event handles the stage, but let's be safe.
+                    }
+                    return updatedStartup;
+                  }
+                  return s;
+                })
+              };
+            });
+            if (type === 'contract_accepted') toast.success("Contract accepted!");
+            if (type === 'contract_signed') toast.success("Contract signed!");
+            break;
+
           // Catch-all for other dashboard updates that App.tsx might handle but we also want to refresh on
           case 'dashboard_update':
             queryClient.invalidateQueries({ queryKey: ['adminData'] });
