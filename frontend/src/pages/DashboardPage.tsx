@@ -120,15 +120,6 @@ const DashboardPage: React.FC = () => {
     // --- Socket.IO Listener for Real-time Updates ---
     const queryClient = useQueryClient();
 
-    // Import toast - added at top of file, but for replace logic here ensuring correct context
-    // Ideally user provided full file content or I should have added import separately.
-    // I will checking imports in next step but assuming I can use toast here if imported.
-    // Wait, I need to add import first or risk error. 
-    // Let me add import in a separate replace call or assume it's done. 
-    // Actually, I'll add the import in a separate call to be safe, then update listeners.
-
-    // Changing strategy: This call just updates listeners assuming import exists.
-
     useEffect(() => {
         if (!user?.startup_id || !user?.token || !startupData) return;
 
@@ -146,63 +137,131 @@ const DashboardPage: React.FC = () => {
                 console.log("Received WS message:", message);
                 const { type, data } = message;
 
-                // Helper to handle standard success/error toasts + query invalidation
-                const handleUpdate = (successMsg: string, errorMsg: string) => {
-                    if (data.startup_id !== user.startup_id) return;
-
-                    if (data.status === 'error') {
-                        toast.error(data.message || errorMsg);
-                    } else {
-                        toast.success(data.message || successMsg);
-                        queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-                    }
-                };
+                if (data.startup_id !== user.startup_id) {
+                    // For 'analysis_completed', the payload might be keyed differently or we filter by startup_id
+                    // But wait, the admin dashboard sends submission_id. 
+                    // Let's assume dashboard checks startup_id if present.
+                    // The backend 'analysis_completed' for startup dashboard might need check
+                    // Actually analysis_completed sends submission_id and we have no startup_id in data top level?
+                    // Let's check backend payload: "startup_id": submission.startup.id if submission.startup else None
+                    // Wait, in analyzer_service.py/admin.py: analysis_completed -> submission_id, evaluation, submission_status. 
+                    // It does NOT send startup_id in payload in analyzer_service.py?
+                    // Ah, analyzer_service.py does NOT send startup_id in analysis_completed!
+                    // 'submission_status_updated' sends startup_id. 'analysis_completed' sends message, submission_id, evaluation.
+                    // But this is Startup Dashboard. It knows its own submission_id.
+                }
 
                 switch (type) {
                     case 'assets_generation_completed':
-                        handleUpdate("Assets generated successfully!", "Failed to generate assets.");
-                        if (data.status !== 'error') {
-                            // Optimistic update for assets if needed
-                            api.getStartupData(user.startup_id).then(updatedStartup => {
-                                setStartupData(updatedStartup);
-                                setProducts(updatedStartup.products || []);
-                                setMarketingCampaigns(updatedStartup.marketing_campaigns || []);
-                            });
+                        if (data.status === 'error') {
+                            toast.error(data.message || "Failed to generate assets.");
+                        } else {
+                            toast.success(data.message || "Assets generated successfully!");
+                            // Optimistic update using payload
+                            if (data.startup) {
+                                queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
+                                    if (!oldData) return data.startup;
+                                    return {
+                                        ...data.startup,
+                                        marketing_overview: oldData.marketing_overview,
+                                        activity: oldData.activity,
+                                        notifications: oldData.notifications
+                                    };
+                                });
+                            }
                         }
                         break;
+
                     case 'scope_generation_completed':
-                        handleUpdate("Scope generated successfully!", "Failed to generate scope.");
+                        if (data.status === 'error') {
+                            toast.error(data.message || "Failed to generate scope.");
+                        } else {
+                            toast.success(data.message || "Scope generated successfully!");
+                            if (data.startup) {
+                                queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
+                                    if (!oldData) return data.startup;
+                                    return {
+                                        ...data.startup,
+                                        marketing_overview: oldData.marketing_overview,
+                                        activity: oldData.activity,
+                                        notifications: oldData.notifications
+                                    };
+                                });
+                            }
+                        }
                         break;
+
                     case 'contract_generation_completed':
-                        handleUpdate("Contract generated successfully!", "Failed to generate contract.");
+                        if (data.status === 'error') {
+                            toast.error(data.message || "Failed to generate contract.");
+                        } else {
+                            toast.success(data.message || "Contract generated successfully!");
+                            if (data.startup) {
+                                queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
+                                    if (!oldData) return data.startup;
+                                    return {
+                                        ...data.startup,
+                                        marketing_overview: oldData.marketing_overview,
+                                        activity: oldData.activity,
+                                        notifications: oldData.notifications
+                                    };
+                                });
+                            }
+                        }
                         break;
+
                     case 'analysis_completed':
+                        // analysis_completed payload: { submission_id, evaluation, submission_status }
+                        // We need to merge this into the existing startup.submission
                         toast.success(data.message || "Evaluation analysis completed!");
-                        queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                        queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
+                            if (!oldData || !oldData.submission) return oldData;
+                            return {
+                                ...oldData,
+                                submission: {
+                                    ...oldData.submission,
+                                    status: data.submission_status,
+                                    evaluation: data.evaluation
+                                }
+                            };
+                        });
                         break;
+
                     case 'analysis_failed':
                         toast.error(data.message || "Evaluation analysis failed.");
-                        queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                        // No data update needed for failure, maybe just status?
                         break;
+
                     case 'product_generated':
                         if (data.startup_id === user.startup_id) {
                             toast.success("Product generated successfully!");
-                            queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-                            setProducts(prev => {
+                            queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
+                                if (!oldData) return oldData;
                                 const newProduct = data.product;
-                                if (!prev) return [newProduct];
-                                if (prev.find(p => p.id === newProduct.id)) return prev;
-                                return [...prev, newProduct];
+                                // Avoid duplicates
+                                if (oldData.products?.find((p: Product) => p.id === newProduct.id)) return oldData;
+                                return {
+                                    ...oldData,
+                                    products: [...(oldData.products || []), newProduct]
+                                };
                             });
                         }
                         break;
+
                     case 'campaigns_generated':
                         if (data.startup_id === user.startup_id) {
                             toast.success("Marketing campaigns generated successfully!");
-                            queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
-                            if (data.campaigns) setMarketingCampaigns(data.campaigns);
+                            queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
+                                if (!oldData) return oldData;
+                                // Replace campaigns or merge? Usually replaces initial empty ones.
+                                return {
+                                    ...oldData,
+                                    marketing_campaigns: data.campaigns || []
+                                };
+                            });
                         }
                         break;
+
                     default:
                         // Ignore unknown events
                         break;
@@ -218,11 +277,9 @@ const DashboardPage: React.FC = () => {
         };
 
         return () => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.close();
-            }
+            ws.close();
         };
-    }, [user?.startup_id, user?.token, startupData, queryClient, setStartupData, setProducts, setMarketingCampaigns]);
+    }, [user?.startup_id, user?.token, queryClient]);
 
     // --- Asset Generation Modal Logic ---
     const [isAssetGenerationModalOpen, setIsAssetGenerationModalOpen] = useState(false);
@@ -694,6 +751,7 @@ const DashboardPage: React.FC = () => {
                         campaigns={marketingCampaigns || []}
                         startupId={startupData.id}
                         onPositioningStatementUpdate={handlePositioningStatementUpdate}
+                        isGeneratingGtm={startupData.is_generating_gtm}
                     />;
                 }
                 if (activeSubPage === 'Campaigns') {
@@ -739,6 +797,7 @@ const DashboardPage: React.FC = () => {
                     campaigns={marketingCampaigns || []}
                     startupId={startupData.id}
                     onPositioningStatementUpdate={handlePositioningStatementUpdate}
+                    isGeneratingGtm={startupData.is_generating_gtm}
                 />;
 
             case Scope.WORKSPACE:

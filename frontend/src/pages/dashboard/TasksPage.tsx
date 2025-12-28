@@ -72,19 +72,20 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, onTaskClick }
 
 
 const TasksPage: React.FC<TasksPageProps> = ({ startupId, tasks, setTasks, onTaskClick, onAddNewTask }) => {
-    const [loading, setLoading] = useState(false);
+    // const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (tasks === null) {
-            setLoading(true);
-            api.getTasks(startupId)
-                .then(setTasks)
-                .catch(err => console.error("Failed to fetch tasks", err))
-                .finally(() => setLoading(false));
-        }
-    }, [startupId, tasks, setTasks]);
+    // Removed redundant useEffect to fetch tasks. Tasks are now passed via props.
+    // useEffect(() => {
+    //     if (tasks === null) {
+    //         setLoading(true);
+    //         api.getTasks(startupId)
+    //             .then(setTasks)
+    //             .catch(err => console.error("Failed to fetch tasks", err))
+    //             .finally(() => setLoading(false));
+    //     }
+    // }, [startupId, tasks, setTasks]);
 
-    if (loading || tasks === null) {
+    if (tasks === null) {
         return <div>Loading tasks...</div>;
     }
 
@@ -96,7 +97,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ startupId, tasks, setTasks, onTas
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-                <button 
+                <button
                     onClick={onAddNewTask}
                     className="flex items-center px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
                     <Plus className="h-5 w-5 mr-2" />

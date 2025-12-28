@@ -9,8 +9,6 @@ import { MarketingCampaign, MarketingCampaignStatus } from '@/types/dashboard-ty
 import Card from '@/components/Card';
 import api from '@/utils/api';
 import { Plus, Sparkles } from 'lucide-react';
-import PromptModal from '@/components/ui/PromptModal';
-
 // ... (existing interfaces)
 
 /**
@@ -27,7 +25,7 @@ interface MarketingCampaignsPageProps {
     /** Callback function triggered when the "Create New Campaign" button is clicked. */
     onAddNewCampaign: () => void;
     /** Flag indicating if GTM generation is in progress */
-    isGeneratingGtm?: boolean;
+    isGeneratingGtm?: boolean; // Deprecated prop, kept for interface compatibility if needed, else remove
 }
 
 const getStatusColor = (status: MarketingCampaignStatus) => {
@@ -68,56 +66,12 @@ const MarketingCampaignsPage: React.FC<MarketingCampaignsPageProps> = ({ startup
         });
     };
 
-    const handleGenerateGtm = async () => {
-        showPrompt(
-            'Generate GTM Strategy',
-            'Are you sure you want to generate a GTM strategy based on your scope document?',
-            'confirm',
-            async () => {
-                closePrompt(); // Close confirmation modal
-                try {
-                    await api.generateAssets(startupId, false, true);
-                    showPrompt('Success', 'GTM strategy generation triggered! This may take a few minutes.', 'success');
-                } catch (error) {
-                    console.error("Failed to trigger generation:", error);
-                    showPrompt('Error', 'Failed to trigger generation.', 'error');
-                }
-            }
-        );
-    };
 
     return (
         <div>
-            <PromptModal
-                isOpen={promptState.isOpen}
-                onClose={closePrompt}
-                title={promptState.title}
-                message={promptState.message}
-                type={promptState.type}
-                onConfirm={promptState.onConfirm}
-            />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Marketing Campaigns</h1>
                 <div className="flex space-x-2">
-                    {(campaigns || []).length === 0 && (
-                        <button
-                            onClick={handleGenerateGtm}
-                            disabled={isGeneratingGtm}
-                            className={`flex items-center px-4 py-2 text-white rounded-md transition-colors ${isGeneratingGtm ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'}`}
-                        >
-                            {isGeneratingGtm ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                    <span className="text-sm font-medium">Generating...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="h-5 w-5 mr-2" />
-                                    <span className="text-sm font-medium">Generate Strategy</span>
-                                </>
-                            )}
-                        </button>
-                    )}
                     <button
                         onClick={onAddNewCampaign}
                         className="flex items-center px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">

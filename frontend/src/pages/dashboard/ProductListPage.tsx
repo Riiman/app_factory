@@ -102,6 +102,7 @@ const ProductListPage: React.FC<ProductListPageProps> = ({ startupId, products, 
                 <div className="flex space-x-2">
                     {products.length === 0 && (
                         <button
+                            onClick={handleGenerateProduct}
                             disabled={isGeneratingProduct}
                             className={`flex items-center px-4 py-2 text-white rounded-md transition-colors ${isGeneratingProduct ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'}`}
                         >

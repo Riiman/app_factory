@@ -219,13 +219,15 @@ const StartupCodeStudio: React.FC = () => {
         };
 
         return () => {
+            // Unsubscribe before closing (best effort)
             if (socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'unsubscribe',
                     startup_id: id
                 }));
-                socket.close();
             }
+            // Always close the socket to prevent leaks
+            socket.close();
         };
     }, [id, user?.token]);
 
