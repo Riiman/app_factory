@@ -48,7 +48,6 @@ const AppRoutes: FC = () => {
           console.log("Received dashboard update, invalidating startupData query:", message);
           // This tells React Query to refetch the data for the dashboard
           queryClient.invalidateQueries({ queryKey: ['startupData'] });
-          queryClient.invalidateQueries({ queryKey: ['adminData'] });
           refreshUser(); // Refresh user context to update status/stage
         } else if (message.type.startsWith('submission_')) {
           console.log(`Received submission update (${message.type}), invalidating submission queries:`, message);
@@ -56,7 +55,6 @@ const AppRoutes: FC = () => {
           queryClient.invalidateQueries({ queryKey: ['submissions'] });
           // Also invalidate dashboard data as submission status might affect it
           queryClient.invalidateQueries({ queryKey: ['startupData'] });
-          queryClient.invalidateQueries({ queryKey: ['adminData'] });
           refreshUser(); // Refresh user context to update status/stage which triggers redirection
         } else if (message.type.startsWith('contract_') || message.type.startsWith('scope_')) {
           console.log(`Received status/contract/scope update (${message.type}), refreshing data:`, message);
