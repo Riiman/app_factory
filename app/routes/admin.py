@@ -164,9 +164,10 @@ def update_submission_status(submission_id):
             # Notify admins that generation started (so they see the spinner)
             publish_update("submission_status_updated", {
                 "submission_id": submission.id, 
-                "new_status": submission.status.value, # Status hasn't changed yet
+                "new_status": submission.status.value, 
                 "startup_id": startup.id,
-                "is_generating_scope": True
+                "is_generating_scope": True,
+                "startup": startup.to_dict() # Include full startup object for frontend cache
             }, rooms=["admin"])
 
             return jsonify({'success': True, 'message': 'Scope generation started. Status will update upon completion.', 'submission': submission.to_dict()}), 200

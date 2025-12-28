@@ -153,6 +153,28 @@ const AdminDashboardPage: React.FC = () => {
           case 'analysis_completed':
             handleEvent('Analysis', data, "Evaluation analysis completed!", "Analysis failed.");
             setAnalyzingSubmissionIds(prev => prev.filter(id => id !== data.submission_id));
+
+            // Update cache with new evaluation and status
+            queryClient.setQueryData(['adminData'], (oldData: any) => {
+              if (!oldData) return oldData;
+              return {
+                ...oldData,
+                submissions: oldData.submissions.map((s: Submission) => {
+                  if (s.id === data.submission_id) {
+                    return {
+                      ...s,
+                      status: data.submission_status, // Update status to IN_REVIEW
+                      evaluation: data.evaluation
+                    };
+                  }
+                  return s;
+                }),
+                evaluations: [
+                  ...oldData.evaluations.filter((e: Evaluation) => e.submission_id !== data.submission_id),
+                  { ...data.evaluation, submission_id: data.submission_id }
+                ]
+              };
+            });
             break;
 
           case 'analysis_failed':
@@ -194,7 +216,40 @@ const AdminDashboardPage: React.FC = () => {
 
           case 'submission_status_updated':
             console.log('Submission Status Updated:', data);
-            queryClient.invalidateQueries({ queryKey: ['adminData'] });
+
+            // Update cache immediately using setQueryData
+            queryClient.setQueryData(['adminData'], (oldData: any) => {
+              if (!oldData) return oldData;
+
+              const updatedSubmissions = oldData.submissions.map((s: Submission) => {
+                if (s.id === data.submission_id) {
+                  return { ...s, status: data.new_status };
+                }
+                return s;
+              });
+
+              let updatedStartups = oldData.startups;
+
+              // If we received a new startup (e.g. on approval), add it to the list
+              if (data.startup) {
+                // Check if it already exists to avoid duplicates
+                if (!oldData.startups.find((s: Startup) => s.id === data.startup.id)) {
+                  // Manually link submission to startup for consistency
+                  const newStartup = {
+                    ...data.startup,
+                    submission: updatedSubmissions.find((s: Submission) => s.id === data.submission_id)
+                  };
+                  updatedStartups = [...oldData.startups, newStartup];
+                }
+              }
+
+              return {
+                ...oldData,
+                submissions: updatedSubmissions,
+                startups: updatedStartups
+              };
+            });
+
             if (data.is_generating_scope) {
               toast.success("Scope generation initialized.");
             }
