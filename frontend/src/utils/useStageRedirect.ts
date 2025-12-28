@@ -11,7 +11,7 @@ export const useStageRedirect = () => {
         if (startupStage) {
             switch (startupStage.toUpperCase()) {
                 case 'EVALUATION':
-                    targetPath = '/evaluation';
+                    targetPath = '/in-review';
                     break;
                 case 'SCOPING':
                     targetPath = '/scope';
