@@ -273,7 +273,17 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
         if (selectedStartup) {
           try {
             setIsUpdatingStatus(true);
-            await api.acceptScope(selectedStartup.id);
+            const response = await api.acceptScope(selectedStartup.id);
+
+            // Immediate local update to reflect "Admin Accepted" status
+            setSelectedStartup(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                scope_document: response.scope_document // API returns the full updated scope doc object
+              };
+            });
+
             onUpdateStatus(selectedStartup.id, ScopeStatus.ACCEPTED);
           } catch (e) {
             console.error("Failed to accept:", e);

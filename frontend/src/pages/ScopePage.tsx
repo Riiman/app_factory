@@ -103,8 +103,21 @@ const ScopePage: React.FC = () => {
 
   const handleAccept = useCallback(async () => {
     try {
-      await api.acceptScope();
+      // The API returns { success: true, scope_document: ... }
+      // We should type the response properly or cast it if we want full type safety,
+      // but for now we know the shape matches.
+      const response = await api.acceptScope();
+
+      // key matches the useQuery key above ['scope']
+      queryClient.setQueryData(['scope'], (oldData: any) => {
+        if (!oldData) return parseScopeData(response.scope_document); // Should verify response structure
+        // If the API returns the raw scope document, we need to parse it to match the hook's expected return type
+        return parseScopeData(response.scope_document);
+      });
+
+      // We still invalidate to be safe, but the setQueryData gives us immediate feedback
       queryClient.invalidateQueries({ queryKey: ['scope'] });
+
       alert('Scope Accepted! Waiting for other party to accept.');
       await refreshUser();
     } catch (err) {
