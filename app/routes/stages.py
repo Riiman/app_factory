@@ -3,6 +3,7 @@ from app import db
 from app.models import User, Submission, EvaluationTask, ScopeDocument, ScopeComment, Contract, Startup, UserRole, ContractStatus, ContractSignatory, ContractComment, ScopeStatus, StartupStage
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
+from app.tasks import generate_contract_task
 
 from app.services.notification_service import publish_update
 
@@ -172,18 +173,26 @@ def accept_scope():
 
         # Check if both accepted
         if scope_doc.admin_accepted and scope_doc.founder_accepted:
+            # Both parties accepted - transition to CONTRACT stage
+            if startup.is_generating_contract:
+                 print(f"--- [API] Contract generation already in progress for startup ID: {startup.id} ---")
+                 return jsonify({'success': False, 'error': 'Contract generation is already in progress.'}), 400
+
             scope_doc.status = ScopeStatus.ACCEPTED.value
-            startup.current_stage = StartupStage.CONTRACT.value # Update startup stage
-            print(f"--- [API] Both parties accepted. Transitioning to CONTRACT stage for startup ID: {startup.id} ---")
+            startup.is_generating_contract = True
             
-            # Create initial contract if not exists
+            # Create initial contract if not exists (still needed for relation)
             if not startup.contract:
                 new_contract = Contract(
                     startup_id=startup.id,
                     title=f"Contract for {startup.name}",
-                    status=ContractStatus.DRAFT # Contract.status IS db.Enum, so member is fine! CHECK!
+                    status=ContractStatus.DRAFT
                 )
                 db.session.add(new_contract)
+                db.session.commit() # Commit to ensure contract ID exists for task
+
+            generate_contract_task.delay(startup.id)
+            print(f"--- [API] Both parties accepted. Triggered contract generation for startup ID: {startup.id} ---")
                 
         elif scope_doc.admin_accepted:
              scope_doc.status = ScopeStatus.IN_DISCUSSION.value
