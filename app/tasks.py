@@ -37,7 +37,7 @@ def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm
                 publish_update("assets_generation_completed", 
                                {
                                    "startup_id": startup.id, 
-                                   "startup": startup.to_dict(),
+                                   "startup": startup.to_dict(include_relations=True),
                                    "status": status,
                                    "message": message,
                                    "error": error_details
@@ -111,7 +111,7 @@ def generate_scope_document_task(startup_id):
                                {
                                    "startup_id": startup.id, 
                                    "scope_document": startup.scope_document.to_dict() if startup.scope_document else None,
-                                   "startup": startup.to_dict(), # Send updated startup with new stage
+                                   "startup": startup.to_dict(include_relations=True), # Send updated startup with new stage
                                    "status": status,
                                    "message": message,
                                    "error": error_details,
@@ -167,7 +167,7 @@ def generate_contract_task(startup_id):
                                {
                                    "startup_id": startup.id, 
                                    "contract": contract.to_dict() if contract else None,
-                                   "startup": startup.to_dict(), # Send updated startup with new stage
+                                   "startup": startup.to_dict(include_relations=True), # Send updated startup with new stage
                                    "status": status,
                                    "message": message,
                                    "error": error_details
