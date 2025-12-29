@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 # --- FastAPI App ---
 app = FastAPI(title="Dashboard Notification WebSocket Server")
 
+# --- Flask App Context for DB Access ---
+from app import create_app
+flask_app = create_app()
+flask_app_context = flask_app.app_context()
+flask_app_context.push()
+
 # --- CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
