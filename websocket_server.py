@@ -48,6 +48,14 @@ async def redis_listener(manager: NotificationManager):
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if message:
                 logger.info(f"Received message from Redis: {message['data']}")
+                
+                # DEBUG FILE LOG
+                try:
+                    with open("debug_ws_server.log", "a") as f:
+                        f.write(f"REDIS RECV: {message['data'][:100]}\n")
+                except:
+                    pass
+
                 print(f"DEBUG: WS Server received from Redis: {message['data']}")
                 # The data from redis-py pubsub is a string, so we need to parse it
                 try:
@@ -131,6 +139,12 @@ async def dashboard_websocket(
                     startup_id = data.get("startup_id")
                     if startup_id:
                         manager.subscribe(websocket, f"startup_{startup_id}")
+                        
+                        try:
+                            with open("debug_ws_server.log", "a") as f:
+                                f.write(f"CLIENT SUBSCRIBE: startup_{startup_id}\n")
+                        except:
+                            pass
                         
                         # --- Send Initial Env Status (Regression Fix) ---
                         try:
