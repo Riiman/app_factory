@@ -64,7 +64,7 @@ import AssetGenerationModal from '@/components/dashboard/AssetGenerationModal';
 type CreateModalType = 'task' | 'experiment' | 'artifact';
 
 const DashboardPage: React.FC = () => {
-    const { user, isLoading: authLoading, handleLogout } = useAuth();
+    const { user, isLoading: authLoading, handleLogout, token } = useAuth();
 
     // --- React Query for Data Fetching ---
     const { data: startup, isLoading: isQueryLoading, isError, error } = useQuery<Startup, Error>({
@@ -121,11 +121,11 @@ const DashboardPage: React.FC = () => {
     const queryClient = useQueryClient();
 
     useEffect(() => {
-        if (!user?.startup_id || !user?.token) return;
+        if (!user?.startup_id || !token) return;
 
         // NEW: Native WebSocket Connection
         const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
-        const ws = new WebSocket(`${wsUrl}?token=${user.token}`);
+        const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
         ws.onopen = () => {
             console.log('Connected to dashboard notifications WebSocket (Native)');
@@ -279,7 +279,7 @@ const DashboardPage: React.FC = () => {
         return () => {
             ws.close();
         };
-    }, [user?.startup_id, user?.token, queryClient]);
+    }, [user?.startup_id, token, queryClient]);
 
     // --- Asset Generation Modal Logic ---
     const [isAssetGenerationModalOpen, setIsAssetGenerationModalOpen] = useState(false);
