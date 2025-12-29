@@ -41,3 +41,7 @@ def publish_update(event_type: str, data: dict, rooms: list = None, channel: str
         
     except Exception as e:
         logger.error(f"Failed to publish update to Redis: {e}")
+        print(f"DEBUG: Failed to publish to Redis: {e}")
+
+    # Explicit debug print for verification
+    print(f"DEBUG: Published {event_type} to {channel} for rooms: {rooms}")

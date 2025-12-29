@@ -48,6 +48,7 @@ async def redis_listener(manager: NotificationManager):
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if message:
                 logger.info(f"Received message from Redis: {message['data']}")
+                print(f"DEBUG: WS Server received from Redis: {message['data']}")
                 # The data from redis-py pubsub is a string, so we need to parse it
                 try:
                     data_dict = json.loads(message['data'])
@@ -56,6 +57,7 @@ async def redis_listener(manager: NotificationManager):
                     logger.error(f"Could not decode JSON from Redis message: {message['data']}")
                 except Exception as e:
                     logger.error(f"Error broadcasting message: {e}")
+                    print(f"DEBUG: Broadcast Error: {e}")
             await asyncio.sleep(0.01) # Prevent tight loop
         except Exception as e:
             logger.error(f"Redis listener error: {e}")
@@ -129,6 +131,48 @@ async def dashboard_websocket(
                     startup_id = data.get("startup_id")
                     if startup_id:
                         manager.subscribe(websocket, f"startup_{startup_id}")
+                        
+                        # --- Send Initial Env Status (Regression Fix) ---
+                        try:
+                            # Use DockerManager to check status
+                            # We are inside async function, but DockerManager is sync.
+                            # For now, running sync is okay as it's quick, or we could offload to thread.
+                            # Since we have flask_app_context globally, we can use DB if needed inside DockerManager.
+                            
+                            # Note: We need to ensure we fall back to 'stopped' if anything fails
+                            status_payload = {'status': 'stopped'}
+                            
+                            # We need to run this in the threadpool to avoid blocking the event loop
+                            def get_status_sync():
+                                d_mgr = DockerManager()
+                                # Reuse get_container_name (uses DB)
+                                c_name = d_mgr.get_container_name(startup_id)
+                                try:
+                                    container = d_mgr.client.containers.get(c_name)
+                                    if container.status == 'running':
+                                        ports = container.attrs['NetworkSettings']['Ports']
+                                        return {
+                                            'status': 'running',
+                                            'container_id': container.id,
+                                            'ports': ports
+                                        }
+                                except Exception:
+                                    pass
+                                return {'status': 'stopped'}
+
+                            # Run sync code in executor
+                            loop = asyncio.get_event_loop()
+                            status_payload = await loop.run_in_executor(None, get_status_sync)
+                            
+                            # Send to client
+                            await websocket.send_json({
+                                "type": "env_status",
+                                "data": status_payload
+                            })
+                            
+                        except Exception as e:
+                            logger.error(f"Error sending initial env_status: {e}")
+                            print(f"DEBUG: Error sending initial env_status: {e}")
                 
                 elif message_type == "unsubscribe":
                     startup_id = data.get("startup_id")
