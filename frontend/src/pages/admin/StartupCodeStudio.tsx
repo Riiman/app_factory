@@ -172,15 +172,20 @@ const StartupCodeStudio: React.FC = () => {
                             break;
 
                         case 'agent_update':
+                            console.log('[DEBUG WS] Agent Update Received:', data); // Debug Log
                             if (data.logs && Array.isArray(data.logs)) {
+                                console.log('[DEBUG WS] Logs found:', data.logs); // Debug Log
                                 setLogs(prev => [...prev, ...data.logs]);
-                                
+
                                 // RESTORED: Map logs to thoughts so they appear in AgentBrain
                                 const newThoughts = data.logs.map((l: any) => {
                                     if (typeof l === 'object') return JSON.stringify(l);
                                     return l;
                                 });
+                                console.log('[DEBUG WS] New Thoughts generated:', newThoughts); // Debug Log
                                 setThoughts(prev => [...prev, ...newThoughts]);
+                            } else {
+                                console.log('[DEBUG WS] No logs in agent_update payload'); // Debug Log
                             }
                             if (data.plan) setPlan(data.plan);
                             if (data.task_status) setTaskStatus(data.task_status);
