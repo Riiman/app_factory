@@ -121,7 +121,7 @@ const DashboardPage: React.FC = () => {
     const queryClient = useQueryClient();
 
     useEffect(() => {
-        if (!user?.startup_id || !user?.token || !startupData) return;
+        if (!user?.startup_id || !user?.token) return;
 
         // NEW: Native WebSocket Connection
         const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
