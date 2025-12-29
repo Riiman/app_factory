@@ -164,8 +164,6 @@ class V3CoPilot:
         try:
             res = llm_with_tools.invoke(full_history)
             return {"content": res, "error": None}
-            res = llm_with_tools.invoke(full_history)
-            return {"content": res, "error": None}
         except Exception as e:
             error_str = str(e).lower()
             if "content_filter" in error_str or "content management policy" in error_str or "400" in error_str:
@@ -179,7 +177,6 @@ class V3CoPilot:
                         messages[0] # Keep the original request
                     ]
                     res = llm_with_tools.invoke(sanitized_history)
-                    return {"content": res, "error": None}
                     return {"content": res, "error": None}
                 except Exception as e2:
                     return {"content": None, "error": f"Content Filter blocked retry: {e2}"}

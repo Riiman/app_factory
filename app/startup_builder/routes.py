@@ -591,14 +591,31 @@ def run_v3_agent_bg(startup_id, initial_state):
                     'node': node
                 }, rooms=[f"startup_{startup_id}"])
 
-            # Create V3 Graph on the fly (lightweight)
-            # or cache it if expensive. We need log_callback bound though.
-            v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=log_callback)
-            
-            config = {"configurable": {"thread_id": startup_id}, "recursion_limit": 100}
-            
             try:
+                # DEBUG DIAGNOSTICS
+                from app.extensions import redis_client
+                s_id_str = str(startup_id)
+                print(f"THREAD START: startup_id={s_id_str}, redis={redis_client}")
+                
+                # DEBUG: Announce thread start (Force String ID)
+                from app.services.notification_service import publish_update
+                publish_update('agent_update', {
+                    'task_status': 'planning', 
+                    'logs': [f"Debug: Agent Thread Started for ID {s_id_str} (Redis Active)"]
+                }, rooms=[f"startup_{s_id_str}"])
+
+                # Create V3 Graph on the fly (lightweight)
+                # or cache it if expensive. We need log_callback bound though.
+                v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=log_callback)
+                
+                config = {"configurable": {"thread_id": s_id_str}, "recursion_limit": 100}
+                
+                publish_update('agent_update', {'logs': ["Debug: Graph Created. Starting Stream..."]}, rooms=[f"startup_{s_id_str}"])
+                
+                # Run the graph
                 for event in v3_graph.stream(initial_state, config=config):
+                    # event is a dict where keys are node names and values are the state updates from that node
+                    publish_update('agent_update', {'logs': [f"Debug: Stream Event Received"]}, rooms=[f"startup_{s_id_str}"])
                     # CHECK FOR PAUSE SIGNAL
                     if startup_id in stop_signals:
                         print(f"Pausing V3 Agent for {startup_id}")
