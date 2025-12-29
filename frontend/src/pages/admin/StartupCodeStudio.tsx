@@ -71,8 +71,8 @@ const StartupCodeStudio: React.FC = () => {
             return [...prev, logMsg];
         });
         setThoughts(prev => {
-             // Basic deduplication for thoughts too
-             if (prev.length > 0) {
+            // Basic deduplication for thoughts too
+            if (prev.length > 0) {
                 const lastThought = prev[prev.length - 1];
                 if (lastThought === msg || lastThought.includes(msg)) return prev;
             }
@@ -144,6 +144,13 @@ const StartupCodeStudio: React.FC = () => {
             try {
                 const msg = JSON.parse(event.data);
                 const data = msg.data; // Payload is in data field
+
+                // DEBUG: Log ALL incoming messages
+                console.log("WS MESSAGE RECEIVED:", msg.type, data);
+                if (msg.type === 'agent_thought' || msg.type === 'agent_update') {
+                    // Force visible log for debugging
+                    // addLog(`DEBUG RECV: ${msg.type} - ${JSON.stringify(data).substring(0, 50)}...`);
+                }
 
                 switch (msg.type) {
                     case 'env_status':
@@ -743,11 +750,11 @@ const StartupCodeStudio: React.FC = () => {
                     )}
                     <button
                         onClick={async () => {
-                             if (!ports || isPreviewOpening) return;
-                             setIsPreviewOpening(true);
-                             // Simple timeout to prevent double-clicks
-                             setTimeout(() => setIsPreviewOpening(false), 2000);
-                             window.open(`/api/startups/${id}/preview/`, '_blank');
+                            if (!ports || isPreviewOpening) return;
+                            setIsPreviewOpening(true);
+                            // Simple timeout to prevent double-clicks
+                            setTimeout(() => setIsPreviewOpening(false), 2000);
+                            window.open(`/api/startups/${id}/preview/`, '_blank');
                         }}
                         disabled={!ports || isPreviewOpening}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${ports && !isPreviewOpening ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed'
