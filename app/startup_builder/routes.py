@@ -585,10 +585,11 @@ def run_v3_agent_bg(startup_id, initial_state):
             
             # Callback for Thoughts
             def log_callback(content, node):
-                socketio.emit('agent_thought', {
+                from app.services.notification_service import publish_update
+                publish_update('agent_thought', {
                     'content': content, 
                     'node': node
-                }, room=f"startup_{startup_id}", namespace='/builder')
+                }, rooms=[f"startup_{startup_id}"])
 
             # Create V3 Graph on the fly (lightweight)
             # or cache it if expensive. We need log_callback bound though.
@@ -602,10 +603,11 @@ def run_v3_agent_bg(startup_id, initial_state):
                     if startup_id in stop_signals:
                         print(f"Pausing V3 Agent for {startup_id}")
                         stop_signals.remove(startup_id)
-                        socketio.emit('agent_update', {
+                        from app.services.notification_service import publish_update
+                        publish_update('agent_update', {
                             'task_status': 'paused',
                             'logs': ["Process paused by user."]
-                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        }, rooms=[f"startup_{startup_id}"])
                         return
 
                     for key, value in event.items():
@@ -615,7 +617,9 @@ def run_v3_agent_bg(startup_id, initial_state):
                         completed_tasks = len([t for t in plan if t.get("status") == "completed"])
                         
                         # Emit Updated State
-                        socketio.emit('agent_update', {
+                        # Emit Updated State
+                        from app.services.notification_service import publish_update
+                        publish_update('agent_update', {
                             'node': key,
                             'task_status': value.get('status', 'processing'),
                             # Analyzer returns status='planning', so it will show 'planning' after analyzer is done.
@@ -626,19 +630,21 @@ def run_v3_agent_bg(startup_id, initial_state):
                             'current_mission_index': value.get('current_mission_id', 0),
                             'total_tasks': total_tasks,
                             'completed_tasks': completed_tasks
-                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        }, rooms=[f"startup_{startup_id}"])
                         
-                socketio.emit('agent_update', {
+                from app.services.notification_service import publish_update
+                publish_update('agent_update', {
                     'task_status': 'done',
                     'logs': ['V3 Mission Complete']
-                }, room=f"startup_{startup_id}", namespace='/builder')
+                }, rooms=[f"startup_{startup_id}"])
                 
             except Exception as e:
                 print(f"V3 Error: {e}")
-                socketio.emit('agent_update', {
+                from app.services.notification_service import publish_update
+                publish_update('agent_update', {
                     'task_status': 'failed',
                     'logs': [f"Critical Error: {e}"]
-                }, room=f"startup_{startup_id}", namespace='/builder')
+                }, rooms=[f"startup_{startup_id}"])
 
     thread = threading.Thread(target=task)
     thread.start()
@@ -703,14 +709,14 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                         print(f"Pausing task for {startup_id}")
                         stop_signals.remove(startup_id)
                         
-                        from app.extensions import socketio
+                        from app.services.notification_service import publish_update
                         # Update status to paused in state
                         # Note: We can't easily update langgraph state without a transition, 
                         # but we can just stop the loop. The state remains at the last step.
-                        socketio.emit('agent_update', {
+                        publish_update('agent_update', {
                             'task_status': 'paused',
                             'logs': state_tracker.get("logs", []) + ["Process paused by user."]
-                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        }, rooms=[f"startup_{startup_id}"])
                         return
 
                     for event in graph.stream(current_input, config=config):
@@ -756,14 +762,14 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                                     print(f"Error syncing feature status: {e}")
 
                             # Emit update via WebSocket
-                            from app.extensions import socketio
+                            from app.services.notification_service import publish_update
                             
                             # Calculate Progress dynamically
                             plan = state_tracker.get("plan", [])
                             total_tasks = len(plan)
                             completed_tasks = len([t for t in plan if t.get("status") == "completed"])
                             
-                            socketio.emit('agent_update', {
+                            publish_update('agent_update', {
                                 'logs': state_tracker.get("logs", []),
                                 'plan': plan,
                                 'task_status': state_tracker.get("status", "unknown"),
@@ -771,7 +777,7 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                                 'completed_tasks': completed_tasks,
                                 'current_step': state_tracker.get("current_step", {}),
                                 'waiting_approval': False # Default
-                            }, room=f"startup_{startup_id}", namespace='/builder')
+                            }, rooms=[f"startup_{startup_id}"])
                     
                     snapshot = graph.get_state(config)
                     
