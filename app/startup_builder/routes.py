@@ -585,6 +585,12 @@ def run_v3_agent_bg(startup_id, initial_state):
             
             # Callback for Thoughts
             def log_callback(content, node):
+                try:
+                    with open("debug_ws_v3.log", "a") as f:
+                        f.write(f"CALLBACK: node={node}, content={content[:50]}...\n")
+                except:
+                    pass
+
                 from app.services.notification_service import publish_update
                 publish_update('agent_thought', {
                     'content': content, 
@@ -595,6 +601,14 @@ def run_v3_agent_bg(startup_id, initial_state):
                 # DEBUG DIAGNOSTICS
                 from app.extensions import redis_client
                 s_id_str = str(startup_id)
+                
+                # Write to a dedicated debug file to bypass stdout/stderr redirection issues
+                try:
+                    with open("debug_ws_v3.log", "a") as f:
+                        f.write(f"THREAD START: startup_id={s_id_str}, redis={redis_client}\n")
+                except Exception as e:
+                    print(f"Failed to write to debug log: {e}")
+
                 print(f"THREAD START: startup_id={s_id_str}, redis={redis_client}")
                 
                 # DEBUG: Announce thread start (Force String ID)
