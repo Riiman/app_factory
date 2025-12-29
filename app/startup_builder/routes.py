@@ -585,17 +585,42 @@ def run_v3_agent_bg(startup_id, initial_state):
             
             # Callback for Thoughts
             def log_callback(content, node):
+                # 1. LOG TO FILE
                 try:
                     with open("debug_ws_v3.log", "a") as f:
                         f.write(f"CALLBACK: node={node}, content={content[:50]}...\n")
                 except:
                     pass
 
-                from app.services.notification_service import publish_update
-                publish_update('agent_thought', {
-                    'content': content, 
-                    'node': node
-                }, rooms=[f"startup_{startup_id}"])
+                # 2. DIRECT REDIS PUBLISH TEST
+                try:
+                    from app.extensions import redis_client
+                    import json
+                    test_payload = {
+                        "rooms": [f"startup_{startup_id}"],
+                        "payload": {
+                            "type": "agent_thought",
+                            "data": {"content": content, "node": node}
+                        }
+                    }
+                    redis_client.publish("dashboard-notifications", json.dumps(test_payload))
+                    
+                    with open("debug_ws_v3.log", "a") as f:
+                        f.write(f"DIRECT PUBLISH SUCCESS: items={len(content)}\n")
+                        
+                except Exception as e:
+                     with open("debug_ws_v3.log", "a") as f:
+                        f.write(f"DIRECT PUBLISH FAILED: {e}\n")
+
+                # 3. STANDARD PUBLISH (Keep it just in case)
+                try:
+                    from app.services.notification_service import publish_update
+                    publish_update('agent_thought', {
+                        'content': content, 
+                        'node': node
+                    }, rooms=[f"startup_{startup_id}"])
+                except Exception as e:
+                     pass
 
             try:
                 # DEBUG DIAGNOSTICS
