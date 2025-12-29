@@ -36,8 +36,10 @@ app.add_middleware(
 
 
 # --- Redis Pub/Sub Listener ---
+# --- Redis Pub/Sub Listener ---
 async def redis_listener(manager: NotificationManager):
     """Listens to a Redis channel and broadcasts messages to WebSocket clients."""
+    # Use a simpler Redis connection
     redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
     pubsub = redis_client.pubsub()
     await pubsub.subscribe(REDIS_CHANNEL)
@@ -47,25 +49,14 @@ async def redis_listener(manager: NotificationManager):
         try:
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if message:
-                logger.info(f"Received message from Redis: {message['data']}")
-                
-                # DEBUG FILE LOG
-                try:
-                    with open("debug_ws_server.log", "a") as f:
-                        f.write(f"REDIS RECV: {message['data'][:100]}\n")
-                except:
-                    pass
-
-                print(f"DEBUG: WS Server received from Redis: {message['data']}")
-                # The data from redis-py pubsub is a string, so we need to parse it
                 try:
                     data_dict = json.loads(message['data'])
                     await manager.broadcast(data_dict)
                 except json.JSONDecodeError:
-                    logger.error(f"Could not decode JSON from Redis message: {message['data']}")
+                    logger.error(f"Could not decode JSON from Redis: {message['data']}")
                 except Exception as e:
                     logger.error(f"Error broadcasting message: {e}")
-                    print(f"DEBUG: Broadcast Error: {e}")
+                    
             await asyncio.sleep(0.01) # Prevent tight loop
         except Exception as e:
             logger.error(f"Redis listener error: {e}")
@@ -76,7 +67,6 @@ async def redis_listener(manager: NotificationManager):
 async def startup_event():
     """On startup, create a background task for the Redis listener."""
     manager = get_notification_manager()
-    # Using asyncio.create_task to run the listener in the background
     asyncio.create_task(redis_listener(manager))
 
 
@@ -87,7 +77,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- JWT Configuration ---
-# In a real app, load this from the same config source as Flask
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-please-change') 
 JWT_ALGORITHM = "HS256"
 
@@ -99,34 +88,23 @@ async def dashboard_websocket(
 ):
     # 1. Authenticate
     if not token:
-        logger.warning("Connection attempt without token.")
-        await websocket.close(code=4001) # Close with error
+        await websocket.close(code=4001)
         return
 
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        user_id = payload.get("sub") # Assuming 'sub' holds user_id
-        # Role might be in 'claims' or 'role' depending on how it was encoded
-        # Let's assume a simple structure for now or just use user_id
-        # If we need role, we might need to fetch it or decode it if present
-        # user_role = payload.get("role", "user") 
-    except jwt.ExpiredSignatureError:
-        logger.warning("Token expired.")
-        await websocket.close(code=4001)
-        return
-    except jwt.InvalidTokenError:
-        logger.warning("Invalid token.")
+        user_id = str(payload.get("sub")) # Enforce string ID
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         await websocket.close(code=4001)
         return
 
-    # 2. Determine Rooms
-    # Subscribe to user room by default
+    # 2. Determine Rooms (User Specific)
     rooms = [f"user_{user_id}"]
-    
     if payload.get("role") == "admin":
         rooms.append("admin")
 
     await manager.connect(websocket, rooms)
+    
     try:
         while True:
             # Handle incoming messages (e.g., subscriptions)
@@ -138,60 +116,28 @@ async def dashboard_websocket(
                 if message_type == "subscribe":
                     startup_id = data.get("startup_id")
                     if startup_id:
-                        manager.subscribe(websocket, f"startup_{startup_id}")
+                        # CRITICAL: Enforce consistent string ID type
+                        room_name = f"startup_{str(startup_id)}"
+                        manager.subscribe(websocket, room_name)
+                        logger.info(f"Client user_{user_id} subscribed to {room_name}")
                         
+                        # --- Send Initial Env Status ---
                         try:
-                            with open("debug_ws_server.log", "a") as f:
-                                f.write(f"CLIENT SUBSCRIBE: startup_{startup_id}\n")
-                        except:
-                            pass
-                        
-                        # --- Send Initial Env Status (Regression Fix) ---
-                        try:
-                            # Use DockerManager to check status
-                            # We are inside async function, but DockerManager is sync.
-                            # For now, running sync is okay as it's quick, or we could offload to thread.
-                            # Since we have flask_app_context globally, we can use DB if needed inside DockerManager.
-                            
-                            # Note: We need to ensure we fall back to 'stopped' if anything fails
-                            status_payload = {'status': 'stopped'}
-                            
-                            # We need to run this in the threadpool to avoid blocking the event loop
-                            def get_status_sync():
-                                d_mgr = DockerManager()
-                                # Reuse get_container_name (uses DB)
-                                c_name = d_mgr.get_container_name(startup_id)
-                                try:
-                                    container = d_mgr.client.containers.get(c_name)
-                                    if container.status == 'running':
-                                        ports = container.attrs['NetworkSettings']['Ports']
-                                        return {
-                                            'status': 'running',
-                                            'container_id': container.id,
-                                            'ports': ports
-                                        }
-                                except Exception:
-                                    pass
-                                return {'status': 'stopped'}
-
-                            # Run sync code in executor
+                            # Run sync docker check in threadpool
                             loop = asyncio.get_event_loop()
-                            status_payload = await loop.run_in_executor(None, get_status_sync)
+                            status_payload = await loop.run_in_executor(None, lambda: get_env_status_sync(startup_id))
                             
-                            # Send to client
                             await websocket.send_json({
                                 "type": "env_status",
                                 "data": status_payload
                             })
-                            
                         except Exception as e:
-                            logger.error(f"Error sending initial env_status: {e}")
-                            print(f"DEBUG: Error sending initial env_status: {e}")
+                            logger.error(f"Error fetching env status: {e}")
                 
                 elif message_type == "unsubscribe":
                     startup_id = data.get("startup_id")
                     if startup_id:
-                        manager.unsubscribe(websocket, f"startup_{startup_id}")
+                        manager.unsubscribe(websocket, f"startup_{str(startup_id)}")
                         
             except json.JSONDecodeError:
                 pass
@@ -201,6 +147,22 @@ async def dashboard_websocket(
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         manager.disconnect(websocket)
+
+# Helper for Sync Docker Check (to keep async loop clean)
+def get_env_status_sync(startup_id):
+    try:
+        d_mgr = DockerManager()
+        c_name = d_mgr.get_container_name(startup_id)
+        container = d_mgr.client.containers.get(c_name)
+        if container.status == 'running':
+            return {
+                'status': 'running',
+                'container_id': container.id,
+                'ports': container.attrs['NetworkSettings']['Ports']
+            }
+    except Exception:
+        pass
+    return {'status': 'stopped'}
 
 
 # --- Terminal WebSocket ---

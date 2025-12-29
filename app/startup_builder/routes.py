@@ -585,62 +585,23 @@ def run_v3_agent_bg(startup_id, initial_state):
             
             # Callback for Thoughts
             def log_callback(content, node):
-                # 1. LOG TO FILE
-                try:
-                    with open("debug_ws_v3.log", "a") as f:
-                        f.write(f"CALLBACK: node={node}, content={content[:50]}...\n")
-                except:
-                    pass
-
-                # 2. DIRECT REDIS PUBLISH TEST
-                try:
-                    from app.extensions import redis_client
-                    import json
-                    test_payload = {
-                        "rooms": [f"startup_{startup_id}"],
-                        "payload": {
-                            "type": "agent_thought",
-                            "data": {"content": content, "node": node}
-                        }
-                    }
-                    redis_client.publish("dashboard-notifications", json.dumps(test_payload))
-                    
-                    with open("debug_ws_v3.log", "a") as f:
-                        f.write(f"DIRECT PUBLISH SUCCESS: items={len(content)}\n")
-                        
-                except Exception as e:
-                     with open("debug_ws_v3.log", "a") as f:
-                        f.write(f"DIRECT PUBLISH FAILED: {e}\n")
-
-                # 3. STANDARD PUBLISH (Keep it just in case)
-                try:
-                    from app.services.notification_service import publish_update
-                    publish_update('agent_thought', {
-                        'content': content, 
-                        'node': node
-                    }, rooms=[f"startup_{startup_id}"])
-                except Exception as e:
-                     pass
+                from app.services.notification_service import publish_update
+                publish_update('agent_thought', {
+                    'content': content, 
+                    'node': node
+                }, rooms=[f"startup_{startup_id}"])
 
             try:
                 # DEBUG DIAGNOSTICS
                 from app.extensions import redis_client
                 s_id_str = str(startup_id)
-                
-                # Write to a dedicated debug file to bypass stdout/stderr redirection issues
-                try:
-                    with open("debug_ws_v3.log", "a") as f:
-                        f.write(f"THREAD START: startup_id={s_id_str}, redis={redis_client}\n")
-                except Exception as e:
-                    print(f"Failed to write to debug log: {e}")
-
                 print(f"THREAD START: startup_id={s_id_str}, redis={redis_client}")
                 
-                # DEBUG: Announce thread start (Force String ID)
+                # Notify Start
                 from app.services.notification_service import publish_update
                 publish_update('agent_update', {
                     'task_status': 'planning', 
-                    'logs': [f"Debug: Agent Thread Started for ID {s_id_str} (Redis Active)"]
+                    'logs': [f"Agent Thread Started for ID {s_id_str}"]
                 }, rooms=[f"startup_{s_id_str}"])
 
                 # Create V3 Graph on the fly (lightweight)

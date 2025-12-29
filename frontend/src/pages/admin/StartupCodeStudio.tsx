@@ -123,145 +123,116 @@ const StartupCodeStudio: React.FC = () => {
     useEffect(() => {
         if (!id || !user?.token) return;
 
-        // Connect to Native WebSocket (Subscription Base)
-        const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
-        const socket = new WebSocket(`${wsUrl}?token=${user.token}`);
+        let socket: WebSocket | null = null;
+        let reconnectTimeout: any = null;
 
-        socketRef.current = socket;
+        const connect = () => {
+            const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
+            socket = new WebSocket(`${wsUrl}?token=${user.token}`);
+            socketRef.current = socket;
 
-        socket.onopen = () => {
-            console.log('Connected to notification server');
-            // Subscribe to updates for this startup
-            socket.send(JSON.stringify({
-                type: 'subscribe',
-                startup_id: id
-            }));
-
-            // Also request initial status via REST (already done in other effects, but good to ensure)
-        };
-
-        socket.onmessage = (event) => {
-            try {
-                const msg = JSON.parse(event.data);
-                const data = msg.data; // Payload is in data field
-
-                // DEBUG: Log ALL incoming messages
-                console.log("WS MESSAGE RECEIVED:", msg.type, data);
-                if (msg.type === 'agent_thought' || msg.type === 'agent_update') {
-                    // Force visible log for debugging
-                    // addLog(`DEBUG RECV: ${msg.type} - ${JSON.stringify(data).substring(0, 50)}...`);
-                }
-
-                switch (msg.type) {
-                    case 'env_status':
-                        console.log('Received env_status:', data);
-                        if (data.status === 'running') {
-                            setIsRunning(true);
-                            setPorts(data.ports);
-                            addLog(`Environment is running. Container ID: ${data.container_id}`);
-                        } else {
-                            setIsRunning(false);
-                            setPorts(null);
-                            setIsWorking(false);
-                        }
-                        break;
-
-                    case 'build_started':
-                        console.log('Build started:', data);
-                        addLog(`Building ${data.stack_type} environment...`);
-                        break;
-
-                    case 'build_complete':
-                        console.log('Build complete:', data);
-                        setIsRunning(true);
-                        setPorts(data.ports);
-                        addLog(`Environment ready! Container ID: ${data.container_id}`);
-                        break;
-
-                    case 'build_failed':
-                        console.log('Build failed:', data);
-                        addLog(`Build failed: ${data.error}`);
-                        break;
-
-                    case 'agent_update':
-                        if (data.logs) {
-                            const newThoughts = data.logs.map((l: any) => {
-                                if (typeof l === 'object') return JSON.stringify(l);
-                                return l;
-                            });
-                            setThoughts(prev => [...prev, ...newThoughts]);
-                            setLogs(prev => [...prev, ...data.logs]);
-                        }
-                        if (data.plan) setPlan(data.plan);
-                        if (data.task_status) setTaskStatus(data.task_status);
-                        if (data.node) setActiveNode(data.node);
-                        if (data.total_tasks) {
-                            setProgress({
-                                completed: data.completed_tasks || 0,
-                                total: data.total_tasks
-                            });
-                        }
-
-                        if (data.waiting_approval) {
-                            setWaitingApproval(true);
-                            setIsWorking(false);
-                            if (data.current_step) setCurrentStep(data.current_step);
-                            addLog("System paused. Waiting for approval.");
-                        } else if (data.task_status === 'waiting_interaction') {
-                            setWaitingApproval(true);
-                            setIsWorking(false);
-                            setShowTerminal(true);
-                        } else if (data.task_status === 'done' || data.task_status === 'qa_passed') {
-                            setIsWorking(false);
-                            setWaitingApproval(false);
-                            addLog('Task completed successfully.');
-                            fetchData();
-                        } else if (data.task_status === 'failed') {
-                            setIsWorking(false);
-                            setWaitingApproval(false);
-                            addLog('Task failed.');
-                        } else if (['planning_needed', 'plan_ready', 'coding', 'strategizing', 'start'].includes(data.task_status)) {
-                            setIsWorking(true);
-                        }
-
-                        if (data.mission_queue) setMissionQueue(data.mission_queue);
-                        if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
-
-                        if (data.task_status === 'paused') {
-                            setIsWorking(false);
-                            addLog('Process paused.');
-                        }
-                        break;
-
-                    case 'agent_thought':
-                        console.log('Thought received:', data);
-                        if (data.content) setThoughts(prev => [...prev, data.content]);
-                        if (data.node) setActiveNode(data.node);
-                        break;
-                }
-            } catch (e) {
-                console.error("WS Parse Error:", e);
-            }
-        };
-
-        socket.onclose = () => {
-            console.log('Disconnected from notification server');
-        };
-
-        socket.onerror = (e) => {
-            console.error('WebSocket error:', e);
-        };
-
-        return () => {
-            // Unsubscribe before closing (best effort)
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'unsubscribe',
+            socket.onopen = () => {
+                console.log('Connected to notification server');
+                // Standard subscribe message
+                socket?.send(JSON.stringify({
+                    type: 'subscribe',
                     startup_id: id
                 }));
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    const data = msg.data;
+
+                    switch (msg.type) {
+                        case 'env_status':
+                            if (data.status === 'running') {
+                                setIsRunning(true);
+                                setPorts(data.ports);
+                            } else {
+                                setIsRunning(false);
+                                setPorts(null);
+                                setIsWorking(false);
+                            }
+                            break;
+
+                        case 'build_started':
+                            addLog(`Building ${data.stack_type} environment...`);
+                            break;
+
+                        case 'build_complete':
+                            setIsRunning(true);
+                            setPorts(data.ports);
+                            addLog(`Environment ready! Container ID: ${data.container_id}`);
+                            break;
+
+                        case 'build_failed':
+                            addLog(`Error: ${data.error}`);
+                            break;
+
+                        case 'agent_update':
+                            if (data.logs && Array.isArray(data.logs)) {
+                                setLogs(prev => [...prev, ...data.logs]);
+                            }
+                            if (data.plan) setPlan(data.plan);
+                            if (data.task_status) setTaskStatus(data.task_status);
+                            if (data.node) setActiveNode(data.node);
+
+                            if (data.total_tasks) {
+                                setProgress({
+                                    completed: data.completed_tasks || 0,
+                                    total: data.total_tasks
+                                });
+                            }
+
+                            if (data.waiting_approval) {
+                                setWaitingApproval(true);
+                                setIsWorking(false);
+                                if (data.current_step) setCurrentStep(data.current_step);
+                            } else if (['done', 'qa_passed', 'failed'].includes(data.task_status)) {
+                                setIsWorking(false);
+                                setWaitingApproval(false);
+                                if (data.task_status === 'done') fetchData();
+                            } else if (['planning', 'coding', 'strategizing'].includes(data.task_status)) {
+                                setIsWorking(true);
+                            }
+
+                            if (data.mission_queue) setMissionQueue(data.mission_queue);
+                            if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
+                            break;
+
+                        case 'agent_thought':
+                            if (data.content) {
+                                setThoughts(prev => [...prev, data.content]);
+                            }
+                            if (data.node) setActiveNode(data.node);
+                            break;
+                    }
+                } catch (e) {
+                    console.error("WS Parse Error", e);
+                }
+            };
+
+            socket.onclose = () => {
+                console.log('WS Closed. Reconnecting in 3s...');
+                reconnectTimeout = setTimeout(connect, 3000);
+            };
+
+            socket.onerror = (e) => {
+                console.error('WS Error:', e);
+                socket?.close();
+            };
+        };
+
+        connect();
+
+        return () => {
+            if (socket) {
+                socket.onclose = null; // Prevent reconnect on unmount
+                socket.close();
             }
-            // Always close the socket to prevent leaks
-            socket.close();
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
     }, [id, user?.token]);
 
