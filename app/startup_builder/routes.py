@@ -848,11 +848,10 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                         continue
                     else:
                         # Waiting for approval
-                        from app.extensions import socketio
-                        socketio.emit('agent_update', {
+                        publish_update('agent_update', {
                             'waiting_approval': True,
                             'current_step': snapshot.values.get("current_step", {})
-                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        }, rooms=[f"startup_{startup_id}"])
                         return # Exit thread, wait for /approve endpoint to resume
                 
                 # Finished
@@ -866,11 +865,10 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                         
             except Exception as e:
                 print(f"Agent background task failed: {e}")
-                from app.extensions import socketio
-                socketio.emit('agent_update', {
+                publish_update('agent_update', {
                     'task_status': 'failed',
                     'logs': state_tracker.get("logs", []) + [f"System Error: {str(e)}"]
-                }, room=f"startup_{startup_id}", namespace='/builder')
+                }, rooms=[f"startup_{startup_id}"])
 
     thread = threading.Thread(target=task)
     thread.start()

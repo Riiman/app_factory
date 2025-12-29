@@ -49,17 +49,41 @@ const StartupCodeStudio: React.FC = () => {
     const [expandedProducts, setExpandedProducts] = useState<Record<number, boolean>>({});
     const [fileRefreshKey, setFileRefreshKey] = useState(0);
 
+    // State for UX hardening
+    const [isStarting, setIsStarting] = useState(false);
+    const [isPreviewOpening, setIsPreviewOpening] = useState(false);
+
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
 
     const addLog = (msg: string) => {
-        const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
-        setLogs(prev => [...prev, logMsg]);
-        setThoughts(prev => [...prev, logMsg]);
+        setLogs(prev => {
+            // Deduplication: Don't add if identical to the very last message (ignoring legacy timestamp checks if plain string)
+            // But here we format with timestamp. Let's check the content content.
+            if (prev.length > 0) {
+                const lastLog = prev[prev.length - 1];
+                if (lastLog.includes(msg)) {
+                    return prev;
+                }
+            }
+            const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
+            return [...prev, logMsg];
+        });
+        setThoughts(prev => {
+             // Basic deduplication for thoughts too
+             if (prev.length > 0) {
+                const lastThought = prev[prev.length - 1];
+                if (lastThought === msg || lastThought.includes(msg)) return prev;
+            }
+            const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
+            return [...prev, logMsg];
+        });
     };
 
     const handleStart = async () => {
+        if (isStarting || isRunning) return;
+        setIsStarting(true);
         addLog('Starting environment...');
         try {
             const res = await fetch(`/api/builder/${id}/start`, {
@@ -76,6 +100,7 @@ const StartupCodeStudio: React.FC = () => {
                 data = await res.json();
             } catch (e) {
                 addLog(`Error parsing response: ${res.status} ${res.statusText}`);
+                setIsStarting(false);
                 return;
             }
             if (data.status === 'running' || data.status === 'created' || data.status === 'success') {
@@ -89,6 +114,8 @@ const StartupCodeStudio: React.FC = () => {
             }
         } catch (e) {
             addLog(`Error: ${e}`);
+        } finally {
+            setIsStarting(false);
         }
     };
 
@@ -699,8 +726,8 @@ const StartupCodeStudio: React.FC = () => {
                         </button>
                     </div>
                     {!isRunning ? (
-                        <button onClick={handleStart} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
-                            <Play className="w-4 h-4" /> Start Env
+                        <button onClick={handleStart} disabled={isStarting} className={`flex items-center gap-2 bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm font-medium transition-colors ${isStarting ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {isStarting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} {isStarting ? 'Starting...' : 'Start Env'}
                         </button>
                     ) : (
                         <>
@@ -714,17 +741,21 @@ const StartupCodeStudio: React.FC = () => {
                             </button>
                         </>
                     )}
-                    <a
-                        href={`/api/startups/${id}/preview/`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${ports ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed pointer-events-none'
+                    <button
+                        onClick={async () => {
+                             if (!ports || isPreviewOpening) return;
+                             setIsPreviewOpening(true);
+                             // Simple timeout to prevent double-clicks
+                             setTimeout(() => setIsPreviewOpening(false), 2000);
+                             window.open(`/api/startups/${id}/preview/`, '_blank');
+                        }}
+                        disabled={!ports || isPreviewOpening}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${ports && !isPreviewOpening ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed'
                             }`}
                         title={ports ? "Open Preview" : "Preview not available"}
-                        onClick={(e) => { if (!ports) e.preventDefault(); }}
                     >
-                        <ExternalLink className="w-4 h-4" /> Preview
-                    </a>
+                        {isPreviewOpening ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />} Preview
+                    </button>
                     <button
                         onClick={() => setShowTerminal(true)}
                         className="ml-4 flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded text-sm font-medium transition-colors"
