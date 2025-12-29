@@ -174,6 +174,13 @@ const StartupCodeStudio: React.FC = () => {
                         case 'agent_update':
                             if (data.logs && Array.isArray(data.logs)) {
                                 setLogs(prev => [...prev, ...data.logs]);
+                                
+                                // RESTORED: Map logs to thoughts so they appear in AgentBrain
+                                const newThoughts = data.logs.map((l: any) => {
+                                    if (typeof l === 'object') return JSON.stringify(l);
+                                    return l;
+                                });
+                                setThoughts(prev => [...prev, ...newThoughts]);
                             }
                             if (data.plan) setPlan(data.plan);
                             if (data.task_status) setTaskStatus(data.task_status);
