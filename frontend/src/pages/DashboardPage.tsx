@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
@@ -283,8 +283,11 @@ const DashboardPage: React.FC = () => {
 
     // --- Asset Generation Modal Logic ---
     const [isAssetGenerationModalOpen, setIsAssetGenerationModalOpen] = useState(false);
+    const hasCheckedAssetsRef = useRef(false);
 
     useEffect(() => {
+        if (hasCheckedAssetsRef.current) return;
+
         if (startupData && startupData.current_stage === StartupStage.ADMITTED) {
             const hasProduct = (startupData.products || []).length > 0;
             const hasGtm = (startupData.marketing_campaigns || []).length > 0;
@@ -295,6 +298,7 @@ const DashboardPage: React.FC = () => {
                     setIsAssetGenerationModalOpen(true);
                 }
             }
+            hasCheckedAssetsRef.current = true;
         }
     }, [startupData]);
 
