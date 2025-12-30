@@ -69,6 +69,7 @@ class V3Architect:
         - You CAN write `docker-compose.yml` for the user, but DO NOT try to run/verify it.
         - To VERIFY the app, run it DIRECTLY (e.g., `npm start`, `python main.py`, `uvicorn`).
         - Do NOT try to install packages that require root/system changes (like installing docker engine).
+        - EXTERNAL APIS: If the mission involves external services (OpenAI, Stripe, etc.), your PLAN must account for the possibility of missing keys. Instruct the developer to use MOCK/TEST modes if verifying without keys.
 
         TOOL USAGE RULES:
         - Do NOT call the same tool with identical arguments more than twice in a row.

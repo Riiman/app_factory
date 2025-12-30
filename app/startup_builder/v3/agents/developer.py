@@ -173,6 +173,14 @@ class V3Developer:
         2. Write/Update the code (Full Implementation).
         3. Verify checks passed if applicable.
         
+        HANDLING MISSING CREDENTIALS:
+        If verification requires an API Key (e.g., OPENAI_API_KEY) and it is missing/unset:
+        1. DO NOT FAIL.
+        2. Create a MOCK SCRIPT (e.g., `test_auth_mock.py`) that simulates the API response.
+        3. Run the mock to verify functionality handling.
+        4. UPDATE documentation (README.md or .env.example) with instructions on how to set the missing key.
+        5. Mark as COMPLETED with note: "Verified via Mock (Auth Missing)".
+        
         BLOCKING COMMAND RULE:
         - NEVER run `npm run dev` or servers via `run_shell`. Use `ensure_server_running`.
         - If `run_shell` returns `{"status": "background", "job_id": "..."}`, your turn is DONE. STOP there.

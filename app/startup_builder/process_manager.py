@@ -50,8 +50,18 @@ class ProcessManager:
                 while time.time() - start_step < step:
                     # Check status via exec_run check
                     try:
-                        check = self.docker_manager.client.containers.get(self.docker_manager.get_container_name(startup_id)).exec_run(f"ps -p {pid}")
-                        is_running = (check.exit_code == 0)
+                        # Check State to avoid Zombies
+                        check = self.docker_manager.client.containers.get(self.docker_manager.get_container_name(startup_id)).exec_run(f"ps -o state= -p {pid}")
+                        
+                        if check.exit_code != 0:
+                             is_running = False
+                        else:
+                             state = check.output.decode('utf-8').strip()
+                             # Z = Zombie, X = Dead. Treat as finished.
+                             if state.startswith('Z') or state.startswith('X'):
+                                  is_running = False
+                             else:
+                                  is_running = True
                     except:
                         is_running = False # Assume stopped if container error? Or crash?
                     
@@ -79,7 +89,7 @@ class ProcessManager:
                     ts = datetime.now().strftime('%H:%M:%S')
                     socketio.emit('agent_thought', {
                         'startup_id': startup_id,
-                        'thought': f"[{ts}] {msg}",
+                        'content': f"[{ts}] {msg}",
                         'agent_type': 'system'
                     }, namespace='/') 
                 except:
