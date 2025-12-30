@@ -619,7 +619,7 @@ def run_v3_agent_bg(startup_id, initial_state):
                     # --- REDIS SIGNAL CHECK ---
                     from app.extensions import redis_client
                     signal = redis_client.get(f"signal:{s_id_str}")
-                    if signal and signal.decode('utf-8') in ["pause", "stop"]:
+                    if signal and signal in ["pause", "stop"]:
                         print(f"Pausing V3 Agent for {startup_id} (Signal: {signal})")
                         redis_client.delete(f"signal:{s_id_str}")
                         
@@ -802,14 +802,14 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                         # --- REDIS SIGNAL CHECK (Inside Loop) ---
                         from app.extensions import redis_client
                         signal = redis_client.get(f"signal:{startup_id}")
-                        if signal and signal.decode('utf-8') in ["pause", "stop"]:
+                        if signal and signal in ["pause", "stop"]:
                             print(f"Signal '{signal}' received for {startup_id}. Pausing/Stopping Agent.")
                             redis_client.delete(f"signal:{startup_id}")
                             
                             from app.services.notification_service import publish_update
                             publish_update('agent_update', {
                                 'task_status': 'paused',
-                                'logs': state_tracker.get("logs", []) + [f"Process {signal.decode('utf-8')}d by user."]
+                                'logs': state_tracker.get("logs", []) + ["Process paused/stopped by user."]
                             }, rooms=[f"startup_{startup_id}"])
                             return
 
