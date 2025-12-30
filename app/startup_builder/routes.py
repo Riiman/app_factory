@@ -556,41 +556,41 @@ def build_feature(startup_id):
     
     return jsonify({"status": "success", "message": f"V3 Agent started building feature: {feature.name}"})
 
-@builder_bp.route('/v3/start', methods=['POST'])
-def start_v3_agent():
-    data = request.json
-    startup_id = data.get('startup_id')
+@builder_bp.route('/<int:startup_id>/v3/start', methods=['POST'])
+def start_v3_agent(startup_id):
+    data = request.json or {}
+    # startup_id is passed in URL
     from app.extensions import redis_client
-    
-    if not startup_id:
-         return jsonify({'error': 'Startup ID required'}), 400
-         
+
     # CLEAR pending signals
     redis_client.delete(f"signal:{startup_id}")
     
+    # If resuming, we might not have a mission in body.
+    # The Selector will handle picking up the mission.
     mission = data.get('mission')
-    
-    if not mission:
-        return jsonify({'error': 'Mission required'}), 400
-        
-    # Initial State
-    # Fix: Wrap single mission in a list for V3 Planner
-    synthetic_mission = {
-        "id": 0,
-        "title": "Ad-Hoc Task",
-        "description": mission,
-        "status": "pending"
-    }
     
     initial_state = {
         "startup_id": startup_id,
-        "missions": [synthetic_mission],
+        "missions": [], # Will be ignored if file exists?
         "current_mission_id": 0,
         "tech_stack": "Existing",
-        "status": "mission_selector",
+        "status": "mission_selector", # Force Selector to pick up pending work
         "plan": [],
-        "logs": ["V3 Agent Initialized with Ad-Hoc Mission."]
+        "logs": ["V3 Agent Resumed."]
     }
+
+    if mission:
+        # If explicit mission passed (Ad-hoc start)
+        synthetic_mission = {
+            "id": 0,
+            "title": "Ad-Hoc Task",
+            "description": mission,
+            "status": "pending"
+        }
+        initial_state["missions"] = [synthetic_mission]
+        initial_state["logs"] = ["V3 Agent Started with New Mission."]
+    
+    # Run in background
     
     # Run in background
     run_v3_agent_bg(startup_id, initial_state)
