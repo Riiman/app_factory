@@ -22,8 +22,11 @@ stop_signals = set()
 @builder_bp.route('/<startup_id>/start', methods=['POST'])
 def start_env(startup_id):
     from app.models import Startup
-    from app.extensions import db
+    from app.extensions import db, redis_client
     from app.services.notification_service import publish_update
+    
+    # Clear any pending stop signals
+    redis_client.delete(f"signal:{startup_id}")
     
     print(f"Received start_env request for {startup_id}")
     data = request.json or {}
@@ -207,6 +210,10 @@ def approve_step(startup_id):
     
     initial_state = {"interaction_completed": True}
     
+    # CLEAR any pending signals
+    from app.extensions import redis_client
+    redis_client.delete(f"signal:{startup_id}")
+    
     run_agent_bg(startup_id, initial_state, yolo)
     
     return jsonify({"status": "success", "message": "Step approved, resuming in background"})
@@ -288,6 +295,9 @@ from app.extensions import db
 
 @builder_bp.route('/<startup_id>/run-task', methods=['POST'])
 def run_task(startup_id):
+    from app.extensions import redis_client
+    redis_client.delete(f"signal:{startup_id}")
+    
     data = request.json
     goal = data.get('goal')
     yolo = data.get('yolo', False)
@@ -336,8 +346,11 @@ def run_task(startup_id):
 @builder_bp.route('/<startup_id>/build-product', methods=['POST'])
 def build_product(startup_id):
     from app.models import Product, ProductStage
-    from app.extensions import db
+    from app.extensions import db, redis_client
     from .v3.orchestrator import create_v3_graph
+    
+    # CLEAR pending signals
+    redis_client.delete(f"signal:{startup_id}")
     
     data = request.json
     product_id = data.get('product_id')
@@ -503,7 +516,10 @@ def build_product(startup_id):
 @builder_bp.route('/<startup_id>/build-feature', methods=['POST'])
 def build_feature(startup_id):
     from app.models import Feature, FeatureStatus
-    from app.extensions import db
+    from app.extensions import db, redis_client
+    
+    # CLEAR pending signals
+    redis_client.delete(f"signal:{startup_id}")
     
     data = request.json
     feature_id = data.get('feature_id')
@@ -544,10 +560,18 @@ def build_feature(startup_id):
 def start_v3_agent():
     data = request.json
     startup_id = data.get('startup_id')
+    from app.extensions import redis_client
+    
+    if not startup_id:
+         return jsonify({'error': 'Startup ID required'}), 400
+         
+    # CLEAR pending signals
+    redis_client.delete(f"signal:{startup_id}")
+    
     mission = data.get('mission')
     
-    if not startup_id or not mission:
-        return jsonify({'error': 'Startup ID and Mission required'}), 400
+    if not mission:
+        return jsonify({'error': 'Mission required'}), 400
         
     # Initial State
     # Fix: Wrap single mission in a list for V3 Planner
