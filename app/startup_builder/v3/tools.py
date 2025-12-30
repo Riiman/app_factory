@@ -2,7 +2,7 @@ from typing import List, Dict, Optional
 from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchRun
 from ..context import ContextManager
-from ...process_manager import ProcessManager # NEW Import
+from ..process_manager import ProcessManager # corrected import depth
 
 class V3Tools:
     def __init__(self, docker_manager, startup_id, runtime_context: Optional[Dict] = None):
