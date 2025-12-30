@@ -153,6 +153,9 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
 
             # 2. NEXT Priority: Pick the first pending mission
             for m in missions:
+                if m["status"] == "completed":
+                    continue
+                    
                 if m["status"] == "pending":
                     # Found one!
                     log_debug(f"SELECTOR: Selected Mission {m['id']} '{m['title']}'")

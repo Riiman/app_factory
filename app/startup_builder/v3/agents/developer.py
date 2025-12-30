@@ -109,7 +109,7 @@ class V3Developer:
             self._log_to_file(f"DEV CHECK: No pending tasks for Mission {current_mission_id}. Finishing.")
             # Mark mission as complete
             for m in missions:
-                if m["id"] == current_mission_id:
+                if str(m.get("id")) == str(current_mission_id):
                     m["status"] = "completed"
                     
             # --- GLOBAL CONTEXT UPDATE (Shifted here) ---
