@@ -146,6 +146,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
                     return {
                         "current_mission": m,
                         "status": target_status, 
+                        "plan": m.get("tasks", []), # HYDRATE PLAN from file
                         "logs": [f"Mission Selector: Resuming '{m['title']}' (Phase: {target_status})"]
                     }
 
