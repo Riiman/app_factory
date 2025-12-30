@@ -160,90 +160,99 @@ class V3Architect:
         if failed_task:
              user_prompt = f"Mission: {mission_title}\n\nCRITICAL: The task '{failed_task['description']}' FAILED. Please diagnose and fix it."
         
-        messages = [HumanMessage(content=user_prompt)]
-        
-        # 3. Agent Loop
+        # 3. Agent Loop with Retry Strategy
         final_tasks = []
         final_thoughts = []
         final_impl_plan = ""
         
-        thinking_token_usage = 0
-        THINKING_BUDGET = 2000 # Approx tokens (~8000 chars) allowed before warning
+        MAX_RETRIES = 3
         
-        for i in range(20): # Max 20 turns of exploration
-            res = self.copilot.act(system_prompt.replace("{tech_stack}", tech_stack).replace("{global_context}", global_context).replace("{mission_context}", json.dumps(current_mission.get("mission_context", []), indent=2)), messages, tools, active_node="architect")
+        for attempt in range(MAX_RETRIES):
+            logger.info(f"Architect Planning Attempt {attempt + 1}/{MAX_RETRIES}")
             
-            if res["error"]:
-                 return {"status": "failed", "logs": [f"Architect Error: {res['error']}"]}
+            # Reset Conversation for each attempt
+            messages = [HumanMessage(content=user_prompt)]
+            if attempt > 0:
+                 messages = [HumanMessage(content=user_prompt + f"\n\nSYSTEM NOTE: Previous attempt failed to output JSON. Please Focus on Plan Generation.")]
             
-            ai_msg = res["content"]
-            messages.append(ai_msg)
+            thinking_token_usage = 0
+            THINKING_BUDGET = 2000 
             
-            if ai_msg.tool_calls:
-                # 0. Log the thought process if any
-                if ai_msg.content:
-                    self.copilot.emit_thought(ai_msg.content, "architect")
-
-                # RESET Budget on Tool Call
-                thinking_token_usage = 0
+            attempt_success = False
+            
+            for i in range(20): # Max 20 turns of exploration per attempt
+                res = self.copilot.act(system_prompt.replace("{tech_stack}", tech_stack).replace("{global_context}", global_context).replace("{mission_context}", json.dumps(current_mission.get("mission_context", []), indent=2)), messages, tools, active_node="architect")
                 
-                # Execute Tools (Exploration)
-                for tool_call in ai_msg.tool_calls:
-                    tool_name = tool_call["name"]
-                    args = tool_call["args"]
-                    tool_id = tool_call["id"]
-                    
-                    self.copilot.emit_thought(f"Checking {tool_name}... Args: {args}", "architect")
-                    
-                    selected_tool = next((t for t in tools if t.name == tool_name), None)
-                    tool_result = "Tool not found"
-                    if selected_tool:
-                        try:
-                            tool_result = selected_tool.invoke(args)
-                        except Exception as e:
-                            tool_result = f"Error: {e}"
-                            
-                    messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
-            else:
-                # Track Budget
-                content_text = ai_msg.content
-                if content_text:
-                     # Log content for debugging
-                     logger.info(f"Architect Thoughts: {content_text[:200]}...")
-                     # Approx token count
-                     thinking_token_usage += len(content_text) // 4
-                     
-                # Check Budget
-                if thinking_token_usage > THINKING_BUDGET:
-                    messages.append(HumanMessage(content="SYSTEM WARNING: You have exceeded the Thinking Budget without taking action. You MUST call a tool (like 'list_files') or output the Final JSON Plan immediately."))
-                    thinking_token_usage = 0 # Reset to give a chance to react, or keep high to warn again? 
-                    # Resetting allows it to process the warning. If it ignores, it builds up again.
+                if res["error"]:
+                     # If error, just log and break inner loop to trigger retry
+                     logger.warning(f"Architect LLM Error (Attempt {attempt+1}): {res['error']}")
+                     break 
                 
-                # Final Answer? Check if it's JSON
+                ai_msg = res["content"]
+                messages.append(ai_msg)
+                
+                if ai_msg.tool_calls:
+                    # 0. Log the thought process
+                    if ai_msg.content:
+                        self.copilot.emit_thought(ai_msg.content, "architect")
+    
+                    # RESET Budget on Tool Call
+                    thinking_token_usage = 0
+                    
+                    # Execute Tools (Exploration)
+                    for tool_call in ai_msg.tool_calls:
+                        tool_name = tool_call["name"]
+                        args = tool_call["args"]
+                        tool_id = tool_call["id"]
+                        
+                        self.copilot.emit_thought(f"Checking {tool_name}... Args: {args}", "architect")
+                        
+                        selected_tool = next((t for t in tools if t.name == tool_name), None)
+                        tool_result = "Tool not found"
+                        if selected_tool:
+                            try:
+                                tool_result = selected_tool.invoke(args)
+                            except Exception as e:
+                                tool_result = f"Error: {e}"
+                                
+                        messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
+                else:
+                    # Track Budget
+                    content_text = ai_msg.content
+                    if content_text:
+                         logger.info(f"Architect Thoughts: {content_text[:200]}...")
+                         thinking_token_usage += len(content_text) // 4
+                         
+                    # Check Budget
+                    if thinking_token_usage > THINKING_BUDGET:
+                        messages.append(HumanMessage(content="SYSTEM WARNING: You have exceeded the Thinking Budget without taking action. You MUST call a tool (like 'list_files') or output the Final JSON Plan immediately."))
+                        thinking_token_usage = 0 
+                    
+                    # Final Answer Check
+                    try:
+                        cleaned = content_text.replace("```json", "").replace("```", "").strip()
+                        data = json.loads(cleaned)
+                        
+                        extracted_tasks = data.get("tasks") or data.get("plan")
+                        
+                        if extracted_tasks:
+                            final_tasks = extracted_tasks
+                            final_thoughts = data.get("thoughts", [])
+                            final_impl_plan = data.get("implementation_plan", "")
+                            attempt_success = True
+                            break 
+                    except:
+                        pass
+                
+                # Injection: Force completion 
+                if i == 18:
+                     messages.append(HumanMessage(content="SYSTEM WARNING: You are running out of turns. You MUST output the Final JSON Plan immediately."))
 
-                try:
-                    # Clean markdown
-                    cleaned = content_text.replace("```json", "").replace("```", "").strip()
-                    data = json.loads(cleaned)
-                    
-                    # Accept 'tasks' or 'plan' for robustness
-                    extracted_tasks = data.get("tasks") or data.get("plan")
-                    
-                    if extracted_tasks:
-                        final_tasks = extracted_tasks
-                        final_thoughts = data.get("thoughts", [])
-                        final_impl_plan = data.get("implementation_plan", "")
-                        break # Success!
-                except:
-                    pass
-            
-            # Injection: Force completion if running out of turns
-            if i == 18:
-                 messages.append(HumanMessage(content="SYSTEM WARNING: You are running out of turns. You MUST output the Final JSON Plan immediately."))
-                 
+            if attempt_success:
+                break
+                
         if not final_tasks:
-             # Fallback or Error
-             return {"status": "failed", "logs": ["Architect failed to produce a valid JSON plan after exploration."]}
+             return {"status": "failed", "logs": [f"Architect failed to produce a valid JSON plan after {MAX_RETRIES} attempts."]}
              
         # 4. Success -> Update State
         # Enrich tasks

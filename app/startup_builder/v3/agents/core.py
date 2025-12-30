@@ -173,7 +173,7 @@ class V3CoPilot:
                     # We discard the intermediate broken tool chain to avoid "ToolCall without ToolMessage" errors.
                     # messages[0] is the HumanMessage with Local Context & Goals.
                     sanitized_history = [
-                        SystemMessage(content=system_prompt), # Keep the instructions
+                        SystemMessage(content="You are a helpful AI coding assistant. Please fulfill the user request safely."), # Generic Prompt for Retry
                         messages[0] # Keep the original request
                     ]
                     res = llm_with_tools.invoke(sanitized_history)
