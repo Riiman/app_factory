@@ -1,4 +1,5 @@
 from typing import List, Dict, Optional
+import json
 from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchRun
 from ..context import ContextManager
