@@ -265,7 +265,8 @@ class V3Developer:
                                          current_mission.get("implementation_plan", ""),
                                          current_mission.get("mission_context", []),
                                          current_mission["tasks"],
-                                         status="in_progress"
+                                         status="in_progress",
+                                         waiting_on=job_id # Save Background Job ID
                                       )
                                      
                                      # Return 'blocked' status
@@ -382,7 +383,8 @@ class V3Developer:
             current_mission.get("implementation_plan", ""), 
             current_mission["mission_context"],
             current_mission["tasks"],
-            status="in_progress" 
+            status="in_progress",
+            waiting_on=None # Clear on task completion
         )
             
         return {
@@ -427,7 +429,7 @@ class V3Developer:
         except Exception as e:
             return f"Task '{task['description']}' Completed (Summary failed: {e})."
 
-    def _sync_persistence(self, startup_id, mission_id, implementation_plan="", mission_context=[], tasks=[], status=None):
+    def _sync_persistence(self, startup_id, mission_id, implementation_plan="", mission_context=[], tasks=[], status=None, waiting_on=None):
         """Updates missions.json: Marks mission_id as completed and saves plan/context/tasks."""
         try:
              save_path = "artifacts/missions.json"
@@ -443,13 +445,15 @@ class V3Developer:
              # 2. Update
              updated = False
              for m in missions:
-                 if m["id"] == mission_id:
+                 if str(m["id"]) == str(mission_id):
                      if status:
                          m["status"] = status
                      
-                     m["implementation_plan"] = implementation_plan
+                     if implementation_plan:
+                         m["implementation_plan"] = implementation_plan
                      m["mission_context"] = mission_context
                      m["tasks"] = tasks
+                     m["waiting_on"] = waiting_on # PERSIST ASYNC JOB ID
                      updated = True
                      break
             
