@@ -21,7 +21,7 @@ interface PlanStep {
 const StartupCodeStudio: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, token } = useAuth(); // Correctly get separate token
     const [isRunning, setIsRunning] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
     const [prompt, setPrompt] = useState('');
@@ -38,9 +38,6 @@ const StartupCodeStudio: React.FC = () => {
     const [activeNode, setActiveNode] = useState<string>('idle');
 
     const [thoughts, setThoughts] = useState<string[]>([]);
-
-
-
 
     // New State for Refactor
     const [showChatModal, setShowChatModal] = useState(false);
@@ -121,23 +118,25 @@ const StartupCodeStudio: React.FC = () => {
 
     // WebSocket connection for real-time environment updates
     useEffect(() => {
-        if (!id || !user?.token) return;
+        if (!id || !token) return;
 
         let socket: WebSocket | null = null;
         let reconnectTimeout: any = null;
 
         const connect = () => {
             const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
-            socket = new WebSocket(`${wsUrl}?token=${user.token}`);
+            socket = new WebSocket(`${wsUrl}?token=${token}`);
             socketRef.current = socket;
 
             socket.onopen = () => {
                 console.log('Connected to notification server');
                 // Standard subscribe message
-                socket?.send(JSON.stringify({
-                    type: 'subscribe',
-                    startup_id: id
-                }));
+                if (id) {
+                    socket?.send(JSON.stringify({
+                        type: 'subscribe',
+                        startup_id: id
+                    }));
+                }
             };
 
             socket.onmessage = (event) => {

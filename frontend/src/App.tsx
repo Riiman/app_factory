@@ -33,7 +33,10 @@ const AppRoutes: FC = () => {
     if (!token) return; // Don't connect if no token
 
     // Establish WebSocket connection for dashboard notifications with token
-    // Establish WebSocket connection for dashboard notifications with token
+
+    // Skip global WS for Code Studio to avoid conflicts
+    if (window.location.pathname.includes('/code-studio')) return;
+
     const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
     const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
