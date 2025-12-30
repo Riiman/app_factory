@@ -224,7 +224,14 @@ class V3Developer:
         last_failed_command = ""
         last_error_log = ""
         
-        for i in range(10):
+        # TURN LOGIC: We distinguish between "Context Gathering" (Free) and "Actions" (Costly)
+        turn_count = 0      # Counts expensive actions (write, run, etc)
+        total_steps = 0     # Hard limit to prevent infinite loops even with free actions
+        MAX_TURNS = 10
+        MAX_TOTAL_STEPS = 25
+        
+        while turn_count < MAX_TURNS and total_steps < MAX_TOTAL_STEPS:
+            total_steps += 1
             # Inject task context if we are retrying
             # We construct the prompt dynamically
             task_context_str = json.dumps(task_context, indent=2) if task_context else "No actions yet."
@@ -249,6 +256,11 @@ class V3Developer:
                     tool_name = tool_call["name"]
                     args = tool_call["args"]
                     tool_id = tool_call["id"]
+                    
+                    # LOGIC: Check if tool is "Free" (Context) or "Expensive" (Action)
+                    SAFE_TOOLS = ["read_file", "list_files", "search_files", "search_web", "check_job", "wait_for_job"]
+                    if tool_name not in SAFE_TOOLS:
+                        turn_count += 1
                     
                     # Prettify Args for User Visibility
                     pretty_args = str(args)
@@ -381,7 +393,7 @@ class V3Developer:
                  "status": "fix_required", 
                  "current_mission": current_mission, 
                  "failed_task": next_task, 
-                 "logs": [f"Developer: Task '{next_task['description']}' failed after 10 attempts. Escalating to Strategist."] 
+                 "logs": [f"Developer: Task '{next_task['description']}' failed after {turn_count} turns ({total_steps} steps). Escalating to Strategist."] 
              }
 
         # Mark task as done
@@ -507,6 +519,27 @@ class V3Developer:
                  
         except Exception as e:
             logger.error(f"Failed to sync persistence: {e}")
+            
+        # 4. DEBUG: Log Context Snapshot for User
+        try:
+             import datetime
+             snapshot = {
+                 "timestamp": datetime.datetime.now().isoformat(),
+                 "startup_id": startup_id,
+                 "mission_id": mission_id,
+                 "status": status,
+                 "mission_context_count": len(mission_context),
+                 "mission_context_latest": mission_context[-1] if mission_context else "None",
+                 "active_task": tasks[-1]["description"] if tasks else "None",
+                 "active_task_context": tasks[-1].get("task_context", []) if tasks and tasks[-1].get("task_context") else [],
+                 "waiting_on": waiting_on
+             }
+             # Append to JSONL file
+             debug_file = "debug_contexts.jsonl"
+             with open(debug_file, "a") as f:
+                 f.write(json.dumps(snapshot) + "\n")
+        except Exception as e:
+             logging.error(f"Failed to log debug context: {e}")
 
     def _log_to_file(self, message):
         """Append debug log to a local file for inspection."""
