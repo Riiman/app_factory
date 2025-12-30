@@ -29,6 +29,11 @@ class V3Developer:
         current_plan = state.get("plan", [])
         startup_id = state.get("startup_id")
         
+        # Setup ContextManager (Ensuring it exists for all paths)
+        if not self.context_manager or self.context_manager.startup_id != startup_id:
+            from ...context import ContextManager
+            self.context_manager = ContextManager(self.docker_manager, startup_id)
+        
         current_mission = state.get("current_mission")
         if not current_mission:
              return {"status": "done_mission", "logs": ["Developer: No active mission found."]}
@@ -80,10 +85,9 @@ class V3Developer:
                 "logs": [f"Mission {current_mission_id} Complete!"]
             }
             
-        # 1.5 Setup ContextManager
-        if not self.context_manager or self.context_manager.startup_id != startup_id:
-            self.context_manager = ContextManager(self.docker_manager, startup_id)
-            
+        # 1.5 Setup ContextManager (Moved to top)
+        # ensure local context is retrieved
+             
         # 1.6 Retrieve Local Context (RAG)
         local_context = self.context_manager.retrieve_local_context(next_task['description'])
         state["local_context"] = local_context
