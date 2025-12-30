@@ -258,6 +258,16 @@ class V3Developer:
                                      job_id = res_json.get("job_id")
                                      self.copilot.emit_thought(f"Task moved to background (Job {job_id}). Yielding...", "developer")
                                      
+                                     # PERSIST NOW to save the modified task context
+                                     self._sync_persistence(
+                                         startup_id,
+                                         current_mission["id"],
+                                         current_mission.get("implementation_plan", ""),
+                                         current_mission.get("mission_context", []),
+                                         current_mission["tasks"],
+                                         status="in_progress"
+                                      )
+                                     
                                      # Return 'blocked' status
                                      return {
                                          "status": "blocked",
