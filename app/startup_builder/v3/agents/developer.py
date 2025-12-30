@@ -65,7 +65,11 @@ class V3Developer:
         if waiting_on:
              tools_factory_check = V3Tools(self.docker_manager, startup_id)
              check_tool = tools_factory_check.create_check_job()
-             res = check_tool.invoke(waiting_on)
+             res_str = check_tool.invoke(waiting_on)
+             try:
+                 res = json.loads(res_str)
+             except:
+                 res = {"status": "error", "message": f"Invalid JSON from check_tool: {res_str}"}
              
              if res.get("status") == "running":
                   # DECISION POINT: Do not auto-yield. Let LLM decide.

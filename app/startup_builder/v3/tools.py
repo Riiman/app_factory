@@ -116,16 +116,15 @@ class V3Tools:
         def check_job(job_id: str) -> str:
             """
             Checks the status of a background job (returned by run_shell).
-            Returns 'running' or 'completed' with output.
+            Returns JSON string with status and logs.
             """
+            import json
             res = self.process_manager.check_job(self.startup_id, job_id)
             if res.get("error"):
-                 return f"Error checking job: {res['error']}"
-                 
-            if res["status"] == "running":
-                 return f"Job {job_id} is still running. Logs:\n{res.get('latest_logs')[-500:]}"
-            else:
-                 return f"Job {job_id} COMPLETED.\nOutput:\n{res.get('output')[:2000]}"
+                  return json.dumps({"status": "error", "message": res["error"]})
+                  
+            # Pass through the ProcessManager result (which is a dict) as JSON
+            return json.dumps(res)
         return check_job
 
     def create_read_file(self):
