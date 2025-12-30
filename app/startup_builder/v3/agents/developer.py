@@ -217,7 +217,6 @@ class V3Developer:
                          # We check if result is JSON and has status: background
                          # Tool result is string, so we parse if it looks like JSON
                          if isinstance(tool_result, str) and tool_result.strip().startswith("{"):
-                             import json
                              try:
                                  res_json = json.loads(tool_result)
                                  if res_json.get("status") == "background":
