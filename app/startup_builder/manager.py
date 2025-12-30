@@ -428,19 +428,35 @@ class DockerManager:
             if container.status != 'running':
                 return {"error": "Container not running"}
             
-            import base64
-            encoded_content = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+            # METHOD UPDATE: Use put_archive for robust large file writing
+            import io
+            import tarfile
             
-            # Ensure parent directory exists
-            cmd = f"mkdir -p $(dirname {path}) && echo '{encoded_content}' | base64 -d > {path}"
+            # Ensure path is absolute within /app if relative
+            if not path.startswith("/"):
+                path = os.path.join("/app", path)
+                
+            dirname = os.path.dirname(path)
+            basename = os.path.basename(path)
             
-            exit_code, output = container.exec_run(
-                f"bash -c \"{cmd}\"",
-                workdir="/app"
-            )
+            # 1. Create directory if needed (still use exec for mkdir, low risk)
+            # -p creates parents and no error if exists
+            container.exec_run(f"mkdir -p '{dirname}'", workdir="/app", user="root")
+
+            # 2. Create Tar Stream
+            tar_stream = io.BytesIO()
+            with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+                data = content.encode('utf-8')
+                info = tarfile.TarInfo(name=basename)
+                info.size = len(data)
+                info.mtime = int(time.time())
+                tar.addfile(info, io.BytesIO(data))
             
-            if exit_code != 0:
-                return {"error": f"Error writing file: {output.decode('utf-8')}"}
+            tar_stream.seek(0)
+            
+            # 3. Put Archive
+            # extracts into 'dirname'
+            container.put_archive(path=dirname, data=tar_stream)
                 
             return {"status": "success"}
             
@@ -552,34 +568,47 @@ class DockerManager:
             if start_command:
                 start_cmd = start_command
             else:
-                start_cmd = "npm start" # Default
-                
-                # Check for package.json
-                exit_code, output = container.exec_run("cat package.json", workdir="/app")
+                start_cmd = "npm start" # DefaultFallback
+
+                # A. Check for mobile/package.json (Expo/React Native)
+                exit_code, output = container.exec_run("cat mobile/package.json", workdir="/app")
+                is_expo = False
                 if exit_code == 0:
-                    import json
                     try:
                         pkg = json.loads(output.decode('utf-8'))
-                        if "scripts" in pkg and "dev" in pkg["scripts"]:
-                            start_cmd = "npm run dev"
-                        elif "scripts" in pkg and "start" in pkg["scripts"]:
-                            start_cmd = "npm start"
-                    except:
-                        pass
-                else:
-                    # Check for python
-                    exit_code, _ = container.exec_run("ls app.py", workdir="/app")
+                        if "dependencies" in pkg and "expo" in pkg["dependencies"]:
+                            is_expo = True
+                            # Enforce Web port 3000 for consistency
+                            start_cmd = "cd mobile && npx expo start --web --port 3000"
+                    except: pass
+                
+                if not is_expo:
+                    # B. Check for root package.json
+                    exit_code, output = container.exec_run("cat package.json", workdir="/app")
                     if exit_code == 0:
-                        start_cmd = "python app.py"
+                        import json
+                        try:
+                            pkg = json.loads(output.decode('utf-8'))
+                            if "scripts" in pkg and "dev" in pkg["scripts"]:
+                                start_cmd = "npm run dev"
+                            elif "scripts" in pkg and "start" in pkg["scripts"]:
+                                start_cmd = "npm start"
+                        except:
+                            pass
                     else:
-                        exit_code, _ = container.exec_run("ls main.py", workdir="/app")
+                        # C. Check for python
+                        exit_code, _ = container.exec_run("ls app.py", workdir="/app")
                         if exit_code == 0:
-                            start_cmd = "python main.py"
+                            start_cmd = "python app.py"
                         else:
-                            # Flask specific check
-                            exit_code, _ = container.exec_run("ls wsgi.py", workdir="/app")
+                            exit_code, _ = container.exec_run("ls main.py", workdir="/app")
                             if exit_code == 0:
-                                start_cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
+                                start_cmd = "python main.py"
+                            else:
+                                # Flask specific check
+                                exit_code, _ = container.exec_run("ls wsgi.py", workdir="/app")
+                                if exit_code == 0:
+                                    start_cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
 
             print(f"Starting server with command: {start_cmd}")
 

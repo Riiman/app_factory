@@ -195,6 +195,11 @@ class V3Developer:
         - You MUST execute the required action (e.g., 'write_file'). 
         - Thinking is NOT working. Listing files is NOT finishing the task.
         
+        FILE WRITING RULE:
+        - DO NOT use `run_shell` with `echo`, `cat`, or `printf` to write files. It causes encoding/newline issues.
+        - ALWAYS use the `write_file` tool. It handles permissions and encoding correctly.
+        - When using `write_file`, ensure content has REAL newlines, not `\\n` literals.
+        
         
         MISSION CONTEXT (What has been done so far):
         {mission_context}
@@ -512,8 +517,17 @@ class V3Developer:
             
              if updated:
                  # 3. Write
-                 self.docker_manager.write_file(startup_id, save_path, json.dumps(data, indent=2))
-                 logger.info(f"Persistence: Synced Mission {mission_id} (Status={status}).")
+                 write_res = self.docker_manager.write_file(startup_id, save_path, json.dumps(data, indent=2))
+                 if write_res.get("error"):
+                      msg = f"Persistence WRITE FAILED for Mission {mission_id}: {write_res['error']}"
+                      logger.error(msg)
+                      # Write to local debug log for visibility
+                      try:
+                          with open("persistence_errors.jsonl", "a") as f:
+                              f.write(json.dumps({"timestamp": datetime.datetime.now().isoformat(), "error": msg}) + "\n")
+                      except: pass
+                 else:
+                     logger.info(f"Persistence: Synced Mission {mission_id} (Status={status}).")
              else:
                  logger.warning(f"Persistence: Mission {mission_id} not found in file.")
                  

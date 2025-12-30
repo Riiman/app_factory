@@ -188,9 +188,20 @@ async def terminal_websocket(
         return
 
     await websocket.accept()
+    logger.info(f"Terminal connection accepted for startup {startup_id}")
     
     manager = DockerManager()
-    container_name = manager.get_container_name(startup_id)
+    
+    # FIX: Wrap DB access in App Context
+    try:
+        with flask_app.app_context():
+            container_name = manager.get_container_name(startup_id)
+            logger.info(f"Resolved container name: {container_name}")
+    except Exception as e:
+        logger.error(f"Error fetching container name: {e}")
+        await websocket.send_text(f"Error: {str(e)}")
+        await websocket.close()
+        return
     
     try:
         container = manager.client.containers.get(container_name)

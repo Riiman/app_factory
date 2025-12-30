@@ -994,10 +994,15 @@ def proxy_to_container(startup_id, subpath):
     for attempt in range(MAX_RETRIES):
         try:
             # Forward request
+            # CRITICAL FIX: Do NOT forward Accept-Encoding. Force upstream to send plain text.
+            # This ensures we can decode/rewrite it, and prevents sending gzipped bytes 
+            # to the browser without the proper header if rewrite fails.
+            proxy_headers = {key: value for (key, value) in request.headers if key != 'Host' and key.lower() != 'accept-encoding'}
+            
             resp = requests.request(
                 method=request.method,
                 url=target_url,
-                headers={key: value for (key, value) in request.headers if key != 'Host'},
+                headers=proxy_headers,
                 data=request.get_data(),
                 cookies=request.cookies,
                 allow_redirects=False
@@ -1015,17 +1020,26 @@ def proxy_to_container(startup_id, subpath):
             if 'text/html' in content_type:
                 try:
                     text_content = content.decode('utf-8')
-                    # Rewrite Next.js static asset paths to use the proxy path
+                    import re
+                    # GENERIC REWRITE: Replace all root-relative paths (starting with / but not //)
+                    # Pattern: src="/..." or href="/..."
+                    # We capture the attribute and the path.
+                    
                     proxy_base = f"/api/startups/{startup_id}/preview"
                     
-                    # Replace src="/_next/" with src="/api/startups/ID/preview/_next/"
-                    # We use specific replacements to avoid breaking other things
-                    text_content = text_content.replace('src="/_next/', f'src="{proxy_base}/_next/')
-                    text_content = text_content.replace('href="/_next/', f'href="{proxy_base}/_next/')
-                    text_content = text_content.replace('src="/static/', f'src="{proxy_base}/static/') # Handle public folder
+                    # Regex explanation:
+                    # (src|href)=   : Match attribute name
+                    # "             : Match opening quote
+                    # /             : Match root slash
+                    # (?!/)         : Negative lookahead to ensure it's not protocol relative (//)
+                    # ([^"]*)       : Capture the rest of the path until closing quote
                     
-                    # Also handle potentially other absolute paths if safe?
-                    # For now, focus on Next.js criticality.
+                    def rewrite_path(match):
+                        attr = match.group(1)
+                        path = match.group(2)
+                        return f'{attr}="{proxy_base}/{path}"'
+
+                    text_content = re.sub(r'(src|href)="/(?!/)([^"]*)"', rewrite_path, text_content)
                     
                     content = text_content.encode('utf-8')
                     

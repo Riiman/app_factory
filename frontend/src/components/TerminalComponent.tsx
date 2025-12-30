@@ -13,12 +13,12 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ startupId }) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const termRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     // Using a ref to track socket to avoid re-creation issues if we used state, though effect dependency handles it.
     const socketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        if (!terminalRef.current || !user?.token) return;
+        if (!terminalRef.current || !token) return;
 
         // Initialize Terminal
         const term = new Terminal({
@@ -42,9 +42,6 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ startupId }) => {
 
         // Connect Native Socket
         const wsUrl = getWebSocketUrl('/ws/terminal');
-        // We pass authentication and startup_id via query params
-        // Cast user to any to avoid type error if token isn't in definition yet
-        const token = (user as any).token || '';
         const socket = new WebSocket(`${wsUrl}?startup_id=${startupId}&token=${token}`);
         socketRef.current = socket;
 
