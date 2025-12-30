@@ -687,32 +687,35 @@ class DockerManager:
                 return {"error": "Container not running"}
 
             log_file = f"/tmp/{alias}.log"
-            
-            # 1. Update/Read State File
             state_file = "/tmp/process_manager.json"
-            # Ensure state file exists
-            container.exec_run(f"bash -c \"if [ ! -f {state_file} ]; then echo '{{}}' > {state_file}; fi\"", workdir="/app")
             
-            # Check if alias exists
-            cat_cmd = f"cat {state_file}"
-            exit_code, output = container.exec_run(cat_cmd, workdir="/app")
+            # 1. Ensure State File Exists (Atomic-ish)
+            # We use a single bash command to create if missing
+            container.exec_run(f"bash -c \"[ ! -f {state_file} ] && echo '{{}}' > {state_file}\"", workdir="/app")
+            
+            # 2. Check overlap
+            exit_code, output = container.exec_run(f"cat {state_file}", workdir="/app")
             import json
             state = {}
             if exit_code == 0:
                  try:
                     state = json.loads(output.decode('utf-8'))
                  except:
-                    pass
+                    # corrupted, reset
+                    state = {}
             
             if alias in state:
-                # Check if running
                 pid = state[alias]
-                exit_code, _ = container.exec_run(f"ps -p {pid}", workdir="/app")
-                if exit_code == 0:
+                # Check if actually running
+                check_exit, _ = container.exec_run(f"ps -p {pid}", workdir="/app")
+                if check_exit == 0:
                      return {"error": f"Process '{alias}' is already running (PID: {pid}). Stop it first."}
+                else:
+                    # Stale entry, cleanup
+                    del state[alias]
             
-            # 2. Run Command
-            # Sanitize command for shell
+            # 3. Run Command
+            # We explicitly use setsid or nohup to ensure it doesn't die with the shell
             sanitized_cmd = command.replace("'", "'\\''") 
             full_cmd = f"nohup bash -c '{sanitized_cmd}' > {log_file} 2>&1 & echo $!"
             
@@ -725,8 +728,10 @@ class DockerManager:
                  return {"error": f"Failed to start process: {output.decode('utf-8')}"}
                  
             pid = output.decode('utf-8').strip()
+            if not pid.isdigit():
+                 return {"error": f"Failed to get PID. Output: {pid}"}
             
-            # 3. Save State
+            # 4. Save State
             state[alias] = pid
             save_cmd = f"echo '{json.dumps(state)}' > {state_file}"
             container.exec_run(["bash", "-c", save_cmd], workdir="/app")
@@ -736,7 +741,7 @@ class DockerManager:
                 "alias": alias, 
                 "pid": pid, 
                 "log_file": log_file,
-                "message": f"Verified process started with PID {pid}. Logs at {log_file}."
+                "message": f"Process started with PID {pid}."
             }
             
         except Exception as e:

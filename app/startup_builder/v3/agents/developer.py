@@ -20,10 +20,11 @@ class V3Developer:
         # We should instantiate ContextManager inside developer_node where we have startup_id.
         self.context_manager = None
 
-    def developer_node(self, state):
+    def developer_node(self, state, injected_result=None):
         """
         The Developer Node for LangGraph.
         Executes the current task in the plan.
+        Supports RE-INJECTION of results from async jobs.
         """
         current_plan = state.get("plan", [])
         startup_id = state.get("startup_id")
@@ -33,18 +34,16 @@ class V3Developer:
              return {"status": "done_mission", "logs": ["Developer: No active mission found."]}
              
         current_mission_id = current_mission["id"]
-        missions = [] # Not used anymore from state, but logic below used it. Remove usage.
+        missions = [] 
         
         # 1. Find the next pending task FOR THIS MISSION
         next_task = None
         
-        self._log_to_file(f"DEV CHECK: Mission {current_mission_id}. Plan size: {len(current_plan)}")
+        # self._log_to_file(f"DEV CHECK: Mission {current_mission_id}. Plan size: {len(current_plan)}")
         
         for i, task in enumerate(current_plan):
             t_mid = task.get("mission_id")
             t_comp = task.get("completed")
-            
-            # self._log_to_file(f"  Task {i}: mid={t_mid}, comp={t_comp}, desc={task.get('description')[:30]}")
             
             # Flexible type comparison for ID
             is_id_match = (str(t_mid) == str(current_mission_id))
@@ -110,56 +109,28 @@ class V3Developer:
         - VERIFICATION RULE: Frontend is NOT valid until `npm run build` passes (Exit 0).
         
         YOU HAVE ACCESS TO TOOLS:
-        - read_file: READ a file before modifying it.
-        - write_file: Write the complete file content.
-        - run_shell: Run SHORT-LIVED commands (e.g., 'npm install', 'mkdir'). 
-          * CRITICAL: Do NOT run servers or long-running processes here. They will TIMEOUT.
-          * TO RUN IN SUBDIR: Use `cd folder_name && command`.
-        - list_files: Check directory structure.
-        - start_process: START LONG-RUNNING servers/daemons (e.g., 'npm start').
-          * Returns immediately with a PID. Logs are captured.
-        - stop_process: Kills the process and cleans logs.
-        - read_process_logs: Debug failed server start.
-        - search_web: SEARCH THE INTERNET. Use this if a command fails and you don't know why (e.g. version mismatch, syntax error).
+        - run_shell: Run COMMANDS. Note: Slow commands (>5s) will return a Job ID. You MUST handle this by waiting.
+        - ensure_server_running: Use this instead of `run_shell` for servers.
+        - check_job: Check status of background jobs.
         
         STRATEGY:
         1. Explore relevant files if needed.
         2. Write/Update the code (Full Implementation).
         3. Verify checks passed if applicable.
         
+        BLOCKING COMMAND RULE:
+        - NEVER run `npm run dev` or servers via `run_shell`. Use `ensure_server_running`.
+        - If `run_shell` returns `{"status": "background", "job_id": "..."}`, your turn is DONE. STOP there.
+          The system will wake you up when the job is finish.
+        
         FAILURE RECOVERY RULES:
         - If a tool FAILS (Error/Exit Code 1):
           * Do NOT just run 'list_files' and claim success.
           * You MUST fix the command and RETRY the action.
-          * Example: If `npx create-next-app .` fails because of non-empty dir, try `cd frontend && npx ...`.
           
         LAZY GUARD:
         - You MUST execute the required action (e.g., 'write_file'). 
         - Thinking is NOT working. Listing files is NOT finishing the task.
-        
-        PROCESS MANAGEMENT RULES (CRITICAL):
-        - CLEAN START: Before starting ANY server on port X, check for zombies: `lsof -t -i:X | xargs kill -9` (or `fuser -k X/tcp`).
-        - FOR SHORT TASKS (install, build, migrate): Use `run_shell`.
-        - FOR LONG TASKS (start server, watch mode): Use `start_process`.
-          * NEVER use `&` or `nohup` manually in `run_shell`. Use `start_process`.
-        
-        VERIFICATION WORKFLOW (Build -> Start -> Smart Wait -> Verify):
-        1. BUILD: `run_shell('npm run build')` (MUST PASS for Frontend).
-        2. START: `start_process('frontend', 'npm run start')` (or dev).
-        3. SMART WAIT (Dynamic):
-           - DO NOT just `sleep 5`.
-           - Loop up to 5 times:
-             * `read_process_logs('frontend')`
-             * If logs say "Ready" or "Listening", BREAK.
-             * If logs say "Error", STOP & FIX.
-             * Else, `run_shell('sleep 2')` and Continue.
-        3. VERIFY: `run_shell('curl http://localhost:3000')`
-        4. DEBUG (If verify fails): The System will auto-provide logs. Fix -> Retry.
-        
-        DIAGNOSIS PRO TIP:
-        If you encounter "command not found" or arguments don't work (e.g. Tailwind v4 vs v3), 
-        IMMEDIATELY use `search_web(query="how to X in [Tech Stack]")` instead of guessing.
-        
         
         
         MISSION CONTEXT (What has been done so far):
@@ -178,7 +149,12 @@ class V3Developer:
         
         # 4. Tool Loop (Max 10 turns to prevent infinite loops)
         executed_actions = []
-        task_context = [] # Log of retries/errors for THIS task
+        task_context = [] 
+        
+        # Handle Injected Resume
+        if injected_result:
+             task_context.append(f"SYSTEM: Resumed from Async Job. Result: {injected_result}")
+             self.copilot.emit_thought(f"Resuming task after async job completion...", "developer")
         
         # CIRCUIT BREAKER STATE
         consecutive_failures = 0
@@ -191,10 +167,6 @@ class V3Developer:
             task_context_str = json.dumps(task_context, indent=2) if task_context else "No actions yet."
             
             current_prompt = system_prompt.replace("{mission_context}", mission_context).replace("{task_context_str}", task_context_str)
-            
-            # Note: We do NOT inject global_context anymore.
-            # Local context is in 'messages' (HumanMessage).
-            pass # Just formatting logic above
             
             res = self.copilot.act(current_prompt, messages, tools, active_node="developer")
             
@@ -209,6 +181,7 @@ class V3Developer:
                 if ai_msg.content:
                     self.copilot.emit_thought(ai_msg.content, "developer")
 
+                tool_executed = False
                 for tool_call in ai_msg.tool_calls:
                     tool_name = tool_call["name"]
                     args = tool_call["args"]
@@ -221,16 +194,6 @@ class V3Developer:
                             pretty_args = f"Running: `{args.get('command')}`"
                         elif tool_name == "write_file":
                             pretty_args = f"Writing to `{args.get('path')}`"
-                        elif tool_name == "read_file":
-                            pretty_args = f"Reading `{args.get('path')}`"
-                        elif tool_name == "list_files":
-                            pretty_args = f"Listing `{args.get('path')}`"
-                        elif tool_name == "start_process":
-                             pretty_args = f"Starting Process: `{args.get('alias')}` ({args.get('command')})"
-                        elif tool_name == "stop_process":
-                             pretty_args = f"Stopping Process: `{args.get('alias')}`"
-                        elif tool_name == "read_process_logs":
-                             pretty_args = f"Checking Logs: `{args.get('alias')}`"
                     except:
                         pass
                         
@@ -249,51 +212,45 @@ class V3Developer:
                         except Exception as e:
                             tool_result = f"Tool Execution Error: {str(e)}"
                     
+                    # Check for Async Yield Signal
+                    try:
+                         # We check if result is JSON and has status: background
+                         # Tool result is string, so we parse if it looks like JSON
+                         if isinstance(tool_result, str) and tool_result.strip().startswith("{"):
+                             import json
+                             try:
+                                 res_json = json.loads(tool_result)
+                                 if res_json.get("status") == "background":
+                                     # YIELD EXECUTION
+                                     job_id = res_json.get("job_id")
+                                     self.copilot.emit_thought(f"Task moved to background (Job {job_id}). Yielding...", "developer")
+                                     
+                                     # Return 'blocked' status
+                                     return {
+                                         "status": "blocked",
+                                         "waiting_on": job_id,
+                                         "current_mission": current_mission,
+                                         "logs": [f"Developer: Yielding for async job {job_id}."]
+                                     }
+                             except:
+                                 pass
+                    except:
+                        pass
+                    
                     # Store result in Task Context
                     task_context.append(f"Action: {tool_name}, Result: {str(tool_result)[:300]}...")
                     
                     # --- EXPLICIT VERIFICATION STEP ---
-                    # User Req: "output and command should be sent to the llm for verification... mark success or failed"
-                    # We use a lightweight check.
                     verification_status = self._verify_action(tool_name, command_str, str(tool_result))
                     
                     if verification_status == "FAILURE":
-                         # User Req: "if failed a fixer agent should be called"
-                         # We allow a few internal retries? Or immediate?
-                         # Let's say we try 3 times internally. If persistent failure, escalate.
-                         # But user said "after each run... if failed a fixer...".
-                         # Let's try explicit escalation if it seems critical.
-                         # For robustness, let's stick to loop limit.
-                         # But enable explicit "GIVE UP" logic.
-                         # Auto-Diagnosis: If a verification command (like curl) failed, 
-                         # check if it's because a relevant process crashed.
-                         # Heuristic: If verification failed and we recently started a process, check its logs.
-                         if "curl" in command_str or "http" in command_str:
-                             # Find process alias? Hard to guess. 
-                             # Just try to grab logs of the last started process?
-                             # Or just tell Agent to check.
-                             # Better: Append a generic hint.
-                             task_context.append(f"SYSTEM HINT: Verification failed. Did the server crash? CHECK LOGS: `read_process_logs('alias')`")
-                         
-                         task_context.append(f"VERIFICATION: FAILURE. Retrying...")
-                         
-                         # CIRCUIT BREAKER LOGIC
                          consecutive_failures += 1
-                         last_failed_command = command_str
-                         last_error_log = str(tool_result)
-                         
                          if consecutive_failures >= 2:
-                             self._log_to_file("CIRCUIT BREAKER: Triggered Reflector.")
-                             hint = self.reflector.reflect(next_task, last_failed_command, last_error_log, consecutive_failures)
+                             hint = self.reflector.reflect(next_task, command_str, str(tool_result), consecutive_failures)
                              task_context.append(f"SYSTEM ALERT: {hint}")
-                             self._log_to_file(f"REFLECTOR ADVICE: {hint}")
-                             
                     else:
                          task_context.append(f"VERIFICATION: SUCCESS.")
-                         consecutive_failures = 0 # Reset on success
-                         # If action was successful, does it mean the TASK is done? 
-                         # Not necessarily (could be multi-step). 
-                         # We let the LLM decide to finish in next turn.
+                         consecutive_failures = 0 
                     
                     # Append ToolMessage
                     messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
@@ -305,65 +262,23 @@ class V3Developer:
                       # ESCALATE
                       next_task["status"] = "failed"
                       next_task["task_context"] = task_context
-                      # Sync Persistence
                       self._sync_persistence(startup_id, current_mission["id"], current_mission.get("implementation_plan", ""), current_mission.get("mission_context", []), current_mission.get("tasks", []), status="in_progress")
                       
                       return {
-                          "status": "fix_required", # Route to Fixer
+                          "status": "fix_required", 
                           "current_mission": current_mission,
                           "failed_task": next_task,
-                          "logs": [f"Developer: Task '{next_task['description']}' failed. Escalating to Architect for Diagnosis & Fix Plan."]
+                          "logs": [f"Developer: Task '{next_task['description']}' failed. Escalating to Architect."]
                       }
                  
                  # --- LAZY / SUCCESS GUARD ---
                  # 1. Lazy Check: Did we do ANYTHING?
-                 if not executed_actions:
-                      # Agent just "thought" and quit.
-                      # HEURISTIC: If logic requires 'write_file' or 'run_shell', reject.
-                      # If it's just 'plan' or 'read', maybe okay.
+                 if not executed_actions and not injected_result:
                       logger.warning(f"Lazy Guard Triggered: No actions executed.")
                       rejection_msg = "SYSTEM ERROR: You claimed completion but executed NO tools. You must execute the required action."
                       messages.append(HumanMessage(content=rejection_msg))
                       task_context.append("System: Rejected empty completion.")
                       continue # Retry
-                 
-                 # 2. Success Check: Did we do the RIGHT thing successfully?
-                 required_action = next_task.get("action")
-                 critical_actions = ["write_file", "run_shell", "edit_file", "command"]
-                 
-                 # Check if the REQUIRED tool was ever successfully run
-                 # We need to track successful executions in the loop.
-                 # Let's count success for the required tool.
-                 tool_success_count = 0
-                 if required_action in critical_actions:
-                      # Scan task_context for "Action: {required_action} ... VERIFICATION: SUCCESS"
-                      # Actually, loop logic above appends to task_context.
-                      # It's safer to check task_context strings.
-                      for entry in task_context:
-                          if f"Action: {required_action}" in entry:
-                              # Check if the NEXT entry is success?
-                              # task_context structure: [Action..., Verify..., Action..., Verify...]
-                              # This is unstructured.
-                              # Better to rely on 'successful_tools' set we should have tracked.
-                              pass
-                      
-                      # Since I can't easily add a variable to the Outer Scope without rewriting the whole method,
-                      # I will use a robust string check on the LAST FEW entries or ALL entries.
-                      # Simplest: Did we EVER get a SUCCESS verification?
-                      has_success = False
-                      for i, entry in enumerate(task_context):
-                           if f"Action: {required_action}" in entry:
-                               # Look ahead for verification
-                               if i+1 < len(task_context) and "VERIFICATION: SUCCESS" in task_context[i+1]:
-                                   has_success = True
-                                   break
-                      
-                      if not has_success:
-                           rejection_msg = f"SYSTEM ERROR: You used '{required_action}' but it FAILED every time. You cannot mark the task as complete until the command succeeds. Fix the command and retry."
-                           logger.warning(f"Success Guard Triggered: {required_action} never succeeded.")
-                           messages.append(HumanMessage(content=rejection_msg))
-                           task_context.append(f"System: Rejected completion. {required_action} failed.")
-                           continue # Retry
                  
                  # Otherwise assume success/completion
                  self._log_to_file(f"GUARD ACCEPT: Task {next_task['description']} passed.")
@@ -372,15 +287,13 @@ class V3Developer:
         # --- LOOP EXIT CHECK ---
         else:
              logger.error("Developer Loop Exhausted. Task Failed.")
-             self._log_to_file("LOOP EXHAUSTED: Task Failed.")
              next_task["status"] = "failed"
              next_task["task_context"] = task_context
              
-             # Sync before returning
              self._sync_persistence(startup_id, current_mission["id"], current_mission.get("implementation_plan", ""), current_mission.get("mission_context", []), current_mission.get("tasks", []), status="in_progress")
              
              return { 
-                 "status": "fix_required", # CRITICAL: Route to Architect for Plan Repair
+                 "status": "fix_required", 
                  "current_mission": current_mission, 
                  "failed_task": next_task, 
                  "logs": [f"Developer: Task '{next_task['description']}' failed after 10 attempts. Escalating to Strategist."] 

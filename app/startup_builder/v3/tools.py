@@ -2,6 +2,7 @@ from typing import List, Dict, Optional
 from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchRun
 from ..context import ContextManager
+from ...process_manager import ProcessManager # NEW Import
 
 class V3Tools:
     def __init__(self, docker_manager, startup_id, runtime_context: Optional[Dict] = None):
@@ -10,11 +11,14 @@ class V3Tools:
         # We also need context manager to trigger summaries on write
         self.context_manager = ContextManager(docker_manager, startup_id)
         self.runtime_context = runtime_context or {}
+        self.process_manager = ProcessManager(docker_manager) # Initialize Middleware
 
     def get_tool_list(self, include_context_tools=False):
         """Returns the actual bound tool instances for the LLM."""
         base_tools = [
             self.create_run_shell(),
+            self.create_ensure_server(), # NEW
+            self.create_check_job(),     # NEW
             self.create_read_file(),
             self.create_write_file(),
             self.create_list_files(),
@@ -39,88 +43,88 @@ class V3Tools:
             
         return base_tools
 
-    # --- Context Tools (For Fixer/Audit) ---
-    
-    def create_get_mission_context(self):
-        @tool
-        def get_mission_context() -> str:
-            """
-            Retrieves the full context/history of the current Mission.
-            Use this to understand what has been achieved so far.
-            """
-            mission = self.runtime_context.get("current_mission", {})
-            ctx = mission.get("mission_context", [])
-            return json.dumps(ctx, indent=2) if ctx else "No mission context available."
-        return get_mission_context
-
-    def create_get_task_context(self):
-        @tool
-        def get_task_context() -> str:
-            """
-            Retrieves the execution log (retries/errors) of the LAST failed task.
-            Use this to analyze why the previous attempt failed.
-            """
-            mission = self.runtime_context.get("current_mission", {})
-            tasks = mission.get("tasks", [])
-            
-            # Find the last task (presumably the failed one)
-            # Or pass a Task ID? For now, last active task.
-            if not tasks:
-                return "No tasks found."
-            
-            # Assuming the last one is the one we are fixing
-            target_task = tasks[-1]
-            ctx = target_task.get("task_context", [])
-            return f"Task: {target_task.get('description')}\nContext:\n{json.dumps(ctx, indent=2)}"
-        return get_task_context
-
-    def create_get_product_context(self):
-        @tool
-        def get_product_context() -> str:
-            """
-            Retrieves the Global Product Context (history of all missions).
-            """
-            return self.runtime_context.get("global_context", "No global context.")
-        return get_product_context
-
     # --- Tool Definitions ---
 
-    @tool
-    def run_shell(self, command: str) -> str:
-        """
-        Executes a shell command in the container.
-        Use this to run 'npm install', 'ls -la', 'mkdir', etc.
-        """
-        # Note: 'self' is tricky with @tool decorator if not careful.
-        # But we will bind these methods to the instance. 
-        # Actually, standard way is to return functions or structured tools.
-        # Let's fix the schema: we can't use @tool on methods easily with 'self'.
-        # Solution: We verify this acts as a bound method or we define them as standalone 
-        # and partial them.
-        # Wait, LangChain @tool on method works if we use the instance method in the list.
-        # Let's verify.
-        pass
-        
-    # Rethink: The @tool decorator makes it a static-like object.
-    # Better approach: Manually create StructuredTool or use the decorator 
-    # but we need access to 'self.startup_id'.
-    # 
-    # Let's use the closure pattern or dynamic function generation.
-    
     def create_run_shell(self):
         @tool
         def run_shell(command: str) -> str:
             """
             Executes a shell command in the container.
-            Use for installation, listing specific dirs, moving files, etc.
-            Returns stdout or error.
+            
+            BEHAVIOR:
+            - FAST commands (<5s) will return the output immediately.
+            - SLOW commands (>5s) will return a 'Job ID' and continue in background.
+            
+            Use for: Installation (npm install), Listing (ls), File Ops (mv, cp), Git.
+            DO NOT use for starting servers (use 'ensure_server_running' instead).
             """
-            res = self.docker_manager.run_command(self.startup_id, command)
-            if res.get("exit_code") == 0:
+            # Use Process Manager Middleware
+            res = self.process_manager.run_smart(self.startup_id, command, timeout=5.0)
+            
+            if res.get("error"):
+                return f"Error: {res['error']}"
+            
+            status = res.get("status")
+            if status == "completed":
                 return res["output"][:2000] # Truncate 
+            elif status == "background":
+                # Return strict JSON format so Agent can parse it easily
+                return json.dumps({
+                    "status": "background",
+                    "job_id": res["job_id"],
+                    "message": f"Command is running in background (PID {res['pid']}). Agent must YIELD and wait."
+                })
             else:
-                return f"Error (Exit {res.get('exit_code')}): {res.get('output')}"
+                return f"Unknown status: {res}"
         return run_shell
+
+    def create_ensure_server(self):
+        @tool
+        def ensure_server_running(alias: str, start_command: str, port: int) -> str:
+            """
+            Safely starts a long-running server process only if not already running.
+            
+            Args:
+                alias: Unique name (e.g., 'frontend', 'backend_flask').
+                start_command: The command to start it (e.g., 'npm run dev').
+                port: The port it listens on (e.g., 3000).
+                
+            Returns:
+                Success message with PID, or 'Already Running'.
+            """
+            # 1. Check Port (Idempotency) (TODO: Add lsof check tool or assume alias check is enough)
+            # For now, we rely on alias check via DockerManager's start_background_process logic 
+            # which returns error if running.
+            
+            # We assume the Agent is smart enough to use this tool.
+            # We use the raw docker manager start_background_process which enforces alias uniqueness.
+            
+            res = self.docker_manager.start_background_process(self.startup_id, alias, start_command)
+            
+            if res.get("error") and "already running" in res["error"]:
+                 return f"Server '{alias}' is already running. You can proceed to verify it."
+            elif res.get("error"):
+                 return f"Error starting server: {res['error']}"
+                 
+            return f"Server '{alias}' started successfully (PID {res['pid']}). Logs at {res['log_file']}."
+        return ensure_server_running
+        
+    def create_check_job(self):
+        @tool
+        def check_job(job_id: str) -> str:
+            """
+            Checks the status of a background job (returned by run_shell).
+            Returns 'running' or 'completed' with output.
+            """
+            res = self.process_manager.check_job(self.startup_id, job_id)
+            if res.get("error"):
+                 return f"Error checking job: {res['error']}"
+                 
+            if res["status"] == "running":
+                 return f"Job {job_id} is still running. Logs:\n{res.get('latest_logs')[-500:]}"
+            else:
+                 return f"Job {job_id} COMPLETED.\nOutput:\n{res.get('output')[:2000]}"
+        return check_job
 
     def create_read_file(self):
         @tool
