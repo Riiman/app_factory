@@ -173,17 +173,20 @@ def env_status(startup_id):
 @builder_bp.route('/<startup_id>/stop', methods=['POST'])
 def stop_env(startup_id):
     from app.models import Startup
-    from app.extensions import db
+    from app.extensions import db, redis_client
     
     startup = Startup.query.get(startup_id)
     if not startup:
         return jsonify({"error": "Startup not found"}), 404
     
-    # Stop and remove the container
-    # Stop the container but KEEP it (and the DB record)
+    # 1. Send STOP Signal to Graph Agents (V2 & V3)
+    # This ensures the agent loop exits and doesn't try to query the dead container
+    redis_client.set(f"signal:{startup_id}", "stop", ex=60) # Expires in 60s
+    print(f"Sent STOP signal for {startup_id}")
+    
+    # 2. Stop the container
     if startup.container_name:
         result = manager.stop_container(startup_id, container_name=startup.container_name)
-        # Do NOT clear container_name from database
         return jsonify(result)
     else:
         return jsonify({"status": "not_found"})
@@ -200,12 +203,10 @@ def run_command(startup_id):
 
 @builder_bp.route('/<startup_id>/approve', methods=['POST'])
 def approve_step(startup_id):
-    yolo = request.json.get('yolo', False) # Allow switching to YOLO mid-stream
+    yolo = request.json.get('yolo', False) 
     
-    # Resume the graph with interaction_completed
     initial_state = {"interaction_completed": True}
     
-    # Run in background
     run_agent_bg(startup_id, initial_state, yolo)
     
     return jsonify({"status": "success", "message": "Step approved, resuming in background"})
@@ -215,28 +216,24 @@ def get_status(startup_id):
     """Returns the current state of the agent for UI persistence (Supports V3 & V2)."""
     config = {"configurable": {"thread_id": startup_id}}
     
-    # 1. Try V3 State
     try:
         from .v3.orchestrator import create_v3_graph
-        # Log callback not needed for reading state
         v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
         snapshot = v3_graph.get_state(config)
         
         if snapshot.values and snapshot.values.get("status") != "init":
-             # Found active V3 state
              state = snapshot.values
              return jsonify({
                 "status": "active",
                 "version": "v3",
                 "task_status": state.get("status", "unknown"),
                 "logs": state.get("logs", []),
-                "thoughts": state.get("thoughts", []), # Return thoughts for Brain
-                "node": snapshot.next[0] if snapshot.next else "idle", # Current Active Node
+                "thoughts": state.get("thoughts", []), 
+                "node": snapshot.next[0] if snapshot.next else "idle", 
                 "plan": state.get("plan", []),
-                # Map V3 fields to Frontend expectations
                 "total_tasks": len(state.get("plan", [])),
                 "completed_tasks": len([t for t in state.get("plan", []) if t.get("status") == "completed"]),
-                "waiting_approval": False, # V3 Auto-runs for now
+                "waiting_approval": False, 
                 "mission_queue": state.get("missions", []), 
                 "current_mission_index": state.get("current_mission_id", 0) 
             })
@@ -269,7 +266,9 @@ def get_status(startup_id):
 
 @builder_bp.route('/<startup_id>/pause', methods=['POST'])
 def pause_task(startup_id):
-    stop_signals.add(startup_id)
+    from app.extensions import redis_client
+    redis_client.set(f"signal:{startup_id}", "pause", ex=60)
+    print(f"Sent PAUSE signal for {startup_id}")
     return jsonify({"status": "success", "message": "Pause signal sent"})
 
 @builder_bp.route('/<startup_id>/features', methods=['GET'])
@@ -616,14 +615,18 @@ def run_v3_agent_bg(startup_id, initial_state):
                 for event in v3_graph.stream(initial_state, config=config):
                     # event is a dict where keys are node names and values are the state updates from that node
                     publish_update('agent_update', {'logs': [f"Debug: Stream Event Received"]}, rooms=[f"startup_{s_id_str}"])
-                    # CHECK FOR PAUSE SIGNAL
-                    if startup_id in stop_signals:
-                        print(f"Pausing V3 Agent for {startup_id}")
-                        stop_signals.remove(startup_id)
+                    
+                    # --- REDIS SIGNAL CHECK ---
+                    from app.extensions import redis_client
+                    signal = redis_client.get(f"signal:{s_id_str}")
+                    if signal and signal.decode('utf-8') in ["pause", "stop"]:
+                        print(f"Pausing V3 Agent for {startup_id} (Signal: {signal})")
+                        redis_client.delete(f"signal:{s_id_str}")
+                        
                         from app.services.notification_service import publish_update
                         publish_update('agent_update', {
                             'task_status': 'paused',
-                            'logs': ["Process paused by user."]
+                            'logs': ["Process paused/stopped by user."]
                         }, rooms=[f"startup_{startup_id}"])
                         return
 
@@ -796,6 +799,20 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                                 'waiting_approval': False # Default
                             }, rooms=[f"startup_{startup_id}"])
                     
+                        # --- REDIS SIGNAL CHECK (Inside Loop) ---
+                        from app.extensions import redis_client
+                        signal = redis_client.get(f"signal:{startup_id}")
+                        if signal and signal.decode('utf-8') in ["pause", "stop"]:
+                            print(f"Signal '{signal}' received for {startup_id}. Pausing/Stopping Agent.")
+                            redis_client.delete(f"signal:{startup_id}")
+                            
+                            from app.services.notification_service import publish_update
+                            publish_update('agent_update', {
+                                'task_status': 'paused',
+                                'logs': state_tracker.get("logs", []) + [f"Process {signal.decode('utf-8')}d by user."]
+                            }, rooms=[f"startup_{startup_id}"])
+                            return
+
                     snapshot = graph.get_state(config)
                     
                     if not snapshot.next:

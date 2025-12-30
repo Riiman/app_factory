@@ -892,17 +892,9 @@ const StartupCodeStudio: React.FC = () => {
 
                     <div className="flex items-center gap-4 ml-4">
                         {isWorking && (
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span>Working...</span>
-                                </div>
-                                <button
-                                    onClick={handlePause}
-                                    className="flex items-center gap-1 bg-yellow-900/50 hover:bg-yellow-900 text-yellow-200 border border-yellow-800 px-2 py-1 rounded text-xs font-medium transition-colors"
-                                >
-                                    <Square className="w-3 h-3 fill-current" /> Pause
-                                </button>
+                            <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Working...</span>
                             </div>
                         )}
                         {!isWorking && taskStatus === 'paused' && (
@@ -914,7 +906,8 @@ const StartupCodeStudio: React.FC = () => {
                         )}
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Main Content Area */}
             <div className="flex-1 flex overflow-hidden">
