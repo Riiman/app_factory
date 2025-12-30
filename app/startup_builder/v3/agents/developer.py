@@ -58,6 +58,36 @@ class V3Developer:
                 self._log_to_file(f"DEV CHECK: Found next task: {task.get('description')}")
                 break
         
+        # 1.1 ASYNC RESUME CHECK
+        # If we were waiting for a job, check it NOW before asking LLM to do anything.
+        waiting_on = state.get("waiting_on")
+        
+        if waiting_on:
+             tools_factory_check = V3Tools(self.docker_manager, startup_id)
+             check_tool = tools_factory_check.create_check_job()
+             res = check_tool.invoke(waiting_on)
+             
+             if "running" in res:
+                  self.copilot.emit_thought(f"Async Job {waiting_on} still running. Waiting...", "developer")
+                  # Return blocked again (Polling)
+                  return {"status": "blocked", "waiting_on": waiting_on, "logs": []}
+             else:
+                  # Finished!
+                  self.copilot.emit_thought(f"Async Job {waiting_on} COMPLETED. Resuming task.", "developer")
+                  resume_context = f"\n[SYSTEM]: Async Job {waiting_on} Completed.\nOutput:\n{res}\n(Do NOT run the command again. verify the output.)"
+                  
+                  # Inject result into the task context so LLM sees it
+                  if next_task:
+                       if "task_context" not in next_task:
+                            next_task["task_context"] = []
+                       next_task["task_context"].append(resume_context)
+                       
+                  # CLEAR waiting_on in the return dict (conceptually)
+                  # Since we are proceeding, we just need to ensure we return `waiting_on: None` at the end or modify state.
+                  # LangGraph merges updates. We need to explicitly clear it.
+                  # We will add it to the final return.
+                  state["waiting_on"] = None  # Helper for this run
+
         if not next_task:
             self._log_to_file(f"DEV CHECK: No pending tasks for Mission {current_mission_id}. Finishing.")
             # Mark mission as complete
@@ -231,7 +261,7 @@ class V3Developer:
                                      # Return 'blocked' status
                                      return {
                                          "status": "blocked",
-                                         "waiting_on": job_id,
+                                         "waiting_on": job_id, # Persist ID to state
                                          "current_mission": current_mission,
                                          "logs": [f"Developer: Yielding for async job {job_id}."]
                                      }
@@ -351,7 +381,8 @@ class V3Developer:
             "status": "coding",
             "logs": [f"Developer Loop: Completed {next_task['description']}"],
             "local_context": local_context,
-            "global_context": new_global_context
+            "global_context": new_global_context,
+            "waiting_on": None # Clear any waiting process
         }
 
     def _verify_action(self, action: str, command: str, output: str) -> str:

@@ -201,7 +201,7 @@ const StartupCodeStudio: React.FC = () => {
                                 setWaitingApproval(true);
                                 setIsWorking(false);
                                 if (data.current_step) setCurrentStep(data.current_step);
-                            } else if (['done', 'qa_passed', 'failed'].includes(data.task_status)) {
+                            } else if (['done', 'qa_passed', 'failed', 'paused'].includes(data.task_status)) {
                                 setIsWorking(false);
                                 setWaitingApproval(false);
                                 if (data.task_status === 'done') fetchData();
@@ -273,6 +273,23 @@ const StartupCodeStudio: React.FC = () => {
             }
         } catch (e) {
             addLog(`Error pausing: ${e}`);
+        }
+    };
+
+    const handleResume = async () => {
+        addLog('Resuming process...');
+        try {
+            const res = await fetch(`/api/builder/${id}/v3/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                // setIsWorking(true); // Let socket handle it
+            }
+        } catch (e) {
+            addLog(`Error resuming: ${e}`);
         }
     };
 
@@ -723,6 +740,11 @@ const StartupCodeStudio: React.FC = () => {
                             {isWorking && (
                                 <button onClick={handlePause} className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
                                     <span className="w-4 h-4 flex items-center justify-center font-bold">||</span> Pause
+                                </button>
+                            )}
+                            {!isWorking && taskStatus === 'paused' && (
+                                <button onClick={handleResume} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                                    <Play className="w-4 h-4" /> Resume
                                 </button>
                             )}
                             <button onClick={handleStop} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">

@@ -41,7 +41,9 @@ class V3AgentState(TypedDict):
     
     # QA
     qa_feedback: str     # Errors from testing
+    qa_feedback: str     # Errors from testing
     product_context: Dict # passed from route for initialization
+    waiting_on: str      # Job ID of async process we are waiting for
 
 # --- Routing Logic ---
 def orchestrator_router(state: V3AgentState):
