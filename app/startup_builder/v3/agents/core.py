@@ -60,16 +60,21 @@ class V3CoPilot:
     def emit_thought(self, content: str, node: str = "unknown"):
         """Emits a thought to the UI via callback."""
         from app.startup_builder.v3.logger import log_event
+        from datetime import datetime
+        
+        # Add Timestamp
+        ts = datetime.now().strftime('%H:%M:%S')
+        timed_content = f"[{ts}] {content}"
         
         # Log to file
-        log_event("THOUGHT", content, node)
+        log_event("THOUGHT", timed_content, node)
 
         if self.log_callback:
             # Prepend Agent Name for UI Clarity
-            display_content = f"[{node.upper()}] {content}" if node and node != "unknown" else content
+            display_content = f"[{node.upper()}] {timed_content}" if node and node != "unknown" else timed_content
             self.log_callback(display_content, node)
         else:
-            logger.info(f"Thinking ({node}): {content}")
+            logger.info(f"Thinking ({node}): {timed_content}")
 
     def ask(self, system_prompt: str, user_prompt: str, tools: List[Dict] = None) -> Dict:
         """

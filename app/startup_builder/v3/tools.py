@@ -32,6 +32,7 @@ class V3Tools:
             self.create_stop_process(),
             self.create_read_process_logs(),
             self.create_list_processes(),
+            self.create_wait_for_job(), # New Tool
             self.create_search_web()
         ]
         
@@ -295,6 +296,22 @@ class V3Tools:
                 return f"Error using Start Process: {res['error']}"
             return f"Process '{alias}' started. PID: {res.get('pid')}. Logs redirected to {res.get('log_file')}."
         return start_process
+
+    def create_wait_for_job(self):
+        @tool
+        def wait_for_job(job_id: str) -> str:
+            """
+            Explicitly waits for a background job to complete.
+            Use this when you decide to wait longer for a running process.
+            """
+            import json
+            # This triggers the specific "Yield" logic in developer.py
+            return json.dumps({
+                "status": "background",
+                "job_id": job_id,
+                "message": f"Agent decided to wait for job {job_id}."
+            })
+        return wait_for_job
 
     def create_stop_process(self):
         @tool

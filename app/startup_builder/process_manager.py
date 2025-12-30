@@ -39,38 +39,57 @@ class ProcessManager:
             pid = res.get("pid")
             log_file = res.get("log_file")
             
-            # 2. Monitor Loop (The "Smart Wait")
-            start_time = time.time()
+            # 2. Monitor Loop (Progressive Wait Strategy)
+            wait_steps = [5, 10, 30, 30] # User-requested steps
+            total_waited = 0
             
-            # We need to know if it finished. 
-            # We can check if PID is still running.
-            while time.time() - start_time < timeout:
-                # Check status
-                # DockerManager doesn't expose a cheap "check pid" method directly except via "list_processes" or "start_background_process" check.
-                # We need to add a lightweight check or use exec_run locally.
-                # Let's use `exec_run("ps -p PID")` to check.
+            for step in wait_steps:
+                start_step = time.time()
                 
-                check = self.docker_manager.client.containers.get(self.docker_manager.get_container_name(startup_id)).exec_run(f"ps -p {pid}")
-                is_running = (check.exit_code == 0)
-                
-                if not is_running:
-                    # It finished!
-                    # Read logs
-                    logs = self.docker_manager.read_background_process_logs(startup_id, alias).get("logs", "")
+                # Sub-loop for this step
+                while time.time() - start_step < step:
+                    # Check status via exec_run check
+                    try:
+                        check = self.docker_manager.client.containers.get(self.docker_manager.get_container_name(startup_id)).exec_run(f"ps -p {pid}")
+                        is_running = (check.exit_code == 0)
+                    except:
+                        is_running = False # Assume stopped if container error? Or crash?
                     
-                    # Cleanup immediately since it's done
-                    self.docker_manager.stop_background_process(startup_id, alias)
+                    if not is_running:
+                        # It finished!
+                        logs = self.docker_manager.read_background_process_logs(startup_id, alias).get("logs", "")
+                        self.docker_manager.stop_background_process(startup_id, alias)
+                        return {
+                            "status": "completed",
+                            "output": logs,
+                            "duration": time.time() - start_time
+                        }
                     
-                    return {
-                        "status": "completed",
-                        "output": logs,
-                        "duration": time.time() - start_time
-                    }
+                    time.sleep(0.5)
                 
-                time.sleep(0.5) # Yield
+                # End of step
+                total_waited += step
+                msg = f"Command '{command}' still running after {total_waited}s. Extending wait..."
+                logger.info(msg)
                 
+                # EMIT LOG TO FRONTEND
+                try:
+                    from app.extensions import socketio
+                    from datetime import datetime
+                    ts = datetime.now().strftime('%H:%M:%S')
+                    socketio.emit('agent_thought', {
+                        'startup_id': startup_id,
+                        'thought': f"[{ts}] {msg}",
+                        'agent_type': 'system'
+                    }, namespace='/') 
+                except:
+                    pass
+
             # 3. Timeout Exceeded -> Background It
-            logger.info(f"Command '{command}' exceeded {timeout}s. Moving to background (Job {job_id}).")
+            logger.info(f"Command '{command}' exceeded max wait. Moving to background (Job {job_id}).")
+            
+            # Fetch latest logs to give context
+            current_logs = self.docker_manager.read_background_process_logs(startup_id, alias).get("logs", "")
             
             job_info = {
                 "job_id": job_id,
@@ -86,8 +105,9 @@ class ProcessManager:
             return {
                 "status": "background",
                 "job_id": job_id,
-                "message": f"Command moved to background after {timeout}s. Use 'check_job' to monitor.",
-                "pid": pid
+                "message": f"Command moved to background after {total_waited}s.",
+                "pid": pid,
+                "latest_output": current_logs[-2000:] # Return last 2000 chars
             }
             
         except Exception as e:

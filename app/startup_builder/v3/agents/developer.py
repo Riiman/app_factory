@@ -67,10 +67,23 @@ class V3Developer:
              check_tool = tools_factory_check.create_check_job()
              res = check_tool.invoke(waiting_on)
              
-             if "running" in res:
-                  self.copilot.emit_thought(f"Async Job {waiting_on} still running. Waiting...", "developer")
-                  # Return blocked again (Polling)
-                  return {"status": "blocked", "waiting_on": waiting_on, "logs": []}
+             if res.get("status") == "running":
+                  # DECISION POINT: Do not auto-yield. Let LLM decide.
+                  logs = res.get("logs", "")[-2000:]
+                  self.copilot.emit_thought(f"Async Job {waiting_on} still running. Deferring to LLM.", "developer")
+                  
+                  # Inject Context for Decision
+                  resume_context = f"\n[SYSTEM ALERT]: Async Job {waiting_on} is STILL RUNNING.\nPartial Logs:\n{logs}\n\nACTION REQUIRED: Decide what to do:\n1. 'wait_for_job(job_id)': Continue waiting.\n2. 'stop_process(job_id)': Kill it.\n3. Proceed if logs indicate success."
+                  
+                  # Clear waiting_on so the loop proceeds to Prompt/Think phase
+                  state["waiting_on"] = None
+                  
+                  if next_task:
+                       if "task_context" not in next_task:
+                            next_task["task_context"] = []
+                       next_task["task_context"].append(resume_context)
+                       
+                  # Return nothing -> continues execution flow
              else:
                   # Finished!
                   self.copilot.emit_thought(f"Async Job {waiting_on} COMPLETED. Resuming task.", "developer")
@@ -145,7 +158,11 @@ class V3Developer:
         YOU HAVE ACCESS TO TOOLS:
         - run_shell: Run COMMANDS. Note: Slow commands (>5s) will return a Job ID. You MUST handle this by waiting.
         - ensure_server_running: Use this instead of `run_shell` for servers.
+        - run_shell: Run COMMANDS. Note: Slow commands (>5s) will return a Job ID. You MUST handle this by waiting.
+        - ensure_server_running: Use this instead of `run_shell` for servers.
         - check_job: Check status of background jobs.
+        - wait_for_job: Explicitly yield to wait for a running job (Use this if Job is still running).
+        - stop_process: Kill a background job.
         
         STRATEGY:
         1. Explore relevant files if needed.
@@ -256,7 +273,19 @@ class V3Developer:
                                  if res_json.get("status") == "background":
                                      # YIELD EXECUTION
                                      job_id = res_json.get("job_id")
-                                     self.copilot.emit_thought(f"Task moved to background (Job {job_id}). Yielding...", "developer")
+                                     latest_output = res_json.get("latest_output", "")
+                                     
+                                     public_log = f"Task moved to background (Job {job_id}). Yielding..."
+                                     if latest_output:
+                                          public_log += f"\n[PARTIAL OUTPUT]:\n{latest_output}"
+                                          
+                                          # Explicitly add to task context for next resume
+                                          if next_task:
+                                               if "task_context" not in next_task:
+                                                    next_task["task_context"] = []
+                                               next_task["task_context"].append(f"[SYSTEM]: Partial Output for Job {job_id}:\n{latest_output}")
+
+                                     self.copilot.emit_thought(public_log, "developer")
                                      
                                      # PERSIST NOW to save the modified task context
                                      self._sync_persistence(
@@ -264,7 +293,7 @@ class V3Developer:
                                          current_mission["id"],
                                          current_mission.get("implementation_plan", ""),
                                          current_mission.get("mission_context", []),
-                                         current_mission["tasks"],
+                                         current_mission["tasks"], # This includes the modified next_task
                                          status="in_progress",
                                          waiting_on=job_id # Save Background Job ID
                                       )
