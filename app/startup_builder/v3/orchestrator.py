@@ -131,11 +131,20 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             for m in missions:
                 if m.get("status") in resumable_statuses:
                     log_debug(f"SELECTOR: Resuming Mission {m['id']} '{m['title']}' (Status: {m['status']})")
+                    
+                    # Map internal mission status to graph node
+                    target_status = "architecting" # Default
+                    if m['status'] == 'in_progress' or m['status'] == 'coding':
+                        target_status = "coding"
+                    elif m['status'] == 'fix_required':
+                        target_status = "fix_required"
+                    elif m['status'] == 'verification':
+                        target_status = "verification"
+                        
                     return {
                         "current_mission": m,
-                        # Map internal mission status to graph node if possible, or default to architect for safety
-                        "status": "architecting", 
-                        "logs": [f"Mission Selector: Resuming '{m['title']}'"]
+                        "status": target_status, 
+                        "logs": [f"Mission Selector: Resuming '{m['title']}' (Phase: {target_status})"]
                     }
 
             # 2. NEXT Priority: Pick the first pending mission
