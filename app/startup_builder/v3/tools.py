@@ -223,6 +223,30 @@ class V3Tools:
 
 
 
+    def create_list_files(self):
+        @tool
+        def list_files(path: str = ".") -> str:
+            """
+            Lists files and directories in the given path.
+            Returns JSON structure with 'files' and 'directories'.
+            """
+            res = self.docker_manager.list_files(self.startup_id, path)
+            if res.get("error"):
+                return f"Error listing files: {res['error']}"
+            
+            # Format nicely for the agent
+            files = res.get("files", [])
+            output = [f"Directory listing for '{path}':"]
+            for f in files:
+                type_sym = "[HDR]" if f["name"].startswith(".") else ("[D]" if f["type"] == "directory" else "[F]")
+                output.append(f"{type_sym} {f['name']}")
+                
+            if not files:
+                output.append("(Empty)")
+                
+            return "\n".join(output)
+        return list_files
+
     def create_read_logs(self):
         @tool
         def read_logs() -> str:
