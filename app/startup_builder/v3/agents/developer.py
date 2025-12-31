@@ -172,6 +172,13 @@ class V3Developer:
         2. Write/Update the code (Full Implementation).
         3. Verify checks passed if applicable.
         
+        CONTENT & CONTEXT:
+        - The file `artifacts/project_context.json` contains the Startup's detailed description, evaluation report, and product features.
+        - The file `artifacts/theme.json` contains the **UI Design System** (Colors, Fonts, Radius).
+        - READ `theme.json` before writing ANY CSS or Tailwind config.
+        - READ `project_context.json` when you need to generate UI content (landing page text, feature lists, about sections).
+        - Do NOT use placeholder Lorem Ipsum if real content is available in this file.
+        
         HANDLING MISSING CREDENTIALS:
         If verification requires an API Key (e.g., OPENAI_API_KEY) and it is missing/unset:
         1. DO NOT FAIL.
@@ -201,8 +208,11 @@ class V3Developer:
         - Before marking a task as COMPLETED, you MUST run a validation step:
           * For Node/React/Native: Run `npm run lint` OR `npx tsc --noEmit` OR `npm run build`.
           * For Python: Run `python3 -m compileall <file>` or ast.parse(code) or run the script directly.
-          * **UI/UX TASKS**: Run `npx playwright test`. 
-        - IF VALIDATION FAILS: You MUST fix the error. DO NOT IGNORE IT.
+          * **UI/UX TASKS**: Use the `run_ui_test` tool (do not use run_shell manually).
+        - IF VALIDATION FAILS (Non-Zero Exit Code or "1 failed"):
+          * You MUST fix the error. DO NOT IGNORE IT.
+          * DO NOT mark as completed.
+          * If you cannot fix it after 2 attempts, STOP, Log "Test Failed:", and ESCALATE.
         - IF IMPORT ERROR: Check the stack and then check files responsible example. Node/React/Native `package.json`, Python `requirements.txt`. If missing, `npm install <package>`, `pip install <package>`.
         - IF SYNTAX ERROR: Re-read the file and fix the specific line.
         

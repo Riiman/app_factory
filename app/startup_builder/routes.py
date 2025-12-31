@@ -654,17 +654,69 @@ def run_v3_agent_bg(startup_id, initial_state):
                 print(f"THREAD START: startup_id={s_id_str}, redis={redis_client}")
                 
                 # Notify Start
-                from app.services.notification_service import publish_update
                 publish_update('agent_update', {
                     'task_status': 'planning', 
                     'logs': [f"Agent Thread Started for ID {s_id_str}"]
                 }, rooms=[f"startup_{s_id_str}"])
 
+                # --- CONTEXT INJECTION START ---
+                try:
+                    from app.models.startup import Startup, StartupEvaluation
+                    from app.models.product import Product
+                    
+                    startup = Startup.query.get(startup_id)
+                    
+                    context_data = {
+                        "startup_id": startup_id,
+                        "name": startup.name,
+                        "description": startup.description,
+                    }
+                    
+                    # 1. Fetch Evaluation (Detailed report)
+                    if startup.evaluation_id:
+                        evaluation = StartupEvaluation.query.get(startup.evaluation_id)
+                        if evaluation:
+                            context_data["evaluation"] = {
+                                "viability": evaluation.viability_score,
+                                "complexity": evaluation.complexity_score,
+                                "report": evaluation.evaluation_report
+                            }
+                    
+                    # 2. Fetch Product (Features, PRD)
+                    # Use relationship if exists, else query
+                    product = Product.query.filter_by(startup_id=startup_id).first()
+                    if product:
+                         context_data["product"] = {
+                             "name": product.name,
+                             "description": product.description,
+                             "target_audience": product.target_audience,
+                             "features": product.features_list if hasattr(product, 'features_list') else product.features,
+                             "unique_selling_propositions": getattr(product, 'usp', [])
+                         }
+                         
+                    # 3. Write to Container Artifact
+                    from app.startup_builder.manager import DockerManager
+                    temp_manager = DockerManager() 
+                    
+                    import json
+                    context_json = json.dumps(context_data, indent=2)
+                    
+                    # Ensure artifacts dir exists
+                    temp_manager.run_command(startup_id, "mkdir -p artifacts")
+                    temp_manager.write_file(startup_id, "artifacts/project_context.json", context_json)
+                    
+                    publish_update('agent_update', {'logs': ["Injected Project Context to artifacts/project_context.json"]}, rooms=[f"startup_{s_id_str}"])
+                    
+                except Exception as e:
+                    print(f"Context Injection Failed: {e}")
+                    publish_update('agent_update', {'logs': [f"Warning: Failed to inject context: {e}"]}, rooms=[f"startup_{s_id_str}"])
+                # --- CONTEXT INJECTION END ---
+
                 # Create V3 Graph on the fly (lightweight)
                 # or cache it if expensive. We need log_callback bound though.
                 v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=log_callback)
                 
-                config = {"configurable": {"thread_id": s_id_str}, "recursion_limit": 100}
+                config = {"configurable": {"thread_id": s_id_str}, "recursion_limit": 500}
                 
                 publish_update('agent_update', {'logs': ["Debug: Graph Created. Starting Stream..."]}, rooms=[f"startup_{s_id_str}"])
                 

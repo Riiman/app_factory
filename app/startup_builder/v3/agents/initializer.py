@@ -30,30 +30,32 @@ class V3Initializer:
         
         GOALS:
         1. DECIDE TECH STACK: Choose the best modern stack (e.g., Next.js + Tailwind, or Python + React).
-        2. CREATE MISSIONS: Break down the product into High-Level Missions.
-           - Mission 0 MUST be "Initialize Environment" (install deps, setup structure).
+        2. DESIGN UI THEME: Create a visual design system (Colors, Fonts, Radius) tailored to the product's industry and "vibe".
+           - E.g., Medical -> Blue/Clean. Gaming -> Dark/Neon. Luxury -> Gold/Serif.
+        3. CREATE MISSIONS: Break down the product into High-Level Missions.
+           - Mission 0 MUST be "Initialize Environment & Theme" (install deps, setup structure, apply theme).
            - Subsequent Missions should correspond to Features.
-           - **DECOMPOSITION**: If a Feature is complex (e.g., "Auth" includes Login, Signup, Dashboard), break it down into multiple sequential Missions.
-           - **TRACEABILITY**: Each Mission must include the `feature_id` of the Feature it belongs to.
            
         OUTPUT JSON:
         {
             "tech_stack": "Name of stack",
+            "ui_theme": {
+                "variant": "light/dark", 
+                "primary": "#hexcode",
+                "secondary": "#hexcode",
+                "accent": "#hexcode",
+                "fontHeading": "Inter/Roboto/Merriweather",
+                "fontBody": "Inter/Roboto",
+                "borderRadius": "0.5rem"
+            },
             "missions": [
                 {
                     "id": 0,
-                    "title": "Initialize Environment",
-                    "description": "Setup project structure for [tech_stack]...",
+                    "title": "Initialize Environment & Theme",
+                    "description": "Setup project structure, install dependencies, and configure tailwind/theme for [tech_stack].",
                     "status": "pending",
                     "feature_id": null
                 },
-                {
-                    "id": 1,
-                    "title": "Implement [Feature Name] - Part 1",
-                    "description": "Detailed description...",
-                    "status": "pending",
-                    "feature_id": "uuid-of-feature"
-                }
                 ...
             ]
         }
@@ -69,58 +71,56 @@ class V3Initializer:
         try:
             content = json.loads(result["content"])
             tech_stack = content.get("tech_stack", "Generic Web App")
+            ui_theme = content.get("ui_theme", {})
             missions = content.get("missions", [])
             
-            # --- MISSION ENFORCEMENT: Mission 0 MUST be Init Env ---
+            # --- MISSION ENFORCEMENT ---
             init_mission = {
                 "id": 0,
-                "title": "Initialize Environment",
-                "description": "Install dependencies (e.g., package.json, requirements.txt) and initialize the shell project structure.",
+                "title": "Initialize Environment & Theme",
+                "description": "Install dependencies (e.g., package.json or requirements.txt), set up project structure, and configure the UI Theme (colors/fonts) based on artifacts/theme.json.",
                 "status": "pending"
             }
             
             if not missions:
                 missions = [init_mission]
             else:
-                first_mission = missions[0]
-                # Check if vaguely similar (LLM might phrase it differently)
-                is_init = "init" in first_mission["title"].lower() or "setup" in first_mission["title"].lower()
-                
-                if not is_init:
-                    # Prepend
-                    missions.insert(0, init_mission)
-                    # Re-index
-                    for i, m in enumerate(missions):
-                        m["id"] = i
-                else:
-                    # Ensure exact title/description match or trust LLM? 
-                    # Let's ensure ID is 0
-                    if first_mission["id"] != 0:
-                         # Re-index all
-                         for i, m in enumerate(missions):
-                            m["id"] = i
+                 # Check/Fix Mission 0
+                 if missions[0]["id"] != 0:
+                     missions.insert(0, init_mission)
+                     for i, m in enumerate(missions): m["id"] = i
+
+            logs = [f"Initializer: Selected Stack -> {tech_stack}", f"Initializer: Generated Theme -> {ui_theme.get('variant', 'standard')}", f"Initializer: Created {len(missions)} missions."]
             
-            logs = [f"Initializer: Selected Stack -> {tech_stack}", f"Initializer: Created {len(missions)} missions."]
-            
-            # --- PERSISTENCE: Save to file ---
+            # --- PERSISTENCE ---
             try:
                 from ...manager import DockerManager
                 docker_manager = DockerManager()
                 startup_id = state.get("startup_id")
                 
+                # 1. Save Missions
                 mission_data = {
                     "tech_stack": tech_stack,
                     "missions": missions,
                     "generated_at": str(import_time())
                 }
                 
+                # Ensure artifacts dir exists (idempotent)
+                docker_manager.run_command(startup_id, "mkdir -p artifacts")
+                
                 save_path = "artifacts/missions.json"
                 docker_manager.write_file(startup_id, save_path, json.dumps(mission_data, indent=2))
                 logs.append(f"Initializer: Saved missions to {save_path}")
                 
+                # 2. Save Theme
+                if ui_theme:
+                     theme_path = "artifacts/theme.json"
+                     docker_manager.write_file(startup_id, theme_path, json.dumps(ui_theme, indent=2))
+                     logs.append(f"Initializer: Saved UI Theme to {theme_path}")
+                
             except Exception as e:
-                logger.error(f"Failed to save missions to file: {e}")
-                logs.append(f"Initializer Warning: Failed to save persistence file: {e}")
+                logger.error(f"Failed to save artifacts: {e}")
+                logs.append(f"Initializer Warning: Failed to save artifacts: {e}")
             
             return {
                 "tech_stack": tech_stack,

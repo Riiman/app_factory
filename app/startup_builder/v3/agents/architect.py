@@ -107,7 +107,7 @@ class V3Architect:
         - Plan Steps:
             1. Setup Playwright (if not present): `npm install -D @playwright/test` and `npx playwright install chromium`.
             2. Write Test Spec: Create `tests/<feature>.spec.ts` checking for visibility of new elements.
-            3. Run Test: `npx playwright test`.
+            3. **Run Test using Dedicated Tool**: The Developer MUST use the `run_ui_test` tool (not run_shell).
             4. **CRITICAL**: Tests MUST be configured to take screenshots (snapshots) to verify UX.
         
         OUTPUT FORMAT (Last Message):

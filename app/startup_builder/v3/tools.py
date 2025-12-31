@@ -33,7 +33,8 @@ class V3Tools:
             self.create_stop_process(),
             self.create_read_process_logs(),
             self.create_list_processes(),
-            self.create_wait_for_job(), # New Tool
+            self.create_wait_for_job(), 
+            self.create_run_ui_test(), # Dedicated Tool
             self.create_search_web()
         ]
         
@@ -69,7 +70,14 @@ class V3Tools:
             
             status = res.get("status")
             if status == "completed":
-                return res["output"][:2000] # Truncate 
+                output = res["output"][:2000] # Truncate 
+                exit_code = res.get("exit_code", 0)
+                
+                # ENFORCE VISIBILITY OF FAILURE
+                if exit_code != 0:
+                    return f"COMMAND FAILED (Exit Code {exit_code}):\n{output}\n\n[SYSTEM]: The command returned a non-zero exit code. You MUST fix this."
+                
+                return output
             elif status == "background":
                 # Return strict JSON format so Agent can parse it easily
                 return json.dumps({
@@ -228,10 +236,12 @@ class V3Tools:
         def list_files(path: str = ".") -> str:
             """
             Lists files and directories in the given path.
-            Returns JSON structure with 'files' and 'directories'.
             """
             res = self.docker_manager.list_files(self.startup_id, path)
             if res.get("error"):
+                # Handle common "No such file or directory" error explicitly
+                if "No such file" in res['error'] or "cannot access" in res['error']:
+                     return f"Error: Directory '{path}' does not exist. You may need to create it first using 'run_shell' (mkdir -p)."
                 return f"Error listing files: {res['error']}"
             
             # Format nicely for the agent
@@ -349,6 +359,85 @@ class V3Tools:
                 "message": f"Agent decided to wait for job {job_id}."
             })
         return wait_for_job
+
+    def create_run_ui_test(self):
+        @tool
+        def run_ui_test(test_file: str) -> str:
+            """
+            Executes a specific Playwright UI test file.
+            Automatically captures results, screenshots, and logs.
+            
+            Args:
+                test_file (str): Path to the .spec.ts file (e.g. apps/mobile/tests/login.spec.ts)
+            """
+            # 1. Run the test (force 1 worker for stability in container)
+            cmd = f"npx playwright test {test_file} --workers=1 --reporter=line,json"
+            
+            # Use process manager for reliable execution
+            # We set a higher timeout for tests (e.g. 30s)
+            res = self.process_manager.run_smart(self.startup_id, cmd, timeout=30.0)
+            
+            if res.get("error"):
+                 return f"System Error running test: {res['error']}"
+            
+            # 2. Check Status
+            status = res.get("status")
+            output = res.get("output", "")
+            
+            if status == "background":
+                 return json.dumps({
+                    "status": "background",
+                    "job_id": res["job_id"],
+                    "message": "UI Test is running long (background)..."
+                })
+            
+            # 3. Analyze Results (Sync Completion)
+            # Check exit code
+            exit_code = res.get("exit_code", 0)
+            
+            # 4. Scan for Screenshots (Best Effort)
+            # We look in the standard 'test-results' folder
+            # Simple grep/find via docker manager would be best, but we can infer or list
+            
+            snapshots = []
+            try:
+                # List test-results to find new images
+                # This assumes standard playwright config outputting to test-results/
+                ls_res = self.docker_manager.run_command(self.startup_id, "find test-results -name '*.png'")
+                if ls_res.get("exit_code") == 0:
+                    lines = ls_res["output"].strip().split('\n')
+                    for line in lines:
+                        if line.strip():
+                             snapshots.append(line.strip())
+            except:
+                pass
+
+            # 5. Format Output
+            response_lines = []
+            response_lines.append(f"Test Execution Completed (Exit Code: {exit_code})")
+            
+            if exit_code == 0:
+                response_lines.append("✅ TEST PASSED")
+            else:
+                response_lines.append("❌ TEST FAILED")
+            
+            if snapshots:
+                response_lines.append("\nCaptured Snapshots:")
+                for s in snapshots:
+                    # Special format for Frontend to render
+                    response_lines.append(f"[SNAPSHOT]: {s}")
+            
+            response_lines.append("\n--- Logs ---")
+            # Filter JSON reporter noise if mixed? No, line reporter is human readable.
+            # We might want to parse the JSON for strict details but raw log is fine for Agent
+            response_lines.append(output[-3000:]) # Logs
+            
+            if exit_code != 0:
+                response_lines.append("\n[SYSTEM]: The test failed. Analyze the logs above and FIX the issue.")
+            
+            return "\n".join(response_lines)
+            
+        return run_ui_test
 
     def create_stop_process(self):
         @tool

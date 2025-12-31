@@ -42,17 +42,23 @@ const AgentBrain: React.FC<BrainPanelProps> = ({ node, thoughts, isThinking, sta
             const path = snapshotMatch[1].trim();
             const imageUrl = `${process.env.REACT_APP_API_URL || ''}/api/builder/${startupId}/file?path=${encodeURIComponent(path)}`;
             return (
-                <div className="flex flex-col gap-2 bg-gray-900/50 p-3 rounded border border-gray-700/50">
-                    <div className="flex items-center gap-2 text-sky-400 text-xs font-mono">
-                        <span>📸 UI Snapshot Captured</span>
-                        <span className="text-white/30 truncate max-w-[300px]">{path}</span>
+                <div className="flex flex-col gap-2 bg-indigo-950/40 p-3 rounded-lg border border-indigo-500/30 shadow-lg my-2">
+                    <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold tracking-wider uppercase border-b border-indigo-500/20 pb-2 mb-1">
+                        <Zap className="w-3 h-3" />
+                        <span>UI Test Result</span>
+                        <span className="text-indigo-400/50 font-normal normal-case truncate max-w-[300px] ml-auto">{path}</span>
                     </div>
-                    <img
-                        src={imageUrl}
-                        alt="UI Snapshot"
-                        className="rounded border border-gray-700 cursor-pointer hover:border-sky-500 transition-colors"
-                        onClick={() => window.open(imageUrl, '_blank')}
-                    />
+                    <div className="relative group">
+                        <img
+                            src={imageUrl}
+                            alt="UI Snapshot"
+                            className="rounded border border-indigo-900/50 cursor-pointer hover:border-indigo-400 transition-all shadow-md group-hover:shadow-indigo-500/10 w-full"
+                            onClick={() => window.open(imageUrl, '_blank')}
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                            <span className="text-white text-xs font-bold bg-black/50 px-2 py-1 rounded backdrop-blur-md">Click to Enlarge</span>
+                        </div>
+                    </div>
                 </div>
             );
         }
