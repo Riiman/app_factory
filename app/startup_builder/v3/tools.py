@@ -247,6 +247,29 @@ class V3Tools:
             return "\n".join(output)
         return list_files
 
+    def create_search_files(self):
+        @tool
+        def search_files(query: str, path: str = ".") -> str:
+            """
+            Searches for a text pattern in files (grep).
+            Useful for finding code definitions, usages, or specific strings.
+            """
+            res = self.docker_manager.search_files(self.startup_id, query, path)
+            if res.get("error"):
+                return f"Error searching files: {res['error']}"
+            
+            # DockerManager usually returns structure, we format it
+            # manager.search_files returns 'output' raw from grep usually, or dict
+            # Based on manager view in previous turn: it returns raw output in the exec_run result
+            # Wait, manager.search_files in manager.py (viewed earlier) returns:
+            # return {"matches": output.decode('utf-8')} or error
+            
+            matches = res.get("matches", "")
+            if not matches:
+                return "No matches found."
+            return f"Search results for '{query}' in '{path}':\n{matches}"
+        return search_files
+
     def create_read_logs(self):
         @tool
         def read_logs() -> str:
