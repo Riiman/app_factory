@@ -195,10 +195,20 @@ class V3Developer:
         - You MUST execute the required action (e.g., 'write_file'). 
         - Thinking is NOT working. Listing files is NOT finishing the task.
         
-        FILE WRITING RULE:
-        - DO NOT use `run_shell` with `echo`, `cat`, or `printf` to write files. It causes encoding/newline issues.
         - ALWAYS use the `write_file` tool. It handles permissions and encoding correctly.
         - When using `write_file`, ensure content has REAL newlines, not `\\n` literals.
+        
+        MANDATORY VERIFICATION PHASE:
+        - Before marking a task as COMPLETED, you MUST run a validation step:
+          * For Node/React/Native: Run `npm run lint` OR `npx tsc --noEmit` OR `npm run build`.
+          * For Python: Run `python3 -m compileall <file>` or run the script directly.
+        - IF VALIDATION FAILS: You MUST fix the error. DO NOT IGNORE IT.
+        - IF IMPORT ERROR: Check `package.json`. If missing, `npm install <package>`.
+        - IF SYNTAX ERROR: Re-read the file and fix the specific line.
+        
+        LAZY COMPLETION FORBIDDEN:
+        - Do NOT say "I have written the code" without running it.
+        - You must provide EVIDENCE (Exit Code 0 from build/lint) that it works.
         
         
         MISSION CONTEXT (What has been done so far):
@@ -210,8 +220,9 @@ class V3Developer:
         When you are done, just output the final confirmation message.
         """
         
+        global_context = state.get("global_context", "No global history yet.")
         mission_context = json.dumps(current_mission.get("mission_context", []), indent=2)
-        base_user_prompt = f"Task: {next_task['description']}\nLogic: {next_task.get('logic', 'Standard Implementation')}\nDetails: {next_task.get('content_sketch', '')}\n\nLocal Context:\n{local_context}"
+        base_user_prompt = f"Task: {next_task['description']}\nLogic: {next_task.get('logic', 'Standard Implementation')}\nDetails: {next_task.get('content_sketch', '')}\n\nGlobal Context (Project History):\n{global_context}\n\nLocal Context:\n{local_context}"
         
         messages = [HumanMessage(content=base_user_prompt)]
         
