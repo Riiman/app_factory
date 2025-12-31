@@ -204,6 +204,39 @@ def run_command(startup_id):
     result = manager.run_command(startup_id, command)
     return jsonify(result)
 
+@builder_bp.route('/<startup_id>/file', methods=['GET'])
+def get_file(startup_id):
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'error': 'Path required'}), 400
+    
+    # Check extension
+    lower_path = path.lower()
+    is_image = lower_path.endswith(('.png', '.jpg', '.jpeg', '.gif'))
+    
+    if is_image:
+        res = manager.read_file_base64(startup_id, path)
+        if res.get('error'):
+             return jsonify(res), 404
+        
+        import base64
+        import io
+        from flask import send_file
+        
+        try:
+            decoded = base64.b64decode(res['content_base64'])
+            mimetype = 'image/png'
+            if lower_path.endswith('.jpg') or lower_path.endswith('.jpeg'):
+                mimetype = 'image/jpeg'
+            
+            return send_file(io.BytesIO(decoded), mimetype=mimetype)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+            
+    else:
+        res = manager.read_file(startup_id, path)
+        return jsonify(res)
+
 @builder_bp.route('/<startup_id>/approve', methods=['POST'])
 def approve_step(startup_id):
     yolo = request.json.get('yolo', False) 

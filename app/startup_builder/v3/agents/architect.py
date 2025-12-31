@@ -102,6 +102,14 @@ class V3Architect:
             - If this is a web app, you MUST plan to START the server (using `restart_server` tool) so the user can preview it.
             - Then add a task to "Verify endpoint" or "Run test".
         
+        **UI/UX TESTING STRATEGY (MANDATORY for Frontend/FullStack):**
+        - If the mission involves UI changes, you MUST plan for AUTOMATED UI TESTING using Playwright.
+        - Plan Steps:
+            1. Setup Playwright (if not present): `npm install -D @playwright/test` and `npx playwright install chromium`.
+            2. Write Test Spec: Create `tests/<feature>.spec.ts` checking for visibility of new elements.
+            3. Run Test: `npx playwright test`.
+            4. **CRITICAL**: Tests MUST be configured to take screenshots (snapshots) to verify UX.
+        
         OUTPUT FORMAT (Last Message):
         {
             "thoughts": ["analyzed x", "decided y"],

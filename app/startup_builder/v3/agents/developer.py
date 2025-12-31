@@ -153,19 +153,18 @@ class V3Developer:
         Your job is to safely execute the given task with production-quality code.
         
         ENVIRONMENT GUIDELINES:
-        - You are running inside a secure Docker container.
+        - You are running inside a secure Headless Docker container.
         - Please avoid running `docker`, `docker-compose`, or `systemctl` commands.
         - EXPOSED PORTS: 3000 (Frontend), 8000 (Backend), 5000 (Flask), 8080 (Alt).
         - Verify code by running it directly (e.g., `npm start`, `python main.py`).
         - VERIFICATION RULE: Frontend is NOT valid until `npm run build` passes (Exit 0).
         
-        YOU HAVE ACCESS TO TOOLS:
-        - run_shell: Run COMMANDS. Note: Slow commands (>5s) will return a Job ID. You MUST handle this by waiting.
-        - ensure_server_running: Use this instead of `run_shell` for servers.
+        CRITICAL TOOL USAGE RULES:
+        - update_file: Use this for ALL file modifications. Supports 'overwrite' and 'replace' modes.
         - run_shell: Run COMMANDS. Note: Slow commands (>5s) will return a Job ID. You MUST handle this by waiting.
         - ensure_server_running: Use this instead of `run_shell` for servers.
         - check_job: Check status of background jobs.
-        - wait_for_job: Explicitly yield to wait for a running job (Use this if Job is still running).
+        - wait_for_job: Explicitly yield to wait for a running job.
         - stop_process: Kill a background job.
         
         STRATEGY:
@@ -192,24 +191,31 @@ class V3Developer:
           * You MUST fix the command and RETRY the action.
           
         LAZY GUARD:
-        - You MUST execute the required action (e.g., 'write_file'). 
+        - You MUST execute the required action (e.g., 'update_file'). 
         - Thinking is NOT working. Listing files is NOT finishing the task.
         
-        - ALWAYS use the `write_file` tool. It handles permissions and encoding correctly.
-        - When using `write_file`, ensure content has REAL newlines, not `\\n` literals.
+        - ALWAYS use the `update_file` tool. It handles atomic saving, syntax validation, and stats updates.
+        - When using `update_file` (overwrite), ensure content has REAL newlines.
         
         MANDATORY VERIFICATION PHASE:
         - Before marking a task as COMPLETED, you MUST run a validation step:
           * For Node/React/Native: Run `npm run lint` OR `npx tsc --noEmit` OR `npm run build`.
-          * For Python: Run `python3 -m compileall <file>` or run the script directly.
+          * For Python: Run `python3 -m compileall <file>` or ast.parse(code) or run the script directly.
+          * **UI/UX TASKS**: Run `npx playwright test`. 
         - IF VALIDATION FAILS: You MUST fix the error. DO NOT IGNORE IT.
-        - IF IMPORT ERROR: Check `package.json`. If missing, `npm install <package>`.
+        - IF IMPORT ERROR: Check the stack and then check files responsible example. Node/React/Native `package.json`, Python `requirements.txt`. If missing, `npm install <package>`, `pip install <package>`.
         - IF SYNTAX ERROR: Re-read the file and fix the specific line.
+        
+        SNAPSHOT HANDLING (UI/UX):
+        - When running Playwright tests, ensure screenshots are captured (on success AND failure).
+        - AFTER running the test, look for the generated screenshot files (usually in `test-results/`).
+        - You MUST output the path of the screenshot in the logs:
+          `[SNAPSHOT]: /app/test-results/example-test/screenshot.png`
+        - This allows the user to see the UI in the dashboard.
         
         LAZY COMPLETION FORBIDDEN:
         - Do NOT say "I have written the code" without running it.
         - You must provide EVIDENCE (Exit Code 0 from build/lint) that it works.
-        
         
         MISSION CONTEXT (What has been done so far):
         {mission_context}
@@ -552,9 +558,10 @@ class V3Developer:
                  "timestamp": datetime.datetime.now().isoformat(),
                  "startup_id": startup_id,
                  "mission_id": mission_id,
+                 "mission": mission,
                  "status": status,
-                 "mission_context_count": len(mission_context),
-                 "mission_context_latest": mission_context[-1] if mission_context else "None",
+                 "global_context": global_context,
+                 "mission_context": mission_context if mission_context else "None",
                  "active_task": tasks[-1]["description"] if tasks else "None",
                  "active_task_context": tasks[-1].get("task_context", []) if tasks and tasks[-1].get("task_context") else [],
                  "waiting_on": waiting_on

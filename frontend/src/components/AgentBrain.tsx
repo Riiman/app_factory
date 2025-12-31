@@ -6,9 +6,10 @@ interface BrainPanelProps {
     node: string;
     thoughts: string[];
     isThinking: boolean;
+    startupId?: string;
 }
 
-const AgentBrain: React.FC<BrainPanelProps> = ({ node, thoughts, isThinking }) => {
+const AgentBrain: React.FC<BrainPanelProps> = ({ node, thoughts, isThinking, startupId }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -33,6 +34,33 @@ const AgentBrain: React.FC<BrainPanelProps> = ({ node, thoughts, isThinking }) =
             case 'qa': return 'border-green-500/50 bg-green-900/10';
             default: return 'border-gray-500/50 bg-gray-900/10';
         }
+    };
+
+    const renderThought = (thought: string) => {
+        const snapshotMatch = thought.match(/\[SNAPSHOT\]: (.*)/);
+        if (snapshotMatch && startupId) {
+            const path = snapshotMatch[1].trim();
+            const imageUrl = `${process.env.REACT_APP_API_URL || ''}/api/builder/${startupId}/file?path=${encodeURIComponent(path)}`;
+            return (
+                <div className="flex flex-col gap-2 bg-gray-900/50 p-3 rounded border border-gray-700/50">
+                    <div className="flex items-center gap-2 text-sky-400 text-xs font-mono">
+                        <span>📸 UI Snapshot Captured</span>
+                        <span className="text-white/30 truncate max-w-[300px]">{path}</span>
+                    </div>
+                    <img
+                        src={imageUrl}
+                        alt="UI Snapshot"
+                        className="rounded border border-gray-700 cursor-pointer hover:border-sky-500 transition-colors"
+                        onClick={() => window.open(imageUrl, '_blank')}
+                    />
+                </div>
+            );
+        }
+        return (
+            <span className="text-white/80 leading-relaxed font-light">
+                {thought}
+            </span>
+        );
     };
 
     return (
@@ -80,9 +108,7 @@ const AgentBrain: React.FC<BrainPanelProps> = ({ node, thoughts, isThinking }) =
                             className="flex gap-3"
                         >
                             <span className="text-white/20 select-none">{'>'}</span>
-                            <span className="text-white/80 leading-relaxed font-light">
-                                {thought}
-                            </span>
+                            {renderThought(thought)}
                         </motion.div>
                     ))}
                 </AnimatePresence>

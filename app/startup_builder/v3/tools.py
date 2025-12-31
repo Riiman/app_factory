@@ -1,5 +1,7 @@
 from typing import List, Dict, Optional
 import json
+import ast
+import os
 from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchRun
 from ..context import ContextManager
@@ -21,9 +23,8 @@ class V3Tools:
             self.create_ensure_server(), # NEW
             self.create_check_job(),     # NEW
             self.create_read_file(),
-            self.create_write_file(),
+            self.create_update_file(),   # Unified Tool
             self.create_list_files(),
-            self.create_edit_file(),
             self.create_search_files(),
             self.create_read_logs(),
             self.create_restart_server(),
@@ -140,83 +141,73 @@ class V3Tools:
             return res["content"]
         return read_file
 
-    def create_write_file(self):
+    def create_update_file(self):
         @tool
-        def write_file(path: str, content: str) -> str:
+        def update_file(path: str, content: str, mode: str = "overwrite", old_content: Optional[str] = None) -> str:
             """
-            Writes content to a file. Overwrites if exists.
-            Creates directories if needed.
-            Triggers auto-summarization of the file context.
+            Updates a file with safety checks.
+            Args:
+                path: Absolute path to the file.
+                content: New content (for overwrite) or replacement content (for replace).
+                mode: 'overwrite' (default) or 'replace'.
+                old_content: The exact text to be replaced (required if mode='replace').
             """
-            res = self.docker_manager.write_file(self.startup_id, path, content)
-            if res.get("error"):
-                return f"Error writing file: {res['error']}"
             
-            # Post-action: Update Summary
-            self.context_manager.update_file_summary(path)
+            # 1. Prepare New Content
+            new_content = ""
+            if mode == "replace":
+                if not old_content:
+                    return "Error: 'old_content' is required for replace mode."
+                
+                res = self.docker_manager.read_file(self.startup_id, path)
+                if res.get("error"):
+                    return f"Error reading file for replacement: {res['error']}"
+                
+                current_content = res["content"]
+                if old_content not in current_content:
+                    # Provide helpful tip on failure
+                    snippet = current_content[:200]
+                    return f"Error: 'old_content' not found in file. File start: {snippet}..."
+                
+                new_content = current_content.replace(old_content, content)
+            else:
+                new_content = content
 
-            try:
-                from flask import current_app
-                with current_app.app_context():
-                    from app.extensions import socketio
-                    socketio.emit('files_updated', {'path': path}, room=f"startup_{self.startup_id}", namespace='/builder')
-            except Exception as e:
-                # Log but don't fail the tool execution
-                print(f"Failed to emit file update event: {e}")
-            
-            return f"Successfully wrote to {path}"
-        return write_file
-        
-    def create_list_files(self):
-        @tool
-        def list_files(path: str = ".") -> str:
-            """
-            Lists files in a directory. 
-            Useful to see the structure.
-            """
-            res = self.docker_manager.list_files(self.startup_id, path)
-            if res.get("error"):
-                return f"Error listing: {res['error']}"
-            
-            files = res.get("files", [])
-            output = []
-            for f in files:
-                output.append(f"{f['name']}/" if f['type'] == 'directory' else f['name'])
-            return "\n".join(output)
-        return list_files
+            # 2. Write Temp
+            tmp_path = f"{path}.tmp"
+            write_res = self.docker_manager.write_file(self.startup_id, tmp_path, new_content)
+            if write_res.get("error"):
+                return f"Error writing temp file: {write_res['error']}"
 
-    def create_search_files(self):
-        @tool
-        def search_files(query: str, path: str = ".") -> str:
-            """
-            Searches for a string in the codebase using grep.
-            Useful for finding where functions or variables are defined/used.
-            Returns file paths and matching lines with context.
-            """
-            res = self.docker_manager.search_files(self.startup_id, query, path)
-            if res.get("error"):
-                return f"Error searching: {res['error']}"
-            
-            output = res.get("output", "")
-            if not output:
-                return "No matches found."
-            return output[:3000] # Truncate to avoid context overflow
-        return search_files
+            # 3. Syntax Validation
+            validation_error = None
+            if path.endswith(".py"):
+                try:
+                    ast.parse(new_content)
+                except SyntaxError as e:
+                    validation_error = f"Python Syntax Error: {e}"
+            elif path.endswith(".json"):
+                try:
+                    json.loads(new_content)
+                except json.JSONDecodeError as e:
+                    validation_error = f"JSON Syntax Error: {e}"
+            elif path.endswith(".js"):
+                # Run node -c inside container
+                chk = self.docker_manager.run_command(self.startup_id, f"node -c {tmp_path}")
+                if chk.get("exit_code") != 0:
+                     validation_error = f"JS Syntax Error: {chk.get('output', '').strip()}"
 
-    def create_edit_file(self):
-        @tool
-        def edit_file(path: str, target: str, replacement: str) -> str:
-            """
-            Replaces exact occurrences of 'target' with 'replacement' in the file.
-            Use this for precise code modifications without overwriting the whole file.
-            Target must match exactly (including whitespace/indentation).
-            Returns success message or error.
-            """
-            res = self.docker_manager.replace_in_file(self.startup_id, path, target, replacement)
-            if res.get("error"):
-                return f"Error editing file: {res['error']}"
-            
-            # Post-action: Update Summary
+            if validation_error:
+                # Cleanup and fail
+                self.docker_manager.run_command(self.startup_id, f"rm {tmp_path}")
+                return f"Validation Failed: {validation_error}. File NOT saved."
+
+            # 4. Atomic Move
+            move_res = self.docker_manager.run_command(self.startup_id, f"mv {tmp_path} {path}")
+            if move_res.get("exit_code") != 0:
+                 return f"Error moving temp file: {move_res['output']}"
+
+            # 5. Post-Action Stats
             self.context_manager.update_file_summary(path)
 
             try:
@@ -227,8 +218,8 @@ class V3Tools:
             except Exception as e:
                 print(f"Failed to emit file update event: {e}")
             
-            return f"Successfully edited {path}"
-        return edit_file
+            return f"Successfully updated {path}"
+        return update_file
 
 
 

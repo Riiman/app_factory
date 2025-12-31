@@ -1055,7 +1055,7 @@ const StartupCodeStudio: React.FC = () => {
                     {/* V3 Brain View - Full Height */}
                     <div className="flex-1 bg-gray-950 p-2 min-h-0">
                         <div className="h-full">
-                            <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} />
+                            <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} startupId={id} />
                         </div>
                     </div>
                 </div>

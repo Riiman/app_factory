@@ -357,6 +357,33 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
+    def read_file_base64(self, startup_id, path, container_name=None):
+        """
+        Reads binary file content from the container encoded as base64.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+        
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            if container.status != 'running':
+                return {"error": "Container not running"}
+            
+            # Use base64 command inside container to ensure clean transfer
+            cmd = f"cat '{path}' | base64 -w 0"
+            exit_code, output = container.exec_run(f"bash -c \"{cmd}\"", workdir="/app")
+            
+            if exit_code != 0:
+                return {"error": f"Error reading file: {output.decode('utf-8')}"}
+            
+            return {"content_base64": output.decode('utf-8').strip()}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
     def replace_in_file(self, startup_id, path, target_text, replacement_text, container_name=None):
         """
         Replaces exact target_text with replacement_text in the file.
