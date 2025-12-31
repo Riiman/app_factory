@@ -41,17 +41,26 @@ const AgentBrain: React.FC<BrainPanelProps> = ({ node, thoughts, isThinking, sta
         if (snapshotMatch && startupId) {
             const path = snapshotMatch[1].trim();
             const imageUrl = `${process.env.REACT_APP_API_URL || ''}/api/builder/${startupId}/file?path=${encodeURIComponent(path)}`;
+
+            // Extract readable page name (e.g. 'apps/mobile/login.png' -> 'Login')
+            const fileName = path.split('/').pop() || path;
+            const pageName = fileName.replace(/\.[^/.]+$/, "") // Remove extension
+                .replace(/-/g, ' ') // Replace dashes with spaces
+                .replace(/\b\w/g, l => l.toUpperCase()); // Capitalize
+
             return (
                 <div className="flex flex-col gap-2 bg-indigo-950/40 p-3 rounded-lg border border-indigo-500/30 shadow-lg my-2">
-                    <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold tracking-wider uppercase border-b border-indigo-500/20 pb-2 mb-1">
-                        <Zap className="w-3 h-3" />
-                        <span>UI Test Result</span>
-                        <span className="text-indigo-400/50 font-normal normal-case truncate max-w-[300px] ml-auto">{path}</span>
+                    <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold tracking-wider uppercase border-b border-indigo-500/20 pb-2 mb-1 justify-between">
+                        <div className="flex items-center gap-2">
+                            <Zap className="w-3 h-3" />
+                            <span>UI Test: <span className="text-white">{pageName}</span></span>
+                        </div>
+                        <span className="text-indigo-400/30 font-normal normal-case truncate max-w-[150px] text-[10px]" title={path}>{path}</span>
                     </div>
                     <div className="relative group">
                         <img
                             src={imageUrl}
-                            alt="UI Snapshot"
+                            alt={`Snapshot of ${pageName}`}
                             className="rounded border border-indigo-900/50 cursor-pointer hover:border-indigo-400 transition-all shadow-md group-hover:shadow-indigo-500/10 w-full"
                             onClick={() => window.open(imageUrl, '_blank')}
                         />

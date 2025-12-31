@@ -739,24 +739,34 @@ def run_v3_agent_bg(startup_id, initial_state):
                         }, rooms=[f"startup_{startup_id}"])
                         return
 
+                    # FETCH FULL STATE
+                    # We use the snapshot because 'event' only contains the delta from the last node
+                    snapshot = v3_graph.get_state(config)
+                    full_state = snapshot.values
+                    
                     for key, value in event.items():
+                         # We still use 'key' to know WHICH node just ran, but 'full_state' for data
+                        
                         # Compute Progress for Frontend
-                        plan = value.get('plan', [])
+                        plan = full_state.get('plan', [])
                         total_tasks = len(plan)
                         completed_tasks = len([t for t in plan if t.get("status") == "completed"])
                         
-                        # Emit Updated State
-                        # Emit Updated State
+                        # Extract Mission Info
+                        missions = full_state.get("missions", [])
+                        current_mission = full_state.get("current_mission", {})
+                        
+                        # Find index locally if passed
+                        # Or rely on 'current_mission' object emission
+                        
                         from app.services.notification_service import publish_update
                         publish_update('agent_update', {
                             'node': key,
-                            'task_status': value.get('status', 'processing'),
-                            # Analyzer returns status='planning', so it will show 'planning' after analyzer is done.
-                            # During analyzer run, it's 'analyzing'.
+                            'task_status': full_state.get('status', 'processing'),
                             'plan': plan,
-                            'logs': value.get('logs', []),
-                            'mission_queue': value.get('missions', []),
-                            'current_mission_index': value.get('current_mission_id', 0),
+                            'logs': value.get('logs', []), # Logs are transient, likely in the delta
+                            'mission_queue': missions,
+                            'current_mission': current_mission, # Pass full object
                             'total_tasks': total_tasks,
                             'completed_tasks': completed_tasks
                         }, rooms=[f"startup_{startup_id}"])

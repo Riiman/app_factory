@@ -85,8 +85,8 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ startupId, refreshKey }) =>
 
     return (
         <div className="flex h-full bg-gray-900 text-gray-300 font-mono text-sm">
-            {/* File List */}
-            <div className={`flex-col border-r border-gray-800 ${selectedFile ? 'w-1/3 hidden md:flex' : 'w-full'} transition-all`}>
+            {/* File Node List - Always Full Width */}
+            <div className="flex-col w-full h-full border-r border-gray-800 transition-all">
                 <div className="h-10 bg-gray-800 flex items-center px-4 justify-between border-b border-gray-700">
                     <div className="flex items-center overflow-hidden">
                         <button
@@ -128,24 +128,54 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ startupId, refreshKey }) =>
                 </div>
             </div>
 
-            {/* File Content */}
+            {/* File Content Modal */}
             {selectedFile && (
-                <div className="flex-1 flex flex-col w-full md:w-2/3 bg-gray-950">
-                    <div className="h-10 bg-gray-800 flex items-center px-4 border-b border-gray-700 justify-between">
-                        <div className="flex items-center">
-                            <button onClick={() => setSelectedFile(null)} className="md:hidden mr-2">
-                                <ArrowLeft className="w-4 h-4" />
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 md:p-10">
+                    <div className="bg-gray-900 w-full max-w-5xl h-full md:h-[90vh] rounded-xl border border-gray-700 shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                        {/* Modal Header */}
+                        <div className="h-12 bg-gray-800 flex items-center px-4 border-b border-gray-700 justify-between shrink-0">
+                            <div className="flex items-center gap-2 text-gray-200">
+                                <File className="w-5 h-5 text-blue-400" />
+                                <span className="font-semibold">{selectedFile.name}</span>
+                                <span className="text-xs text-gray-500 ml-2 font-mono">{selectedFile.path}</span>
+                            </div>
+                            <button
+                                onClick={() => setSelectedFile(null)}
+                                className="p-1 hover:bg-gray-700 rounded-full transition-colors text-gray-400 hover:text-white"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
-                            <File className="w-4 h-4 mr-2 text-gray-400" />
-                            <span className="truncate">{selectedFile.name}</span>
                         </div>
-                    </div>
-                    <div className="flex-1 overflow-auto p-4">
-                        {contentLoading ? (
-                            <div className="flex justify-center p-10"><Loader2 className="w-6 h-6 animate-spin" /></div>
-                        ) : (
-                            <pre className="font-mono text-sm text-gray-300 whitespace-pre-wrap">{fileContent}</pre>
-                        )}
+
+                        {/* Modal Content - Scrollable */}
+                        <div className="flex-1 overflow-auto p-4 bg-gray-950 custom-scrollbar">
+                            {contentLoading ? (
+                                <div className="flex justify-center items-center h-full text-blue-400 gap-2">
+                                    <Loader2 className="w-8 h-8 animate-spin" />
+                                    <span>Loading content...</span>
+                                </div>
+                            ) : (
+                                <div className="text-sm font-mono text-gray-300">
+                                    { /* Check if it's an image based on extension */}
+                                    {selectedFile.name.match(/\.(png|jpg|jpeg|gif|svg)$/i) ? (
+                                        <div className="flex justify-center p-10">
+                                            <img
+                                                src={`/api/builder/${startupId}/file?path=${encodeURIComponent(selectedFile.path)}`}
+                                                alt={selectedFile.name}
+                                                className="max-w-full rounded border border-gray-800 shadow-lg"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <pre className="whitespace-pre-wrap leading-relaxed">{fileContent}</pre>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer (Optional) */}
+                        <div className="bg-gray-800 h-8 flex items-center justify-end px-4 text-xs text-gray-500 border-t border-gray-700">
+                            {fileContent.length} bytes
+                        </div>
                     </div>
                 </div>
             )}

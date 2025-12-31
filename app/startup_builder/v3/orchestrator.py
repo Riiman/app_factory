@@ -127,7 +127,40 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             data = json.loads(res["content"])
             missions = data.get("missions", [])
             
-            # 1. RESUME Priority: Check for any mission that is already started but not done
+            # 1. SYNC: Update SQL Feature Statuses based on JSON
+            try:
+                from app.models.product import Feature
+                from app.extensions import db
+                
+                dirty = False
+                for m in missions:
+                    fid = m.get("feature_id")
+                    status = m.get("status")
+                    
+                    if fid and status:
+                        f = Feature.query.get(fid)
+                        if f:
+                            # Map JSON status to DB status
+                            # JSON: pending, in_progress, coding, verification, completed
+                            # DB: pending, in_progress, completed
+                            
+                            target_db_status = "pending"
+                            if status == "completed":
+                                target_db_status = "completed"
+                            elif status in ["in_progress", "coding", "verification", "architecting"]:
+                                target_db_status = "in_progress"
+                                
+                            if f.status != target_db_status:
+                                f.status = target_db_status
+                                dirty = True
+                                log_debug(f"SYNC: Updated Feature {f.name} ({fid}) to {target_db_status}")
+                
+                if dirty:
+                    db.session.commit()
+            except Exception as e:
+                log_debug(f"SYNC Error: {e}")
+
+            # 2. RESUME Priority: Check for any mission that is already started but not done
             resumable_statuses = ["in_progress", "architecting", "coding", "verification", "fix_required"]
             
             for m in missions:

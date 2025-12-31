@@ -210,7 +210,14 @@ const StartupCodeStudio: React.FC = () => {
                             }
 
                             if (data.mission_queue) setMissionQueue(data.mission_queue);
-                            if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
+
+                            // Calculate Index dynamically if current_mission object is passed
+                            if (data.current_mission && data.mission_queue) {
+                                const idx = data.mission_queue.findIndex((m: any) => m.id === data.current_mission.id);
+                                if (idx !== -1) setCurrentMissionIndex(idx);
+                            } else if (data.current_mission_index !== undefined) {
+                                setCurrentMissionIndex(data.current_mission_index);
+                            }
                             break;
 
                         case 'agent_thought':
