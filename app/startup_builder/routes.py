@@ -654,6 +654,7 @@ def run_v3_agent_bg(startup_id, initial_state):
                 print(f"THREAD START: startup_id={s_id_str}, redis={redis_client}")
                 
                 # Notify Start
+                from app.services.notification_service import publish_update
                 publish_update('agent_update', {
                     'task_status': 'planning', 
                     'logs': [f"Agent Thread Started for ID {s_id_str}"]
