@@ -52,9 +52,13 @@ class V3Tools:
 
     def create_run_shell(self):
         @tool
-        def run_shell(command: str) -> str:
+        def run_shell(command: str, directory: str = ".") -> str:
             """
             Executes a shell command in the container.
+            
+            Args:
+                command (str): The command to run.
+                directory (str): The directory to run the command in. Defaults to "." (root).
             
             BEHAVIOR:
             - FAST commands (<5s) will return the output immediately.
@@ -63,9 +67,15 @@ class V3Tools:
             Use for: Installation (npm install), Listing (ls), File Ops (mv, cp), Git.
             DO NOT use for starting servers (use 'ensure_server_running' instead).
             """
+            # Handle Directory
+            final_cmd = command
+            if directory != ".":
+                # Ensure we strictly switch directory before running
+                final_cmd = f"cd {directory} && {command}"
+
             # Use Process Manager Middleware
             # Increased timeout to 75s as per user request to prefer Sync execution
-            res = self.process_manager.run_smart(self.startup_id, command, timeout=75.0)
+            res = self.process_manager.run_smart(self.startup_id, final_cmd, timeout=75.0)
             
             # DEBUG LOGGING (Local File)
             try:
