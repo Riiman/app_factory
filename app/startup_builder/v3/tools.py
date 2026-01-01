@@ -64,7 +64,8 @@ class V3Tools:
             DO NOT use for starting servers (use 'ensure_server_running' instead).
             """
             # Use Process Manager Middleware
-            res = self.process_manager.run_smart(self.startup_id, command, timeout=5.0)
+            # Increased timeout to 75s as per user request to prefer Sync execution
+            res = self.process_manager.run_smart(self.startup_id, command, timeout=75.0)
             
             # DEBUG LOGGING (Local File)
             try:
@@ -406,17 +407,47 @@ class V3Tools:
             Args:
                 test_file (str): Path to the .spec.ts file (e.g. apps/mobile/tests/login.spec.ts)
             """
-            # 1. Run the test (force 1 worker for stability in container)
-            cmd = f"npx playwright test {test_file} --workers=1 --reporter=line,json"
+            # 1. Determine CWD based on test_file
+            # If test_file is nested (e.g. frontend/tests/x.spec.ts), we should run from 'frontend/'
+            # This avoids the common 'No Tests Found' error when Playwright config expects CWD 
+            # to be the sub-project root.
+            
+            parts = test_file.split("/")
+            working_dir = "."
+            cmd_file = test_file
+            
+            if len(parts) > 1:
+                # Heuristic: If first part is a known component (frontend, backend, apps/x)
+                # Ideally, we look for package.json or playwright.config.ts
+                # Simple heuristic: if it looks like a sub-project
+                
+                # Check 1: 'frontend' or 'backend' at start
+                if parts[0] in ["frontend", "backend", "client", "server", "app"]:
+                    working_dir = parts[0]
+                    cmd_file = "/".join(parts[1:]) # Path relative to working_dir
+                
+                # Check 2: 'apps/xyz' pattern (monorepo)
+                elif parts[0] == "apps" and len(parts) > 2:
+                    working_dir = f"apps/{parts[1]}"
+                    cmd_file = "/".join(parts[2:])
+            
+            # 2. Construct Command with CWD
+            # npx playwright test <file>
+            base_cmd = f"npx playwright test {cmd_file} --workers=1 --reporter=line,json"
+            
+            if working_dir != ".":
+                cmd = f"cd {working_dir} && {base_cmd}"
+            else:
+                cmd = base_cmd
             
             # Use process manager for reliable execution
-            # We set a higher timeout for tests (e.g. 30s)
-            res = self.process_manager.run_smart(self.startup_id, cmd, timeout=30.0)
+            # We set a higher timeout for tests (e.g. 45s)
+            res = self.process_manager.run_smart(self.startup_id, cmd, timeout=45.0)
             
             if res.get("error"):
                  return f"System Error running test: {res['error']}"
             
-            # 2. Check Status
+            # 3. Check Status
             status = res.get("status")
             output = res.get("output", "")
             
@@ -427,30 +458,33 @@ class V3Tools:
                     "message": "UI Test is running long (background)..."
                 })
             
-            # 3. Analyze Results (Sync Completion)
+            # 4. Analyze Results (Sync Completion)
             # Check exit code
             exit_code = res.get("exit_code", 0)
             
-            # 4. Scan for Screenshots (Best Effort)
-            # We look in the standard 'test-results' folder
+            # 5. Scan for Screenshots (Best Effort)
+            # We look in the standard 'test-results' folder relative to working_dir
             # Simple grep/find via docker manager would be best, but we can infer or list
             
             snapshots = []
             try:
+                # Find test-results folder relative to where we ran
+                target_dir = f"{working_dir}/test-results" if working_dir != "." else "test-results"
+                
                 # List test-results to find new images
-                # This assumes standard playwright config outputting to test-results/
-                ls_res = self.docker_manager.run_command(self.startup_id, "find test-results -name '*.png'")
+                ls_res = self.docker_manager.run_command(self.startup_id, f"find {target_dir} -name '*.png'")
                 if ls_res.get("exit_code") == 0:
-                    lines = ls_res["output"].strip().split('\n')
+                    lines = ls_res["output"].strip().split('\\n')
                     for line in lines:
                         if line.strip():
                              snapshots.append(line.strip())
             except:
                 pass
 
-            # 5. Format Output
+            # 6. Format Output
             response_lines = []
             response_lines.append(f"Test Execution Completed (Exit Code: {exit_code})")
+            response_lines.append(f"Working Directory: {working_dir}")
             
             if exit_code == 0:
                 response_lines.append("✅ TEST PASSED")
@@ -458,20 +492,18 @@ class V3Tools:
                 response_lines.append("❌ TEST FAILED")
             
             if snapshots:
-                response_lines.append("\nCaptured Snapshots:")
+                response_lines.append("\\nCaptured Snapshots:")
                 for s in snapshots:
                     # Special format for Frontend to render
                     response_lines.append(f"[SNAPSHOT]: {s}")
             
-            response_lines.append("\n--- Logs ---")
-            # Filter JSON reporter noise if mixed? No, line reporter is human readable.
-            # We might want to parse the JSON for strict details but raw log is fine for Agent
+            response_lines.append("\\n--- Logs ---")
             response_lines.append(output[-3000:]) # Logs
             
             if exit_code != 0:
-                response_lines.append("\n[SYSTEM]: The test failed. Analyze the logs above and FIX the issue.")
+                response_lines.append("\\n[SYSTEM]: The test failed. Analyze the logs above and FIX the issue.")
             
-            return "\n".join(response_lines)
+            return "\\n".join(response_lines)
             
         return run_ui_test
 

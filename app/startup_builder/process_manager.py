@@ -49,13 +49,21 @@ class ProcessManager:
                     
                     container_name = self.docker_manager.get_container_name(startup_id)
                     container = self.docker_manager.client.containers.get(container_name)
-                    check = container.exec_run(f"ps -p {pid}")
+                    
+                    # Check State: explicitly request state code to detect ZOMBIES
+                    # 'stat' returns state code (R, S, D, Z, T, etc.)
+                    check = container.exec_run(f"ps -p {pid} -o stat=")
                     
                     if check.exit_code != 0:
                          # PID gone -> Finished
                          is_running = False
                     else:
-                         is_running = True
+                         # Process exists, but is it a zombie?
+                         state_code = check.output.decode('utf-8').strip()
+                         if "Z" in state_code: # Zombie
+                             is_running = False
+                         else:
+                             is_running = True
                          
                 except Exception as e:
                     logger.warning(f"PID Check Failed (Assuming still running): {e}")
@@ -86,7 +94,12 @@ class ProcessManager:
                         "duration": time.time() - start_time
                     }
                 
-                time.sleep(0.5)
+                # Dynamic Polling: Slow down if waiting long
+                elapsed = time.time() - start_time
+                if elapsed < 5:
+                     time.sleep(0.5)
+                else:
+                     time.sleep(2.0)
             
             # 3. Timeout Exceeded -> Background It
             logger.info(f"Command '{command}' exceeded timeout ({timeout}s). Moving to background (Job {job_id}).")

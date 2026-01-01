@@ -221,8 +221,15 @@ class V3Architect:
                         if selected_tool:
                             try:
                                 tool_result = selected_tool.invoke(args)
+                                
+                                # CENTRALIZED LOGGING
+                                self._log_to_file(f"ARCHITECT EXECUTION: {tool_name}\nARGS: {args}")
+                                log_res = str(tool_result)[:1000] + ("..." if len(str(tool_result)) > 1000 else "")
+                                self._log_to_file(f"ARCHITECT RESULT: {log_res}")
+                                
                             except Exception as e:
                                 tool_result = f"Error: {e}"
+                                self._log_to_file(f"ARCHITECT ERROR: {tool_name} -> {e}")
                                 
                         messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
                 else:
