@@ -23,6 +23,7 @@ class ProcessManager:
         4. If running -> Returns Job ID (Async).
         """
         try:
+            start_time = time.time()
             # 1. Start Process Detached
             # We use a unique alias for every run to track it
             import uuid

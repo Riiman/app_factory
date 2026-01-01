@@ -130,7 +130,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             
             # 1. SYNC: Update SQL Feature Statuses based on JSON
             try:
-                from app.models.product import Feature
+                from app.models import Feature
                 from app.extensions import db
                 
                 dirty = False
