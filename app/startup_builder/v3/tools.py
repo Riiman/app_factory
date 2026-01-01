@@ -446,36 +446,41 @@ class V3Tools:
                     working_dir = f"apps/{parts[1]}"
                     cmd_file = "/".join(parts[2:])
             
-            # 2. Construct Command with CWD
+            # 2. Construct Command with CWD and Log Redirection
             # npx playwright test <file>
-            base_cmd = f"npx playwright test {cmd_file} --workers=1 --reporter=line,json"
+            log_file = "ui_test_execution.log"
+            base_cmd = f"npx playwright test {cmd_file} --workers=1 --reporter=line,json > {log_file} 2>&1"
             
+            # Keep track of path for reading later
+            full_log_path = log_file 
             if working_dir != ".":
                 cmd = f"cd {working_dir} && {base_cmd}"
+                full_log_path = f"{working_dir}/{log_file}"
             else:
                 cmd = base_cmd
             
             # Use process manager for reliable execution
-            # We set a higher timeout for tests (e.g. 45s)
-            res = self.process_manager.run_smart(self.startup_id, cmd, timeout=45.0)
+            # We set a higher timeout for tests (e.g. 60s)
+            res = self.process_manager.run_smart(self.startup_id, cmd, timeout=60.0)
             
             if res.get("error"):
                  return f"System Error running test: {res['error']}"
             
             # 3. Check Status
-            status = res.get("status")
-            output = res.get("output", "")
-            
             if status == "background":
                  return json.dumps({
                     "status": "background",
                     "job_id": res["job_id"],
-                    "message": "UI Test is running long (background)..."
+                    "message": f"UI Test is running long (background). Logs at {full_log_path}"
                 })
             
             # 4. Analyze Results (Sync Completion)
             # Check exit code
             exit_code = res.get("exit_code", 0)
+
+            # Read the log file we created
+            log_read = self.docker_manager.read_file(self.startup_id, full_log_path)
+            output = log_read.get("content", "Error reading log file.")
             
             # 5. Scan for Screenshots (Best Effort)
             # We look in the standard 'test-results' folder relative to working_dir
@@ -500,6 +505,7 @@ class V3Tools:
             response_lines = []
             response_lines.append(f"Test Execution Completed (Exit Code: {exit_code})")
             response_lines.append(f"Working Directory: {working_dir}")
+            response_lines.append(f"Log File Saved: {full_log_path}")
             
             if exit_code == 0:
                 response_lines.append("✅ TEST PASSED")
@@ -511,6 +517,8 @@ class V3Tools:
                 for s in snapshots:
                     # Special format for Frontend to render
                     response_lines.append(f"[SNAPSHOT]: {s}")
+            else:
+                 response_lines.append("\\n(No snapshots found. Ensure playwright.config.ts has 'screenshot: on' or 'only-on-failure')")
             
             response_lines.append("\\n--- Logs ---")
             response_lines.append(output[-3000:]) # Logs
