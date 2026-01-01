@@ -66,8 +66,7 @@ def orchestrator_router(state: V3AgentState):
         return "developer"
     elif status == "fix_required":
         return "architect"
-    elif status == "verification":
-        return "qa"
+
 
     elif status == "done":
         return END
@@ -78,7 +77,7 @@ def orchestrator_router(state: V3AgentState):
 
 # --- Agents ---
 from .agents.developer import V3Developer
-from .agents.qa import V3QA
+
 from .agents.initializer import V3Initializer
 from .agents.architect import V3Architect
 
@@ -94,7 +93,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
     # Initialize Agents with Callback
     architect_agent = V3Architect(log_callback=log_callback)
     developer_agent = V3Developer(log_callback=log_callback)
-    qa_agent = V3QA() # QA doesn't use copilot yet
+
     initializer_agent = V3Initializer(log_callback=log_callback)
 
     workflow = StateGraph(V3AgentState)
@@ -102,7 +101,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
     # Nodes
     workflow.add_node("architect", architect_agent.architect_node)
     workflow.add_node("developer", developer_agent.developer_node)
-    workflow.add_node("qa", qa_agent.qa_node)
+
     workflow.add_node("initializer", initializer_agent.initialize_node)
 
     
@@ -175,7 +174,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
                     elif m['status'] == 'fix_required':
                         target_status = "fix_required"
                     elif m['status'] == 'verification':
-                        target_status = "verification"
+                        target_status = "coding"
                         
                     return {
                         "current_mission": m,
@@ -218,7 +217,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             "mission_selector": "mission_selector",
             "architect": "architect",
             "developer": "developer",
-            "qa": "qa",
+
             END: END
         }
     )
@@ -227,7 +226,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
     # Edges - Return to Router after each step to re-evaluate state
     workflow.add_conditional_edges("architect", orchestrator_router)
     workflow.add_conditional_edges("developer", orchestrator_router)
-    workflow.add_conditional_edges("qa", orchestrator_router)
+
     workflow.add_conditional_edges("initializer", orchestrator_router)
     workflow.add_conditional_edges("mission_selector", orchestrator_router)
 
