@@ -203,6 +203,12 @@ class V3Developer:
         - You MUST execute the required action (e.g., 'update_file'). 
         - Thinking is NOT working. Listing files is NOT finishing the task.
         
+        INTERPRETING "EMPTY" RESULTS:
+        - If `list_files` or `find_file` returns "No matches" or an empty list, it means **files does not exist or the direcotry is empty**.
+        - It does **NOT** mean the tool is broken.
+        - **ACTION**: Stop searching. CREATE the file using `update_file` if needed.
+
+        FILE WRITING RULES:
         - ALWAYS use the `update_file` tool. It handles atomic saving, syntax validation, and stats updates.
         - When using `update_file` (overwrite), ensure content has REAL newlines.
         
@@ -403,6 +409,7 @@ class V3Developer:
                       }
                  
                  # --- LAZY / SUCCESS GUARD ---
+                 # --- LAZY / SUCCESS GUARD ---
                  # 1. Lazy Check: Did we do ANYTHING?
                  if not executed_actions and not injected_result:
                       logger.warning(f"Lazy Guard Triggered: No actions executed.")
@@ -410,6 +417,21 @@ class V3Developer:
                       messages.append(HumanMessage(content=rejection_msg))
                       task_context.append("System: Rejected empty completion.")
                       continue # Retry
+                 
+                 # 2. STRICT VERIFICATION CHECK
+                 desc_lower = next_task['description'].lower()
+                 is_test_task = any(k in desc_lower for k in ["test", "verify", "validation"])
+                 
+                 if is_test_task and not injected_result:
+                      # Must have run a verification tool
+                      has_verified = any("run_ui_test" in act or "run_shell" in act or "ensure_server" in act for act in executed_actions)
+                      if not has_verified:
+                           rejection_msg = "SYSTEM ERROR: This is a VERIFICATION task. You MUST run a test command (run_ui_test or run_shell with npm test). Finding/Reading files is NOT enough."
+                           messages.append(HumanMessage(content=rejection_msg))
+                           task_context.append("System: Rejected completion. Verification tool missing.")
+                           continue
+                 
+                 # Otherwise assume success/completion
                  
                  # Otherwise assume success/completion
                  self._log_to_file(f"GUARD ACCEPT: Task {next_task['description']} passed.")

@@ -395,8 +395,14 @@ except Exception as e:
             if container.status != 'running':
                 return {"error": "Container not running"}
             
-            # Use find
-            cmd = f"find '{path}' -name '{filename}' -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/artifacts/*'"
+            # Match logic: Auto-wildcard if not present to support "fuzzy" find
+            if "*" not in filename:
+                pattern = f"*{filename}*"
+            else:
+                pattern = filename
+
+            # Use find with -iname for case-insensitive matching
+            cmd = f"find '{path}' -iname '{pattern}' -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/artifacts/*'"
             exit_code, output = container.exec_run(cmd, workdir="/app")
             
             if exit_code != 0:
