@@ -521,14 +521,53 @@ class V3Developer:
 
     def _verify_action(self, action: str, command: str, output: str) -> str:
         """
-        Uses a cheap LLM call (or heuristic) to verify if the action succeeded.
+        Uses LLM to smartly verify if the action succeeded.
         """
-        # Heuristic for speed:
-        if "Error" in output or "Exception" in output or "failed" in output.lower():
-             # Exception for "already running" which is a success state for ensure_server
-             if "already running" in output.lower():
-                  return "SUCCESS"
+        # 1. HARD GUARDS (Fast Fail/Pass)
+        if "COMMAND FAILED (Exit Code" in output:
              return "FAILURE"
+        if "already running" in output.lower():
+             return "SUCCESS"
+
+        # 2. LLM SEMANTIC CHECK
+        try:
+             # Fast check using thinking=False (Flash model usually)
+             sys_prompt = "You are a verification engine. Analyze the command execution logs."
+             user_prompt = f"""
+             Analyze the execution of this Developer Tool.
+             Action: {action}
+             Command: {command}
+             Output: {output[:1500]}
+             
+             Did this action SUCCEED or FAIL?
+             Rules:
+             - "Successfully started" -> SUCCESS
+             - "Already running" -> SUCCESS
+             - "SyntaxError" -> FAILURE
+             - "command not found" -> FAILURE
+             - "Exit code 1" -> FAILURE
+             - "Warning" -> SUCCESS (ignore warnings)
+             
+             Return ONLY the word "SUCCESS" or "FAILURE". Do not add punctuation.
+             """
+             
+             # Call Copilot (No tools)
+             res = self.copilot.ask(sys_prompt, user_prompt)
+             decision = res.content.strip().upper()
+             
+             if "FAILURE" in decision:
+                  return "FAILURE"
+             if "SUCCESS" in decision:
+                  return "SUCCESS"
+                  
+        except Exception as e:
+             logger.warning(f"LLM Verification Failed: {e}. Falling back to heuristic.")
+
+        # ROBUST HEURISTIC (Fallback)
+        lower_out = output.lower()
+        if "error:" in lower_out or "exception:" in lower_out or "failed" in lower_out:
+             return "FAILURE"
+             
         return "SUCCESS"
 
     def _generate_rich_summary(self, task, context):
