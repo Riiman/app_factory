@@ -25,84 +25,65 @@ class ProcessManager:
         try:
             start_time = time.time()
             # 1. Start Process Detached
-            # We use a unique alias for every run to track it
             import uuid
             job_id = f"job_{uuid.uuid4().hex[:8]}"
             alias = job_id # Use job_id as alias for DockerManager
             
             # Start via DockerManager's background process tool
-            # This handles the "nohup ... > log" part
             res = self.docker_manager.start_background_process(startup_id, alias, command)
             
             if res.get("error"):
                 return {"error": res["error"]}
                 
             pid = res.get("pid")
-            log_file = res.get("log_file")
             
-            # 2. Monitor Loop (Progressive Wait Strategy)
-            wait_steps = [5, 10, 30, 30] # User-requested steps
-            total_waited = 0
+            # 2. Monitor Loop (Respecting Timeout)
+            # We poll every 0.5s until timeout is reached
             
-            for step in wait_steps:
-                start_step = time.time()
-                
-                # Sub-loop for this step
-                while time.time() - start_step < step:
-                    # Check status via exec_run check
-                    try:
-                        # Check State to avoid Zombies
-                        check = self.docker_manager.client.containers.get(self.docker_manager.get_container_name(startup_id)).exec_run(f"ps -o state= -p {pid}")
-                        
-                        if check.exit_code != 0:
-                             is_running = False
-                        else:
-                             state = check.output.decode('utf-8').strip()
-                             # Z = Zombie, X = Dead. Treat as finished.
-                             if state.startswith('Z') or state.startswith('X'):
-                                  is_running = False
-                             else:
-                                  is_running = True
-                    except:
-                        is_running = False # Assume stopped if container error? Or crash?
-                    
-                    if not is_running:
-                        # It finished!
-                        logs = self.docker_manager.read_background_process_logs(startup_id, alias).get("logs", "")
-                        self.docker_manager.stop_background_process(startup_id, alias)
-                        return {
-                            "status": "completed",
-                            "output": logs,
-                            "duration": time.time() - start_time
-                        }
-                    
-                    time.sleep(0.5)
-                
-                # End of step
-                total_waited += step
-                msg = f"Command '{command}' still running after {total_waited}s. Extending wait..."
-                logger.info(msg)
-                
-                # EMIT LOG TO FRONTEND
+            while (time.time() - start_time) < timeout:
                 try:
-                    from app.extensions import socketio
-                    from datetime import datetime
-                    ts = datetime.now().strftime('%H:%M:%S')
-                    socketio.emit('agent_thought', {
-                        'startup_id': startup_id,
-                        'content': f"[{ts}] {msg}",
-                        'agent_type': 'system'
-                    }, namespace='/') 
-                except:
-                    pass
-
-            # 3. Timeout Exceeded -> Background It
-            logger.info(f"Command '{command}' exceeded max wait. Moving to background (Job {job_id}).")
+                    # Check State
+                    # Use a robust check: if ps returns exit code 0, it exists.
+                    # We avoid 'get_container_name' re-query overhead if possible, but manager needs id.
+                    # We'll trust the manager caches or is fast enough, but wrap in specific try/except.
+                    
+                    container_name = self.docker_manager.get_container_name(startup_id)
+                    container = self.docker_manager.client.containers.get(container_name)
+                    check = container.exec_run(f"ps -p {pid}")
+                    
+                    if check.exit_code != 0:
+                         # PID gone -> Finished
+                         is_running = False
+                    else:
+                         is_running = True
+                         
+                except Exception as e:
+                    logger.warning(f"PID Check Failed (Assuming still running): {e}")
+                    is_running = True # Assume running on error to prevent premature success
+                
+                if not is_running:
+                    # It finished!
+                    logs = self.docker_manager.read_background_process_logs(startup_id, alias).get("logs", "")
+                    self.docker_manager.stop_background_process(startup_id, alias)
+                    
+                    # Final success check based on logs or exit code?
+                    # The shell script wrapper in start_background_process usually swallows exit code to log.
+                    # We can't easily get the exit code of the dead process unless we trapped it.
+                    # For now, we return logs. Agent must parse.
+                    return {
+                        "status": "completed",
+                        "output": logs,
+                        "duration": time.time() - start_time
+                    }
+                
+                time.sleep(0.5)
             
-            # Fetch latest logs to give context
+            # 3. Timeout Exceeded -> Background It
+            logger.info(f"Command '{command}' exceeded timeout ({timeout}s). Moving to background (Job {job_id}).")
+            
             current_logs = self.docker_manager.read_background_process_logs(startup_id, alias).get("logs", "")
             
-            job_info = {
+            self.active_jobs[job_id] = {
                 "job_id": job_id,
                 "startup_id": startup_id,
                 "alias": alias,
@@ -111,14 +92,12 @@ class ProcessManager:
                 "start_time": datetime.now().isoformat(),
                 "status": "running"
             }
-            self.active_jobs[job_id] = job_info
             
             return {
                 "status": "background",
                 "job_id": job_id,
-                "message": f"Command moved to background after {total_waited}s.",
-                "pid": pid,
-                "latest_output": current_logs[-2000:] # Return last 2000 chars
+                "message": f"Command moved to background after {timeout}s.",
+                "latest_output": current_logs[-2000:]
             }
             
         except Exception as e:
@@ -136,11 +115,11 @@ class ProcessManager:
         pid = job["pid"]
         
         try:
-            # Check if running
-            check = self.docker_manager.client.containers.get(self.docker_manager.get_container_name(startup_id)).exec_run(f"ps -p {pid}")
+            container_name = self.docker_manager.get_container_name(startup_id)
+            container = self.docker_manager.client.containers.get(container_name)
+            check = container.exec_run(f"ps -p {pid}")
             is_running = (check.exit_code == 0)
             
-            # Read current logs
             logs = self.docker_manager.read_background_process_logs(startup_id, alias, lines=50).get("logs", "")
             
             if is_running:
@@ -151,12 +130,8 @@ class ProcessManager:
                 }
             else:
                 # Finished
-                # Mark as completed in registry
                 del self.active_jobs[job_id]
-                
-                # Cleanup container resources
                 self.docker_manager.stop_background_process(startup_id, alias)
-                
                 return {
                     "status": "completed",
                     "job_id": job_id,

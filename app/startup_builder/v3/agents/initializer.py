@@ -165,7 +165,8 @@ class V3Initializer:
                      logs.append(f"Initializer: Saved UI Theme to {theme_path}")
                 
                 # 3. Save Project Context (Critical for Architect)
-                ctx_path = "artifacts/project_context.json"
+                # Moved to root to prevent scaffolding conflicts
+                ctx_path = "/app/project_context.json"
                 docker_manager.write_file(startup_id, ctx_path, json.dumps(product_context, indent=2))
                 logs.append(f"Initializer: Saved Project Context to {ctx_path}")
                 

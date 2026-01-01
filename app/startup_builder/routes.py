@@ -1110,8 +1110,7 @@ def ensure_project_context(startup_id, manager):
              
         # 2. Generate
         print(f"Generating Project Context for {startup_id}...")
-        from app.models.startup import Startup, StartupEvaluation
-        from app.models.product import Product
+        from app.models import Startup, Evaluation, Submission, Product
         
         startup = Startup.query.get(startup_id)
         if not startup: return
@@ -1122,13 +1121,16 @@ def ensure_project_context(startup_id, manager):
             "description": startup.description,
         }
         
-        if startup.evaluation_id:
-            evaluation = StartupEvaluation.query.get(startup.evaluation_id)
-            if evaluation:
+        # Correctly fetch Evaluation via Submission
+        if startup.submission_id:
+            submission = Submission.query.get(startup.submission_id)
+            if submission and submission.evaluation:
+                evaluation = submission.evaluation
                 context_data["evaluation"] = {
-                    "viability": evaluation.viability_score,
-                    "complexity": evaluation.complexity_score,
-                    "report": evaluation.evaluation_report
+                    "viability": evaluation.overall_score, # Mapped from overall_score
+                    "complexity": 50, # Default or derive from risk analysis
+                    "report": evaluation.overall_summary,
+                    "final_decision": evaluation.final_decision
                 }
         
         product = Product.query.filter_by(startup_id=startup_id).first()
@@ -1136,17 +1138,19 @@ def ensure_project_context(startup_id, manager):
              context_data["product"] = {
                  "name": product.name,
                  "description": product.description,
-                 "target_audience": product.target_audience,
-                 "features": product.features_list if hasattr(product, 'features_list') else product.features,
+                 "target_audience": product.target_audience if hasattr(product, 'target_audience') else "General",
+                 "features": product.features_list if hasattr(product, 'features_list') else [f.to_dict() for f in product.features],
                  "unique_selling_propositions": getattr(product, 'usp', [])
              }
              
         import json
         context_json = json.dumps(context_data, indent=2)
         
-        manager.run_command(startup_id, "mkdir -p artifacts")
-        manager.write_file(startup_id, "artifacts/project_context.json", context_json)
-        print(f"Saved artifacts/project_context.json for {startup_id}")
+        # Optimization: storing in root to avoid 'non-empty dir' errors during scaffolding (npx create-next-app)
+        manager.write_file(startup_id, "/app/project_context.json", context_json)
+        print(f"Saved /app/project_context.json for {startup_id}")
         
     except Exception as e:
         print(f"Failed to ensure project context: {e}")
+        import traceback
+        traceback.print_exc()

@@ -179,10 +179,10 @@ class V3Developer:
         3. Verify checks passed if applicable.
         
         CONTENT & CONTEXT:
-        - The file `artifacts/project_context.json` contains the Startup's detailed description, evaluation report, and product features.
+        - The file `/app/project_context.json` contains the Startup's detailed description, evaluation report, and product features.
         - The file `artifacts/theme.json` contains the **UI Design System** (Colors, Fonts, Radius).
         - READ `theme.json` before writing ANY CSS or Tailwind config.
-        - READ `project_context.json` when you need to generate UI content (landing page text, feature lists, about sections).
+        - READ `/app/project_context.json` when you need to generate UI content (landing page text, feature lists, about sections).
         - Do NOT use placeholder Lorem Ipsum if real content is available in this file.
         
         HANDLING MISSING CREDENTIALS:
