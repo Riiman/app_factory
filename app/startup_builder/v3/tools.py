@@ -183,7 +183,11 @@ class V3Tools:
                 new_content = content
 
             # 2. Write Temp
-            tmp_path = f"{path}.tmp"
+            # Preserve extension for syntax checkers (e.g. node -c needs .js)
+            import os
+            _, ext = os.path.splitext(path)
+            tmp_path = f"{path}.tmp{ext}"
+            
             write_res = self.docker_manager.write_file(self.startup_id, tmp_path, new_content)
             if write_res.get("error"):
                 return f"Error writing temp file: {write_res['error']}"
@@ -202,6 +206,7 @@ class V3Tools:
                     validation_error = f"JSON Syntax Error: {e}"
             elif path.endswith(".js"):
                 # Run node -c inside container
+                # Note: node -c works on the temp file now because it ends in .js
                 chk = self.docker_manager.run_command(self.startup_id, f"node -c {tmp_path}")
                 if chk.get("exit_code") != 0:
                      validation_error = f"JS Syntax Error: {chk.get('output', '').strip()}"

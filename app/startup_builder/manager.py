@@ -1,5 +1,7 @@
 import docker
 import os
+import json
+import logging
 import time
 
 class DockerManager:
@@ -330,16 +332,31 @@ except Exception as e:
             cmd = f"python3 -c {shlex.quote(py_script)}"
             
             exit_code, output = container.exec_run(cmd, workdir="/app")
+            output_str = output.decode('utf-8').strip()
+            # Try parsing
             try:
-                data = json.loads(output.decode('utf-8'))
-                if data and isinstance(data, list) and "error" in data[0]:
+                data = json.loads(output_str)
+                if data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict) and "error" in data[0]:
                      return {"files": [], "error": data[0]["error"]}
-                # Normalize paths (remove ./ prefix if present)
+                
+                # Update paths (remove ./ prefix)
                 for f in data:
-                    if f["path"].startswith("./"): f["path"] = f["path"][2:]
+                    if "path" in f and f["path"].startswith("./"): f["path"] = f["path"][2:]
                 return {"files": data}
-            except:
-                 return {"error": "Failed to parse listing", "raw": output.decode('utf-8')}
+            except Exception as e:
+                # Fallback: Try regex to extract JSON list if noise exists
+                import re
+                match = re.search(r'\[.*\]', output_str, re.DOTALL)
+                if match:
+                    try:
+                        data = json.loads(match.group(0))
+                        for f in data:
+                            if "path" in f and f["path"].startswith("./"): f["path"] = f["path"][2:]
+                        return {"files": data}
+                    except:
+                        pass
+                
+                return {"error": f"Failed to parse listing: {e}", "raw": output_str}
 
         except Exception as e:
             return {"error": str(e)}

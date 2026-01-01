@@ -413,7 +413,15 @@ class V3Developer:
                       }
                  
                  # --- LAZY / SUCCESS GUARD ---
-                 # --- LAZY / SUCCESS GUARD ---
+                 
+                 # 0. Active Failure Guard (New): Did the last action fail?
+                 if consecutive_failures > 0:
+                      logger.warning(f"Failure Guard Triggered. Consecutive Failures: {consecutive_failures}")
+                      rejection_msg = f"SYSTEM ERROR: The last command FAILED. You cannot claim completion in a failure state. Fix the error or try a different approach."
+                      messages.append(HumanMessage(content=rejection_msg))
+                      task_context.append("System: Rejected completion due to active failure state.")
+                      continue
+
                  # 1. Lazy Check: Did we do ANYTHING?
                  if not executed_actions and not injected_result:
                       logger.warning(f"Lazy Guard Triggered: No actions executed.")
@@ -517,6 +525,9 @@ class V3Developer:
         """
         # Heuristic for speed:
         if "Error" in output or "Exception" in output or "failed" in output.lower():
+             # Exception for "already running" which is a success state for ensure_server
+             if "already running" in output.lower():
+                  return "SUCCESS"
              return "FAILURE"
         return "SUCCESS"
 
