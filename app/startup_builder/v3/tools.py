@@ -94,7 +94,7 @@ class V3Tools:
                 return json.dumps({
                     "status": "background",
                     "job_id": res["job_id"],
-                    "message": f"Command is running in background (PID {res['pid']}). Agent must YIELD and wait."
+                    "message": f"Command is running in background (PID {res.get('pid', 'Unknown')}). Agent must YIELD and wait."
                 })
             else:
                 return f"Unknown status: {res}"

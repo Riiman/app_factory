@@ -759,27 +759,41 @@ const StartupCodeStudio: React.FC = () => {
                             </button>
                         </>
                     )}
-                    <button
-                        onClick={async () => {
-                            if (!ports || isPreviewOpening || isWorking) return;
-                            setIsPreviewOpening(true);
-                            // Simple timeout to prevent double-clicks
-                            setTimeout(() => setIsPreviewOpening(false), 2000);
-                            window.open(`/api/startups/${id}/preview/`, '_blank');
-                        }}
-                        disabled={!ports || isPreviewOpening || isWorking}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${ports && !isPreviewOpening && !isWorking
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                            }`}
-                        title={
-                            isWorking ? "Agent is working... Preview disabled." :
-                                !ports ? "Preview not available (Server not started)" :
-                                    "Open Preview"
-                        }
-                    >
-                        {isPreviewOpening ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />} Preview
-                    </button>
+                    {(() => {
+                        // Strict Preview Logic:
+                        // 1. Must have Ports (Env Running)
+                        // 2. Must NOT be 'opening' (Loading state)
+                        // 3. Must NOT be 'working' (Agent is changing code)
+                        // 4. Must be in a STABLE state ('done', 'paused', 'qa_passed', 'failed')
+                        //    - 'idle'/'unknown' = Initial state, code likely not ready -> Disabled
+                        const isTaskStable = ['done', 'paused', 'qa_passed', 'failed'].includes(taskStatus);
+                        const canPreview = ports && !isPreviewOpening && !isWorking && isTaskStable;
+
+                        return (
+                            <button
+                                onClick={async () => {
+                                    if (!canPreview) return;
+                                    setIsPreviewOpening(true);
+                                    // Simple timeout to prevent double-clicks
+                                    setTimeout(() => setIsPreviewOpening(false), 2000);
+                                    window.open(`/api/startups/${id}/preview/`, '_blank');
+                                }}
+                                disabled={!canPreview}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${canPreview
+                                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                        : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                    }`}
+                                title={
+                                    !ports ? "Preview not available (Server not started)" :
+                                        isWorking ? "Agent is working... Preview disabled." :
+                                            !isTaskStable ? "Preview disabled (Waiting for task completion)" :
+                                                "Open Preview"
+                                }
+                            >
+                                {isPreviewOpening ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />} Preview
+                            </button>
+                        );
+                    })()}
                     <button
                         onClick={() => setShowTerminal(true)}
                         className="ml-4 flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded text-sm font-medium transition-colors"

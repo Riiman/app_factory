@@ -119,6 +119,7 @@ class ProcessManager:
             return {
                 "status": "background",
                 "job_id": job_id,
+                "pid": pid, # returning pid to avoid keyerror in tools
                 "message": f"Command moved to background after {timeout}s.",
                 "latest_output": current_logs[-2000:]
             }
