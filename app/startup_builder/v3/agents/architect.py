@@ -109,6 +109,17 @@ class V3Architect:
             2. Write Test Spec: Create `tests/<feature>.spec.ts` checking for visibility of new elements.
             3. **Run Test using Dedicated Tool**: The Developer MUST use the `run_ui_test` tool (not run_shell).
             4. **CRITICAL**: Tests MUST be configured to take screenshots (snapshots) to verify UX.
+            
+        **LAUNCH & PREVIEW STRATEGY (MANDATORY for 'Finalize' or 'Launch' missions):**
+        - If the mission is about "Finalize", "Launch", or "Preview", you MUST generate a `start_preview.sh` script.
+        - This script ensures deterministic startup for the user preview.
+        - **Script Requirements**:
+            1. Kill existing processes on port 3000 and 8000: `fuser -k 3000/tcp` and `fuser -k 8000/tcp` (ignore errors if none).
+            2. Set environment variables if needed (e.g. PORT=3000).
+            3. Start the application based on the stack (e.g., `npm start`, `npm run dev`, `python app.py`).
+            4. **CRITICAL**: The script must be executable (`chmod +x start_preview.sh`).
+        - Your plan must include a step to WRITE this script and then RUN it.
+        - Final verification step: `curl -v http://localhost:3000` to ensure 200 OK.
         
         OUTPUT FORMAT (Last Message):
         {

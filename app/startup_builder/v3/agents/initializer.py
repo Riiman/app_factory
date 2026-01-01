@@ -136,6 +136,23 @@ class V3Initializer:
                     else:
                          m["feature_id"] = None
             
+            # --- APPEND FINAL MISSION (PREVIEW STRATEGY) ---
+            # We enforce a final mission to create the deterministic start script.
+            # This ensures we handle zombie processes and verify 200 OK before enabling preview.
+            
+            # Ensure we don't duplicate if LLM already added it
+            has_finalize = any("finalize" in m["title"].lower() or "preview" in m["title"].lower() for m in missions[-2:])
+            
+            if not has_finalize:
+                final_mission = {
+                    "id": len(missions),
+                    "title": "Finalize & Launch Preview",
+                    "description": "Create the 'start_preview.sh' script to sanitize ports (kill zombies on 3000/8000), build the app for production if needed, and strictly start the application on port 3000. Verify the app returns 200 OK on localhost:3000.",
+                    "status": "pending",
+                    "feature_id": "PREVIEW_LAUNCH" # Virtual ID for Frontend Logic
+                }
+                missions.append(final_mission)
+            
             logs = [f"Initializer: Selected Stack -> {tech_stack}", f"Initializer: Generated Theme -> {ui_theme.get('variant', 'standard')}", f"Initializer: Created {len(missions)} missions."]
             
             # --- PERSISTENCE ---

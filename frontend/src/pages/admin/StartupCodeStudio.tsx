@@ -761,16 +761,22 @@ const StartupCodeStudio: React.FC = () => {
                     )}
                     <button
                         onClick={async () => {
-                            if (!ports || isPreviewOpening) return;
+                            if (!ports || isPreviewOpening || isWorking) return;
                             setIsPreviewOpening(true);
                             // Simple timeout to prevent double-clicks
                             setTimeout(() => setIsPreviewOpening(false), 2000);
                             window.open(`/api/startups/${id}/preview/`, '_blank');
                         }}
-                        disabled={!ports || isPreviewOpening}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${ports && !isPreviewOpening ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                        disabled={!ports || isPreviewOpening || isWorking}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${ports && !isPreviewOpening && !isWorking
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                : 'bg-gray-800 text-gray-600 cursor-not-allowed'
                             }`}
-                        title={ports ? "Open Preview" : "Preview not available"}
+                        title={
+                            isWorking ? "Agent is working... Preview disabled." :
+                                !ports ? "Preview not available (Server not started)" :
+                                    "Open Preview"
+                        }
                     >
                         {isPreviewOpening ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />} Preview
                     </button>
