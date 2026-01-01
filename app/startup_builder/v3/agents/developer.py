@@ -242,8 +242,13 @@ class V3Developer:
         MISSION CONTEXT (What has been done so far):
         {mission_context}
         
-        TASK CONTEXT (EXECUTION LOG):
+        TASK CONTEXT (EXECUTION LOG - READ CAREFULLY):
         {task_context_str}
+        
+        CRITICAL: If you are retrying after a failure, REVIEW the logs above.
+        - Identify WHY the previous attempt failed.
+        - Do NOT repeat the exact same command or code if it already failed.
+        - Try a DIFFERENT approach (e.g., install missing dependency, fix syntax, change port).
         
         When you are done, just output the final confirmation message.
         """

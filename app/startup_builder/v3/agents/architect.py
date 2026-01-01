@@ -169,12 +169,20 @@ class V3Architect:
                 constraint_instruction = "CONSTRAINT: Ensure the fix addresses the specific error. Use Search if unsure."
 
             failed_task_context = json.dumps(failed_task, indent=2)
+            
+            # Extract Execution History for clearer context
+            execution_history = "No history available."
+            if "task_context" in failed_task and failed_task["task_context"]:
+                # Join the list of log strings
+                execution_history = "\n".join(failed_task["task_context"])
+            
             logger.info(f"--- Architect: Entering Recovery Mode (Verification={is_verification}) for Task {failed_task.get('description')} ---")
         
         system_prompt = system_prompt.replace("{mode}", mode).replace("{goal_instruction}", goal_instruction).replace("{diagnosis_instruction}", diagnosis_instruction).replace("{failed_task_context}", failed_task_context)
         
         if failed_task:
              system_prompt += f"\n\n{constraint_instruction}"
+             system_prompt += f"\n\nPREVIOUS ATTEMPTS (DO NOT REPEAT):\n{execution_history}\n\nCRITICAL: Analyze the above history. The Developer already tried these steps and FAILED. Do NOT propose the exact same plan. Innovate."
         
         user_prompt = f"Mission: {mission_title}\nDescription: {mission_desc}\n\nStart your exploration."
         if failed_task:
