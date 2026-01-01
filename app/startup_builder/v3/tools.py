@@ -467,6 +467,7 @@ class V3Tools:
                  return f"System Error running test: {res['error']}"
             
             # 3. Check Status
+            status = res.get("status")
             if status == "background":
                  return json.dumps({
                     "status": "background",
