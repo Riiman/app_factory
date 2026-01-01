@@ -1,6 +1,8 @@
-
 import logging
 import json
+import re
+import base64
+from typing import List, Dict, Any, Optional
 from ..agents.core import V3CoPilot
 from .reflector import V3Reflector # New Import
 from ...manager import DockerManager
@@ -160,6 +162,8 @@ You are a generic but expert Senior Full-Stack Developer. Your goal is to safe e
 1. **THINK FIRST**: Before ANY tool use, provide a brief (1 sentence) explanation of what you are doing and why.
 2. **LAZY GUARD**: Do NOT just list files. You must take action (write code, run commands).
 3. **NO PLACEHOLDERS**: Use real content from `/app/project_context.json`. No Lorem Ipsum.
+4. **PERSISTENT ERRORS**: If an error occurs >2 times (e.g. build failing), USE `search_web`. Do not blindly retry.
+5. **CHECK VERSIONS**: Verify package versions (e.g. `npm list`) before assuming configuration syntax (v3 vs v4).
 
 # ENVIRONMENT & CONSTRAINTS
 - **OS**: Linux (Headless Docker).
@@ -369,6 +373,18 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                     
                     # Append ToolMessage
                     messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
+                    
+                    # --- MULTIMODAL INJECTION ---
+                    # Check for [SNAPSHOT]: /path/to/image.png
+                    if "[SNAPSHOT]:" in str(tool_result):
+                        try:
+                            match = re.search(r"\[SNAPSHOT\]: (.*)", str(tool_result))
+                            if match:
+                                img_path = match.group(1).strip()
+                                self._inject_image_to_history(messages, img_path)
+                        except Exception as e:
+                            logger.error(f"Failed to inject snapshot: {e}")
+                            
                     executed_actions.append(f"Ran {tool_name}")
             else:
                  # Check for explicit STATUS in Final Message
@@ -648,6 +664,35 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                  f.write(json.dumps(snapshot) + "\n")
         except Exception as e:
              logging.error(f"Failed to log debug context: {e}")
+
+    def _inject_image_to_history(self, messages: List[Any], img_path: str):
+        """
+        Reads an image from the container, converts to base64, and appends a HumanMessage 
+        to the history so the LLM can 'see' the UI.
+        """
+        try:
+            # Uses base64 inside container to get binary data safely as string
+            cmd_res = self.docker_manager.run_command(self.context_manager.startup_id, f"base64 -w 0 {img_path}")
+            
+            if cmd_res.get("exit_code") == 0:
+                 b64_data = cmd_res["output"].strip()
+                 
+                 # Create Multimodal Message
+                 # We append a NEW HumanMessage to the history
+                 from langchain_core.messages import HumanMessage
+                 
+                 img_msg = HumanMessage(content=[
+                     {"type": "text", "text": f"[SYSTEM]: Here is the Snapshot captured at {img_path}. Analyze it for errors."},
+                     {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_data}"}}
+                 ])
+                 
+                 messages.append(img_msg)
+                 self._log_to_file(f"MULTIMODAL: Injected image {img_path} ({len(b64_data)} bytes)")
+            else:
+                 logger.warning(f"Failed to base64 encode image for multimodal: {cmd_res.get('output')}")
+                 
+        except Exception as e:
+            logger.error(f"Image Injection Error: {e}")
 
     def _log_to_file(self, message):
         """Append debug log to a local file for inspection."""
