@@ -25,6 +25,7 @@ class V3Tools:
             self.create_read_file(),
             self.create_update_file(),   # Unified Tool
             self.create_list_files(),
+            self.create_find_file(),     # NEW: Name Search
             self.create_search_files(),
             self.create_read_logs(),
             self.create_restart_server(),
@@ -233,11 +234,13 @@ class V3Tools:
 
     def create_list_files(self):
         @tool
-        def list_files(path: str = ".") -> str:
+        def list_files(path: str = ".", recursive: bool = False, depth: int = 2) -> str:
             """
             Lists files and directories in the given path.
+            Set recursive=True to see deeper structure (useful for exploration).
+            depth: Max depth for recursion (default 2).
             """
-            res = self.docker_manager.list_files(self.startup_id, path)
+            res = self.docker_manager.list_files(self.startup_id, path, recursive=recursive, depth=depth)
             if res.get("error"):
                 # Handle common "No such file or directory" error explicitly
                 if "No such file" in res['error'] or "cannot access" in res['error']:
@@ -246,7 +249,8 @@ class V3Tools:
             
             # Format nicely for the agent
             files = res.get("files", [])
-            output = [f"Directory listing for '{path}':"]
+            mode_str = f" (Recursive Max Depth {depth})" if recursive else ""
+            output = [f"Directory listing for '{path}'{mode_str}:"]
             for f in files:
                 type_sym = "[HDR]" if f["name"].startswith(".") else ("[D]" if f["type"] == "directory" else "[F]")
                 output.append(f"{type_sym} {f['name']}")
@@ -256,6 +260,24 @@ class V3Tools:
                 
             return "\n".join(output)
         return list_files
+
+    def create_find_file(self):
+        @tool
+        def find_file(filename: str, path: str = ".") -> str:
+            """
+            Finds specific files by NAME (fuzzy matching supported by shell glob, e.g. '*.js').
+            Use this to locate a file when you don't know the full path.
+            """
+            res = self.docker_manager.find_file(self.startup_id, filename, path)
+            if res.get("error"):
+                 return f"Error finding file: {res['error']}"
+            
+            files = res.get("files", [])
+            if not files:
+                 return f"No files named '{filename}' found in '{path}'."
+                 
+            return f"Found {len(files)} matches:\n" + "\n".join(files)
+        return find_file
 
     def create_search_files(self):
         @tool

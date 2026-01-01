@@ -238,9 +238,10 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
-    def list_files(self, startup_id, path=".", container_name=None):
+    def list_files(self, startup_id, path=".", recursive=False, depth=2, container_name=None):
         """
         Lists files in the container directory.
+        Supports recursive listing using 'find'.
         """
         if not self.client:
             return {"error": "Docker not available"}
@@ -254,42 +255,92 @@ class DockerManager:
             if container.status != 'running':
                 return {"error": "Container not running"}
             
-            # Use ls -F to distinguish directories
-            # -1 forces one entry per line, -A includes hidden files (except . and ..)
-            exit_code, output = container.exec_run(
-                f"ls -1FA '{path}'",
-                workdir="/app"
-            )
-            
+            if recursive:
+                # Use find for recursive listing
+                # Exclude hidden files, node_modules, pycache
+                cmd = f"find '{path}' -maxdepth {depth} -not -path '*/.*' -not -path '*/node_modules/*' -not -path '*/__pycache__/*' -not -path '*/artifacts/*'"
+                exit_code, output = container.exec_run(cmd, workdir="/app")
+            else:
+                # Use ls -F for flat listing (Legacy behavior)
+                cmd = f"ls -1FA '{path}'"
+                exit_code, output = container.exec_run(cmd, workdir="/app")
+
             if exit_code != 0:
-                print(f"Error listing files at {path}: {output.decode('utf-8')}")
-                # If directory doesn't exist or is empty, return empty list instead of error if possible
-                # But ls returns error if dir doesn't exist.
-                return {"error": f"Error listing files: {output.decode('utf-8')}"}
+                # print(f"Error listing files at {path}: {output.decode('utf-8')}")
+                return {"files": [], "info": f"Directory not found or empty: {path}"}
             
             raw_output = output.decode('utf-8')
             files = []
-            for line in raw_output.splitlines():
-                line = line.strip()
-                if not line: continue
-                
-                is_dir = line.endswith('/')
-                name = line[:-1] if is_dir else line
-                
-                # Check Hidden Folders
-                if name in ["node_modules", ".git", "__pycache__", "artifacts"]:
-                    continue
-                
-                files.append({
-                    "name": name,
-                    "type": "directory" if is_dir else "file",
-                    "path": os.path.join(path, name) if path != "." else name
-                })
-                
-            if not files:
-                 return {"files": [], "info": "Directory is empty (or contains only hidden files)."}
-            return {"files": files}
             
+            if recursive:
+                # Parse find output
+                for line in raw_output.splitlines():
+                    line = line.strip()
+                    if not line or line == path or line == ".": continue
+                    
+                    # Determine type (heuristic: no extension + not in known files = dir? No, find doesn't tell us type easily without -type)
+                    # Better: Assume file unless we check?
+                    # Let's run find with -type f and -type d in one go? 
+                    # Simpler: Just list paths. The user can infer.
+                    # Or run "ls -F" behavior recursively? No.
+                    # Let's use python inside container for perfect reliable JSON?
+                    # "python3 -c ..."
+                    
+                    # REVERT TO PYTHON for robustness if available
+                    pass
+            
+            # --- ROBUST PYTHON IMPLEMENTATION ---
+            # We override the shell commands with a clean Python script injection
+            # This handles recursion and types perfectly across OS
+            
+            py_script = f"""
+import os
+import json
+
+root = "{path}"
+res = []
+try:
+    if "{str(recursive)}" == "True":
+        for dp, dn, filenames in os.walk(root):
+            depth = dp[len(root):].count(os.sep)
+            if depth >= {depth}:
+                dn[:] = [] # Stop recursion
+            
+            # Filter Blocklist
+            dn[:] = [d for d in dn if not d.startswith(".") and d not in ["node_modules", "__pycache__", "artifacts"]]
+            
+            for f in filenames:
+                if not f.startswith("."):
+                    res.append({{"name": f, "type": "file", "path": os.path.join(dp, f)}})
+            for d in dn:
+                res.append({{"name": d, "type": "directory", "path": os.path.join(dp, d)}})
+    else:
+        # Flat List
+        with os.scandir(root) as it:
+            for entry in it:
+                if entry.name.startswith(".") or entry.name in ["node_modules", "__pycache__", "artifacts"]: continue
+                res.append({{"name": entry.name, "type": "directory" if entry.is_dir() else "file", "path": entry.path}})
+    
+    print(json.dumps(res))
+except Exception as e:
+    print(json.dumps([{{ "error": str(e) }}]))
+"""
+            # Escape quotes for shell
+            import shlex
+            cmd = f"python3 -c {shlex.quote(py_script)}"
+            
+            exit_code, output = container.exec_run(cmd, workdir="/app")
+            try:
+                data = json.loads(output.decode('utf-8'))
+                if data and isinstance(data, list) and "error" in data[0]:
+                     return {"files": [], "error": data[0]["error"]}
+                # Normalize paths (remove ./ prefix if present)
+                for f in data:
+                    if f["path"].startswith("./"): f["path"] = f["path"][2:]
+                return {"files": data}
+            except:
+                 return {"error": "Failed to parse listing", "raw": output.decode('utf-8')}
+
         except Exception as e:
             return {"error": str(e)}
 
@@ -324,6 +375,38 @@ class DockerManager:
                 return {"error": f"Error searching files: {output.decode('utf-8')}"}
                 
             return {"output": output.decode('utf-8')}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    
+    def find_file(self, startup_id, filename, path=".", container_name=None):
+        """
+        Finds a file by NAME (not content).
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+        
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            if container.status != 'running':
+                return {"error": "Container not running"}
+            
+            # Use find
+            cmd = f"find '{path}' -name '{filename}' -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/artifacts/*'"
+            exit_code, output = container.exec_run(cmd, workdir="/app")
+            
+            if exit_code != 0:
+                 return {"error": output.decode('utf-8')}
+            
+            files = [f.strip() for f in output.decode('utf-8').splitlines() if f.strip()]
+            # Clean up ./ prefix
+            files = [f[2:] if f.startswith("./") else f for f in files]
+            
+            return {"files": files}
             
         except Exception as e:
             return {"error": str(e)}

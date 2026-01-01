@@ -169,6 +169,8 @@ class V3Developer:
         
         STRATEGY:
         1. Explore relevant files if needed.
+           - USE `list_files(path=".", recursive=True)` to see the FULL structure in one step.
+           - Do NOT check folders one by one.
         2. Write/Update the code (Full Implementation).
         3. Verify checks passed if applicable.
         
@@ -290,7 +292,7 @@ class V3Developer:
                     tool_id = tool_call["id"]
                     
                     # LOGIC: Check if tool is "Free" (Context) or "Expensive" (Action)
-                    SAFE_TOOLS = ["read_file", "list_files", "search_files", "search_web", "check_job", "wait_for_job"]
+                    SAFE_TOOLS = ["read_file", "list_files", "find_file", "search_files", "search_web", "check_job", "wait_for_job"]
                     if tool_name not in SAFE_TOOLS:
                         turn_count += 1
                     
@@ -430,6 +432,7 @@ class V3Developer:
 
         # Mark task as done
         next_task["completed"] = True
+        next_task["status"] = "completed" # Explicitly set status for UI tracking
         next_task["task_context"] = task_context # Attach execution log
         
         # Ensure current_mission['tasks'] is updated

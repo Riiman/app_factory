@@ -35,28 +35,27 @@ class V3Initializer:
         3. CREATE MISSIONS: Break down the product into High-Level Missions.
            - Mission 0 MUST be "Initialize Environment & Theme" (install deps, setup structure, apply theme).
            - Subsequent Missions should correspond to Features.
+           - CRITICAL: Map each mission to its corresponding feature_id from the INPUT features list.
            
         OUTPUT JSON:
         {
             "tech_stack": "Name of stack",
-            "ui_theme": {
-                "variant": "light/dark", 
-                "primary": "#hexcode",
-                "secondary": "#hexcode",
-                "accent": "#hexcode",
-                "fontHeading": "Inter/Roboto/Merriweather",
-                "fontBody": "Inter/Roboto",
-                "borderRadius": "0.5rem"
-            },
+            "ui_theme": { ... },
             "missions": [
                 {
                     "id": 0,
                     "title": "Initialize Environment & Theme",
-                    "description": "Setup project structure, install dependencies, and configure tailwind/theme for [tech_stack].",
+                    "description": "Setup project structure...",
                     "status": "pending",
                     "feature_id": null
                 },
-                ...
+                {
+                    "id": 1,
+                    "title": "Build User Authentication",
+                    "description": " Implement login/signup...",
+                    "status": "pending",
+                    "feature_id": "UUID-FROM-INPUT-FEATURES"
+                }
             ]
         }
         """
@@ -82,14 +81,61 @@ class V3Initializer:
                 "status": "pending"
             }
             
+            landing_page_mission = {
+                "id": 1,
+                "title": "Build Landing Page",
+                "description": "Create a high-conversion Landing Page using content from 'artifacts/project_context.json' (Product Description & Evaluation). Must include: Hero Section, Feature Highlights, About, and CTA. Ensure it is responsive and uses the defined theme.",
+                "status": "pending",
+                "feature_id": None # Not a specific feature
+            }
+            
             if not missions:
-                missions = [init_mission]
+                missions = [init_mission, landing_page_mission]
             else:
                  # Check/Fix Mission 0
                  if missions[0]["id"] != 0:
                      missions.insert(0, init_mission)
-                     for i, m in enumerate(missions): m["id"] = i
+                     
+                 # Check if Landing Page exists (simple heuristic by title)
+                 has_landing = any("landing" in m["title"].lower() for m in missions)
+                 if not has_landing:
+                      missions.insert(1, landing_page_mission)
+                      
+                 # Reindex
+                 for i, m in enumerate(missions): m["id"] = i
 
+            # --- DETERMINISTIC FEATURE MAPPING ---
+            # Don't rely on LLM for UUIDs. Map them by name similarity.
+            input_features = product_context.get("features", [])
+            if input_features:
+                logger.info("Initializer: Mapping missions to features via fuzzy match...")
+                import difflib
+                
+                # Helper to normalize strings for comparison
+                def normalize(s): return s.lower().replace("build", "").replace("implement", "").strip()
+                
+                for m in missions:
+                    if m["id"] == 0: continue # Skip Init
+                    
+                    m_title = normalize(m["title"])
+                    best_match = None
+                    best_score = 0.0
+                    
+                    for f in input_features:
+                        f_name = normalize(f["name"])
+                        # Simple Jaccard-like or SequenceMatcher
+                        score = difflib.SequenceMatcher(None, m_title, f_name).ratio()
+                        
+                        if score > 0.4 and score > best_score: # Threshold
+                            best_match = f
+                            best_score = score
+                            
+                    if best_match:
+                         m["feature_id"] = best_match["id"]
+                         logger.info(f"Mapped Mission '{m['title']}' -> Feature '{best_match['name']}' ({best_match['id']})")
+                    else:
+                         m["feature_id"] = None
+            
             logs = [f"Initializer: Selected Stack -> {tech_stack}", f"Initializer: Generated Theme -> {ui_theme.get('variant', 'standard')}", f"Initializer: Created {len(missions)} missions."]
             
             # --- PERSISTENCE ---

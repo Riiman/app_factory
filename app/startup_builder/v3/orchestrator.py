@@ -44,6 +44,7 @@ class V3AgentState(TypedDict):
     qa_feedback: str     # Errors from testing
     product_context: Dict # passed from route for initialization
     waiting_on: str      # Job ID of async process we are waiting for
+    missions: List[Dict] # FULL MISSION QUEUE (Required for UI)
 
 # --- Routing Logic ---
 def orchestrator_router(state: V3AgentState):
@@ -193,6 +194,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
                     # Found one!
                     log_debug(f"SELECTOR: Selected Mission {m['id']} '{m['title']}'")
                     return {
+                        "missions": missions,
                         "current_mission": m, 
                         "status": "architecting", # Start architect (Merged Analyze+Plan)
                         "logs": [f"Mission Selector: Selected '{m['title']}'"]
