@@ -419,6 +419,10 @@ def build_product(startup_id):
     # -----------------------------------
     
     # Synthesize V3 Initial State
+    # 1. ENSURE CONTEXT FILE EXISTS (Optimization: Run once per container)
+    ensure_project_context(startup_id, manager)
+    
+    # 2. Build local object for State
     product_context = {
         "name": product.name,
         "description": product.description,
@@ -660,58 +664,8 @@ def run_v3_agent_bg(startup_id, initial_state):
                     'logs': [f"Agent Thread Started for ID {s_id_str}"]
                 }, rooms=[f"startup_{s_id_str}"])
 
-                # --- CONTEXT INJECTION START ---
-                try:
-                    from app.models.startup import Startup, StartupEvaluation
-                    from app.models.product import Product
-                    
-                    startup = Startup.query.get(startup_id)
-                    
-                    context_data = {
-                        "startup_id": startup_id,
-                        "name": startup.name,
-                        "description": startup.description,
-                    }
-                    
-                    # 1. Fetch Evaluation (Detailed report)
-                    if startup.evaluation_id:
-                        evaluation = StartupEvaluation.query.get(startup.evaluation_id)
-                        if evaluation:
-                            context_data["evaluation"] = {
-                                "viability": evaluation.viability_score,
-                                "complexity": evaluation.complexity_score,
-                                "report": evaluation.evaluation_report
-                            }
-                    
-                    # 2. Fetch Product (Features, PRD)
-                    # Use relationship if exists, else query
-                    product = Product.query.filter_by(startup_id=startup_id).first()
-                    if product:
-                         context_data["product"] = {
-                             "name": product.name,
-                             "description": product.description,
-                             "target_audience": product.target_audience,
-                             "features": product.features_list if hasattr(product, 'features_list') else product.features,
-                             "unique_selling_propositions": getattr(product, 'usp', [])
-                         }
-                         
-                    # 3. Write to Container Artifact
-                    from app.startup_builder.manager import DockerManager
-                    temp_manager = DockerManager() 
-                    
-                    import json
-                    context_json = json.dumps(context_data, indent=2)
-                    
-                    # Ensure artifacts dir exists
-                    temp_manager.run_command(startup_id, "mkdir -p artifacts")
-                    temp_manager.write_file(startup_id, "artifacts/project_context.json", context_json)
-                    
-                    publish_update('agent_update', {'logs': ["Injected Project Context to artifacts/project_context.json"]}, rooms=[f"startup_{s_id_str}"])
-                    
-                except Exception as e:
-                    print(f"Context Injection Failed: {e}")
-                    publish_update('agent_update', {'logs': [f"Warning: Failed to inject context: {e}"]}, rooms=[f"startup_{s_id_str}"])
-                # --- CONTEXT INJECTION END ---
+                # --- CONTEXT INJECTION REMOVED (Moved to ensure_project_context) ---
+
 
                 # Create V3 Graph on the fly (lightweight)
                 # or cache it if expensive. We need log_callback bound though.
@@ -1141,3 +1095,58 @@ def reset_agent(startup_id):
 
 
 
+
+def ensure_project_context(startup_id, manager):
+    """
+    Ensures artifacts/project_context.json exists in the container.
+    If missing, generates it from the Database.
+    """
+    try:
+        # 1. Check if exists
+        check = manager.run_command(startup_id, "test -f artifacts/project_context.json")
+        if check.get("exit_code") == 0:
+             print(f"Project Context exists for {startup_id}. Skipping generation.")
+             return
+             
+        # 2. Generate
+        print(f"Generating Project Context for {startup_id}...")
+        from app.models.startup import Startup, StartupEvaluation
+        from app.models.product import Product
+        
+        startup = Startup.query.get(startup_id)
+        if not startup: return
+        
+        context_data = {
+            "startup_id": startup_id,
+            "name": startup.name,
+            "description": startup.description,
+        }
+        
+        if startup.evaluation_id:
+            evaluation = StartupEvaluation.query.get(startup.evaluation_id)
+            if evaluation:
+                context_data["evaluation"] = {
+                    "viability": evaluation.viability_score,
+                    "complexity": evaluation.complexity_score,
+                    "report": evaluation.evaluation_report
+                }
+        
+        product = Product.query.filter_by(startup_id=startup_id).first()
+        if product:
+             context_data["product"] = {
+                 "name": product.name,
+                 "description": product.description,
+                 "target_audience": product.target_audience,
+                 "features": product.features_list if hasattr(product, 'features_list') else product.features,
+                 "unique_selling_propositions": getattr(product, 'usp', [])
+             }
+             
+        import json
+        context_json = json.dumps(context_data, indent=2)
+        
+        manager.run_command(startup_id, "mkdir -p artifacts")
+        manager.write_file(startup_id, "artifacts/project_context.json", context_json)
+        print(f"Saved artifacts/project_context.json for {startup_id}")
+        
+    except Exception as e:
+        print(f"Failed to ensure project context: {e}")

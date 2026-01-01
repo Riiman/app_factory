@@ -529,7 +529,16 @@ class V3Developer:
         if "already running" in output.lower():
              return "SUCCESS"
 
-        # 2. LLM SEMANTIC CHECK
+        # 2. OPTIMIZATION: SKIP SAFTEY TOOLS (Save Tokens)
+        # These tools have reliable deterministic outputs or are read-only.
+        SAFE_TOOLS = ["read_file", "list_files", "find_file", "search_files", "check_job", "wait_for_job", "search_web"]
+        if action in SAFE_TOOLS:
+             # Simple Heuristic is enough
+             if "Error:" in output or "Exception:" in output:
+                  return "FAILURE"
+             return "SUCCESS"
+
+        # 3. LLM SEMANTIC CHECK
         try:
              # Fast check using thinking=False (Flash model usually)
              sys_prompt = "You are a verification engine. Analyze the command execution logs."
