@@ -344,8 +344,10 @@ const StartupCodeStudio: React.FC = () => {
         try {
             const res = await fetch(`/api/builder/${id}/status`);
             const data = await res.json();
-            if (data.status === 'active') {
-                setIsWorking(true);
+            if (['active', 'paused', 'waiting_approval', 'waiting_interaction', 'done', 'failed'].includes(data.status)) {
+                // Set working state based on status
+                setIsWorking(data.status === 'active');
+
                 setLogs(data.logs || []);
                 setPlan(data.plan || []);
                 setTaskStatus(data.task_status || 'unknown');
@@ -365,6 +367,9 @@ const StartupCodeStudio: React.FC = () => {
                     setWaitingApproval(true);
                     setIsWorking(false);
                     setShowTerminal(true);
+                } else if (data.status === 'paused') {
+                    // Explicitly handle paused
+                    setIsWorking(false);
                 }
 
                 if (data.mission_queue) setMissionQueue(data.mission_queue);
@@ -780,8 +785,8 @@ const StartupCodeStudio: React.FC = () => {
                                 }}
                                 disabled={!canPreview}
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${canPreview
-                                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                        : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
                                     }`}
                                 title={
                                     !ports ? "Preview not available (Server not started)" :
