@@ -102,15 +102,16 @@ class V3Tools:
 
     def create_ensure_server(self):
         @tool
-        def ensure_server_running(alias: str, start_command: str, port: int) -> str:
+        def ensure_server_running(alias: str, start_command: str, port: int, directory: str = ".") -> str:
             """
             Safely starts a long-running server process only if not already running.
             
             Args:
                 alias: Unique name (e.g., 'frontend', 'backend_flask').
-                start_command: The command to start it (e.g., 'npm run dev').
+                start_command: The command to start it (e.g., 'npm start').
                 port: The port it listens on (e.g., 3000).
-                
+                directory: The directory to run the command in (e.g., 'frontend'). Defaults to root ('.').
+            
             Returns:
                 Success message with PID, or 'Already Running'.
             """
@@ -121,7 +122,11 @@ class V3Tools:
             # We assume the Agent is smart enough to use this tool.
             # We use the raw docker manager start_background_process which enforces alias uniqueness.
             
-            res = self.docker_manager.start_background_process(self.startup_id, alias, start_command)
+            final_cmd = start_command
+            if directory != ".":
+                 final_cmd = f"cd {directory} && {start_command}"
+            
+            res = self.docker_manager.start_background_process(self.startup_id, alias, final_cmd)
             
             if res.get("error") and "already running" in res["error"]:
                  return f"Server '{alias}' is already running. You can proceed to verify it."
@@ -246,6 +251,7 @@ class V3Tools:
         return update_file
 
 
+    # ... (skipping some tools to reach start_process)
 
     def create_list_files(self):
         @tool
@@ -353,7 +359,7 @@ class V3Tools:
         @tool
         def refresh_memory(path: str) -> str:
             """
-            Force-updates the AI's summary of a specific file.
+            Force-updates the AI's summary of previously modified file.
             Use this ONLY if you modified a file using 'run_shell' (e.g. sed, git pull)
             and need the agent to recognize the change immediately.
             Normal 'write_file' updates memory automatically.
@@ -369,13 +375,22 @@ class V3Tools:
 
     def create_start_process(self):
         @tool
-        def start_process(alias: str, command: str) -> str:
+        def start_process(alias: str, command: str, directory: str = ".") -> str:
             """
             Starts a long-running process (e.g., server, watcher) in the background.
             Use this for tasks that block the terminal. 
             Returns the PID and log file path.
+            
+            Args:
+                alias: Unique name for the process.
+                command: Command to execute.
+                directory: Directory to run in (default '.').
             """
-            res = self.docker_manager.start_background_process(self.startup_id, alias, command)
+            final_cmd = command
+            if directory != ".":
+                 final_cmd = f"cd {directory} && {command}"
+
+            res = self.docker_manager.start_background_process(self.startup_id, alias, final_cmd)
             if res.get("error"):
                 return f"Error using Start Process: {res['error']}"
             return f"Process '{alias}' started. PID: {res.get('pid')}. Logs redirected to {res.get('log_file')}."
