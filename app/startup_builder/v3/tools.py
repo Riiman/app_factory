@@ -66,6 +66,15 @@ class V3Tools:
             # Use Process Manager Middleware
             res = self.process_manager.run_smart(self.startup_id, command, timeout=5.0)
             
+            # DEBUG LOGGING (Local File)
+            try:
+                with open("/home/ubuntu/app_factory/agent_debug.log", "a") as f:
+                    import datetime
+                    ts = datetime.datetime.now().isoformat()
+                    f.write(f"[{ts}] RUN_SHELL: {command}\n")
+                    f.write(f"RESULT: {json.dumps(res)}\n")
+            except: pass
+            
             if res.get("error"):
                 return f"Error: {res['error']}"
             

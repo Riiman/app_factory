@@ -878,8 +878,19 @@ except Exception as e:
             
             # 3. Run Command
             # We explicitly use setsid or nohup to ensure it doesn't die with the shell
+            # We also capture EXIT CODE to a file so we can check success/failure later
+            exit_file = f"/tmp/{alias}.exit"
             sanitized_cmd = command.replace("'", "'\\''") 
-            full_cmd = f"nohup bash -c '{sanitized_cmd}' > {log_file} 2>&1 & echo $!"
+            
+            # Complex Command:
+            # 1. Run sanitized command
+            # 2. Capture exit code of that command
+            # 3. Write exit code to file
+            # All wrapped in a subshell, redirected to log, detached.
+            # We ensure stdin is silenced (< /dev/null)
+            
+            wrapper = f"{{ {sanitized_cmd}; echo $? > {exit_file}; }}"
+            full_cmd = f"nohup bash -c '{wrapper}' > {log_file} 2>&1 < /dev/null & echo $!"
             
             exit_code, output = container.exec_run(
                 ["bash", "-c", full_cmd],
@@ -888,10 +899,14 @@ except Exception as e:
             
             if exit_code != 0:
                  return {"error": f"Failed to start process: {output.decode('utf-8')}"}
-                 
-            pid = output.decode('utf-8').strip()
+            
+            # Robust Parsing: Take the last non-empty line as PID
+            raw_output = output.decode('utf-8').strip()
+            lines = raw_output.splitlines()
+            pid = lines[-1].strip() if lines else ""
+            
             if not pid.isdigit():
-                 return {"error": f"Failed to get PID. Output: {pid}"}
+                 return {"error": f"Failed to get PID. Raw Output: '{raw_output}'"}
             
             # 4. Save State
             state[alias] = pid

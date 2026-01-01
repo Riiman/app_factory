@@ -328,8 +328,16 @@ class V3Developer:
                         try:
                             # Invoke the tool
                             tool_result = selected_tool.invoke(args)
+                            
+                            # CENTRALIZED LOGGING
+                            self._log_to_file(f"TOOL EXECUTION: {tool_name}\nARGS: {command_str}")
+                            # Log first 500 chars of result to avoid massive log files from 'list_files'
+                            log_res = str(tool_result)[:1000] + ("..." if len(str(tool_result)) > 1000 else "")
+                            self._log_to_file(f"TOOL RESULT: {log_res}")
+                            
                         except Exception as e:
                             tool_result = f"Tool Execution Error: {str(e)}"
+                            self._log_to_file(f"TOOL ERROR: {tool_name} -> {str(e)}")
                     
                     # Check for Async Yield Signal
                     try:
@@ -563,6 +571,10 @@ class V3Developer:
              # Call Copilot (No tools)
              res = self.copilot.ask(sys_prompt, user_prompt)
              decision = res.content.strip().upper()
+             
+             # DEBUG LOGGING
+             self._log_to_file(f"LLM VERIFY INPUT:\n{user_prompt}")
+             self._log_to_file(f"LLM VERIFY OUTPUT: {decision}")
              
              if "FAILURE" in decision:
                   return "FAILURE"

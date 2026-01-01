@@ -64,15 +64,25 @@ class ProcessManager:
                 if not is_running:
                     # It finished!
                     logs = self.docker_manager.read_background_process_logs(startup_id, alias).get("logs", "")
+                    
+                    # Try to get exit code
+                    exit_code = 0 # Default success if unknown (legacy behavior, but we prefer explicit)
+                    try:
+                        exit_file_path = f"/tmp/{alias}.exit"
+                        exit_res = self.docker_manager.read_file(startup_id, exit_file_path)
+                        if not exit_res.get("error"):
+                             code_str = exit_res["content"].strip()
+                             if code_str.isdigit():
+                                 exit_code = int(code_str)
+                    except:
+                        pass
+                    
                     self.docker_manager.stop_background_process(startup_id, alias)
                     
-                    # Final success check based on logs or exit code?
-                    # The shell script wrapper in start_background_process usually swallows exit code to log.
-                    # We can't easily get the exit code of the dead process unless we trapped it.
-                    # For now, we return logs. Agent must parse.
                     return {
                         "status": "completed",
                         "output": logs,
+                        "exit_code": exit_code,
                         "duration": time.time() - start_time
                     }
                 
