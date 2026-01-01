@@ -79,6 +79,11 @@ Every plan MUST end with a "Verification Phase".
 - **Prohibition**: Do NOT create tasks like "Check if it works". You must specify HOW to check.
 
 # MANDATORY STRATEGIES
+## Rich Homepage & Navigation
+- **CONTENT**: The Homepage (`/`) MUST be populated with real product content (Value Prop, Features, CTA) derived from `project_context.json`. NO "Welcome to Namespace" blank pages.
+- **NAVIGATION**: You MUST plan a Global Navigation (e.g. `Navbar`) with links to all key pages (e.g. /login, /dashboard, /about).
+- **COPY**: Use the `product_description` to write 3-4 sections of marketing copy.
+
 ## UI/UX Testing (If Frontend Involved)
 - You MUST plan for **Automated UI Testing** using Playwright.
 - Task 1: Setup Infrastructure (if missing).
