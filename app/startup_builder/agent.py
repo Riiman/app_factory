@@ -1,3 +1,4 @@
+
 import os
 import json
 import logging
@@ -6,9 +7,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END
 
 from .manager import DockerManager
-from .context import ContextManager
+# from .context import ContextManager # Deprecated
+from .v3.context.librarian import Librarian
 from .lsp import LSPHandler
-from .memory import MemoryManager
 from .utils import JsonRepair
 
 logger = logging.getLogger(__name__)
@@ -16,23 +17,33 @@ logger = logging.getLogger(__name__)
 class MultiAgentSystem:
     def __init__(self):
         self.docker_manager = DockerManager()
-        self.memory_managers = {} 
         self._init_llm()
-        # V2 Components
-        # Note: Startup ID is dynamic, so we might need to instantiate these per request 
-        # or pass startup_id to their methods. 
-        # For this refactor, let's keep them stateless or lightweight.
-        # ContextManager and LSPHandler take docker_manager in init, startup_id in methods?
-        # Let's check my implementation plan...
-        # "ContextManager(docker_manager, startup_id)"
-        # Okay, I need to instantiate them inside the nodes or store a cache.
-        self.context_managers = {} 
+        
+        # We cache librarians per startup_id (assuming path matches)
+        # For this prototype, we assume single workspace root from env or config
+        # detailed implementation would Map startup_id -> workspace_path
+        self.librarians = {} 
         self.lsp_handlers = {}
 
-    def _get_context_manager(self, startup_id):
-        if startup_id not in self.context_managers:
-            self.context_managers[startup_id] = ContextManager(self.docker_manager, startup_id)
-        return self.context_managers[startup_id]
+    def _get_librarian(self, startup_id):
+        # ISOLATION FIX: Point to the specific temp_workspace for this startup
+        # We must align with DockerManager's base_work_dir logic.
+        # Assuming agent runs on Host, we access ../temp_workspaces/{startup_id} relative to app/startup_builder
+        
+        # Path calculation similar to DockerManager
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        workspace_path = os.path.join(base_path, 'temp_workspaces', str(startup_id))
+        
+        # If directory doesn't exist (e.g. new startup), we should wait or create it?
+        # DockerManager creates it. We assume it exists if tasks are running.
+        if not os.path.exists(workspace_path):
+             # Fallback to . only for debug, but for prod we should probably log warning
+             pass 
+
+        if startup_id not in self.librarians:
+            self.librarians[startup_id] = Librarian(workspace_root=workspace_path)
+            
+        return self.librarians[startup_id]
 
     def _get_lsp_handler(self, startup_id):
         if startup_id not in self.lsp_handlers:
@@ -61,234 +72,240 @@ class MultiAgentSystem:
         else:
             self.llm = None
 
-    # --- Core V2 Nodes ---
+    # --- UPDATED NODES (V3) ---
 
     def planner_node(self, state):
         """
-        The GOAL KEEPER.
-        1. Analyzes high-level Mission.
-        2. Checks 'artifacts/plan.json'.
-        3. Decides the NEXT Granular Task.
+        The STRATEGIST.
+        Uses Librarian for Global Context.
+        Uses 'Plan State' to prevent loops.
         """
-        logger.info("--- Planner Node (V2) ---")
+        logger.info("--- Planner Node (V3) ---")
         startup_id = state["startup_id"]
-        mission = state.get("goal") # Local goal or Main mission
+        mission = state.get("goal")
         logs = state.get("logs", [])
         
-        cm = self._get_context_manager(startup_id)
+        lib = self._get_librarian(startup_id)
+        
+        # 0. Global Context Update
+        # Index on every turn? Cheap-ish for small repos.
+        lib.index_workspace()
         
         # 1. Get Plan Status
-        plan_data = self.docker_manager.read_file(startup_id, "artifacts/plan.json")
-        current_plan = []
+        plan_path = "artifacts/plan.json"
+        plan_data = self.docker_manager.read_file(startup_id, plan_path)
+        
+        current_plan = {}
         if "content" in plan_data:
             try:
                 current_plan = json.loads(plan_data["content"])
             except:
                 pass
                 
-        # 2. Get Context
-        # 2. Get Context
-        # Inspect the actual file system to understand what exists
-        # We'll list files up to depth 3 to get a good overview without too much noise
-        # Excluding hidden files and node_modules/venv
+        # 1.1 Get Reviewer Feedback (The "Log Detective" Report)
+        feedback_path = "artifacts/reviewer_feedback.json"
+        feedback_data = self.docker_manager.read_file(startup_id, feedback_path)
+        last_feedback = {}
+        if "content" in feedback_data:
+             try:
+                 last_feedback = json.loads(feedback_data["content"])
+             except:
+                 pass
         
-        fs_check = self.docker_manager.run_command(startup_id, "find . -maxdepth 3 -not -path '*/.*' -not -path './node_modules*' -not -path './venv*' -not -path './__pycache__*'")
-        file_structure = fs_check.get("output", "")
-        
-        context_str = "--- Current File Structure ---\n"
-        context_str += file_structure + "\n\n"
-        
-        # Optionally read README if it exists in the list
-        if "README.md" in file_structure:
-             fdata = self.docker_manager.read_file(startup_id, "README.md")
-             if "content" in fdata:
-                 context_str += f"--- README.md ---\n{fdata['content']}\n\n"
-        
-        # Try to read likely main files if they appear in structure
-        potential_main_files = ["package.json", "requirements.txt", "app.py", "index.js", "server.js", "frontend/package.json", "backend/package.json"]
-        for p in potential_main_files:
-             if p in file_structure:
-                 fdata = self.docker_manager.read_file(startup_id, p)
-                 if "content" in fdata:
-                      summary = cm.compact_file(fdata["content"], p)
-                      context_str += f"File: {p}\n{summary}\n\n"
+        # 2. Get Librarian Context (File Tree)
+        file_tree = lib.get_file_tree()
         
         # 3. Decision
-        # Gather execution history to inform the planner
-        last_logs = logs[-5:] if logs else []
-        execution_history = "\n".join(last_logs)
-
-        system_prompt = """You are the Lead Architect & Planner.
+        system_prompt = """You are the Lead Architect.
         Your Mission: {mission}
         
-        Current Plan Status:
+        CURRENT PLAN STATE:
         {current_plan}
         
-        Last Execution Logs (Review this to see what was just done):
-        {execution_history}
+        LAST REVIEWER FEEDBACK (Did the previous task succeed?):
+        {last_feedback}
         
-        JOB:
-        1. UPDATE THE PLAN: Mark the last task as "completed" if the logs show success.
-        2. PICK NEXT: Select the immediate next pending task.
-        3. IF DONE: Set status to "done".
+        FILE STRUCTURE:
+        {file_tree}
         
-        CRITICAL OPERATIONAL RULES:
-        - **Initialization Mission**:
-          - **STEP 1: STACK & ENV PREP**: Analyze the requested Tech Stack (e.g., Python/Flask, Node/Express). YOU MUST explicitly run commands to install them (e.g., `pip install flask`, `npx create-react-app .`). Do this BEFORE writing app code.
-          - **STEP 2: LANDING PAGE**: Create a basic functional 'Landing Page' (index.html or App.js).
-        - **Server Lifecycle**: 
-          - START the server (`npm start` or `python app.py`) if it's needed for testing or if the user asks.
-          - The Creator agent has ROOT access to install dependencies.
-        - **Resumption**: Always check the 'Last Execution Logs' to avoid repeating work.
+        CRITICAL RULES:
+        1. **LOOP PREVENTION**: Check the `failed_strategies` in the current task. NEVER propose a strategy that failed.
+        2. **ERROR REACTION**: If `last_error` indicates missing dep, Schedule 'Install'. If syntax, Schedule 'Fix'.
+        3. **FACTUALITY**: Do not schedule 'Create X' if `X` exists in FILE STRUCTURE.
         
         OUTPUT JSON:
         {
-            "next_task": "Name of the task to do NOW",
-            "reasoning": "Why this task?",
-            "updated_plan_json": [ ... full plan list ... ],
-            "status": "coding" (or "done" if mission complete)
+            "next_task": "Task Name",
+            "reasoning": "Why this task? (Reference specific error or file)",
+            "updated_plan_json": { ...full plan... },
+            "status": "coding" | "done"
         }
-        """
+        """ # Simplified for brevity
         
         messages = [
-            SystemMessage(content=system_prompt.replace("{mission}", mission).replace("{current_plan}", json.dumps(current_plan)).replace("{execution_history}", execution_history)),
-            HumanMessage(content=f"Context:\n{context_str}\n\nWhat should we do next?")
+            SystemMessage(content=system_prompt.format(
+                mission=mission, 
+                current_plan=json.dumps(current_plan, indent=2), 
+                last_feedback=json.dumps(last_feedback, indent=2),
+                file_tree=file_tree
+            )),
+            HumanMessage(content="What is the next move?")
         ]
         
         json_llm = self.llm.bind(response_format={"type": "json_object"})
-        result = json_llm.invoke(messages)
-        content = result.content
-        
         try:
-            data = JsonRepair.parse(content)
-            next_task = data.get("next_task")
-            updated_plan = data.get("updated_plan_json")
-            status = data.get("status", "coding")
+            res = json_llm.invoke(messages)
+            data = JsonRepair.parse(res.content)
             
-            # Save Plan (Critical: This persists the "completed" status)
-            if updated_plan:
-                self.docker_manager.write_file(startup_id, "artifacts/plan.json", json.dumps(updated_plan, indent=2))
+            # Persist Plan
+            if data.get("updated_plan_json"):
+                self.docker_manager.write_file(startup_id, plan_path, json.dumps(data["updated_plan_json"], indent=2))
                 
-            logs.append(f"Planner: Next Task -> {next_task}")
-            
             return {
-                "current_task": next_task,
-                "status": status,
-                "plan": updated_plan,
-                "logs": logs
+                "current_task": data.get("next_task"),
+                "status": data.get("status", "coding"),
+                "plan": data.get("updated_plan_json"),
+                "logs": logs + [f"Planner: Selected {data.get('next_task')}"]
             }
         except Exception as e:
             return {"logs": logs + [f"Planner Error: {e}"], "status": "failed"}
 
-
     def creator_node(self, state):
         """
-        The WORK HORSE.
-        Executes the 'current_task'.
-        Uses 'LSP Micro-Loop' to fix errors before finishing.
+        The MICRO-ARCHITECT.
+        Uses Librarian for Task Context.
         """
-        logger.info("--- Creator Node (V2) ---")
-        logs = state.get("logs", [])
+        logger.info("--- Creator Node (V3) ---")
+        startup_id = state["startup_id"]
+        task = state["current_task"]
+        lib = self._get_librarian(startup_id)
         
+        # 1. Retrieve Context
+        relevant_code = lib.query(task)
+        
+        system_prompt = """You are a Senior Developer.
+        Task: {task}
+        
+        EXISTING CODEBASE CONTEXT (Use this to REUSE code!):
+        {relevant_code}
+        
+        ENVIRONMENT:
+        - Root access. Can run `npm install`, `pip install`.
+        
+        OUTPUT JSON:
+        {
+            "thoughts": "Strategy...",
+            "steps": [
+                {"action": "write_file", "path": "...", "content": "..."},
+                {"action": "command", "command": "..."}
+            ]
+        }
+        """
+        
+        messages = [
+            SystemMessage(content=system_prompt.format(task=task, relevant_code=relevant_code)),
+            HumanMessage(content="Implement now.")
+        ]
+        
+        final_logs = []
+        full_raw_log = "" # Accumulate for Reviewer
+        
+        json_llm = self.llm.bind(response_format={"type": "json_object"})
         try:
-            startup_id = state["startup_id"]
-            task = state["current_task"]
+            res = json_llm.invoke(messages)
+            plan = JsonRepair.parse(res.content)
+            steps = plan.get("steps", [])
             
-            cm = self._get_context_manager(startup_id)
-            lsp = self._get_lsp_handler(startup_id)
+            for step in steps:
+                if step["action"] == "write_file":
+                    self.docker_manager.write_file(startup_id, step["path"], step["content"])
+                    msg = f"Wrote {step['path']}"
+                    final_logs.append(msg)
+                    full_raw_log += msg + "\n"
+                elif step["action"] == "command":
+                    out = self.docker_manager.run_command(startup_id, step["command"])
+                    msg = f"Ran {step['command']}: {out.get('exit_code')}\nOutput: {out.get('output')}"
+                    final_logs.append(f"Ran {step['command']}")
+                    full_raw_log += msg + "\n"
             
-            # 1. Scoped Context (Deep Dive)
-            # Get AST context for relevant symbols mentioned in task?
-            # For now, simple keyword match or just get related files.
-            # Let's assume the previous context + specific files related to task.
-            context_str = f"Task: {task}\n"
-            
-            system_prompt = """You are a Senior Full-Stack Developer.
-            Implement the task: {task}
-            
-            ENVIRONMENT:
-            - Running on Host, controlling Docker Container.
-            - ROOT ACCESS ENABLED: You are root inside the container. 
-            - You can run `apt-get install`, `pip install`, `npm install` directly.
-            
-            STRATEGY:
-            1. Write/Modify files to implement features.
-            2. Use `ls` or `cat` to verify paths if unsure.
-            
-            OUTPUT JSON:
-            {
-                "thoughts": "Implementation strategy...",
-                "steps": [
-                    {"action": "write_file", "path": "...", "content": "..."},
-                    {"action": "command", "command": "..."} 
-                ]
-            }
-            """
-            
-            # ... (LLM Call to get steps) ...
-            # Simplified for brevity in this single-shot write
-            
-            messages = [SystemMessage(content=system_prompt.replace("{task}", task)), HumanMessage(content="Start Implementation.")]
-            json_llm = self.llm.bind(response_format={"type": "json_object"})
-            
-            # Retry Loop for implementation
-            for attempt in range(3):
-                try:
-                    res = json_llm.invoke(messages)
-                    plan = JsonRepair.parse(res.content)
-                    steps = plan.get("steps", [])
-                    
-                    execution_logs = []
-                    failed = False
-                    
-                    for step in steps:
-                        if step["action"] == "write_file":
-                            path = step["path"]
-                            content = step["content"]
-                            self.docker_manager.write_file(startup_id, path, content)
-                            execution_logs.append(f"Wrote {path}")
-                            
-                            # --- LSP MICRO-LOOP ---
-                            # Check syntax immediately
-                            syntax = lsp.check_syntax(path)
-                            if not syntax["valid"]:
-                                execution_logs.append(f"LSP Error in {path}: {syntax['error']}")
-                                # Self-Correction opportunity?
-                                # For MVP V2, we just log it and maybe fail the step so Reviewer sees it.
-                                # Ideally we loop here.
-                                pass
-                                
-                        elif step["action"] == "command":
-                            cmd = step["command"]
-                            # Run via Docker Exec
-                            out = self.docker_manager.run_command(startup_id, cmd)
-                            execution_logs.append(f"Ran {cmd}: {out.get('exit_code')}")
-                    
-                    logs.extend(execution_logs)
-                    return {"status": "success", "logs": logs} # Go to Reviewer
-                    
-                except Exception as e:
-                    import traceback
-                    tb = traceback.format_exc()
-                    logs.append(f"Creator Crash (Loop {attempt}): {e}\nTraceback:\n{tb}\nResponse Content:\n{res.content}")
-            
-            return {"status": "failed", "logs": logs}
+            # Pass Raw Logs to Reviewer for Analysis
+            return {"logs": state.get("logs", []) + final_logs, "last_raw_log": full_raw_log, "status": "review"}
             
         except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            error_msg = f"Creator System Crash: {str(e)}\nTraceback:\n{tb}"
-            logger.error(error_msg)
-            return {"status": "failed", "logs": logs + [error_msg]}
+            err = f"Creator Error: {e}"
+            return {"logs": state.get("logs", []) + [err], "last_raw_log": err, "status": "review"}
 
     def reviewer_node(self, state):
         """
-        The GATEKEEPER.
-        Checks if task is actually done.
+        The LOG DETECTIVE (Log Analyzer).
+        Updates Plan with 'failed_strategies' if needed.
         """
-        logger.info("--- Reviewer Node (V2) ---")
-        # Simple Pass-through for now, or lightweight verification
-        return {"status": "approved", "logs": state.get("logs", []) + ["Reviewer: Approved changes."]}
-
-
-
+        logger.info("--- Reviewer Node (Log Analyzer) ---")
+        startup_id = state["startup_id"]
+        raw_log = state.get("last_raw_log", "")
+        plan = state.get("plan", {})
+        
+        # If no plan, we can't update it, but usually Planner ensures plan exists.
+        
+        system_prompt = """You are a Log Detective.
+        Analyze the execution logs.
+        
+        YOUR JOB:
+        1. Determine if the task SUCCEEDED or FAILED.
+        2. If FAILED, extract the **Root Cause** (e.g. Missing Dep, Syntax Error).
+        3. If FAILED, summarize the **Strategy Used** so we don't repeat it.
+        
+        LOGS:
+        {raw_log}
+        
+        OUTPUT JSON:
+        {
+            "success": boolean,
+            "failure_reason": "Short summary of error" (or null),
+            "strategy_used": "What did we try?" (e.g. "Ran pip install flask"),
+            "suggested_fix": "What should be done next?"
+        }
+        """
+        
+        messages = [
+            SystemMessage(content=system_prompt.format(raw_log=raw_log[:10000])), # Limit token usage
+            HumanMessage(content="Analyze.")
+        ]
+        
+        json_llm = self.llm.bind(response_format={"type": "json_object"})
+        try:
+            res = json_llm.invoke(messages)
+            analysis = JsonRepair.parse(res.content)
+            
+            # --- CRITICAL: Update Plan State ---
+            # We need to find the "Active Task" in the plan.
+            # Assuming Planner set the active task status.
+            # We simply update the finding.
+            
+            # For MVP, we pass this analysis BACK to the Planner in the 'logs' or 'state'
+            # so the Planner can merge it into the JSON next turn.
+            # OR we write it to JSON here. Writing here is safer.
+            
+            # Let's try to update the plan.json directly if we can find the task.
+            # (Simplification: Just append the analysis to the logs for the Planner to read next turn)
+            
+            log_entry = f"Reviewer Analysis: Success={analysis['success']}. Reason={analysis.get('failure_reason')}. Strategy={analysis.get('strategy_used')}."
+            
+            # Construct a structured update for the Planner
+            # We'll save a 'reviewer_feedback.json' for the Planner to consume firmly.
+            feedback = {
+                 "task_outcome": "success" if analysis["success"] else "failed",
+                 "error_details": analysis.get("failure_reason"),
+                 "failed_strategy": analysis.get("strategy_used") if not analysis["success"] else None
+            }
+            self.docker_manager.write_file(startup_id, "artifacts/reviewer_feedback.json", json.dumps(feedback, indent=2))
+            
+            status = "approved" if analysis["success"] else "coding" # If failed, loop back to coding (via Planner)
+            
+            return {
+                "status": status, 
+                "logs": state.get("logs", []) + [log_entry]
+            }
+            
+        except Exception as e:
+            return {"status": "approved", "logs": state.get("logs", []) + [f"Reviewer Error: {e}"]}

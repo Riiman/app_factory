@@ -61,6 +61,7 @@ You must EXPLORE the codebase first, then DESIGN the solution.
 3. **NO BLIND OVERWRITES**: Check if a file exists before planning to create it.
 4. **PERSISTENT ERRORS**: If a task fails >2 times, you MUST plan to use `search_web` to diagnose (e.g., "npm build error X").
 5. **CHECK VERSIONS**: Do NOT assume config syntax (e.g. Tailwind v3 vs v4). Check `package.json` or run `npm list <pkg>` first.
+    - **TAILWIND WARNING**: If `tailwindcss@4` is installed, you MUST use `@import "tailwindcss";` in CSS and `@tailwindcss/postcss` in PostCSS. Do NOT use `@tailwind base` or the old `tailwindcss` plugin.
 
 # WORKFLOW STRATEGY
 1. **DIAGNOSIS**: 

@@ -98,3 +98,8 @@ yarl==1.22.0
 zstandard==0.25.0
 firebase-admin==6.3.0
 docker==7.1.0
+duckduckgo-search
+langchain-community
+chromadb>=0.4.22
+tree-sitter>=0.20.4
+tree-sitter-languages>=1.8.0
