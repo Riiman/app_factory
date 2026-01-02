@@ -246,6 +246,11 @@ class V3Tools:
             if move_res.get("exit_code") != 0:
                  return f"Error moving temp file: {move_res['output']}"
 
+            # 4.5 Verify Write
+            verify = self.docker_manager.run_command(self.startup_id, f"ls -l {path}")
+            if verify.get("exit_code") != 0:
+                 return f"Error: File moved but verification failed. File may be missing. Output: {verify['output']}"
+
             # 5. Post-Action Stats
             self.context_manager.update_file_summary(path)
 
@@ -451,11 +456,18 @@ class V3Tools:
                     working_dir = parts[0]
                     cmd_file = "/".join(parts[1:]) # Path relative to working_dir
                 
-                # Check 2: 'apps/xyz' pattern (monorepo)
                 elif parts[0] == "apps" and len(parts) > 2:
                     working_dir = f"apps/{parts[1]}"
                     cmd_file = "/".join(parts[2:])
             
+            # --- Auto-Cleanup: Remove stale results/logs ---
+            # This ensures that if we see a snapshot, it is from THIS run.
+            cleanup_cmd = "rm -rf test-results ui_test_execution.log"
+            if working_dir != ".":
+                 cleanup_cmd = f"cd {working_dir} && {cleanup_cmd}"
+            
+            self.docker_manager.run_command(self.startup_id, cleanup_cmd)
+
             # 2. Construct Command with CWD and Log Redirection
             # npx playwright test <file>
             log_file = "ui_test_execution.log"
@@ -505,7 +517,7 @@ class V3Tools:
                 # List test-results to find new images
                 ls_res = self.docker_manager.run_command(self.startup_id, f"find {target_dir} -name '*.png'")
                 if ls_res.get("exit_code") == 0:
-                    lines = ls_res["output"].strip().split('\\n')
+                    lines = ls_res["output"].strip().splitlines()
                     for line in lines:
                         if line.strip():
                              snapshots.append(line.strip())
