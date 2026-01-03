@@ -372,6 +372,7 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                                      return {
                                          "status": "blocked",
                                          "waiting_on": job_id, # Persist ID to state
+                                         "plan": current_plan, # CRITICAL: Return updated plan/tasks to state
                                          "current_mission": current_mission,
                                          "logs": [f"Developer: Yielding for async job {job_id}."]
                                      }
