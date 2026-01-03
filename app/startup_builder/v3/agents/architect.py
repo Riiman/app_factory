@@ -304,11 +304,15 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
                                         snapshots_found = re.findall(r"\[SNAPSHOT\]: (.*)", text_output)
                                     except: pass
                                     
-                                # 3. Inject Images
+                                # 3. Inject Images & Trigger UI
                                 if snapshots_found:
                                     self._log_to_file(f"ARCHITECT VISION: Found {len(snapshots_found)} snapshots.")
                                     for img_path in snapshots_found:
+                                         # 1. Inject into history
                                          self._inject_image_to_history(messages, img_path.strip())
+                                         
+                                         # 2. Trigger UI Card
+                                         self.copilot.emit_thought(f"[SNAPSHOT]: {img_path.strip()}", "architect")
                                          
                                 # Use summary for the conversation history
                                 tool_result = text_output

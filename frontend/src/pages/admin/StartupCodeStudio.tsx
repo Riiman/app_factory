@@ -65,7 +65,8 @@ const StartupCodeStudio: React.FC = () => {
                 }
             }
             const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
-            return [...prev, logMsg];
+            const newLogs = [...prev, logMsg];
+            return newLogs.slice(-500); // Limit to last 500 lines
         });
         setThoughts(prev => {
             // Basic deduplication for thoughts too
@@ -74,7 +75,8 @@ const StartupCodeStudio: React.FC = () => {
                 if (lastThought === msg || lastThought.includes(msg)) return prev;
             }
             const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
-            return [...prev, logMsg];
+            const newThoughts = [...prev, logMsg];
+            return newThoughts.slice(-500); // Limit to last 500 lines
         });
     };
 
@@ -181,8 +183,9 @@ const StartupCodeStudio: React.FC = () => {
                                     if (typeof l === 'object') return JSON.stringify(l);
                                     return l;
                                 });
+                                // Fixed closure
                                 console.log('[DEBUG WS] New Thoughts generated:', newThoughts); // Debug Log
-                                setThoughts(prev => [...prev, ...newThoughts]);
+                                setThoughts(prev => [...prev, ...newThoughts].slice(-500));
                             } else {
                                 console.log('[DEBUG WS] No logs in agent_update payload'); // Debug Log
                             }
@@ -222,7 +225,7 @@ const StartupCodeStudio: React.FC = () => {
 
                         case 'agent_thought':
                             if (data.content) {
-                                setThoughts(prev => [...prev, data.content]);
+                                setThoughts(prev => [...prev, data.content].slice(-500));
                             }
                             if (data.node) setActiveNode(data.node);
                             break;

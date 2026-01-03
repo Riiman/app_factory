@@ -445,11 +445,15 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                             snapshots_found = re.findall(r"\[SNAPSHOT\]: (.*)", text_output)
                         except: pass
                         
-                    # 3. Inject Images
+                    # 3. Inject Images & Trigger UI
                     if snapshots_found:
                         self._log_to_file(f"MULTIMODAL: Found {len(snapshots_found)} snapshots: {snapshots_found}")
                         for img_path in snapshots_found:
+                             # 1. Inject into LLM History (for analysis)
                              self._inject_image_to_history(messages, img_path.strip())
+                             
+                             # 2. Trigger UI Card (for User) - uses frontend regex
+                             self.copilot.emit_thought(f"[SNAPSHOT]: {img_path.strip()}", "developer")
 
                     # Override tool result display for LLM if we parsed JSON
                     # (We don't want to show raw JSON to LLM if we have a summary)
