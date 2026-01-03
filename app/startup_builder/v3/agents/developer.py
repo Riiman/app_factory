@@ -448,12 +448,18 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                     # 3. Inject Images & Trigger UI
                     if snapshots_found:
                         self._log_to_file(f"MULTIMODAL: Found {len(snapshots_found)} snapshots: {snapshots_found}")
-                        for img_path in snapshots_found:
-                             # 1. Inject into LLM History (for analysis)
-                             self._inject_image_to_history(messages, img_path.strip())
+                        for item in snapshots_found:
+                             # Handle both string paths and object definitions
+                             img_path = item
+                             if isinstance(item, dict):
+                                 img_path = item.get("path") or item.get("file") or item.get("url")
                              
-                             # 2. Trigger UI Card (for User) - uses frontend regex
-                             self.copilot.emit_thought(f"[SNAPSHOT]: {img_path.strip()}", "developer")
+                             if img_path and isinstance(img_path, str):
+                                 # 1. Inject into LLM History (for analysis)
+                                 self._inject_image_to_history(messages, img_path.strip())
+                                 
+                                 # 2. Trigger UI Card (for User) - uses frontend regex
+                                 self.copilot.emit_thought(f"[SNAPSHOT]: {img_path.strip()}", "developer")
 
                     # Override tool result display for LLM if we parsed JSON
                     # (We don't want to show raw JSON to LLM if we have a summary)
