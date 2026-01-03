@@ -158,6 +158,7 @@ def handle_resize(data):
 
 @socketio.on('connect', namespace='/builder')
 def builder_connect():
+    ensure_monitor_running()
     print(f'Client connected to builder: {request.sid}')
     emit('connected', {'status': 'connected'})
 
@@ -232,3 +233,160 @@ def unsubscribe_from_startup(data):
             del builder_subscriptions[startup_id]
     
     print(f"Client {sid} unsubscribed from startup {startup_id}")
+    
+# ============================================
+# Container Heartbeat Monitor
+# ============================================
+monitor_thread = None
+
+def monitor_containers():
+    """
+    Background thread to monitor status of subscribed startups.
+    If a container stops unexpectedly, notifies frontend and PAUSES the agent.
+    """
+    from app.extensions import redis_client
+    from app.models import Startup, app
+    
+    print("Container Heartbeat Monitor Started.")
+    
+    # Cache last known status to detect transitions (Running -> Stopped)
+    # startup_id -> "running" | "stopped"
+    last_known_status = {}
+    
+    while True:
+        try:
+            time.sleep(5)  # Check every 5 seconds
+            
+            # 1. Identify Active Subscriptions
+            if not builder_subscriptions:
+                continue
+                
+            active_startup_ids = list(builder_subscriptions.keys())
+            
+            # Use app context to query DB
+            with app.app_context():
+                manager = DockerManager()
+                
+                for s_id in active_startup_ids:
+                    try:
+                        startup = Startup.query.get(s_id)
+                        if not startup or not startup.container_name:
+                            continue
+                            
+                        # Check Docker Status
+                        try:
+                            container = manager.client.containers.get(startup.container_name)
+                            current_status = container.status # 'running', 'exited', 'paused'
+                        except docker.errors.NotFound:
+                            current_status = 'stopped'
+                        except Exception:
+                            current_status = 'unknown'
+                            
+                        prev_status = last_known_status.get(s_id, 'unknown')
+                        
+                        # UPDATE Frontend if status changed or just heartbeat
+                        # For efficiency, we only emit on change OR if we haven't in a while?
+                        # Actually frontend expects 'env_status' occasionally? No, usually event driven.
+                        # But here we detect the STOP event.
+                        
+                        if current_status != 'running':
+                            # Transition: Running -> Stopped
+                            if prev_status == 'running':
+                                print(f"🚨 ALERT: Container for {s_id} STOPPED unexpectedly.")
+                                
+                                # 1. Notify Frontend
+                                socketio.emit('env_status', {'status': 'stopped'}, room=f"startup_{s_id}", namespace='/builder')
+                                
+                                # 2. Auto-Pause Agent (via Redis)
+                                redis_client.set(f"signal:{s_id}", "pause", ex=60)
+                                
+                                # 3. Log to Agent Console
+                                from app.services.notification_service import publish_update
+                                publish_update('agent_update', {
+                                    'task_status': 'paused',
+                                    'logs': ["🚨 Container Heartbeat Failed: Process Auto-Paused."]
+                                }, rooms=[f"startup_{s_id}"])
+                            
+                            last_known_status[s_id] = 'stopped'
+                            
+                        else:
+                            # Is Running - CHECK APPLICATION HEALTH (Port 3000)
+                            last_known_status[s_id] = 'running'
+                            
+                            try:
+                                # Find mapped port for 3000/tcp
+                                ports = container.attrs['NetworkSettings']['Ports']
+                                host_port = None
+                                if '3000/tcp' in ports and ports['3000/tcp']:
+                                    host_port = ports['3000/tcp'][0]['HostPort']
+                                
+                                app_status = 'down'
+                                if host_port:
+                                    import requests
+                                    try:
+                                        # rapid check
+                                        requests.get(f"http://localhost:{host_port}/", timeout=2)
+                                        app_status = 'ready'
+                                    except:
+                                        app_status = 'down'
+                                
+                                # Emit Status Update (Always, or optimized?)
+                                # Emitting always ensures frontend stays synced, but might be noisy (every 5s).
+                                # Frontend handles frequency.
+                                
+                                socketio.emit('env_status', {
+                                    'status': 'running',
+                                    'container_id': container.id,
+                                    'ports': ports,
+                                    'app_status': app_status # New Field
+                                }, room=f"startup_{s_id}", namespace='/builder')
+                                
+                                # If App Down -> Pause Agent?
+                                # User Request: "Auto-Pause Agent" if app crashes
+                                if app_status == 'down':
+                                    # Only pause if it WAS running? Or just keep it paused?
+                                    # If we continually send pause, it might prevent manual resume.
+                                    # Let's send pause signal ONCE per transition if possible, or accept redundancy.
+                                    # For now, being safe: if app is down, agent shouldn't be trying to interact.
+                                    
+                                    # But wait, initially app takes time to start. We shouldn't pause during startup.
+                                    # How do we distinguish "Starting" from "Crashed"?
+                                    # Maybe checking elapsed time or previous state?
+                                    # User said: "if its not running keep it disabled" (Frontend).
+                                    # Agent Auto-Pause: "If the app is up and running... activate... if not... disabled".
+                                    # AND "Auto-Pause on Stop".
+                                    
+                                    # Let's stick to the EXPLICIT request: 
+                                    # "Implement Application Heartbeat... Auto-pause agent... warning user".
+                                    # I'll enable the pause, but maybe with a slightly generous timeout logic?
+                                    # No, let's keep it simple. If port 3000 fails, we signal pause.
+                                    # NOTE: This might pause the agent while the app is booting up.
+                                    # I will log it as "App Port Unreachable".
+                                    
+                                    # redis_client.set(f"signal:{s_id}", "pause", ex=60) # DISABLED for now to prevent boot-loop pause
+                                    # Triggering pause on Port 3000 failure is risky during `npm start`.
+                                    # Let's ONLY do the Frontend Disable for now based on 'app_status'.
+                                    # User's recent request focused on "activate the preview button ... keep it disabled".
+                                    pass
+
+                            except Exception as e:
+                                print(f"App Check Error {s_id}: {e}")
+                            
+                    except Exception as e:
+                        print(f"Heartbeat Error for {s_id}: {e}")
+                        
+        except Exception as e:
+            print(f"Monitor Loop Error: {e}")
+            time.sleep(5)
+
+# Start Monitor on Import (Ensure we have app context later)
+# Ideally called from create_app, but placing here for hot-load capability via connection trigger.
+
+def ensure_monitor_running():
+    global monitor_thread
+    if monitor_thread is None or not monitor_thread.is_alive():
+        monitor_thread = threading.Thread(target=monitor_containers, daemon=True)
+        monitor_thread.start()
+
+
+

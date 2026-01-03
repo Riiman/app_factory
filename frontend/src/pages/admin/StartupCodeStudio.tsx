@@ -42,6 +42,8 @@ const StartupCodeStudio: React.FC = () => {
     // New State for Refactor
     const [showChatModal, setShowChatModal] = useState(false);
     const [products, setProducts] = useState<any[]>([]);
+    const [isAppReady, setIsAppReady] = useState(false); // New App Health State
+
     const [issues, setIssues] = useState<any[]>([]);
     const [expandedProducts, setExpandedProducts] = useState<Record<number, boolean>>({});
     const [fileRefreshKey, setFileRefreshKey] = useState(0);
@@ -151,10 +153,13 @@ const StartupCodeStudio: React.FC = () => {
                             if (data.status === 'running') {
                                 setIsRunning(true);
                                 setPorts(data.ports);
+                                // Set App Ready status based on backend heartbeat (or default to false if missing)
+                                setIsAppReady(data.app_status === 'ready');
                             } else {
                                 setIsRunning(false);
                                 setPorts(null);
                                 setIsWorking(false);
+                                setIsAppReady(false);
                             }
                             break;
 
@@ -768,34 +773,28 @@ const StartupCodeStudio: React.FC = () => {
                         </>
                     )}
                     {(() => {
-                        // Strict Preview Logic:
-                        // 1. Must have Ports (Env Running)
-                        // 2. Must NOT be 'opening' (Loading state)
-                        // 3. Must NOT be 'working' (Agent is changing code)
-                        // 4. Must be in a STABLE state ('done', 'paused', 'qa_passed', 'failed')
-                        //    - 'idle'/'unknown' = Initial state, code likely not ready -> Disabled
-                        const isTaskStable = ['done', 'paused', 'qa_passed', 'failed'].includes(taskStatus);
-                        const canPreview = ports && !isPreviewOpening && !isWorking && isTaskStable;
+                        const isMissionComplete = !missionQueue || missionQueue.length === 0 || missionQueue.every(m => m.status === 'completed');
+
+                        // "Enable if App is Ready OR Mission is Done" (AND ports must exist)
+                        const canPreview = ports && (isAppReady || isMissionComplete);
 
                         return (
                             <button
                                 onClick={async () => {
                                     if (!canPreview) return;
                                     setIsPreviewOpening(true);
-                                    // Simple timeout to prevent double-clicks
                                     setTimeout(() => setIsPreviewOpening(false), 2000);
                                     window.open(`/api/startups/${id}/preview/`, '_blank');
                                 }}
                                 disabled={!canPreview}
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${canPreview
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                    ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/20'
+                                    : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700 opacity-50'
                                     }`}
                                 title={
-                                    !ports ? "Preview not available (Server not started)" :
-                                        isWorking ? "Agent is working... Preview disabled." :
-                                            !isTaskStable ? "Preview disabled (Waiting for task completion)" :
-                                                "Open Preview"
+                                    !ports ? "Server not started" :
+                                        (!isAppReady && !isMissionComplete) ? "App starting up... (Port 3000 unreachable)" :
+                                            "Open Preview"
                                 }
                             >
                                 {isPreviewOpening ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />} Preview

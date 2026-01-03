@@ -725,6 +725,36 @@ def run_v3_agent_bg(startup_id, initial_state):
                             'total_tasks': total_tasks,
                             'completed_tasks': completed_tasks
                         }, rooms=[f"startup_{startup_id}"])
+
+                        # --- FEATURE STATUS SYNC ---
+                        current_mission = full_state.get("current_mission")
+                        if current_mission and current_mission.get("feature_id"):
+                            try:
+                                from app.models import Feature, FeatureStatus
+                                from app.extensions import db
+                                
+                                f_id = current_mission["feature_id"]
+                                m_status = current_mission.get("status")
+                                
+                                target_status = None
+                                if m_status == "in_progress":
+                                    target_status = FeatureStatus.IN_PROGRESS
+                                elif m_status == "completed":
+                                    target_status = FeatureStatus.COMPLETED
+                                
+                                if target_status:
+                                    # Optimistic DB Update (Check first to reduce writes)
+                                    # Since we are in a different thread context, we must query.
+                                    # NOTE: db_session is thread-local in Flask-SQLAlchemy? Yes in app context.
+                                    
+                                    f = Feature.query.get(f_id)
+                                    if f and f.status != target_status:
+                                        print(f"Syncing Feature {f_id} status to {target_status}")
+                                        f.status = target_status
+                                        db.session.commit()
+                            except Exception as e:
+                                print(f"Feature Status Sync Error: {e}")
+                        
                         
                 from app.services.notification_service import publish_update
                 publish_update('agent_update', {
