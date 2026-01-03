@@ -241,7 +241,8 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
         
         # 4. Tool Loop (Max 10 turns to prevent infinite loops)
         executed_actions = []
-        task_context = [] 
+        # FIX: Load existing context (e.g., from Async Job completion) so we don't restart from zero
+        task_context = next_task.get("task_context", [])[:] 
         
         # Handle Injected Resume
         if injected_result:
