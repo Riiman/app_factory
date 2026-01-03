@@ -419,16 +419,41 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                     messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
                     
                     # --- MULTIMODAL INJECTION ---
-                    # Check for [SNAPSHOT]: /path/to/image.png
-                    if "[SNAPSHOT]:" in str(tool_result):
+                    # 1. Try JSON Parsing (New Way)
+                    snapshots_found = []
+                    text_output = str(tool_result)
+                    
+                    try:
+                        # If tool_result looks like JSON
+                        if text_output.strip().startswith("{") and text_output.strip().endswith("}"):
+                            data = json.loads(text_output)
+                            # Extract Structured Snapshots
+                            if "snapshots" in data:
+                                snapshots_found = data["snapshots"]
+                                # Update text output to be the readable summary for LLM context
+                                text_output = data.get("text_summary", str(data))
+                            elif "snapshot" in data: # Fallback single
+                                snapshots_found = [data["snapshot"]]
+                    except:
+                        pass
+                        
+                    # 2. Regex Fallback (Legacy)
+                    if not snapshots_found and "[SNAPSHOT]:" in text_output:
                         try:
-                            match = re.search(r"\[SNAPSHOT\]: (.*)", str(tool_result))
-                            if match:
-                                img_path = match.group(1).strip()
-                                self._inject_image_to_history(messages, img_path)
-                        except Exception as e:
-                            logger.error(f"Failed to inject snapshot: {e}")
-                            
+                            # Use findall to get ALL snapshots, not just search (first one)
+                            snapshots_found = re.findall(r"\[SNAPSHOT\]: (.*)", text_output)
+                        except: pass
+                        
+                    # 3. Inject Images
+                    if snapshots_found:
+                        self._log_to_file(f"MULTIMODAL: Found {len(snapshots_found)} snapshots: {snapshots_found}")
+                        for img_path in snapshots_found:
+                             self._inject_image_to_history(messages, img_path.strip())
+
+                    # Override tool result display for LLM if we parsed JSON
+                    # (We don't want to show raw JSON to LLM if we have a summary)
+                    display_result = text_output 
+                    
                     executed_actions.append(f"Ran {tool_name}")
             else:
                  # Check for explicit STATUS in Final Message

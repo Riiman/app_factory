@@ -284,6 +284,35 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
                                 tool_result = f"Error: {e}"
                                 self._log_to_file(f"ARCHITECT ERROR: {tool_name} -> {e}")
                                 
+                            # SNAPSHOT / VISION LOGIC
+                                # 1. Try JSON Parsing
+                                snapshots_found = []
+                                text_output = str(tool_result)
+                                try:
+                                    if text_output.strip().startswith("{") and text_output.strip().endswith("}"):
+                                        data = json.loads(text_output)
+                                        if "snapshots" in data:
+                                            snapshots_found = data["snapshots"]
+                                            text_output = data.get("text_summary", str(data))
+                                        elif "snapshot" in data:
+                                            snapshots_found = [data["snapshot"]]
+                                except: pass
+                                
+                                # 2. Regex Fallback
+                                if not snapshots_found and "[SNAPSHOT]:" in text_output:
+                                    try:
+                                        snapshots_found = re.findall(r"\[SNAPSHOT\]: (.*)", text_output)
+                                    except: pass
+                                    
+                                # 3. Inject Images
+                                if snapshots_found:
+                                    self._log_to_file(f"ARCHITECT VISION: Found {len(snapshots_found)} snapshots.")
+                                    for img_path in snapshots_found:
+                                         self._inject_image_to_history(messages, img_path.strip())
+                                         
+                                # Use summary for the conversation history
+                                tool_result = text_output
+                                
                         messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
                 else:
                     # Track Budget
@@ -409,6 +438,40 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
                  
         except Exception as e:
             logger.error(f"Architect Failed to save tasks: {e}")
+
+    def _inject_image_to_history(self, messages, img_path: str):
+        """
+        Reads an image from the container, converts to base64, and appends a HumanMessage 
+        to the history so the LLM can 'see' the UI.
+        """
+        try:
+            # Check if context_manager is initialized
+            if not self.context_manager:
+                 logger.error("Cannot inject image: ContextManager not init")
+                 return
+
+            # Uses base64 inside container to get binary data safely as string
+            cmd_res = self.docker_manager.run_command(self.context_manager.startup_id, f"base64 -w 0 {img_path}")
+            
+            if cmd_res.get("exit_code") == 0:
+                 b64_data = cmd_res["output"].strip()
+                 
+                 # Create Multimodal Message
+                 # We append a NEW HumanMessage to the history
+                 from langchain_core.messages import HumanMessage
+                 
+                 img_msg = HumanMessage(content=[
+                     {"type": "text", "text": f"[SYSTEM]: Here is the Snapshot captured at {img_path}. Analyze it for errors."},
+                     {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_data}"}}
+                 ])
+                 
+                 messages.append(img_msg)
+                 self._log_to_file(f"MULTIMODAL: Injected image {img_path} ({len(b64_data)} bytes)")
+            else:
+                 logger.warning(f"Failed to base64 encode image for multimodal: {cmd_res.get('output')}")
+                 
+        except Exception as e:
+            logger.error(f"Image Injection Error: {e}")
 
     def _log_to_file(self, message):
         try:

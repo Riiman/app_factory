@@ -524,32 +524,35 @@ class V3Tools:
             except:
                 pass
 
-            # 6. Format Output
-            response_lines = []
-            response_lines.append(f"Test Execution Completed (Exit Code: {exit_code})")
-            response_lines.append(f"Working Directory: {working_dir}")
-            response_lines.append(f"Log File Saved: {full_log_path}")
+            # 6. Format Output (Structured JSON)
+            # We return a JSON string so the Agent can parse 'snapshots' reliably
+            # instead of relying on regex.
             
+            result_payload = {
+                "exit_code": exit_code,
+                "passed": (exit_code == 0),
+                "working_dir": working_dir,
+                "log_file": full_log_path,
+                "snapshots": snapshots,
+                "output": output[-3000:], # Logs
+                "text_summary": "" # Human readable summary
+            }
+            
+            summary_lines = []
+            summary_lines.append(f"Test Execution Completed (Exit Code: {exit_code})")
             if exit_code == 0:
-                response_lines.append("✅ TEST PASSED")
+                summary_lines.append("✅ TEST PASSED")
             else:
-                response_lines.append("❌ TEST FAILED")
-            
+                summary_lines.append("❌ TEST FAILED")
+                
             if snapshots:
-                response_lines.append("\\nCaptured Snapshots:")
-                for s in snapshots:
-                    # Special format for Frontend to render
-                    response_lines.append(f"[SNAPSHOT]: {s}")
+                summary_lines.append(f"Captured {len(snapshots)} Snapshots: {snapshots}")
             else:
-                 response_lines.append("\\n(No snapshots found. Ensure playwright.config.ts has 'screenshot: on' or 'only-on-failure')")
+                 summary_lines.append("(No snapshots found. Ensure playwright.config.ts has 'screenshot: on')")
             
-            response_lines.append("\\n--- Logs ---")
-            response_lines.append(output[-3000:]) # Logs
+            result_payload["text_summary"] = "\n".join(summary_lines)
             
-            if exit_code != 0:
-                response_lines.append("\\n[SYSTEM]: The test failed. Analyze the logs above and FIX the issue.")
-            
-            return "\\n".join(response_lines)
+            return json.dumps(result_payload)
             
         return run_ui_test
 
