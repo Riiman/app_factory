@@ -2,11 +2,13 @@ import logging
 import json
 import re
 import base64
+import os
 from typing import List, Dict, Any, Optional
 from ..agents.core import V3CoPilot
 from .reflector import V3Reflector # New Import
 from ...manager import DockerManager
 from ...context import ContextManager
+from ...v3.context.librarian import Librarian
 from ..tools import V3Tools
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
 
@@ -138,7 +140,27 @@ class V3Developer:
         # ensure local context is retrieved
              
         # 1.6 Retrieve Local Context (RAG)
-        local_context = self.context_manager.retrieve_local_context(next_task['description'])
+        # --- LIBRARIAN INJECTION (V3) ---
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        workspace_path = os.path.join(base_path, 'temp_workspaces', str(startup_id))
+        
+        lib = Librarian(workspace_path)
+        # We assume Architect already indexed, but safe to index again (fast)
+        lib.index_workspace() 
+        
+        # Identify Target File for GraphRAG (Hyper-Context)
+        target_file = None
+        desc = next_task['description']
+        # Extract path: "MODIFY: /path/to/file.py" or "CREATE: file.py"
+        # Regex to find a file path? 
+        # We look for typical patterns in our tasks.
+        match = re.search(r'(?:MODIFY|CREATE|DELETE|READ|UPDATE|FILE):\s*([^\s]+)', desc, re.IGNORECASE)
+        if match:
+             target_file = match.group(1).strip()
+             
+        local_context = lib.resolve_context(f"{desc} {next_task.get('logic', '')}", target_file=target_file)
+        # --------------------------------
+        
         state["local_context"] = local_context
         
         # Emit explicit thought for UI visibility
@@ -366,8 +388,28 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                     if verification_status == "FAILURE":
                          consecutive_failures += 1
                          if consecutive_failures >= 2:
-                             hint = self.reflector.reflect(next_task, command_str, str(tool_result), consecutive_failures)
-                             task_context.append(f"SYSTEM ALERT: {hint}")
+                             analysis = self.reflector.reflect(next_task, command_str, str(tool_result), consecutive_failures)
+                             
+                             # STRATEGY TRACKING (V3)
+                             if isinstance(analysis, dict):
+                                 # 1. Add formatted hint to prompt
+                                 hint_msg = f"SYSTEM ALERT: [Log Analyzer] {analysis.get('primary_error')}. Suggested Fix: {analysis.get('suggested_fix')}"
+                                 task_context.append(hint_msg)
+                                 
+                                 # 2. Persist Failed Strategy for Architect
+                                 # "Using TypeORM" -> Add to list
+                                 strat = analysis.get("failed_strategy")
+                                 if strat and strat != "Unknown":
+                                      if "failed_strategies" not in next_task:
+                                           next_task["failed_strategies"] = []
+                                      if strat not in next_task["failed_strategies"]:
+                                           next_task["failed_strategies"].append(strat)
+                                           
+                                 # 3. Save Last Error
+                                 next_task["last_error"] = analysis
+                             else:
+                                 # Fallback for legacy text
+                                 task_context.append(f"SYSTEM ALERT: {str(analysis)}")
                     else:
                          task_context.append(f"VERIFICATION: SUCCESS.")
                          consecutive_failures = 0 
@@ -582,17 +624,41 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
         try:
              copilot = V3CoPilot(use_thinking=False) # Use fast mode
              
-             # Extract raw logs
-             # Limit to last 2000 chars to save tokens
+             # 1. Extract Structured Data (Hygiene)
+             last_error = task.get("last_error")
+             failed_strategies = task.get("failed_strategies", [])
+             
+             # 2. Extract Raw Logs (Fallback)
              raw_logs = "\n".join(context)[-2000:]
              
-             system_prompt = "You are a Technical Logger. Summarize the COMPLETED TASK into one concise sentence focusing on the technical outcome (e.g., 'Created POST /api/v1/users endpoint with validation'). Do not mention 'failed attempts' unless relevant to the final solution."
-             user_prompt = f"Task: {task['description']}\nExecution Log:\n{raw_logs}"
+             system_prompt = "You are a Technical Logger. Summarize the COMPLETED TASK into one concise sentence."
+             
+             # 3. Dynamic Prompt based on Difficulty
+             if last_error:
+                  # Task had failures -> Summarize the Fix
+                  user_prompt = f"""
+                  Task: {task['description']}
+                  Status: Completed
+                  
+                  It initially FAILED with: {last_error.get('primary_error')}
+                  We tried strategies: {failed_strategies}
+                  
+                  Final Execution Log:
+                  {raw_logs[-500:]}
+                  
+                  Summarize HOW it was resolved (e.g., 'Fixed CORS error by installing cors package').
+                  """
+             else:
+                  # Smooth Sailing
+                  user_prompt = f"Task: {task['description']}\nExecution Log:\n{raw_logs}\n\nSummarize the technical outcome (e.g., 'Created POST /api/login')."
              
              res = copilot.ask(system_prompt, user_prompt)
+             
+             summary = "Completed."
              if hasattr(res, 'content'):
-                 return f"Task '{task['description']}': {res.content.strip()}"
-             return f"Task '{task['description']}' Completed."
+                 summary = res.content.strip()
+                 
+             return f"Task '{task['description']}': {summary}"
              
         except Exception as e:
             return f"Task '{task['description']}' Completed (Summary failed: {e})."

@@ -187,6 +187,18 @@ class V3Initializer:
                 docker_manager.write_file(startup_id, ctx_path, json.dumps(product_context, indent=2))
                 logs.append(f"Initializer: Saved Project Context to {ctx_path}")
                 
+                # 4. Save Project Memory (Rules)
+                project_memory = {
+                    "tech_stack": tech_stack,
+                    "ui_theme": ui_theme,
+                    "generated_at": str(import_time()),
+                    "patterns": ["Use Modular Architecture", "Prefer Functional Components"],
+                    "constraints": [f"Strictly use {tech_stack}", "No ad-hoc styling, use Theme"]
+                }
+                memory_path = "artifacts/project_memory.json"
+                docker_manager.write_file(startup_id, memory_path, json.dumps(project_memory, indent=2))
+                logs.append(f"Initializer: Saved Project Memory to {memory_path}")
+                
             except Exception as e:
                 logger.error(f"Failed to save artifacts: {e}")
                 logs.append(f"Initializer Warning: Failed to save artifacts: {e}")

@@ -1,9 +1,11 @@
 import logging
 import json
 import uuid
+import os
 from ..agents.core import V3CoPilot
 from ...manager import DockerManager
 from ...context import ContextManager
+from ...v3.context.librarian import Librarian
 from ..tools import V3Tools
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
 
@@ -34,8 +36,35 @@ class V3Architect:
         
         if "mission_context" not in current_mission:
              current_mission["mission_context"] = [] # List of summaries
+
+        # --- CONTEXT MANAGER (V3) ---
+        self.context_manager = ContextManager(self.docker_manager, startup_id)
+        
+        # 1. Project Rules (Memory)
+        project_rules = self.context_manager.get_global_context()
+        
+        # 2. Key File Summaries (Purpose Index)
+        summaries = self.context_manager.get_file_summaries()
+        # Filter to top 50 relevant? Or just dump all (usually < 20 files in MVP)
+        # Let's limit to ensuring we don't blow context.
+        summary_text = "\n".join([f"- {k}: {v}" for k,v in summaries.items() if v])
              
-        global_context = state.get("global_context", "No history yet.")
+        # 3. Mission History (State)
+        history_str = "Project Just Started."
+        missions = state.get("missions", [])
+        completed_missions = [m for m in missions if m.get("status") == "completed"]
+        
+        if completed_missions:
+             history = []
+             for m in completed_missions:
+                 history.append(f"Mission {m['id']} '{m['title']}': Completed.")
+                 if m.get("mission_context"):
+                      summary = "; ".join(m["mission_context"][-3:])
+                      history.append(f"  - Summary: {summary}")
+             history_str = "\n".join(history)
+        
+        # Merge All
+        global_context = f"{project_rules}\n\nMission History:\n{history_str}"
         failed_task = state.get("failed_task")
 
         # 1. Setup Tools (Read/List/Search)
@@ -45,6 +74,21 @@ class V3Architect:
         tools = tools_factory.get_tool_list() 
         # Note: writing files is generally NOT for the Architect, but 'act' might have access.
         # We can instruct it strictly NOT to write code, only explore.
+        
+        # --- LIBRARIAN INJECTION (V3) ---
+        # Use the Librarian to get semantic context about the mission
+        # We use the startup_id to target the correct isolated workspace
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        workspace_path = os.path.join(base_path, 'temp_workspaces', str(startup_id))
+        
+        lib = Librarian(workspace_path)
+        lib.index_workspace() # Ensure fresh index
+        semantic_context = lib.query(f"{mission_title} {mission_desc}")
+        file_tree_raw = lib.get_file_tree()
+        
+        # Enhance File Tree with Purpose
+        file_tree = f"{file_tree_raw}\n\n=== FILE PURPOSE INDEX ===\n{summary_text}"
+        # --------------------------------
         
         # 2. System Prompt
         # 2. System Prompt
@@ -103,6 +147,12 @@ Every plan MUST end with a "Verification Phase".
 ## Global History
 {global_context}
 
+## Codebase Context (Semantic Search)
+{semantic_context}
+
+## File Structure
+{file_tree}
+
 ## Mission Progress
 {mission_context}
 
@@ -155,10 +205,18 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
             logger.info(f"--- Architect: Entering Recovery Mode (Verification={is_verification}) for Task {failed_task.get('description')} ---")
         
         system_prompt = system_prompt.replace("{mode}", mode).replace("{goal_instruction}", goal_instruction).replace("{diagnosis_instruction}", diagnosis_instruction).replace("{failed_task_context}", failed_task_context)
+        system_prompt = system_prompt.replace("{semantic_context}", semantic_context).replace("{file_tree}", file_tree)
         
         if failed_task:
              system_prompt += f"\n\n{constraint_instruction}"
-             system_prompt += f"\n\nPREVIOUS ATTEMPTS (DO NOT REPEAT):\n{execution_history}\n\nCRITICAL: Analyze the above history. The Developer already tried these steps and FAILED. Do NOT propose the exact same plan. Innovate."
+             
+             # STRATEGY TRACKING (V3)
+             failed_strats = failed_task.get("failed_strategies", [])
+             if failed_strats:
+                 strat_list = "\n- ".join(failed_strats)
+                 system_prompt += f"\n\nFAILED STRATEGIES (FORBIDDEN):\nThe following approaches have ALREADY FAILED. Do NOT use them:\n- {strat_list}"
+             
+             system_prompt += f"\n\nPREVIOUS ATTEMPTS (LOGS):\n{execution_history}\n\nCRITICAL: Analyze the above. Innovate."
         
         user_prompt = f"Mission: {mission_title}\nDescription: {mission_desc}\n\nStart your exploration."
         if failed_task:

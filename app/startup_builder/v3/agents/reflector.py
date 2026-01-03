@@ -10,49 +10,42 @@ class V3Reflector:
         # as it IS the thinking process. Fast inference is preferred.
         self.copilot = V3CoPilot(use_thinking=False, log_callback=log_callback)
         
-    def reflect(self, current_task: dict, failed_command: str, error_log: str, attempt_count: int) -> str:
+    def reflect(self, current_task: dict, failed_command: str, error_log: str, attempt_count: int) -> dict:
         """
-        Analyzes a failure and provides a course correction.
+        Analyzes a failure and provides a structured JSON analysis.
         """
         logger.info(f"--- V3 Reflector: Analyzing failure for '{current_task.get('description')}' ---")
         
-        system_prompt = """You are the Senior Systems Debugger (Reflector).
-your goal is to DIAGNOSE why a command failed and provide a SPECIFIC FIX.
+        system_prompt = """You are the Log Analyzer (Reflector).
+your goal is to DIAGNOSE why a command failed and provide a STRUCTURED FIX.
 
 ROLE:
 - You do NOT execute commands.
 - You do NOT write code. 
-- You ONLY analyze logs and provide a "System Hint" to the Developer.
+- You ONLY analyze logs and return a JSON object.
 
 INPUT:
 - Task: What the Developer was trying to do.
 - Command: The exact command that failed.
 - Error: The stdout/stderr from the failure.
 
-DIAGNOSIS STRATEGY (The Reflexion Pattern):
-1. Check Exit Codes (e.g., 127 = Command Not Found, 1 = General Error).
-2. Check for "Did you mean..." suggestions in the error.
-3. Check for Environment Mismatches (e.g., v1 vs v2 binaries).
-4. Check for Syntax Errors.
-
-OUTPUT FORMAT:
-Return a single concise message starting with "DEBUGGER HINT:".
-Example:
-"DEBUGGER HINT: The command 'docker-compose' was not found (Exit 127). The server likely uses the modern 'docker compose' plugin. Try running 'docker compose up' instead."
+OUTPUT FORMAT (JSON ONLY):
+{
+  "failure_type": "ImportError|SyntaxError|RuntimeError|Timeout|LogicError",
+  "primary_error": "Brief description of the error (e.g., 'Module not found')",
+  "suggested_fix": "Specific instruction on how to fix it (e.g., 'Run pip install')",
+  "failed_strategy": "Name of the strategy that failed (e.g., 'Using TypeORM for Auth')",
+  "confidence_score": 0.95
+}
 """
         
         user_prompt = f"""
         TASK: {current_task.get('description')}
+        FAILED COMMAND: {failed_command}
+        ERROR LOGS (Last 2000 chars):
+        {error_log[-2000:]}
         
-        FAILED COMMAND:
-        {failed_command}
-        
-        ERROR LOGS:
-        {error_log}
-        
-        ATTEMPT: {attempt_count}
-        
-        Analyze this and provide a fix.
+        Analyze this and return the JSON.
         """
         
         messages = [HumanMessage(content=user_prompt)]
@@ -60,8 +53,19 @@ Example:
         # Execute
         res = self.copilot.act(system_prompt, messages, tools=[], active_node="reflector")
         
-        if res["error"]:
-            logger.error(f"Reflector failed: {res['error']}")
-            return "DEBUGGER HINT: Analysis failed. Try a different approach."
-            
-        return res["content"].content
+        import json
+        try:
+            content = res["content"].content
+            # Clean markdown
+            cleaned = content.replace("```json", "").replace("```", "").strip()
+            data = json.loads(cleaned)
+            return data
+        except Exception as e:
+            logger.error(f"Reflector JSON Parse Failed: {e}")
+            return {
+                "failure_type": "Unknown",
+                "primary_error": "Could not parse analysis",
+                "suggested_fix": "Check logs manually",
+                "failed_strategy": "Unknown",
+                "confidence_score": 0.0
+            }

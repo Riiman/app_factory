@@ -1,7 +1,7 @@
 import os
 import ast
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 import re
 import json
@@ -216,6 +216,78 @@ class ContextManager:
             if stripped.startswith("import ") or stripped.startswith("from "):
                 summary.append(line)
         return "\n".join(summary)
+
+    def get_global_context(self) -> str:
+        """
+        Unified API: Returns a merged view of Mutable History (missions.json) and Immutable Rules (project_memory.json).
+        This is the SINGLE source of truth for Agents needing 'Global Context'.
+        """
+        # 1. Fetch History (Mutable)
+        # For now, we rely on what's passed in state or re-read mission.json if needed.
+        # But `ContextManager` is usually stateless w.r.t process state.
+        # Let's assume we read the latest Summary from artifacts.
+        
+        # 2. Fetch Memory (Immutable Rules)
+        memory = self.get_project_memory()
+        
+        # 3. Construct Context
+        context = []
+        
+        # A. Tech Stack & Invariants (Priority 1)
+        if memory.get("tech_stack"):
+            context.append(f"TECH STACK: {memory['tech_stack']}")
+        
+        if memory.get("ui_theme"):
+            variant = memory["ui_theme"].get("variant", "standard")
+            context.append(f"UI THEME: {variant}")
+            
+        if memory.get("patterns"):
+            context.append("ARCHITECTURAL PATTERNS:")
+            for p in memory["patterns"]:
+                context.append(f"- {p}")
+                
+        context.append("") # Spacer
+        
+        # B. Global History (Priority 2)
+        # We assume the caller might append the specific mission history, 
+        # but here we can return the 'Project Constraints' primarily.
+        
+        return "\n".join(context)
+
+    @property
+    def project_memory_path(self):
+        return "artifacts/project_memory.json"
+
+    def get_project_memory(self) -> Dict:
+        """Reads the Project Memory (Rules/Constraints)."""
+        res = self.docker_manager.read_file(self.startup_id, self.project_memory_path)
+        if res.get("error"):
+            return {}
+        try:
+            return json.loads(res["content"])
+        except:
+            return {}
+
+    def update_project_memory(self, key: str, value: Any) -> None:
+        """Updates a specific key in Project Memory."""
+        current = self.get_project_memory()
+        current[key] = value
+        self.docker_manager.write_file(self.startup_id, self.project_memory_path, json.dumps(current, indent=2))
+        logger.info(f"Updated Project Memory [{key}]")
+
+    def get_global_constraints(self) -> str:
+        """
+        Returns just the constraints for System Prompt injection.
+        """
+        mem = self.get_project_memory()
+        constraints = []
+        if mem.get("tech_stack"): constraints.append(f"Stack: {mem['tech_stack']}")
+        if mem.get("constraints"): 
+             constraints.extend(mem["constraints"])
+             
+        return "\n".join(constraints)
+
+    # --- Legacy / Helper Methods ---
 
     def get_file_summaries(self) -> Dict[str, str]:
         """Reads the file summaries map from the container."""
