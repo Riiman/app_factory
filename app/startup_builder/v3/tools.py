@@ -461,12 +461,12 @@ class V3Tools:
                     cmd_file = "/".join(parts[2:])
             
             # --- Auto-Cleanup: Remove stale results/logs ---
-            # This ensures that if we see a snapshot, it is from THIS run.
-            cleanup_cmd = "rm -rf test-results ui_test_execution.log"
-            if working_dir != ".":
-                 cleanup_cmd = f"cd {working_dir} && {cleanup_cmd}"
+            # DISABLED (User Request): Check history or handle conflicts manually
+            # cleanup_cmd = "rm -rf test-results ui_test_execution.log"
+            # if working_dir != ".":
+            #      cleanup_cmd = f"cd {working_dir} && {cleanup_cmd}"
             
-            self.docker_manager.run_command(self.startup_id, cleanup_cmd)
+            # self.docker_manager.run_command(self.startup_id, cleanup_cmd)
 
             # 2. Construct Command with CWD and Log Redirection
             # npx playwright test <file>

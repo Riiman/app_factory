@@ -458,5 +458,5 @@ content.txt
 debug_db.py
 repro_flow.py
 !build.log
-startupos_key.pem
+#startupos_key.pem
 VentureStackAIPortal_key.pem
