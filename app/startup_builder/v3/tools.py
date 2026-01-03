@@ -469,17 +469,37 @@ class V3Tools:
             # self.docker_manager.run_command(self.startup_id, cleanup_cmd)
 
             # 2. Construct Command with CWD and Log Redirection
-            # npx playwright test <file>
+            # Reformulated for Multi-Purpose:
+            # 1. 'set -o pipefail': Preserve exit code through pipe.
+            # 2. 'tee {log_file}': Write to disk (persistence) AND stdout (for process_manager/agent visibility).
+            # 3. 'find ...': Post-test, locate snapshots and echo them so they appear in logs for the Agent/Regex.
             log_file = "ui_test_execution.log"
-            base_cmd = f"npx playwright test {cmd_file} --workers=1 --reporter=line,json > {log_file} 2>&1"
+            
+            # Note: We use a subshell or block to ensure sequential execution even if test fails
+            snapshot_scan = "find test-results -name '*.png' -exec echo '[SNAPSHOT]: {}' \\;"
+            
+            base_cmd = f"set -o pipefail; npx playwright test {cmd_file} --workers=1 --reporter=line,json 2>&1 | tee {log_file}; TEST_EXIT=$?; {snapshot_scan}; exit $TEST_EXIT"
             
             # Keep track of path for reading later
             full_log_path = log_file 
             if working_dir != ".":
+                # Ensure we wrap the whole thing to execute in dir
+                # We use bash -c explicitly to support pipefail/vars if needed, 
+                # but docker run_command typically passes literal string to /bin/sh -c.
+                # /bin/sh might not support pipefail.
+                # Safer: "npx ... 2>&1 | tee log" works in sh. exit code strictly is tee's (0).
+                # To capture exit code in sh without pipefail:
+                # cmd > log 2>&1; ret=$?; cat log; ... exit $ret
+                
+                # Let's stick to the Robust "Tee + ExitFile" approach to support /bin/sh AND Streaming
+                # Structure: ((cmd; echo $? > status) | tee log); exit $(cat status)
+                base_cmd = f"((npx playwright test {cmd_file} --workers=1 --reporter=line,json 2>&1; echo $? > exit_code.txt) | tee {log_file}); TEST_EXIT=$(cat exit_code.txt); {snapshot_scan}; exit $TEST_EXIT"
+                
                 cmd = f"cd {working_dir} && {base_cmd}"
                 full_log_path = f"{working_dir}/{log_file}"
             else:
-                cmd = base_cmd
+                 base_cmd = f"((npx playwright test {cmd_file} --workers=1 --reporter=line,json 2>&1; echo $? > exit_code.txt) | tee {log_file}); TEST_EXIT=$(cat exit_code.txt); {snapshot_scan}; exit $TEST_EXIT"
+                 cmd = base_cmd
             
             # Use process manager for reliable execution
             # We set a higher timeout for tests (e.g. 60s)
@@ -549,6 +569,11 @@ class V3Tools:
                 summary_lines.append(f"Captured {len(snapshots)} Snapshots: {snapshots}")
             else:
                  summary_lines.append("(No snapshots found. Ensure playwright.config.ts has 'screenshot: on')")
+            
+            # CRITICAL: Append the actual logs so the Agent knows WHY it failed
+            summary_lines.append("\n--- TEST LOGS (Last 3000 chars) ---")
+            summary_lines.append(output[-3000:])
+            summary_lines.append("-------------------------------------")
             
             result_payload["text_summary"] = "\n".join(summary_lines)
             
