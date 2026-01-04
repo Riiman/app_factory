@@ -45,6 +45,9 @@ class V3AgentState(TypedDict):
     product_context: Dict # passed from route for initialization
     waiting_on: str      # Job ID of async process we are waiting for
     missions: List[Dict] # FULL MISSION QUEUE (Required for UI)
+    
+    # --- V3.1 PERSISTENT MEMORY ---
+    mission_scratchpad: List[str] # Critical Constraints & Facts (Persistent across tasks)
 
 # --- Routing Logic ---
 def orchestrator_router(state: V3AgentState):

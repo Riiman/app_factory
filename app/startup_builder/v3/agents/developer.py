@@ -43,6 +43,13 @@ class V3Developer:
              return {"status": "done_mission", "logs": ["Developer: No active mission found."]}
              
         current_mission_id = current_mission["id"]
+        # Fetch Persistent Scratchpad
+        mission_scratchpad_list = state.get("mission_scratchpad", [])
+        # Format for Prompt (Numbered List)
+        scratchpad_str = "No specific constraints yet."
+        if mission_scratchpad_list:
+             scratchpad_str = "\n".join([f"- {item}" for item in mission_scratchpad_list])
+        
         missions = [] 
         
         # 1. Find the next pending task FOR THIS MISSION
@@ -194,6 +201,9 @@ You are a generic but expert Senior Full-Stack Developer. Your goal is to safe e
 - **Ports**: 3000 (Web), 8000 (API), 5000 (Flask).
 - **Blocking**: NEVER run blocking servers (e.g., `npm run dev`) with `run_shell`. Use `ensure_server_running`.
 
+# PROJECT CONSTANTS & MEMORY (CRITICAL)
+{mission_scratchpad}
+
 # TOOL USAGE STANDARDS
 | Tool | Rule |
 | :--- | :--- |
@@ -262,6 +272,41 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
         
         while turn_count < MAX_TURNS and total_steps < MAX_TOTAL_STEPS:
             total_steps += 1
+            
+            # --- V3.1 SELF-HEALING TRIGGER (Architecture B) ---
+            if consecutive_failures >= 2:
+                self.copilot.emit_thought("Failure Threshold Reached. Triggering Self-Healing Diagnosis...", "developer")
+                try:
+                    last_error_info = next_task.get("last_error", {"primary_error": "Unknown repeated failure"})
+                    
+                    diagnosis = self._run_diagnosis_procedure(next_task, last_error_info, mission_scratchpad_list, tools, workspace_path)
+                    
+                    if diagnosis["status"] == "fixed":
+                        # 1. Update Scratchpad
+                        new_scratchpad = self._update_scratchpad(diagnosis["new_lesson"], mission_scratchpad_list)
+                        state["mission_scratchpad"] = new_scratchpad
+                        mission_scratchpad_list = new_scratchpad
+                        
+                        # 2. Reset Failures
+                        consecutive_failures = 0
+                        task_context.append(f"SELF-HEALED: {diagnosis['summary']}")
+                        
+                        # 3. Continue execution (skipping the rest of this failed turn)
+                        continue 
+                        
+                    elif diagnosis["status"] == "escalate":
+                         task_context.append(f"DIAGNOSIS FAILED: Escaling to Architect.")
+                         # Explicitly return to Router
+                         return {
+                             "status": "fix_required",
+                             "logs": [f"Developer Escaled: {diagnosis['reason']}"],
+                             "current_mission": current_mission, # Ensure updates preserved
+                             "mission_scratchpad": mission_scratchpad_list
+                         }
+                except Exception as e:
+                    logger.error(f"Self-Healing Logic Crashed: {e}")
+                    self.copilot.emit_thought(f"Self-Healing Crashed: {e}", "developer")
+
             # Inject task context if we are retrying
             # We construct the prompt dynamically
             task_context_str = json.dumps(task_context, indent=2) if task_context else "No actions yet."
@@ -274,9 +319,25 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                 mode = "DEBUGGING / FIXING"
                 diagnosis_instruction = "CRITICAL: You are in DEBUG MODE. Read the logs below. Fix ONLY the Specific Error. Do NOT Rewrite the whole file."
             
-            current_prompt = system_prompt.replace("{mission_context}", mission_context).replace("{task_context_str}", task_context_str).replace("{mode}", mode).replace("{diagnosis_instruction}", diagnosis_instruction)
-            
-            res = self.copilot.act(current_prompt, messages, tools, active_node="developer")
+            current_prompt = system_prompt.replace("{mission_context}", mission_context).replace("{task_context_str}", task_context_str).replace("{mode}", mode).replace("{diagnosis_instruction}", diagnosis_instruction).replace("{mission_scratchpad}", scratchpad_str)
+            # --- V3 CONTEXT VISIBILITY ---
+            # Capture exactly what goes to the LLM for the UI "Glass Box"
+            context_debug = f"""
+--- DEVELOPER CONTEXT ---
+[SYSTEM PROMPT]
+{current_prompt}
+
+[USER PROMPT]
+{base_user_prompt}
+
+[TASK CONTEXT (Recent Logs)]
+{json.dumps(task_context[-5:], indent=2)}
+-------------------------
+"""
+            self.copilot.emit_thought(context_debug, node="developer")
+
+            # 4. Execute CoPilot
+            res = self.copilot.act(current_prompt, messages, tools=tools, active_node="developer")
             
             if res["error"]:
                  return {"status": "failed", "logs": [f"CoPilot Error: {res['error']}"]}
@@ -799,6 +860,87 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
             logger.error(f"Image Injection Error: {e}")
 
     def _log_to_file(self, message):
+         try:
+             with open("developer_agent.log", "a") as f:
+                 f.write(message + "\n")
+         except:
+             pass
+
+    def _update_scratchpad(self, new_lesson: str, current_scratchpad: List[str]) -> List[str]:
+        """
+        Updates the scratchpad with hygiene (Max 10 items, deduplication).
+        """
+        # 1. Deduplication
+        cleaned_lesson = new_lesson.strip()
+        if any(cleaned_lesson in item or item in cleaned_lesson for item in current_scratchpad):
+             return current_scratchpad
+             
+        # 2. Add
+        updated = current_scratchpad + [cleaned_lesson]
+        
+        # 3. Compression Trigger (Simple FIFO for now)
+        if len(updated) > 10:
+             return updated[:5] + updated[-5:]
+             
+        return updated
+
+    def _run_diagnosis_procedure(self, task: Dict, last_error: Dict, scratchpad: List[str], tools: List[Any], work_dir: str) -> Dict:
+        """
+        SELF-HEALING LOOP (Architecture B).
+        1. Generate Diagnostic Script.
+        2. Run Script.
+        3. Analyze Output.
+        4. Attempt ONE Atomic Fix.
+        """
+        self.copilot.emit_thought("ENTERING DIAGNOSIS MODE (Self-Healing)...", "developer")
+        
+        # 1. Generate Script
+        script_prompt = f"""
+You are a DETECTIVE. The task '{task['description']}' failed.
+Error Context: {last_error.get('primary_error')}
+
+ACTION: Write a shell script (`diagnose.sh`) that checks THE ENTIRE ENVIRONMENT relevant to this error.
+- Check config files (cat them).
+- Check ports (netstat/lsof).
+- Check logs.
+- Check versions.
+
+Return ONLY the script content.
+"""
+        # Quick LLM call for script
+        msgs = [HumanMessage(content=script_prompt)]
+        res = self.copilot.act(script_prompt, msgs, tools=[], active_node="developer_diagnosis")
+        
+        script_content = res["content"]
+        if "```" in script_content:
+             script_content = script_content.split("```")[1].replace("bash", "").replace("sh", "").strip()
+             
+        # 2. Run Script
+        # Write it
+        self.docker_manager.write_file(self.context_manager.startup_id, "diagnose.sh", script_content)
+        # Run it
+        cmd_res = self.docker_manager.run_command(self.context_manager.startup_id, "bash diagnose.sh")
+        diag_output = cmd_res.get("output", "")[:5000] # Cap output
+        
+        self.copilot.emit_thought(f"Diagnostic Output:\n{diag_output[:500]}...", "developer")
+        
+        # 3. Analyze & Fix
+        analysis_prompt = f"""
+DIAGNOSTIC OUTPUT from `diagnose.sh`:
+{diag_output}
+
+Based on this, what is the ROOT CAUSE and the ATOMIC FIX?
+If you cannot fix it, output "ESCALATE".
+"""
+        msgs = [HumanMessage(content=analysis_prompt)]
+        res = self.copilot.act("You are a Senior Debugger. Fix the issue.", msgs, tools=tools, active_node="developer_diagnosis")
+        
+        # 4. Result
+        if "ESCALATE" in res["content"]:
+             return {"status": "escalate", "reason": "Could not auto-fix."}
+             
+        return {"status": "fixed", "summary": res["content"], "new_lesson": f"Constraint Verified: {res['content'][:50]}..."}
+
         """Append debug log to a local file for inspection."""
         try:
             with open("/home/ubuntu/app_factory/agent_debug.log", "a") as f:
