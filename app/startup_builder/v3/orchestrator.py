@@ -5,15 +5,8 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
 import operator
 
-# Internal imports (to be implemented)
-# from .agents.planner import planner_node
-# from .agents.developer import developer_node
-# from .agents.qa import qa_node
-
 logger = logging.getLogger(__name__)
 
-# --- State Definition (V3) ---
-# We keep it simple but structured.
 # --- State Definition (V3) ---
 # We keep it simple but structured.
 class V3AgentState(TypedDict):
@@ -22,7 +15,6 @@ class V3AgentState(TypedDict):
     tech_stack: str      # Global tech stack decision
     
     # Internal routing
-    # removed: current_mission_id (implied by current_mission['id'])
     
     # The Brain
     plan: List[Dict]     # The Master Plan (Steps)

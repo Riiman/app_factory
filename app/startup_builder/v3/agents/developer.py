@@ -5,7 +5,7 @@ import base64
 import os
 from typing import List, Dict, Any, Optional
 from ..agents.core import V3CoPilot
-from .reflector import V3Reflector # New Import
+
 from ...manager import DockerManager
 from ...context import ContextManager
 from ...v3.context.librarian import Librarian
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class V3Developer:
     def __init__(self, log_callback=None):
         self.copilot = V3CoPilot(use_thinking=True, log_callback=log_callback) # Execution mode = fast, changed to True
-        self.reflector = V3Reflector(log_callback=log_callback) # New Reflector
+
         self.docker_manager = DockerManager() # Reuse V2 Infrastructure
         # Startup ID is not available in __init__ usually, but we need it for ContextManager.
         # But ContextManager takes startup_id in __init__.
