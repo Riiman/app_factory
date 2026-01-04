@@ -451,28 +451,37 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                     if verification_status == "FAILURE":
                          consecutive_failures += 1
                          if consecutive_failures >= 2:
-                             analysis = self.reflector.reflect(next_task, command_str, str(tool_result), consecutive_failures)
+                             # SELF-HEALING DIAGNOSIS (Replaces Reflector)
+                             last_error_dict = {"primary_error": f"Command Failed: {command_str}\nOutput: {str(tool_result)}"}
                              
-                             # STRATEGY TRACKING (V3)
-                             if isinstance(analysis, dict):
-                                 # 1. Add formatted hint to prompt
-                                 hint_msg = f"SYSTEM ALERT: [Log Analyzer] {analysis.get('primary_error')}. Suggested Fix: {analysis.get('suggested_fix')}"
-                                 task_context.append(hint_msg)
-                                 
-                                 # 2. Persist Failed Strategy for Architect
-                                 # "Using TypeORM" -> Add to list
-                                 strat = analysis.get("failed_strategy")
-                                 if strat and strat != "Unknown":
-                                      if "failed_strategies" not in next_task:
-                                           next_task["failed_strategies"] = []
-                                      if strat not in next_task["failed_strategies"]:
-                                           next_task["failed_strategies"].append(strat)
-                                           
-                                 # 3. Save Last Error
-                                 next_task["last_error"] = analysis
+                             # We pass "." as work_dir, or ideally fetch from context if available.
+                             diag_result = self._run_diagnosis_procedure(next_task, last_error_dict, mission_scratchpad_list, tools, ".")
+                             
+                             if diag_result["status"] == "fixed":
+                                  # Auto-fix successful. 
+                                  # Reset failures so we don't loop immediately.
+                                  consecutive_failures = 0 
+                                  
+                                  new_lesson = diag_result.get("new_lesson", "Context Updated")
+                                  mission_scratchpad_list = self._update_scratchpad(new_lesson, mission_scratchpad_list)
+                                  state["mission_scratchpad"] = mission_scratchpad_list # Update State in memory
+                                  
+                                  task_context.append(f"SYSTEM: Self-Healing Active. Fix Applied. Lesson: {new_lesson}")
                              else:
-                                 # Fallback for legacy text
-                                 task_context.append(f"SYSTEM ALERT: {str(analysis)}")
+                                  # Escalation
+                                  task_context.append(f"SYSTEM: Self-Healing Failed. Escalating to Architect.")
+                                  
+                                  # Update state before returning
+                                  state["mission_scratchpad"] = mission_scratchpad_list
+                                  state["failed_task"] = next_task
+                                  state["task_context"] = task_context
+                                  
+                                  return {
+                                      "status": "fix_required", 
+                                      "failed_task": next_task, 
+                                      "reason": "Self-Healing Failed",
+                                      "logs": ["Developer: Escalating failure to Architect."]
+                                  }
                     else:
                          task_context.append(f"VERIFICATION: SUCCESS.")
                          consecutive_failures = 0 
