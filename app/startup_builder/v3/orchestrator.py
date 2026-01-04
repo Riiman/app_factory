@@ -127,28 +127,37 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
                 from app.models import Feature
                 from app.extensions import db
                 
-                dirty = False
+                # Logic: Aggregate statuses per Feature ID first (Fix for "Always Pending" bug)
+                feature_map = {} # fid -> list of mission_statuses
+                
                 for m in missions:
                     fid = m.get("feature_id")
                     status = m.get("status")
-                    
                     if fid and status:
-                        f = Feature.query.get(fid)
-                        if f:
-                            # Map JSON status to DB status
-                            # JSON: pending, in_progress, coding, verification, completed
-                            # DB: pending, in_progress, completed
-                            
-                            target_db_status = "pending"
-                            if status == "completed":
-                                target_db_status = "completed"
-                            elif status in ["in_progress", "coding", "verification", "architecting"]:
-                                target_db_status = "in_progress"
-                                
-                            if f.status != target_db_status:
-                                f.status = target_db_status
-                                dirty = True
-                                log_debug(f"SYNC: Updated Feature {f.name} ({fid}) to {target_db_status}")
+                        if fid not in feature_map:
+                            feature_map[fid] = []
+                        feature_map[fid].append(status)
+                
+                dirty = False
+                for fid, statuses in feature_map.items():
+                    target_db_status = "pending"
+                    
+                    # Rule 1: If ALL completed -> Completed
+                    if all(s == "completed" for s in statuses):
+                        target_db_status = "completed"
+                    # Rule 2: If ANY in progress/active -> In Progress
+                    elif any(s in ["in_progress", "coding", "verification", "architecting", "fix_required"] for s in statuses):
+                        target_db_status = "in_progress"
+                    # Rule 3: Else (some completed, some pending, but none active) -> In Progress 
+                    # (Because if you finished one mission, you technically started the feature)
+                    elif any(s == "completed" for s in statuses):
+                        target_db_status = "in_progress"
+                        
+                    f = Feature.query.get(fid)
+                    if f and f.status != target_db_status:
+                        f.status = target_db_status
+                        dirty = True
+                        log_debug(f"SYNC: Updated Feature {f.name} ({fid}) to {target_db_status}")
                 
                 if dirty:
                     db.session.commit()
