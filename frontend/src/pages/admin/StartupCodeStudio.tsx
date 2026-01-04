@@ -237,6 +237,12 @@ const StartupCodeStudio: React.FC = () => {
                     }
                 } catch (e) {
                     console.error("WS Parse Error", e);
+                    // DEBUG: Show parse error in UI to identify the culprit
+                    if (e instanceof SyntaxError) {
+                        // Only log if it's a syntax error (JSON parse fail)
+                        addLog(`[System] WS Parse Error: ${e.message}`);
+                        addLog(`[System] Bad Data Peek: ${event.data ? String(event.data).substring(0, 100) : 'null'}`);
+                    }
                 }
             };
 
