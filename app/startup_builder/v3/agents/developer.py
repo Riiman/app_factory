@@ -415,8 +415,16 @@ You previously failed this task. A debugging specialist analyzed your attempts a
             # self.copilot.emit_thought(context_debug, node="developer")
 
             # 4. Execute CoPilot
-            res = self.copilot.act(current_prompt, messages, tools=tools, active_node="developer")
+            logger.info(f"Developer Loop: Invoking CoPilot (Turn {turn_count})...")
+            self._log_to_file(f"LOOP: Invoking CoPilot (Input Messages: {len(messages)})")
             
+            start_act = datetime.datetime.now()
+            res = self.copilot.act(current_prompt, messages, tools=tools, active_node="developer")
+            duration = (datetime.datetime.now() - start_act).total_seconds()
+            
+            logger.info(f"Developer Loop: CoPilot Returned in {duration:.2f}s")
+            self._log_to_file(f"LOOP: CoPilot returned in {duration:.2f}s. Result Error: {res.get('error')}")
+
             if res["error"]:
                  return {"status": "failed", "logs": [f"CoPilot Error: {res['error']}"]}
             
@@ -425,6 +433,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
             
             # Check for tool calls
             if ai_msg.tool_calls:
+                logger.info(f"Developer Loop: Processing {len(ai_msg.tool_calls)} tool calls...")
                 if ai_msg.content:
                     self.copilot.emit_thought(ai_msg.content, "developer")
 
@@ -603,6 +612,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                                     )
                             except Exception as e:
                                 logger.error(f"V4 Self-Healing failed: {e}")
+                                self.copilot.emit_thought(f"⚠️ Self-Healing System Failed: {e}", "developer")
                         
                         # Add to failed attempts
                         next_task["failed_attempts"].append({
@@ -737,7 +747,6 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                       }
                  
                  # --- LAZY / SUCCESS GUARD ---
-                 
                  # 0. Active Failure Guard: Did the last action fail?
                  if next_task.get("failed_attempts") and len(next_task["failed_attempts"]) > 0:
                       # Check if the last attempt in this turn failed
@@ -748,33 +757,33 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                           messages.append(HumanMessage(content=rejection_msg))
                           task_context.append("System: Rejected completion due to active failure state.")
                           continue
+                          
+            self._log_to_file(f"LOOP: Turn {turn_count} Completed.\n")
 
-                 # 1. Lazy Check: Did we do ANYTHING?
-                 if not executed_actions and not injected_result:
-                      logger.warning(f"Lazy Guard Triggered: No actions executed.")
-                      rejection_msg = "SYSTEM ERROR: You claimed completion but executed NO tools. You must execute the required action."
-                      messages.append(HumanMessage(content=rejection_msg))
-                      task_context.append("System: Rejected empty completion.")
-                      continue # Retry
-                 
-                 # 2. STRICT VERIFICATION CHECK
-                 desc_lower = next_task['description'].lower()
-                 is_test_task = any(k in desc_lower for k in ["test", "verify", "validation"])
-                 
-                 if is_test_task and not injected_result:
-                      # Must have run a verification tool
-                      has_verified = any("run_ui_test" in act or "run_shell" in act or "ensure_server" in act for act in executed_actions)
-                      if not has_verified:
-                           rejection_msg = "SYSTEM ERROR: This is a VERIFICATION task. You MUST run a test command (run_ui_test or run_shell with npm test). Finding/Reading files is NOT enough."
-                           messages.append(HumanMessage(content=rejection_msg))
-                           task_context.append("System: Rejected completion. Verification tool missing.")
-                           continue
-                 
-                 # Otherwise assume success/completion
-                 
-                 # Otherwise assume success/completion
-                 self._log_to_file(f"GUARD ACCEPT: Task {next_task['description']} passed.")
-                 break
+            # 1. Lazy Check: Did we do ANYTHING?
+            if not executed_actions and not injected_result:
+                 logger.warning(f"Lazy Guard Triggered: No actions executed.")
+                 rejection_msg = "SYSTEM ERROR: You claimed completion but executed NO tools. You must execute the required action."
+                 messages.append(HumanMessage(content=rejection_msg))
+                 task_context.append("System: Rejected empty completion.")
+                 continue # Retry
+            
+            # 2. STRICT VERIFICATION CHECK
+            desc_lower = next_task['description'].lower()
+            is_test_task = any(k in desc_lower for k in ["test", "verify", "validation"])
+            
+            if is_test_task and not injected_result:
+                # Must have run a verification tool
+                has_verified = any("run_ui_test" in act or "run_shell" in act or "ensure_server" in act for act in executed_actions)
+                if not has_verified:
+                    rejection_msg = "SYSTEM ERROR: This is a VERIFICATION task. You MUST run a test command (run_ui_test or run_shell with npm test). Finding/Reading files is NOT enough."
+                    messages.append(HumanMessage(content=rejection_msg))
+                    task_context.append("System: Rejected completion. Verification tool missing.")
+                    continue
+            
+            # Otherwise assume success/completion
+            self._log_to_file(f"GUARD ACCEPT: Task {next_task['description']} passed.")
+            break
         
         # --- LOOP EXIT CHECK ---
         else:

@@ -702,6 +702,8 @@ def run_v3_agent_bg(startup_id, initial_state):
                     for key, value in event.items():
                          # We still use 'key' to know WHICH node just ran, but 'full_state' for data
                         
+                        print(f"DEBUG: Node {key} returned type {type(value)}: {value}")
+                        
                         # Compute Progress for Frontend
                         plan = full_state.get('plan', [])
                         total_tasks = len(plan)
@@ -715,11 +717,22 @@ def run_v3_agent_bg(startup_id, initial_state):
                         # Or rely on 'current_mission' object emission
                         
                         from app.services.notification_service import publish_update
+                        
+                        # SAFE LOG GETTER
+                        logs_val = []
+                        if isinstance(value, dict):
+                            logs_val = value.get('logs', [])
+                        elif isinstance(value, tuple):
+                             # Try to salvage logs if tuple
+                             logs_val = [f"System Error: Received tuple from node {key}: {value}"]
+                        else:
+                             logs_val = [str(value)]
+                        
                         publish_update('agent_update', {
                             'node': key,
                             'task_status': full_state.get('status', 'processing'),
                             'plan': plan,
-                            'logs': value.get('logs', []), # Logs are transient, likely in the delta
+                            'logs': logs_val,
                             'mission_queue': missions,
                             'current_mission': current_mission, # Pass full object
                             'total_tasks': total_tasks,
