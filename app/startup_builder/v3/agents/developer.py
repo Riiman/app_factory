@@ -230,7 +230,7 @@ You are a generic but expert Senior Full-Stack Developer. Your goal is to safe e
 
 # SNAPSHOT PROTOCOL (UI TASKS)
 - **Capture**: Ensure tests save screenshots to `test-results/`.
-- **Report**: You MUST output: `[SNAPSHOT]: <absolute_path_to_image>` in your logs.
+
 
 # CONTEXT & HISTORY
 ## Mission Objective (Past Successful Steps)
@@ -918,10 +918,18 @@ Return ONLY the script content.
 """
         # Quick LLM call for script
         msgs = [HumanMessage(content=script_prompt)]
-        res = self.copilot.act(script_prompt, msgs, tools=[], active_node="developer_diagnosis")
+        act_res = self.copilot.act(script_prompt, msgs, tools=[], active_node="developer_diagnosis")
         
-        # Robust Content Extraction (Handle AIMessage or Dict)
-        script_content = res.content if hasattr(res, 'content') else res.get("content", "")
+        # Robust Content Extraction
+        # act() returns {'content': AIMessage, 'error': ...}
+        ai_msg = act_res.get("content")
+        script_content = ""
+        if hasattr(ai_msg, 'content'):
+             script_content = ai_msg.content
+        elif isinstance(ai_msg, dict):
+             script_content = ai_msg.get("content", "")
+        else:
+             script_content = str(ai_msg)
         
         if "```" in script_content:
              script_content = script_content.split("```")[1].replace("bash", "").replace("sh", "").strip()
@@ -929,7 +937,11 @@ Return ONLY the script content.
         # 2. Run Script
         # Use Absolute Path to avoid CWD confusion
         script_path = "/app/diagnose.sh"
-        self.docker_manager.write_file(self.context_manager.startup_id, "diagnose.sh", script_content)
+        write_res = self.docker_manager.write_file(self.context_manager.startup_id, "diagnose.sh", script_content)
+        
+        if write_res.get("error"):
+             self.copilot.emit_thought(f"Diagnosis Error: Failed to write script: {write_res['error']}", "developer")
+             return {"status": "escalate", "reason": f"Diagnostic Setup Failed: {write_res['error']}"}
         
         # Run it
         cmd_res = self.docker_manager.run_command(self.context_manager.startup_id, f"bash {script_path}")
@@ -946,10 +958,17 @@ Based on this, what is the ROOT CAUSE and the ATOMIC FIX?
 If you cannot fix it, output "ESCALATE".
 """
         msgs = [HumanMessage(content=analysis_prompt)]
-        res = self.copilot.act("You are a Senior Debugger. Fix the issue.", msgs, tools=tools, active_node="developer_diagnosis")
+        act_res = self.copilot.act("You are a Senior Debugger. Fix the issue.", msgs, tools=tools, active_node="developer_diagnosis")
         
         # Robust Content Extraction
-        analysis_content = res.content if hasattr(res, 'content') else res.get("content", "")
+        ai_msg = act_res.get("content")
+        analysis_content = ""
+        if hasattr(ai_msg, 'content'):
+             analysis_content = ai_msg.content
+        elif isinstance(ai_msg, dict):
+             analysis_content = ai_msg.get("content", "")
+        else:
+             analysis_content = str(ai_msg)
         
         # 4. Result
         if "ESCALATE" in analysis_content:
