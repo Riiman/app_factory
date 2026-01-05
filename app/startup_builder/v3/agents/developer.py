@@ -322,19 +322,19 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
             current_prompt = system_prompt.replace("{mission_context}", mission_context).replace("{task_context_str}", task_context_str).replace("{mode}", mode).replace("{diagnosis_instruction}", diagnosis_instruction).replace("{mission_scratchpad}", scratchpad_str)
             # --- V3 CONTEXT VISIBILITY ---
             # Capture exactly what goes to the LLM for the UI "Glass Box"
-            context_debug = f"""
---- DEVELOPER CONTEXT ---
-[SYSTEM PROMPT]
-{current_prompt}
-
-[USER PROMPT]
-{base_user_prompt}
-
-[TASK CONTEXT (Recent Logs)]
-{json.dumps(task_context[-5:], indent=2)}
--------------------------
-"""
-            self.copilot.emit_thought(context_debug, node="developer")
+            # context_debug = f"""
+            # --- DEVELOPER CONTEXT ---
+            # [SYSTEM PROMPT]
+            # {current_prompt}
+            # 
+            # [USER PROMPT]
+            # {base_user_prompt}
+            # 
+            # [TASK CONTEXT (Recent Logs)]
+            # {json.dumps(task_context[-5:], indent=2)}
+            # -------------------------
+            # """
+            # self.copilot.emit_thought(context_debug, node="developer")
 
             # 4. Execute CoPilot
             res = self.copilot.act(current_prompt, messages, tools=tools, active_node="developer")

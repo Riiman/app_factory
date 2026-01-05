@@ -258,19 +258,19 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
 
             for i in range(20): # Max 20 turns of exploration per attempt
                 # --- V3 CONTEXT VISIBILITY ---
-                context_debug = f"""
---- ARCHITECT CONTEXT ---
-[SYSTEM PROMPT]
-{full_system_prompt}
-
-[USER PROMPT]
-{user_prompt}
-
-[MESSAGES (History)]
-{json.dumps([m.content for m in messages if hasattr(m, 'content')], indent=2)}
--------------------------
-"""
-                self.copilot.emit_thought(context_debug, node="architect")
+                # context_debug = f"""
+                # --- ARCHITECT CONTEXT ---
+                # [SYSTEM PROMPT]
+                # {full_system_prompt}
+                # 
+                # [USER PROMPT]
+                # {user_prompt}
+                # 
+                # [MESSAGES (History)]
+                # {json.dumps([m.content for m in messages if hasattr(m, 'content')], indent=2)}
+                # -------------------------
+                # """
+                # self.copilot.emit_thought(context_debug, node="architect")
 
                 res = self.copilot.act(full_system_prompt, messages, tools, active_node="architect")
                 
