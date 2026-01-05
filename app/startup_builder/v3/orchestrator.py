@@ -124,6 +124,10 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             data = json.loads(res["content"])
             missions = data.get("missions", [])
             
+            # DEBUG: Log all mission statuses
+            status_summary = [f"ID {m.get('id')}: {m.get('status')} ({m.get('title')})" for m in missions]
+            log_debug(f"SELECTOR DATA: Found {len(missions)} missions.\nStatuses: {'; '.join(status_summary)}")
+            
             # 1. SYNC: Update SQL Feature Statuses based on JSON
             try:
                 from .utils.feature_sync import sync_all_feature_statuses_from_missions

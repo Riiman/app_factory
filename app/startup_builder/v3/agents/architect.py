@@ -449,6 +449,9 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
              for m in missions:
                  if m["id"] == mission_id:
                      m["tasks"] = tasks # Save the list of tasks
+                     # CRITICAL: Mark as in_progress so Selector resumes to Developer, not Architect
+                     m["status"] = "in_progress"
+                     
                      # Also update feature status (since we just planned it, it's definitely IN_PROGRESS)
                      from ..utils.feature_sync import sync_feature_status_from_mission
                      sync_feature_status_from_mission(mission_id, "in_progress", m.get("feature_id"))

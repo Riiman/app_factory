@@ -156,7 +156,7 @@ Please analyze this failure. Use your tools to investigate if needed, then provi
         
         # Agent loop with tools
         messages = [HumanMessage(content=user_prompt)]
-        MAX_TURNS = 15
+        MAX_TURNS = 30
         diagnosis_data = None
         
         for turn in range(MAX_TURNS):
@@ -204,12 +204,12 @@ Please analyze this failure. Use your tools to investigate if needed, then provi
             diagnosis_data = {
                 "diagnosis": "Unable to complete diagnosis within turn limit",
                 "root_cause": "Analysis incomplete",
-                "guidance": "Escalating to Architect for replanning",
+                "guidance": "Halting for user review.",
                 "needs_replanning": True
             }
         
-        # Determine next status
-        next_status = "needs_replanning" if diagnosis_data.get("needs_replanning") else "diagnosed"
+        # Determine next status (Stop on failure instead of Architect)
+        next_status = "failed" if diagnosis_data.get("needs_replanning") else "diagnosed"
         
         logger.info(f"Diagnostician: {diagnosis_data.get('diagnosis', 'No diagnosis')}")
         

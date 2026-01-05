@@ -286,7 +286,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
             next_task["failed_attempts"] = []
         
         next_task["attempt_count"] += 1
-        MAX_TASK_ATTEMPTS = 3
+        MAX_TASK_ATTEMPTS = 5
         
         # TURN LOGIC: We distinguish between "Context Gathering" (Free) and "Actions" (Costly)
         turn_count = 0      # Counts expensive actions (write, run, etc)
@@ -301,6 +301,16 @@ You previously failed this task. A debugging specialist analyzed your attempts a
             if next_task["attempt_count"] > MAX_TASK_ATTEMPTS:
                 last_error = next_task.get("last_error", {})
                 error_summary = f"{last_error.get('error_type', 'Unknown')}: {last_error.get('error_message', 'No details')}"
+                
+                # PERSISTENCE: Save status so we resume correctly
+                self._sync_persistence(
+                    startup_id, 
+                    current_mission["id"], 
+                    current_mission.get("implementation_plan", ""), 
+                    current_mission.get("mission_context", []), 
+                    current_mission.get("tasks", []), 
+                    status="fix_required"
+                )
                 
                 return {
                     "status": "fix_required",
