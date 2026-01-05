@@ -173,7 +173,8 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
                     elif m['status'] == 'verification':
                         target_status = "coding"
                     elif m['status'] == 'paused':
-                        target_status = "paused" # Pass logical paused state to router
+                        # User is restarting/resuming, so we map 'paused' persistent state -> 'coding' running state
+                        target_status = "coding" 
                         
                     return {
                         "current_mission": m,
