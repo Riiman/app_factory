@@ -909,6 +909,9 @@ except Exception as e:
                     # corrupted, reset
                     state = {}
             
+            if state is None:
+                state = {}
+            
             if alias in state:
                 pid = state[alias]
                 # Check if actually running

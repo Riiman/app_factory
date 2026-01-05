@@ -459,35 +459,22 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                         
                     self.copilot.emit_thought(f"Invoking {tool_name}... {pretty_args}", "developer")
                     
-                    # V4 SAFETY: Check if tool call should be allowed
-                    if self.use_v4_safety and self.safety_coordinator:
-                        allowed, reason = self.safety_coordinator.check_tool_call(tool_name, args)
-                        if not allowed:
-                            # Tool call blocked
-                            logger.warning(f"V4 Safety blocked tool call: {reason}")
-                            self.copilot.emit_thought(f"⚠️ {reason}", "developer")
-                            
-                            # Inject feedback into conversation
-                            feedback = f"""SYSTEM HALT: {reason}
-
-You MUST try a DIFFERENT approach. Consider:
-1. Using a different tool
-2. Changing the parameters significantly  
-3. Calling `run_diagnosis` for expert analysis
-
-DO NOT retry the same approach that was just blocked."""
-                            messages.append(HumanMessage(content=feedback))
-                            task_context.append(f"BLOCKED: {tool_name} - {reason}")
-                            continue  # Skip this tool call
-                    
-                    # Execute locally (since we have the bound functions in `tools` list)
-                    selected_tool = next((t for t in tools if t.name == tool_name), None)
-                    
-                    tool_result = "Error: Tool not found"
-                    command_str = str(args) # Capture command for verification
-                    
                     if selected_tool:
                         try:
+                            # V4 SAFETY: Check if tool call should be allowed
+                            if self.use_v4_safety and self.safety_coordinator:
+                                allowed, reason = self.safety_coordinator.check_tool_call(tool_name, args)
+                                if not allowed:
+                                    # Tool call blocked
+                                    logger.warning(f"V4 Safety blocked tool call: {reason}")
+                                    self.copilot.emit_thought(f"⚠️ {reason}", "developer")
+                                    
+                                    # Inject feedback into conversation
+                                    feedback = f"SYSTEM HALT: {reason}\n\nDo NOT retry the same approach."
+                                    messages.append(HumanMessage(content=feedback))
+                                    task_context.append(f"BLOCKED: {tool_name} - {reason}")
+                                    continue  # Skip this tool call
+
                             # Invoke the tool
                             tool_result = selected_tool.invoke(args)
                             
@@ -502,8 +489,11 @@ DO NOT retry the same approach that was just blocked."""
                             self._log_to_file(f"TOOL RESULT: {log_res}")
                             
                         except Exception as e:
+                            import traceback
+                            tb = traceback.format_exc()
                             tool_result = f"Tool Execution Error: {str(e)}"
-                            self._log_to_file(f"TOOL ERROR: {tool_name} -> {str(e)}")
+                            self._log_to_file(f"TOOL ERROR: {tool_name} -> {str(e)}\nTRACEBACK:\n{tb}")
+                            logger.error(f"CRITICAL TOOL FAILURE in {tool_name}: {e}\n{tb}")
                     
                     # Check for Async Yield Signal
                     try:
