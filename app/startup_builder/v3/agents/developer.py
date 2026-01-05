@@ -230,7 +230,7 @@ You are a generic but expert Senior Full-Stack Developer. Your goal is to safe e
 
 # SNAPSHOT PROTOCOL (UI TASKS)
 - **Capture**: Ensure tests save screenshots to `test-results/`.
-- **Report**: You MUST output: `[SNAPSHOT]: /app/test-results/example-test/screenshot.png` in your logs.
+- **Report**: You MUST output: `[SNAPSHOT]: <absolute_path_to_image>` in your logs.
 
 # CONTEXT & HISTORY
 ## Mission Objective (Past Successful Steps)
@@ -920,15 +920,19 @@ Return ONLY the script content.
         msgs = [HumanMessage(content=script_prompt)]
         res = self.copilot.act(script_prompt, msgs, tools=[], active_node="developer_diagnosis")
         
-        script_content = res["content"]
+        # Robust Content Extraction (Handle AIMessage or Dict)
+        script_content = res.content if hasattr(res, 'content') else res.get("content", "")
+        
         if "```" in script_content:
              script_content = script_content.split("```")[1].replace("bash", "").replace("sh", "").strip()
              
         # 2. Run Script
-        # Write it
+        # Use Absolute Path to avoid CWD confusion
+        script_path = "/app/diagnose.sh"
         self.docker_manager.write_file(self.context_manager.startup_id, "diagnose.sh", script_content)
+        
         # Run it
-        cmd_res = self.docker_manager.run_command(self.context_manager.startup_id, "bash diagnose.sh")
+        cmd_res = self.docker_manager.run_command(self.context_manager.startup_id, f"bash {script_path}")
         diag_output = cmd_res.get("output", "")[:5000] # Cap output
         
         self.copilot.emit_thought(f"Diagnostic Output:\n{diag_output[:500]}...", "developer")
@@ -944,11 +948,14 @@ If you cannot fix it, output "ESCALATE".
         msgs = [HumanMessage(content=analysis_prompt)]
         res = self.copilot.act("You are a Senior Debugger. Fix the issue.", msgs, tools=tools, active_node="developer_diagnosis")
         
+        # Robust Content Extraction
+        analysis_content = res.content if hasattr(res, 'content') else res.get("content", "")
+        
         # 4. Result
-        if "ESCALATE" in res["content"]:
+        if "ESCALATE" in analysis_content:
              return {"status": "escalate", "reason": "Could not auto-fix."}
              
-        return {"status": "fixed", "summary": res["content"], "new_lesson": f"Constraint Verified: {res['content'][:50]}..."}
+        return {"status": "fixed", "summary": analysis_content, "new_lesson": f"Constraint Verified: {analysis_content[:50]}..."}
 
         """Append debug log to a local file for inspection."""
         try:
