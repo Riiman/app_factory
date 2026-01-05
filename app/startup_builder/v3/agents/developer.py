@@ -317,8 +317,8 @@ You previously failed this task. A debugging specialist analyzed your attempts a
         # TURN LOGIC: We distinguish between "Context Gathering" (Free) and "Actions" (Costly)
         turn_count = 0      # Counts expensive actions (write, run, etc)
         total_steps = 0     # Hard limit to prevent infinite loops even with free actions
-        MAX_TURNS = 10
-        MAX_TOTAL_STEPS = 25
+        MAX_TURNS = 30      # Increased from 10 to allow complex scaffolding
+        MAX_TOTAL_STEPS = 60 # Increased from 25
         
         while turn_count < MAX_TURNS and total_steps < MAX_TOTAL_STEPS:
             total_steps += 1
