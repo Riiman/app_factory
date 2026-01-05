@@ -202,7 +202,7 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
                 constraint_instruction = "CONSTRAINT: Your plan MUST end with a task to RE-RUN the verification."
             else:
                 goal_instruction = "DIAGNOSE the Runtime Failure and CREATE a Recovery Plan."
-                diagnosis_instruction = "READ LOGS and CODE to find the crash/error source. If the error is obscure or version-related (like 'command not found' or argument errors), use `search_web` to find the correct usage."
+                diagnosis_instruction = "CRITICAL: Check logs for 'Self-Healing Diagnosis'. If present, you MUST design tasks that address that specific ROOT CAUSE. Do NOT add generic 'read file' tasks if the diagnosis already identifies the fix. If no diagnosis, READ LOGS and CODE to find the crash source."
                 constraint_instruction = "CONSTRAINT: Ensure the fix addresses the specific error. Use Search if unsure."
 
             failed_task_context = json.dumps(failed_task, indent=2)

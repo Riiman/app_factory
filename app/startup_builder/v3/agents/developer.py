@@ -295,11 +295,11 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                         continue 
                         
                     elif diagnosis["status"] == "escalate":
-                         task_context.append(f"DIAGNOSIS FAILED: Escaling to Architect.")
+                         task_context.append(f"DIAGNOSIS FAILED. Root Cause: {diagnosis['reason']}")
                          # Explicitly return to Router
                          return {
                              "status": "fix_required",
-                             "logs": [f"Developer Escaled: {diagnosis['reason']}"],
+                             "logs": [f"Developer Escaled: {diagnosis['reason'][:200]}..."],
                              "current_mission": current_mission, # Ensure updates preserved
                              "mission_scratchpad": mission_scratchpad_list
                          }
@@ -469,7 +469,7 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                                   task_context.append(f"SYSTEM: Self-Healing Active. Fix Applied. Lesson: {new_lesson}")
                              else:
                                   # Escalation
-                                  task_context.append(f"SYSTEM: Self-Healing Failed. Escalating to Architect.")
+                                  task_context.append(f"SYSTEM: Self-Healing Failed. Diagnosis: {diag_result['reason']}")
                                   
                                   # Update state before returning
                                   state["mission_scratchpad"] = mission_scratchpad_list
@@ -479,7 +479,7 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                                   return {
                                       "status": "fix_required", 
                                       "failed_task": next_task, 
-                                      "reason": "Self-Healing Failed",
+                                      "reason": diag_result['reason'],
                                       "logs": ["Developer: Escalating failure to Architect."]
                                   }
                     else:
@@ -972,7 +972,10 @@ If you cannot fix it, output "ESCALATE".
         
         # 4. Result
         if "ESCALATE" in analysis_content:
-             return {"status": "escalate", "reason": "Could not auto-fix."}
+             # Propagate the full analysis so Architect knows WHY
+             clean_reason = analysis_content.replace("ESCALATE", "").strip()
+             if not clean_reason: clean_reason = "Analysis failed to provide details."
+             return {"status": "escalate", "reason": clean_reason}
              
         return {"status": "fixed", "summary": analysis_content, "new_lesson": f"Constraint Verified: {analysis_content[:50]}..."}
 
