@@ -459,6 +459,12 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                         
                     self.copilot.emit_thought(f"Invoking {tool_name}... {pretty_args}", "developer")
                     
+                    # Execute locally (since we have the bound functions in `tools` list)
+                    selected_tool = next((t for t in tools if t.name == tool_name), None)
+                    
+                    tool_result = "Error: Tool not found"
+                    command_str = str(args) # Capture command for verification
+
                     if selected_tool:
                         try:
                             # V4 SAFETY: Check if tool call should be allowed
