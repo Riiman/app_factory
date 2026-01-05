@@ -173,6 +173,32 @@ class V3Developer:
         tools_factory = V3Tools(self.docker_manager, startup_id)
         tools = tools_factory.get_tool_list()
         
+        # --- DIAGNOSTICIAN TOOL INJECTION ---
+        from .diagnostician import V3Diagnostician
+        diagnostician_agent = V3Diagnostician(log_callback=self.copilot.log_callback)
+        
+        from langchain_core.tools import tool
+        
+        @tool
+        def run_diagnosis(info: str) -> str:
+            """
+            Analyzes the current task failure and returns a root cause diagnosis and guidance.
+            Use this when you have failed > 1 time or are unsure why an error is occurring.
+            """
+            # We construct the failed task object from current state
+            # 'info' arg is just for the LLM to provide context or a question, 
+            # but we use the real 'next_task' state for accuracy.
+            
+            # NOTE: We access 'next_task' from the outer scope (closure) which is available in 'developer_node'.
+            # Ideally we pass it explicitly, but tool definitions are static or need binding.
+            # We can bind logic manually or just use the agent method directly?
+            # Creating a closure here:
+            d_result = diagnostician_agent.run_diagnosis_analysis(startup_id, next_task)
+            return json.dumps(d_result, indent=2)
+            
+        tools.append(run_diagnosis)
+        # ------------------------------------
+        
         # 3. System Prompt
         system_prompt = """
 # ROLE & IDENTITY
@@ -629,6 +655,42 @@ You previously failed this task. A debugging specialist analyzed your attempts a
         # --- LOOP EXIT CHECK ---
         else:
              logger.error("Developer Loop Exhausted. Task Failed.")
+             
+             # Record failure details
+             error_info = {"error_type": "LoopExhausted", "error_message": f"Task failed to complete within {total_steps} steps."}
+             next_task["failed_attempts"].append({
+                 "attempt_number": next_task["attempt_count"],
+                 "action": "loop_limit",
+                 "error": error_info
+             })
+             next_task["last_error"] = error_info
+             
+             # PAUSE CHECK (Strike 3)
+             if len(next_task["failed_attempts"]) == 3:
+                  # We have failed 3 times. Pause.
+                  logger.warning("Developer: 3 Strikes reached. Pausing for human intervention.")
+                  
+                  self._sync_persistence(
+                      startup_id, 
+                      current_mission["id"], 
+                      current_mission.get("implementation_plan", ""), 
+                      current_mission.get("mission_context", []), 
+                      current_mission.get("tasks", []), 
+                      status="paused" # Mark as paused
+                  )
+                  
+                  return {
+                      "status": "paused", # Orchestrator will map to END
+                      "failed_task": next_task,
+                      "reason": "Task failed 3 times. Paused for human intervention.",
+                      "logs": [
+                          f"Developer: Task '{next_task['description']}' failed 3 times.",
+                          "ACTION REQUIRED: Human Intervention Needed.",
+                          "Please fix the issue and Resume the agent."
+                      ],
+                      "current_mission": current_mission
+                  }
+             
              next_task["status"] = "failed"
              next_task["task_context"] = task_context
              
@@ -638,7 +700,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                  "status": "fix_required", 
                  "current_mission": current_mission, 
                  "failed_task": next_task, 
-                 "logs": [f"Developer: Task '{next_task['description']}' failed after {turn_count} turns ({total_steps} steps). Escalating to Strategist."] 
+                 "logs": [f"Developer: Task '{next_task['description']}' failed after {turn_count} turns ({total_steps} steps). Retrying..."] 
              }
 
         # Mark task as done

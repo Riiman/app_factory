@@ -13,14 +13,7 @@ class V3Diagnostician:
     """
     Diagnostician Agent: Analyzes failed tasks and provides root cause diagnosis.
     
-    Unlike Architect (which plans) or Developer (which executes), the Diagnostician
-    focuses solely on understanding WHY a task failed and providing actionable guidance.
-    
-    Key Features:
-    - Has read-only tools (can investigate but not modify)
-    - Analyzes execution history to identify patterns
-    - Returns diagnosis + guidance (not new tasks)
-    - Prevents infinite loops by seeing what was already tried
+    Refactored as a TOOL for the Developer, not a separate graph node.
     """
     
     def __init__(self, log_callback=None):
@@ -28,29 +21,18 @@ class V3Diagnostician:
         self.docker_manager = DockerManager()
         self.context_manager = None
         
-    def diagnostician_node(self, state):
+    def run_diagnosis_analysis(self, startup_id: str, failed_task: dict) -> dict:
         """
-        Analyzes a failed task and returns diagnosis.
-        
-        Input (from state):
-          - failed_task: The task that failed (with failed_attempts, last_error)
-          - current_mission: Mission context
-          
-        Output:
-          - diagnosis: Root cause analysis
-          - guidance: Specific suggestions
-          - status: "diagnosed" or "needs_replanning"
+        Analyzes a failed task and returns diagnosis JSON.
+        Can be called directly by Developer Tool.
         """
-        startup_id = state.get("startup_id")
-        failed_task = state.get("failed_task")
-        current_mission = state.get("current_mission")
-        
         if not failed_task:
-            return {"status": "failed", "logs": ["Diagnostician Error: No failed task provided."]}
+            return {"diagnosis": "No failed task provided", "guidance": "None"}
         
-        logger.info(f"--- V3 Diagnostician: Analyzing '{failed_task['description']}' ---")
+        description = failed_task.get('description', 'Unknown Task')
+        logger.info(f"--- V3 Diagnostician Tool: Analyzing '{description}' ---")
         
-        # Initialize context manager
+        # Initialize context manager for this analysis
         self.context_manager = ContextManager(self.docker_manager, startup_id)
         
         # Get READ-ONLY tools
@@ -102,33 +84,6 @@ After your analysis, return JSON:
     "guidance": "Specific steps to fix (not generic 'read file')",
     "needs_replanning": false  // true if task approach is fundamentally wrong
 }
-
-# EXAMPLE BAD OUTPUT
-{
-    "guidance": "Read backend/tests/setup.js"  ← Developer already did this!
-}
-
-# EXAMPLE GOOD OUTPUT
-{
-    "diagnosis": "Test is failing because beforeEach doesn't reset candidate_rankings array",
-    "root_cause": "The __PG_TEST_STATE.candidate_rankings array is not being cleared between tests",
-    "what_developer_tried": [
-        "Read setup.js to check beforeEach",
-        "Read pg.js mock to see arrays",
-        "Modified beforeEach to add reset logic"
-    ],
-    "why_it_failed": "Developer added reset for candidates array but missed candidate_rankings",
-    "guidance": "In setup.js beforeEach, add: __PG_TEST_STATE.candidate_rankings = []",
-    "needs_replanning": false
-}
-
-# WHEN TO SET needs_replanning = true
-Only if the task's fundamental approach is wrong. Examples:
-- Task says "use library X" but library X doesn't exist
-- Task requires feature Y but codebase doesn't support it
-- Task assumes architecture Z but project uses different architecture
-
-If it's just a bug or missing code, keep needs_replanning = false.
 """
         
         # Build context from failed attempts
@@ -136,7 +91,7 @@ If it's just a bug or missing code, keep needs_replanning = false.
         execution_logs = "\n".join(task_context[-20:]) if task_context else "No execution logs available"
         
         user_prompt = f"""
-Task Description: {failed_task['description']}
+Task Description: {description}
 
 Task Logic/Details: {failed_task.get('logic', 'N/A')}
 
@@ -200,25 +155,16 @@ Please analyze this failure. Use your tools to investigate if needed, then provi
                     break
         
         if not diagnosis_data:
-            # Fallback if no valid diagnosis
             diagnosis_data = {
                 "diagnosis": "Unable to complete diagnosis within turn limit",
                 "root_cause": "Analysis incomplete",
-                "guidance": "Halting for user review.",
+                "guidance": "Try a different approach or escalate.",
                 "needs_replanning": True
             }
         
-        # Determine next status (Stop on failure instead of Architect)
-        next_status = "failed" if diagnosis_data.get("needs_replanning") else "diagnosed"
-        
         logger.info(f"Diagnostician: {diagnosis_data.get('diagnosis', 'No diagnosis')}")
         
-        return {
-            "diagnosis": diagnosis_data,
-            "status": next_status,
-            "logs": [f"Diagnostician: {diagnosis_data['diagnosis']}"],
-            "failed_task": failed_task  # Pass through for Developer to see
-        }
+        return diagnosis_data
     
     def _build_attempts_summary(self, failed_attempts):
         """Build readable summary of what was tried."""
@@ -258,7 +204,6 @@ Please analyze this failure. Use your tools to investigate if needed, then provi
                 json_str = cleaned[start:end]
                 data = json.loads(json_str)
                 
-                # Validate required fields
                 if "diagnosis" in data and "guidance" in data:
                     return data
         except Exception as e:

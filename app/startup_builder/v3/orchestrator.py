@@ -39,18 +39,26 @@ class V3AgentState(TypedDict):
     waiting_on: str      # Job ID of async process we are waiting for
     missions: List[Dict] # FULL MISSION QUEUE (Required for UI)
 
+
 # --- Routing Logic ---
-def orchestrator_router(state: V3AgentState):
-    status = state.get("status", "init") # Default start is init now
+def orchestrator_entry_router(state: V3AgentState):
+    """
+    Determines the entry point when the graph starts/resumes.
+    """
+    status = state.get("status", "init") 
     
-    logger.info(f"--- ROUTER: Status={status} ---")
+    logger.info(f"--- ROUTER (ENTRY): Status={status} ---")
     
     if status == "init":
         return "initializer"
+    
+    # RESUME LOGIC for Human Intervention
+    if status == "paused":
+         # User resumed after pause -> Go back to Developer to retry/verify
+         return "developer"
         
     # Router Logic: Pick Next Mission if in "routed" or "done_mission" state from previous mission
     if status in ["routed", "done_mission"]:
-        # Logic moved to mission_selector node to keep router pure
         return "mission_selector"
     
     if status == "architecting":
@@ -58,25 +66,41 @@ def orchestrator_router(state: V3AgentState):
     elif status == "coding":
         return "developer"
     elif status == "fix_required":
-        return "diagnostician"  # NEW: Route to Diagnostician first
-    elif status == "diagnosed":
-        return "developer"  # NEW: Return to Developer with diagnosis
-    elif status == "needs_replanning":
-        return "architect"  # NEW: Only go to Architect if diagnosis says so
-
-
-    elif status == "done":
-        return END
-    elif status == "failed":
-        return END
+        return "architect"  # Route persistent failures to Architect for Replanning
     
+    # Catch-all
+    return "mission_selector"
+
+def orchestrator_edge_router(state: V3AgentState):
+    """
+    Determines next step AFTER an agent node completes.
+    """
+    status = state.get("status", "init")
+    logger.info(f"--- ROUTER (EDGE): Status={status} ---")
+    
+    if status == "paused":
+        # Stop the graph!
+        return END
+        
+    if status == "fix_required":
+        return "architect"
+        
+    if status == "done" or status == "failed":
+        return END
+        
+    # Standard flow
+    if status == "coding":
+        return "developer"
+    if status == "architecting":
+        return "architect"
+        
     return "mission_selector" # Default fallback
 
 # --- Agents ---
 from .agents.developer import V3Developer
 from .agents.initializer import V3Initializer
 from .agents.architect import V3Architect
-from .agents.diagnostician import V3Diagnostician  # NEW
+# Diagnostician removed as a node (now a tool)
 
 # --- Graph Contruction ---
 def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
@@ -90,7 +114,6 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
     # Initialize Agents with Callback
     architect_agent = V3Architect(log_callback=log_callback)
     developer_agent = V3Developer(log_callback=log_callback)
-    diagnostician_agent = V3Diagnostician(log_callback=log_callback)  # NEW
     initializer_agent = V3Initializer(log_callback=log_callback)
 
     workflow = StateGraph(V3AgentState)
@@ -98,7 +121,6 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
     # Nodes
     workflow.add_node("architect", architect_agent.architect_node)
     workflow.add_node("developer", developer_agent.developer_node)
-    workflow.add_node("diagnostician", diagnostician_agent.diagnostician_node)  # NEW
     workflow.add_node("initializer", initializer_agent.initialize_node)
 
     
@@ -136,7 +158,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
                 log_debug(f"SYNC Error: {e}")
 
             # 2. RESUME Priority: Check for any mission that is already started but not done
-            resumable_statuses = ["in_progress", "architecting", "coding", "verification", "fix_required"]
+            resumable_statuses = ["in_progress", "architecting", "coding", "verification", "fix_required", "paused"]
             
             for m in missions:
                 if m.get("status") in resumable_statuses:
@@ -150,6 +172,8 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
                         target_status = "fix_required"
                     elif m['status'] == 'verification':
                         target_status = "coding"
+                    elif m['status'] == 'paused':
+                        target_status = "paused" # Pass logical paused state to router
                         
                     return {
                         "current_mission": m,
@@ -186,25 +210,24 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
 
     # Entry Point via Router
     workflow.set_conditional_entry_point(
-        orchestrator_router,
+        orchestrator_entry_router,
         {
             "initializer": "initializer",
             "mission_selector": "mission_selector",
             "architect": "architect",
             "developer": "developer",
-            "diagnostician": "diagnostician",
 
             END: END
         }
     )
 
     # Edges - Return to Router after each step to re-evaluate state
-    workflow.add_conditional_edges("architect", orchestrator_router)
-    workflow.add_conditional_edges("developer", orchestrator_router)
-    workflow.add_conditional_edges("diagnostician", orchestrator_router)
+    # Use EDGE router for these transitions
+    workflow.add_conditional_edges("architect", orchestrator_edge_router)
+    workflow.add_conditional_edges("developer", orchestrator_edge_router)
 
-    workflow.add_conditional_edges("initializer", orchestrator_router)
-    workflow.add_conditional_edges("mission_selector", orchestrator_router)
+    workflow.add_conditional_edges("initializer", orchestrator_edge_router)
+    workflow.add_conditional_edges("mission_selector", orchestrator_edge_router)
 
 
 
