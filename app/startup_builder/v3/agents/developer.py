@@ -12,6 +12,11 @@ from ...v3.context.librarian import Librarian
 from ..tools import V3Tools
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
 
+# V4 Safety Systems
+from ...v4.safety import CircuitBreakerCoordinator, CircuitBreakerConfig
+from ...v4.safety.safety_coordinator import SafetyCoordinator
+from ...v4.knowledge import StrategyMemory, StrategyBlocker
+
 logger = logging.getLogger(__name__)
 
 class V3Developer:
@@ -23,6 +28,13 @@ class V3Developer:
         # But ContextManager takes startup_id in __init__.
         # We should instantiate ContextManager inside developer_node where we have startup_id.
         self.context_manager = None
+        
+        # V4 Safety Systems (initialized per task in developer_node)
+        self.safety_coordinator = None
+        self.use_v4_safety = os.getenv("USE_V4_SAFETY", "true").lower() == "true"
+        
+        # V4 Integration Helper (initialized per startup in developer_node)
+        self.v4_helper = None
 
     def developer_node(self, state, injected_result=None):
         """
@@ -314,11 +326,42 @@ You previously failed this task. A debugging specialist analyzed your attempts a
         next_task["attempt_count"] += 1
         MAX_TASK_ATTEMPTS = 5
         
+        # V4 SAFETY SYSTEMS: Initialize for this task
+        if self.use_v4_safety:
+            self.safety_coordinator = SafetyCoordinator(
+                circuit_config=CircuitBreakerConfig(
+                    max_identical_calls=3,
+                    max_consecutive_failures=5,
+                    max_calls_per_task=50,
+                    max_cost_usd=5.0,
+                    max_time_seconds=300,
+                    max_memory_mb=2048
+                )
+            )
+            self.safety_coordinator.start_task()
+            
+            # Load failed attempts into strategy memory
+            for attempt in next_task.get("failed_attempts", []):
+                self.safety_coordinator.record_tool_failure(
+                    tool_name=attempt.get("action", "unknown"),
+                    args={"command": attempt.get("command", "")},
+                    error_type=attempt.get("error", {}).get("error_type", "Unknown"),
+                    error_message=attempt.get("error", {}).get("error_message", ""),
+                    attempt_number=attempt.get("attempt_number", 0)
+                )
+            
+            # Get strategy guidance for LLM
+            strategy_guidance = self.safety_coordinator.get_strategy_guidance()
+            if strategy_guidance:
+                system_prompt += strategy_guidance
+                logger.info("V4 Safety: Strategy blocker active with guidance")
+        
         # TURN LOGIC: We distinguish between "Context Gathering" (Free) and "Actions" (Costly)
         turn_count = 0      # Counts expensive actions (write, run, etc)
         total_steps = 0     # Hard limit to prevent infinite loops even with free actions
-        MAX_TURNS = 30      # Increased from 10 to allow complex scaffolding
-        MAX_TOTAL_STEPS = 60 # Increased from 25
+        MAX_TURNS = 20      # Reduced from 30 with V4 safety
+        MAX_TOTAL_STEPS = 40 # Reduced from 60 with V4 safety
+        MAX_SAFE_TURNS = 15  # New limit for safe tools
         
         while turn_count < MAX_TURNS and total_steps < MAX_TOTAL_STEPS:
             total_steps += 1
@@ -404,6 +447,27 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                         
                     self.copilot.emit_thought(f"Invoking {tool_name}... {pretty_args}", "developer")
                     
+                    # V4 SAFETY: Check if tool call should be allowed
+                    if self.use_v4_safety and self.safety_coordinator:
+                        allowed, reason = self.safety_coordinator.check_tool_call(tool_name, args)
+                        if not allowed:
+                            # Tool call blocked
+                            logger.warning(f"V4 Safety blocked tool call: {reason}")
+                            self.copilot.emit_thought(f"⚠️ {reason}", "developer")
+                            
+                            # Inject feedback into conversation
+                            feedback = f"""SYSTEM HALT: {reason}
+
+You MUST try a DIFFERENT approach. Consider:
+1. Using a different tool
+2. Changing the parameters significantly  
+3. Calling `run_diagnosis` for expert analysis
+
+DO NOT retry the same approach that was just blocked."""
+                            messages.append(HumanMessage(content=feedback))
+                            task_context.append(f"BLOCKED: {tool_name} - {reason}")
+                            continue  # Skip this tool call
+                    
                     # Execute locally (since we have the bound functions in `tools` list)
                     selected_tool = next((t for t in tools if t.name == tool_name), None)
                     
@@ -415,6 +479,10 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                             # Invoke the tool
                             tool_result = selected_tool.invoke(args)
                             
+                            # V4 SAFETY: Record tool call
+                            if self.use_v4_safety and self.safety_coordinator:
+                                self.safety_coordinator.record_tool_call(tool_name, args, tool_result)
+
                             # CENTRALIZED LOGGING
                             self._log_to_file(f"TOOL EXECUTION: {tool_name}\nARGS: {command_str}")
                             # Log first 500 chars of result to avoid massive log files from 'list_files'
@@ -484,6 +552,50 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                         import datetime
                         error_info = self._extract_error_info(tool_name, command_str, str(tool_result))
                         
+                        # V4 SAFETY: Record failure for strategy memory
+                        if self.use_v4_safety and self.safety_coordinator:
+                            self.safety_coordinator.record_tool_failure(
+                                tool_name=tool_name,
+                                args=args,
+                                error_type=error_info.get("error_type", "Unknown"),
+                                error_message=error_info.get("error_message", str(tool_result)[:200]),
+                                attempt_number=next_task.get("attempt_count", 0)
+                            )
+                        
+                        # V4 SELF-HEALING: Try to heal the failure automatically
+                        healing_guidance = ""
+                        if self.use_v4_safety and os.getenv("USE_V4_HEALING", "true").lower() == "true":
+                            try:
+                                from ...v4.healing import SelfHealer, Failure
+                                
+                                healer = SelfHealer()
+                                healing_result = healer.heal(
+                                    failure=Failure(
+                                        error_message=error_info.get("error_message", str(tool_result)),
+                                        error_type=error_info.get("error_type", "Unknown"),
+                                        file=error_info.get("file"),
+                                        line=error_info.get("line"),
+                                        code=next_task.get("content_sketch", ""),
+                                        tool_name=tool_name,
+                                        command=command_str
+                                    ),
+                                    context={
+                                        "task": next_task,
+                                        "error_message": str(tool_result)
+                                    },
+                                    attempt_number=next_task.get("attempt_count", 0)
+                                )
+                                
+                                if healing_result.success:
+                                    healing_guidance = healing_result.message
+                                    logger.info(f"V4 Self-Healing: {healing_result.diagnosis.root_cause}")
+                                    self.copilot.emit_thought(
+                                        f"🔧 Self-Healing Analysis: {healing_result.diagnosis.root_cause}",
+                                        "developer"
+                                    )
+                            except Exception as e:
+                                logger.error(f"V4 Self-Healing failed: {e}")
+                        
                         # Add to failed attempts
                         next_task["failed_attempts"].append({
                             "attempt_number": next_task["attempt_count"],
@@ -520,6 +632,10 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                             if error_info.get('line'):
                                 location += f":{error_info['line']}"
                             feedback_parts.append(f"Location: {location}")
+                        
+                        # V4 SELF-HEALING: Inject healing guidance
+                        if healing_guidance:
+                            feedback_parts.append(healing_guidance)
                         
                         # Add actionable guidance
                         feedback_parts.append("\n🔍 Next Steps:")
@@ -770,7 +886,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
              return "SUCCESS"
 
         # 2. OPTIMIZATION: SKIP SAFTEY TOOLS (Save Tokens)
-        # These tools have reliable deterministic outputs or are read-only.
+        # These tools have reliable deterministic outputs or are read-only.        
         SAFE_TOOLS = ["read_file", "list_files", "find_file", "search_files", "check_job", "wait_for_job", "search_web"]
         if action in SAFE_TOOLS:
              # Simple Heuristic is enough
