@@ -459,4 +459,5 @@ debug_db.py
 repro_flow.py
 !build.log
 #startupos_key.pem
+log.log
 VentureStackAIPortal_key.pem

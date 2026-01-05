@@ -198,7 +198,7 @@ class DockerManager:
         Runs a command inside the container.
         """
         if not self.client:
-            return {"error": "Docker not available"}
+            return {"error": "Docker not available", "exit_code": 1, "output": ""}
 
         # Query database for container name if not provided
         if not container_name:
@@ -207,38 +207,81 @@ class DockerManager:
         try:
             container = self.client.containers.get(container_name)
             if container.status != 'running':
-                return {"error": "Container not running"}
+                return {"error": "Container not running", "exit_code": 1, "output": ""}
             
             # Execute command
             if detach:
                 sanitized_cmd = command.replace("'", "'\\''") 
                 cmd_str = f"nohup bash -c '{sanitized_cmd}' > /dev/null 2>&1 &"
                 
-                container.exec_run(
-                    ["bash", "-c", cmd_str],
-                    workdir="/app",
-                    user="root" # Always root if requested? Or simple default
-                )
-                return {
-                    "exit_code": 0,
-                    "output": "Command started in background."
-                }
+                try:
+                    result = container.exec_run(
+                        ["bash", "-c", cmd_str],
+                        workdir="/app",
+                        user="root"
+                    )
+                    return {
+                        "exit_code": 0,
+                        "output": "Command started in background.",
+                        "status": "background"
+                    }
+                except Exception as e:
+                    return {
+                        "error": f"Failed to start background command: {str(e)}",
+                        "exit_code": 1,
+                        "output": ""
+                    }
             else:
                 # Use list format to avoid quoting issues
                 # Run as root to allow installs
-                exit_code, output = container.exec_run(
-                    ["bash", "-c", command],
-                    workdir="/app",
-                    user="root" 
-                )
-                return {
-                    "exit_code": exit_code,
-                    "output": output.decode('utf-8')
-                }
+                try:
+                    result = container.exec_run(
+                        ["bash", "-c", command],
+                        workdir="/app",
+                        user="root"
+                    )
+                    
+                    # Safely unpack result
+                    if result is None:
+                        return {
+                            "error": "Command execution returned None",
+                            "exit_code": 1,
+                            "output": ""
+                        }
+                    
+                    # Result can be a tuple (exit_code, output) or ExecResult object
+                    if isinstance(result, tuple):
+                        exit_code, output = result
+                    else:
+                        # ExecResult object
+                        exit_code = result.exit_code if hasattr(result, 'exit_code') else 0
+                        output = result.output if hasattr(result, 'output') else b''
+                    
+                    # Safely decode output
+                    if output is None:
+                        output_str = ""
+                    elif isinstance(output, bytes):
+                        output_str = output.decode('utf-8', errors='replace')
+                    else:
+                        output_str = str(output)
+                    
+                    return {
+                        "exit_code": exit_code if exit_code is not None else 0,
+                        "output": output_str,
+                        "status": "completed"
+                    }
+                    
+                except Exception as e:
+                    return {
+                        "error": f"Command execution failed: {str(e)}",
+                        "exit_code": 1,
+                        "output": ""
+                    }
+                    
         except docker.errors.NotFound:
-            return {"error": "Container not found"}
+            return {"error": "Container not found", "exit_code": 1, "output": ""}
         except Exception as e:
-            return {"error": str(e)}
+            return {"error": str(e), "exit_code": 1, "output": ""}
 
     def list_files(self, startup_id, path=".", recursive=False, depth=2, container_name=None):
         """
