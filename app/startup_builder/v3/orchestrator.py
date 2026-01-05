@@ -188,15 +188,16 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             "mission_selector": "mission_selector",
             "architect": "architect",
             "developer": "developer",
+            "diagnostician": "diagnostician",
 
             END: END
         }
     )
 
     # Edges - Return to Router after each step to re-evaluate state
-    # Edges - Return to Router after each step to re-evaluate state
     workflow.add_conditional_edges("architect", orchestrator_router)
     workflow.add_conditional_edges("developer", orchestrator_router)
+    workflow.add_conditional_edges("diagnostician", orchestrator_router)
 
     workflow.add_conditional_edges("initializer", orchestrator_router)
     workflow.add_conditional_edges("mission_selector", orchestrator_router)
