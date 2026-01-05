@@ -79,8 +79,8 @@ def orchestrator_edge_router(state: V3AgentState):
     logger.info(f"--- ROUTER (EDGE): Status={status} ---")
     
     if status == "paused":
-        # Stop the graph!
-        return END
+        # Stop the graph via interrupt (handled by interrupt_before=["human_intervention"])
+        return "human_intervention"
         
     if status == "fix_required":
         return "architect"
@@ -209,6 +209,12 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
 
     workflow.add_node("mission_selector", mission_selector_node)
 
+    # CATCH-ALL: Human Intervention Node
+    def human_intervention_node(state):
+        return {"status": "coding", "logs": ["▶️ Resuming from Human Intervention..."]}
+
+    workflow.add_node("human_intervention", human_intervention_node)
+
     # Entry Point via Router
     workflow.set_conditional_entry_point(
         orchestrator_entry_router,
@@ -217,6 +223,9 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
             "mission_selector": "mission_selector",
             "architect": "architect",
             "developer": "developer",
+            
+            # If we resume a finished graph, we might need this, but 'interrupt' handles the main case.
+            "human_intervention": "human_intervention", 
 
             END: END
         }
@@ -226,11 +235,9 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
     # Use EDGE router for these transitions
     workflow.add_conditional_edges("architect", orchestrator_edge_router)
     workflow.add_conditional_edges("developer", orchestrator_edge_router)
+    workflow.add_conditional_edges("human_intervention", orchestrator_edge_router)
 
     workflow.add_conditional_edges("initializer", orchestrator_edge_router)
     workflow.add_conditional_edges("mission_selector", orchestrator_edge_router)
 
-
-
-
-    return workflow.compile(checkpointer=checkpointer)
+    return workflow.compile(checkpointer=checkpointer, interrupt_before=["human_intervention"])
