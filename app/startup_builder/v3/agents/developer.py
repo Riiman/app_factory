@@ -430,9 +430,17 @@ You previously failed this task. A debugging specialist analyzed your attempts a
 
                 tool_executed = False
                 for tool_call in ai_msg.tool_calls:
-                    tool_name = tool_call["name"]
-                    args = tool_call["args"]
-                    tool_id = tool_call["id"]
+                    if not tool_call:
+                        logger.warning("V3 Developer: Skipping None tool_call")
+                        continue
+                        
+                    tool_name = tool_call.get("name")
+                    args = tool_call.get("args") or {}
+                    tool_id = tool_call.get("id")
+                    
+                    if not tool_name:
+                        logger.warning(f"V3 Developer: Skipping tool_call with no name: {tool_call}")
+                        continue
                     
                     # LOGIC: Check if tool is "Free" (Context) or "Expensive" (Action)
                     SAFE_TOOLS = ["read_file", "list_files", "find_file", "search_files", "search_web", "check_job", "wait_for_job"]
