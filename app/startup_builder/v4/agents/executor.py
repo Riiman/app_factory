@@ -65,6 +65,9 @@ class V4Executor:
         # Check safety before execution
         allowed, reason = self.safety.check_tool_call(tool_name, args)
         
+        if allowed and reason:
+            logger.warning(f"Safety Warning: {reason}")
+        
         if not allowed:
             logger.warning(f"Tool blocked by safety: {reason}")
             

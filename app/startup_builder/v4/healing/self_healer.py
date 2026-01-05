@@ -24,6 +24,8 @@ class Failure:
     code: Optional[str] = None
     tool_name: Optional[str] = None
     command: Optional[str] = None
+    task_description: Optional[str] = None  # Added for higher-level context
+    context: Optional[Dict[str, Any]] = None  # Added to support rich context passing
 
 
 @dataclass

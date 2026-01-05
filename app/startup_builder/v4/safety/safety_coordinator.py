@@ -74,11 +74,12 @@ class SafetyCoordinator:
             return False, f"Circuit breaker: {reason}"
         
         # Check strategy memory
-        blocked, reason = self.strategy_memory.is_blocked(tool_name, args)
+        blocked, strategy_reason = self.strategy_memory.is_blocked(tool_name, args)
         if blocked:
-            return False, f"Strategy blocked: {reason}"
+            return False, f"Strategy blocked: {strategy_reason}"
         
-        return True, ""
+        # Return True but include the circuit breaker warning if it exists
+        return True, reason
     
     def record_tool_call(self, tool_name: str, args: dict, result: str) -> None:
         """Record a tool call"""

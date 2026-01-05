@@ -105,7 +105,31 @@ class V4Developer:
         task_type = task.get('type', 'general')
         task_description = task.get('description', 'Unknown task')
         
+        # --- Tailwind Context Injection ---
+        if "tailwind" in task_description.lower():
+            task_description += "\n\n[Context] IMPORTANT: Verify Tailwind version (v3 vs v4). V4 has different configuration handling. Check docs if unsure."
+        # ----------------------------------
+        
         logger.info(f"Creating plan for: {task_description}")
+        
+        # --- Librarian Integration: Retrieve Context ---
+        if self.knowledge:
+            try:
+                similar_tasks = self.knowledge.query_similar(task_type, task_description, k=3)
+                if similar_tasks:
+                    guidance = "\n\n## 📚 Strategy Guidance from Librarian:\n"
+                    for item in similar_tasks:
+                        meta = item['metadata']
+                        guidance += f"- [Success] {meta['task_description']}: Used approach '{meta.get('approach', 'unknown')}'\n"
+                    
+                    logger.info(f"Librarian provided {len(similar_tasks)} relevant insights")
+                    
+                    # Inject guidance into task description so Planner/LLM sees it
+                    task_description += guidance
+            except Exception as e:
+                logger.warning(f"Failed to retrieve context from Librarian: {e}")
+        # -----------------------------------------------
+
         plan = self.planner.create_plan(task_description, task_type)
         
         logger.info(f"Executing task with {len(plan)} steps")
@@ -228,6 +252,37 @@ class V4Developer:
             task_description=task.get('description', ''),
             context=task
         )
+        
+        # --- Search on Initialization Failure ---
+        # If this is an initialization/import error, search for solutions
+        error_lower = str(error).lower()
+        if any(x in error_lower for x in ["importerror", "modulenotfounderror", "initializ", "config", "tailwind"]):
+            # We need to access tools to search. V4Developer doesn't hold reference to V4Tools instance directly 
+            # (MissionExecutor creates them both).
+            # But we can instantiate V4Tools here temporarily or rely on Healer finding it?
+            # actually `SelfHealer` has strategies. I should really add a `SearchStrategy` to `SelfHealer`.
+            # BUT, for now, to stick to the plan `developer.py` modification:
+            # I can't easily call `search_internet` because I don't have the tool instance.
+            # I will instantiate V4Tools temporarily.
+            from ..tools import V4Tools
+            tools = V4Tools(self.startup_id)
+            search_tool = tools.create_search_internet()
+            
+            logger.info("Triggering auto-search for solution...")
+            try:
+                # Search for the error text
+                query = f"Fix {type(error).__name__} {str(error)[:100]}"
+                if "tailwind" in error_lower:
+                    query += " tailwind v4"
+                
+                search_result = search_tool.invoke({"query": query})
+                
+                # Append findings to failure context for the healer to use
+                failure.context['search_findings'] = search_result
+                logger.info(f"Auto-search found info: {len(search_result)} chars")
+            except Exception as e:
+                logger.warning(f"Auto-search failed: {e}")
+        # ----------------------------------------
         
         # Attempt healing
         try:

@@ -13,6 +13,11 @@ from ..safety import SafetyCoordinator
 from ..healing import SelfHealer, Failure
 from ...manager import DockerManager
 
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    DDGS = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,7 +46,9 @@ class V4Tools:
             self.create_run_shell(),
             self.create_update_file(),
             self.create_read_file(),
+            self.create_read_file(),
             self.create_list_files(),
+            self.create_search_internet(),
             # Add more tools as needed
         ]
     
@@ -65,6 +72,11 @@ class V4Tools:
                 "run_shell",
                 {"command": command, "directory": directory}
             )
+            
+            # Prepare warning prefix if reason exists (even if allowed)
+            warning_prefix = ""
+            if reason:
+                warning_prefix = f"{reason}\n\n"
             
             if not allowed:
                 # Try to get healing guidance
@@ -117,7 +129,7 @@ class V4Tools:
                     
                     return f"❌ Command failed (exit code {exit_code}):\n{output}"
                 
-                return output
+                return f"{warning_prefix}{output}"
                 
             except Exception as e:
                 # Record failure
@@ -165,6 +177,11 @@ class V4Tools:
                 {"path": path}
             )
             
+            # Prepare warning prefix if reason exists (even if allowed)
+            warning_prefix = ""
+            if reason:
+                warning_prefix = f"{reason}\n\n"
+            
             if not allowed:
                 return f"❌ Blocked: {reason}"
             
@@ -182,7 +199,7 @@ class V4Tools:
                     "success"
                 )
                 
-                return f"✅ Successfully updated {path}"
+                return f"{warning_prefix}✅ Successfully updated {path}"
                 
             except Exception as e:
                 # Record failure
@@ -229,7 +246,7 @@ class V4Tools:
                     selected_lines = lines[start_idx:end_idx]
                     return "\n".join(selected_lines)
                 
-                return content
+                return f"{warning_prefix}{content}"
                 
             except Exception as e:
                 return f"❌ Error: {e}"
@@ -251,6 +268,32 @@ class V4Tools:
             Returns:
                 File listing
             """
+
+            # Check safety (post-check for read/list operations where args might be simple)
+            # Actually list_files doesn't call check_tool_call in the original code? 
+            # Wait, looking at the code, create_list_files MISSES the safety check entirely in the original file I viewed!
+            # I must simply add the return modification for list_files assuming I add the check safely or just handle the return.
+            # Ah, the view_file output for create_list_files (lines 242-276) DOES NOT show a safety check call.
+            # I should probably add one to be consistent, but let's stick to the plan: modify output. 
+            # But there is no 'reason' variable since check_tool_call isn't called.
+            # I will skip modifying create_list_files output for now to avoid breaking it, or I should add the check. 
+            # Adding the check is better.
+            
+            # Let's adjust this chunk to ADD the check.
+            
+            # Check safety
+            allowed, reason = self.safety.check_tool_call(
+                "list_files",
+                {"path": path, "recursive": recursive}
+            )
+            
+            if not allowed:
+                 return f"❌ Blocked: {reason}"
+                 
+            warning_prefix = ""
+            if reason:
+                warning_prefix = f"{reason}\n\n"
+
             try:
                 result = self.docker_manager.list_files(
                     self.startup_id,
@@ -268,9 +311,58 @@ class V4Tools:
                     type_sym = "[D]" if f["type"] == "directory" else "[F]"
                     output.append(f"{type_sym} {f['name']}")
                 
-                return "\n".join(output)
+                return f"{warning_prefix}" + "\n".join(output)
                 
             except Exception as e:
                 return f"❌ Error: {e}"
         
         return list_files
+    
+    def create_search_internet(self):
+        """Create search_internet tool"""
+        
+        @tool
+        def search_internet(query: str, domain: Optional[str] = None) -> str:
+            """
+            Search the internet for technical solutions.
+            
+            Args:
+                query: Search query
+                domain: Optional domain text to refine search
+                
+            Returns:
+                Search results summary
+            """
+            # Check safety
+            allowed, reason = self.safety.check_tool_call(
+                "search_internet",
+                {"query": query, "domain": domain}
+            )
+            
+            warning_prefix = ""
+            if reason:
+                warning_prefix = f"{reason}\n\n"
+            
+            if not allowed:
+                 return f"❌ Blocked: {reason}"
+
+            try:
+                if DDGS is None:
+                    return "❌ Error: duckduckgo-search library not installed."
+                
+                results = []
+                with DDGS() as ddgs:
+                    # Search for 5 results
+                    for r in ddgs.text(query, max_results=5):
+                        results.append(f"- [{r['title']}]({r['href']}): {r['body']}")
+                
+                if not results:
+                    return f"{warning_prefix}No results found for '{query}'"
+                
+                summary = "\n".join(results)
+                return f"{warning_prefix}Search Results for '{query}':\n{summary}"
+                
+            except Exception as e:
+                return f"❌ Error performing search: {e}"
+        
+        return search_internet
