@@ -3,6 +3,8 @@ import json
 import re
 import base64
 import os
+import datetime
+import traceback
 from typing import List, Dict, Any, Optional
 from ..agents.core import V3CoPilot
 
@@ -566,7 +568,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                     
                     if verification_status == "FAILURE":
                         # Extract structured error information
-                        import datetime
+                        # import datetime (Moved to top)
                         error_info = self._extract_error_info(tool_name, command_str, str(tool_result))
                         
                         # V4 SAFETY: Record failure for strategy memory
@@ -1076,7 +1078,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
             
         # 4. DEBUG: Log Context Snapshot for User
         try:
-             import datetime
+             # import datetime (Moved to top)
              snapshot = {
                  "timestamp": datetime.datetime.now().isoformat(),
                  "startup_id": startup_id,
