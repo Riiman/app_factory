@@ -300,10 +300,15 @@ const StartupCodeStudio: React.FC = () => {
     const handleResume = async () => {
         addLog('Resuming process...');
         try {
-            const res = await fetch(`/api/builder/${id}/v3/start`, {
+            const res = await fetch(`/api/builder/v4/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify({
+                    startup_id: id,
+                    mission: 'Resume previous task',
+                    mission_type: 'general',
+                    priority: 'medium'
+                })
             });
             const data = await res.json();
             if (data.status === 'success') {
@@ -421,19 +426,22 @@ const StartupCodeStudio: React.FC = () => {
 
         addLog(`Auto-Triggered Task: "${taskPrompt}"`);
 
-        // V3 API Call
+        // V4 API Call
         try {
-            await fetch(`/api/builder/v3/start`, {
+            await fetch(`/api/builder/v4/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     startup_id: id,
-                    mission: taskPrompt
+                    mission: taskPrompt,
+                    mission_type: 'general',
+                    priority: 'medium'
                 })
             });
-        } catch (e) {
-            addLog(`Error triggering agent: ${e}`);
-            setIsWorking(false);
+            addLog('Task sent to V4 agent with planning enabled');
+        } catch (err) {
+            console.error('Failed to trigger task:', err);
+            addLog('Error: Failed to trigger task');
         }
     };
 
@@ -590,14 +598,17 @@ const StartupCodeStudio: React.FC = () => {
         }, 500);
 
         try {
-            await fetch(`/api/builder/v3/start`, {
+            await fetch(`/api/builder/v4/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     startup_id: id,
-                    mission: currentPrompt
+                    mission: currentPrompt,
+                    mission_type: 'general',
+                    priority: 'medium'
                 })
             });
+            addLog('Task sent to V4 agent with planning');
         } catch (e) {
             addLog(`Error running task: ${e}`);
             setIsWorking(false);

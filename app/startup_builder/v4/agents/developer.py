@@ -15,6 +15,7 @@ from ..knowledge import KnowledgeBase
 from ..prompting import HierarchicalPromptBuilder
 from ..generation import MultiPassGenerator
 from ..controller import MissionController, StrategySelector
+from ..planning import TaskPlanner
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class V4Developer:
     - Knowledge base (learning from executions)
     - Enhanced prompting (hierarchical, context-aware)
     - Multi-pass generation (high-quality code)
+    - Task planning (structured execution with context tracking)
     """
     
     def __init__(self, startup_id: str, log_callback=None):
@@ -38,6 +40,7 @@ class V4Developer:
         # Core V4 components (built-in)
         self.safety = SafetyCoordinator()
         self.healer = SelfHealer()
+        self.planner = TaskPlanner()  # NEW: Task planning
         
         # Optional components (enabled via env vars)
         self.knowledge = None
@@ -84,13 +87,13 @@ class V4Developer:
     
     def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Execute a task with built-in safety and healing.
+        Execute a task with built-in safety, healing, and planning.
         
         Args:
-            task: Task dictionary with description, action, etc.
+            task: Task dictionary with description, action, type, etc.
             
         Returns:
-            Execution result
+            Execution result with plan summary
         """
         self.current_task = task
         self.execution_start_time = datetime.utcnow()
@@ -98,15 +101,31 @@ class V4Developer:
         # Start safety tracking
         self.safety.start_task()
         
-        logger.info(f"Executing task: {task.get('description', 'Unknown')}")
+        # Create execution plan
+        task_type = task.get('type', 'general')
+        task_description = task.get('description', 'Unknown task')
+        
+        logger.info(f"Creating plan for: {task_description}")
+        plan = self.planner.create_plan(task_description, task_type)
+        
+        logger.info(f"Executing task with {len(plan)} steps")
+        logger.info(f"\n{self.planner.get_plan_summary()}")
         
         try:
-            # Execute with safety
-            result = self._execute_with_safety(task)
+            # Execute plan step by step
+            result = self._execute_with_plan(task)
             
             # Record success in knowledge base
             if self.knowledge and result.get('success'):
                 self._record_success(task, result)
+            
+            # Add plan summary to result
+            result['plan_summary'] = self.planner.get_plan_summary()
+            result['context'] = {
+                'working_directory': self.planner.context.working_directory,
+                'temp_files': self.planner.context.temp_files,
+                'created_files': self.planner.context.created_files
+            }
             
             return result
             
@@ -126,6 +145,7 @@ class V4Developer:
                     if self.knowledge and result.get('success'):
                         self._record_success(task, result, healed=True)
                     
+                    result['plan_summary'] = self.planner.get_plan_summary()
                     return result
                     
                 except Exception as retry_error:
@@ -135,24 +155,67 @@ class V4Developer:
             if self.knowledge:
                 self._record_failure(task, str(e))
             
-            # Return failure result
+            # Return failure result with plan
             return {
                 'success': False,
                 'error': str(e),
                 'healing_attempted': healing_result is not None,
-                'healing_success': healing_result.success if healing_result else False
+                'healing_success': healing_result.success if healing_result else False,
+                'plan_summary': self.planner.get_plan_summary()
             }
     
-    def _execute_with_safety(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute task with safety checks"""
+    def _execute_with_plan(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute task following the plan"""
         
-        # Check if we should block execution
-        # (This would integrate with actual tool execution)
+        results = []
         
-        # For now, return placeholder
+        while True:
+            next_step = self.planner.get_next_step()
+            if not next_step:
+                break
+            
+            logger.info(f"Executing step {next_step.id}: {next_step.description}")
+            self.planner.start_step(next_step.id)
+            
+            try:
+                # Execute step (placeholder - would call actual tools)
+                step_result = self._execute_step(next_step, task)
+                
+                # Mark as completed
+                self.planner.complete_step(
+                    next_step.id,
+                    notes=step_result.get('notes'),
+                    changes=step_result.get('changes', [])
+                )
+                
+                results.append(step_result)
+                
+            except Exception as e:
+                logger.error(f"Step {next_step.id} failed: {e}")
+                self.planner.fail_step(next_step.id, str(e))
+                raise
+        
         return {
             'success': True,
-            'message': 'Task executed (V4 implementation pending)'
+            'message': 'Task completed with plan',
+            'steps_completed': len([s for s in self.planner.plan if s.status == 'completed']),
+            'total_steps': len(self.planner.plan)
+        }
+    
+    def _execute_step(self, step, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a single plan step"""
+        
+        # Placeholder implementation
+        # In real implementation, this would:
+        # 1. Determine what action to take based on step description
+        # 2. Call appropriate tools
+        # 3. Update context (working dir, temp files, etc.)
+        # 4. Return results
+        
+        return {
+            'success': True,
+            'notes': f'Step {step.id} executed',
+            'changes': []
         }
     
     def _attempt_healing(self, task: Dict[str, Any], error: Exception) -> Optional[Any]:

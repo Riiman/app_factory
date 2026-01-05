@@ -7,8 +7,6 @@ Provides backward compatibility with V3 routes while using V4 internally.
 from flask import Blueprint, request, jsonify
 import logging
 
-from app.startup_builder.v4.workflows import MissionExecutor
-
 logger = logging.getLogger(__name__)
 
 # Create compatibility blueprint
@@ -35,6 +33,7 @@ def start_v3_mission():
             }), 400
         
         # Use V4 executor internally
+        from app.startup_builder.v4.workflows import MissionExecutor
         executor = MissionExecutor(startup_id)
         
         import uuid

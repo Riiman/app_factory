@@ -12,10 +12,10 @@ from ...v3.context.librarian import Librarian
 from ..tools import V3Tools
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
 
-# V4 Safety Systems
-from ...v4.safety import CircuitBreakerCoordinator, CircuitBreakerConfig
-from ...v4.safety.safety_coordinator import SafetyCoordinator
-from ...v4.knowledge import StrategyMemory, StrategyBlocker
+# V4 Safety Systems imports moved to __init__ to prevent circular initialization
+# from ...v4.safety import CircuitBreakerCoordinator, CircuitBreakerConfig
+# from ...v4.safety.safety_coordinator import SafetyCoordinator
+# from ...v4.knowledge import StrategyMemory, StrategyBlocker
 
 logger = logging.getLogger(__name__)
 
@@ -328,6 +328,10 @@ You previously failed this task. A debugging specialist analyzed your attempts a
         
         # V4 SAFETY SYSTEMS: Initialize for this task
         if self.use_v4_safety:
+            # Lazy imports to prevent circular initialization
+            from app.startup_builder.v4.safety import CircuitBreakerConfig
+            from app.startup_builder.v4.safety.safety_coordinator import SafetyCoordinator
+            
             self.safety_coordinator = SafetyCoordinator(
                 circuit_config=CircuitBreakerConfig(
                     max_identical_calls=3,

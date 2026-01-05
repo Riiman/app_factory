@@ -7,8 +7,6 @@ API routes for V4 autonomous code generation system.
 from flask import Blueprint, request, jsonify
 import logging
 
-from app.startup_builder.v4.workflows import MissionExecutor, TaskExecutor
-
 logger = logging.getLogger(__name__)
 
 # Create blueprint
@@ -41,6 +39,9 @@ def start_mission():
     }
     """
     try:
+        # Lazy import to avoid initialization at module load time
+        from app.startup_builder.v4.workflows import MissionExecutor
+        
         data = request.json
         
         startup_id = data.get('startup_id')
@@ -107,6 +108,9 @@ def execute_task():
     }
     """
     try:
+        # Lazy import to avoid initialization at module load time
+        from app.startup_builder.v4.workflows import TaskExecutor
+        
         data = request.json
         
         startup_id = data.get('startup_id')
@@ -153,6 +157,9 @@ def get_stats(startup_id):
     }
     """
     try:
+        # Lazy import to avoid initialization at module load time
+        from app.startup_builder.v4.workflows import MissionExecutor
+        
         # Create executor to get stats
         executor = MissionExecutor(startup_id)
         stats = executor.get_stats()
