@@ -661,6 +661,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
              next_task["failed_attempts"].append({
                  "attempt_number": next_task["attempt_count"],
                  "action": "loop_limit",
+                 "command": "N/A",  # Added missing key
                  "error": error_info
              })
              next_task["last_error"] = error_info
@@ -1073,7 +1074,7 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                     f"  Attempt {fa['attempt_number']}: "
                     f"{fa['action']} → {error_type}"
                 )
-                context_parts.append(f"    Command: {fa['command'][:100]}")
+                context_parts.append(f"    Command: {fa.get('command', 'N/A')[:100]}")
                 error_msg = fa.get('error', {}).get('error_message') or fa.get('error', {}).get('raw_output', '')
                 context_parts.append(f"    Error: {error_msg[:200]}\n")
         
