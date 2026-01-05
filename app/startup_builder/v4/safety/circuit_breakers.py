@@ -95,10 +95,16 @@ class ToolCallCircuitBreaker:
         identical_count = sum(1 for call in recent_calls if call['signature'] == call_signature)
         
         if identical_count >= self.config.max_identical_calls:
-            self.state = CircuitState.OPEN
-            reason = f"Tool '{tool_name}' called {identical_count} times with identical arguments"
-            logger.warning(f"Circuit breaker OPEN: {reason}")
-            return True, reason
+            # WARN instead of BLOCK, and RESET
+            # self.state = CircuitState.OPEN  # Do not open the circuit
+            reason = f"⚠️ WARNING: Tool '{tool_name}' called {identical_count} times with identical arguments. Please verify your logic."
+            logger.warning(f"Circuit breaker WARNING: {reason}")
+            
+            # Reset history to give a fresh start (as requested)
+            self.call_history.clear()
+            
+            # Return False (don't block) but provide the reason (warning)
+            return False, reason
         
         # Check for consecutive failures
         failure_count = self.consecutive_failures.get(tool_name, 0)
