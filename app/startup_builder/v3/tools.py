@@ -598,10 +598,12 @@ class V3Tools:
                 # List test-results to find new images
                 ls_res = self.docker_manager.run_command(self.startup_id, f"find {target_dir} -name '*.png'")
                 if ls_res.get("exit_code") == 0:
-                    lines = ls_res["output"].strip().splitlines()
-                    for line in lines:
-                        if line.strip():
-                             snapshots.append(line.strip())
+                    output = ls_res.get("output", "")
+                    if output:
+                        lines = output.strip().splitlines()
+                        for line in lines:
+                            if line.strip():
+                                 snapshots.append(line.strip())
             except:
                 pass
 

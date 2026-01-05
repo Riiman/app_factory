@@ -485,14 +485,16 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
             cmd_res = self.docker_manager.run_command(self.context_manager.startup_id, f"base64 -w 0 {img_path}")
             
             if cmd_res.get("exit_code") == 0:
-                 b64_data = cmd_res["output"].strip()
-                 
-                 # Create Multimodal Message
-                 # We append a NEW HumanMessage to the history
-                 from langchain_core.messages import HumanMessage
-                 
-                 img_msg = HumanMessage(content=[
-                     {"type": "text", "text": f"[SYSTEM]: Here is the Snapshot captured at {img_path}. Analyze it for errors."},
+                 output = cmd_res.get("output", "")
+                 if output:
+                     b64_data = output.strip()
+                     
+                     # Create Multimodal Message
+                     # We append a NEW HumanMessage to the history
+                     from langchain_core.messages import HumanMessage
+                     
+                     img_msg = HumanMessage(content=[
+                         {"type": "text", "text": f"[SYSTEM]: Here is the Snapshot captured at {img_path}. Analyze it for errors."},
                      {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_data}"}}
                  ])
                  
