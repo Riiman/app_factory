@@ -89,6 +89,10 @@ def create_app(config_class=Config):
         from .startup_builder import builder_bp
         app.register_blueprint(builder_bp)
         
+        # Register V4 routes
+        from .routes.v4_builder import v4_builder
+        app.register_blueprint(v4_builder)
+        
         # Import sockets to register events
         from .startup_builder import sockets
 

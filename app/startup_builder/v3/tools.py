@@ -101,7 +101,8 @@ class V3Tools:
             
             status = res.get("status")
             if status == "completed":
-                output = res["output"][:2000] # Truncate 
+                # Safe access with default empty string
+                output = res.get("output", "")[:2000] # Truncate 
                 exit_code = res.get("exit_code", 0)
                 
                 # ENFORCE VISIBILITY OF FAILURE
@@ -113,7 +114,7 @@ class V3Tools:
                 # Return strict JSON format so Agent can parse it easily
                 return json.dumps({
                     "status": "background",
-                    "job_id": res["job_id"],
+                    "job_id": res.get("job_id", "unknown"),
                     "message": f"Command is running in background (PID {res.get('pid', 'Unknown')}). Agent must YIELD and wait."
                 })
             else:

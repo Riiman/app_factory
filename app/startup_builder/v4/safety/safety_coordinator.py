@@ -192,6 +192,19 @@ class SafetyCoordinator:
         
         return "\n".join(parts)
     
+    def get_stats(self) -> Dict[str, Any]:
+        """Get safety statistics"""
+        status = self.check_safety()
+        
+        return {
+            'safe': status.safe,
+            'violations': len(status.violations),
+            'warnings': len(status.warnings),
+            'cost': status.cost_stats,
+            'circuit_breakers': status.circuit_breaker_status,
+            'task_active': self.task_active
+        }
+    
     def reset(self) -> None:
         """Reset all safety systems"""
         self.circuit_breakers.reset_all()
