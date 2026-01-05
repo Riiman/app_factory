@@ -816,12 +816,17 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                  if str(m["id"]) == str(mission_id):
                      if status:
                          m["status"] = status
-                     
+                         # CRITICAL FIX: Sync Feature Status if mission is active/coding
+                         if status in ["in_progress", "coding", "completed"]:
+                              from ..utils.feature_sync import sync_feature_status_from_mission
+                              sync_feature_status_from_mission(mission_id, status, m.get("feature_id"))
+
                      if implementation_plan:
                          m["implementation_plan"] = implementation_plan
                      m["mission_context"] = mission_context
                      m["tasks"] = tasks
                      m["waiting_on"] = waiting_on # PERSIST ASYNC JOB ID
+                     
                      updated = True
                      break
             
@@ -838,6 +843,25 @@ You previously failed this task. A debugging specialist analyzed your attempts a
                       except: pass
                  else:
                      logger.info(f"Persistence: Synced Mission {mission_id} (Status={status}).")
+                     
+                     # 3.5 SYNC FEATURE STATUS (SQL) - CRITICAL FIX
+                     # We explicitly sync here to ensure UI is updated immediately
+                     # Note: We already did it inside the loop for optimization, but doing it here again 
+                     # if needed or just relying on the one in loop.
+                     # The one in loop catches the feature_id easily. 
+                     # Let's ensure we catch "completed" status too.
+                     if status == "completed":
+                          from ..utils.feature_sync import sync_feature_status_from_mission
+                          # We need to find the mission object again or capture feature_id
+                          # Re-find for safety since 'm' variable scope
+                          fid = None
+                          for m_check in missions:
+                               if str(m_check["id"]) == str(mission_id):
+                                    fid = m_check.get("feature_id")
+                                    break
+                          if fid:
+                               sync_feature_status_from_mission(mission_id, "completed", fid)
+
              else:
                  logger.warning(f"Persistence: Mission {mission_id} not found in file.")
                  
