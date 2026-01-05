@@ -20,6 +20,7 @@ class V3AgentState(TypedDict):
     plan: List[Dict]     # The Master Plan (Steps)
     current_task: Dict   # The active step
     failed_task: Dict    # Context for repair loops
+    diagnosis: Dict      # Diagnosis from Diagnostician (NEW)
     
     # The Context
     status: str          # planning, coding, verification, done, failed
@@ -57,7 +58,11 @@ def orchestrator_router(state: V3AgentState):
     elif status == "coding":
         return "developer"
     elif status == "fix_required":
-        return "architect"
+        return "diagnostician"  # NEW: Route to Diagnostician first
+    elif status == "diagnosed":
+        return "developer"  # NEW: Return to Developer with diagnosis
+    elif status == "needs_replanning":
+        return "architect"  # NEW: Only go to Architect if diagnosis says so
 
 
     elif status == "done":
@@ -69,9 +74,9 @@ def orchestrator_router(state: V3AgentState):
 
 # --- Agents ---
 from .agents.developer import V3Developer
-
 from .agents.initializer import V3Initializer
 from .agents.architect import V3Architect
+from .agents.diagnostician import V3Diagnostician  # NEW
 
 # --- Graph Contruction ---
 def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
@@ -85,7 +90,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
     # Initialize Agents with Callback
     architect_agent = V3Architect(log_callback=log_callback)
     developer_agent = V3Developer(log_callback=log_callback)
-
+    diagnostician_agent = V3Diagnostician(log_callback=log_callback)  # NEW
     initializer_agent = V3Initializer(log_callback=log_callback)
 
     workflow = StateGraph(V3AgentState)
@@ -93,7 +98,7 @@ def create_v3_graph(db_path="checkpoints.sqlite", log_callback=None):
     # Nodes
     workflow.add_node("architect", architect_agent.architect_node)
     workflow.add_node("developer", developer_agent.developer_node)
-
+    workflow.add_node("diagnostician", diagnostician_agent.diagnostician_node)  # NEW
     workflow.add_node("initializer", initializer_agent.initialize_node)
 
     

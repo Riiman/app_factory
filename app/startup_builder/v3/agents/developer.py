@@ -197,10 +197,12 @@ You are a generic but expert Senior Full-Stack Developer. Your goal is to safely
 | Tool | Rule |
 | :--- | :--- |
 | `update_file` | USE for ALL file generation/editing. Atomic & Safe. |
+| `read_file` | For large files (>200 lines), use `start_line` and `end_line` to read specific sections. |
 | `run_shell` | For commands < 5s. If it creates a Job ID, you MUST stop and yield. |
 | `ensure_server_running` | MANDATORY for starting servers. |
 | `run_ui_test` | MANDATORY for UI tasks. Do NOT use manual `npx playwright`. |
 | `search_web` | Use after 2 failures to find solutions. |
+
 
 # WORKFLOW STRATEGY
 1. **EXPLORE**: Use `list_files(recursive=True)` to see the tree. Don't peck folder-by-folder.
@@ -238,6 +240,32 @@ CRITICAL: If you see failed attempts above:
         
         global_context = state.get("global_context", "No global history yet.")
         mission_context = json.dumps(current_mission.get("mission_context", []), indent=2)
+        
+        # --- INJECT DIAGNOSIS CONTEXT (NEW) ---
+        diagnosis = state.get("diagnosis")
+        if diagnosis:
+            diagnosis_section = f"""
+
+## 🔍 DIAGNOSIS FROM SPECIALIST
+
+You previously failed this task. A debugging specialist analyzed your attempts and found:
+
+**Root Cause:** {diagnosis.get('root_cause', 'See diagnosis below')}
+
+**What You Tried:**
+{chr(10).join(f"- {attempt}" for attempt in diagnosis.get('what_developer_tried', []))}
+
+**Why It Failed:** {diagnosis.get('why_it_failed', 'See diagnosis below')}
+
+**Specific Guidance:** {diagnosis.get('guidance', 'Try a different approach')}
+
+⚠️ CRITICAL: Follow the guidance above. Do NOT repeat the same approaches that already failed.
+"""
+            system_prompt += diagnosis_section
+            
+            # Also emit for UI visibility
+            self.copilot.emit_thought(f"Diagnosis received: {diagnosis.get('diagnosis', 'See details')}", "developer")
+        
         base_user_prompt = f"Task: {next_task['description']}\nLogic: {next_task.get('logic', 'Standard Implementation')}\nDetails: {next_task.get('content_sketch', '')}\n\nGlobal Context (Project History):\n{global_context}\n\nLocal Context:\n{local_context}"
         
         messages = [HumanMessage(content=base_user_prompt)]

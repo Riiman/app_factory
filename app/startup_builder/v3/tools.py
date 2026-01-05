@@ -3,7 +3,6 @@ import json
 import ast
 import os
 from langchain_core.tools import tool
-from langchain_community.tools import DuckDuckGoSearchRun
 from ..context import ContextManager
 from ..process_manager import ProcessManager # corrected import depth
 
@@ -16,28 +15,39 @@ class V3Tools:
         self.runtime_context = runtime_context or {}
         self.process_manager = ProcessManager(docker_manager) # Initialize Middleware
 
-    def get_tool_list(self, include_context_tools=False):
-        """Returns the actual bound tool instances for the LLM."""
+    def get_tool_list(self, include_context_tools=False, read_only=False):
+        """
+        Returns the actual bound tool instances for the LLM.
+        
+        Args:
+            include_context_tools: Include context retrieval tools
+            read_only: If True, exclude file-writing and state-changing tools (for Diagnostician)
+        """
         base_tools = [
             self.create_run_shell(),
-            self.create_ensure_server(), # NEW
-            self.create_check_job(),     # NEW
+            self.create_check_job(),
             self.create_read_file(),
-            self.create_update_file(),   # Unified Tool
             self.create_list_files(),
-            self.create_find_file(),     # NEW: Name Search
+            self.create_find_file(),
             self.create_search_files(),
             self.create_read_logs(),
-            self.create_restart_server(),
-            self.create_refresh_memory(),
-            self.create_start_process(),
-            self.create_stop_process(),
             self.create_read_process_logs(),
             self.create_list_processes(),
-            self.create_wait_for_job(), 
-            self.create_run_ui_test(), # Dedicated Tool
             self.create_search_web()
         ]
+        
+        # Add write/modify tools only if NOT read_only
+        if not read_only:
+            base_tools.extend([
+                self.create_ensure_server(),
+                self.create_update_file(),
+                self.create_restart_server(),
+                self.create_refresh_memory(),
+                self.create_start_process(),
+                self.create_stop_process(),
+                self.create_wait_for_job(),
+                self.create_run_ui_test()
+            ])
         
         if include_context_tools:
             base_tools.extend([
@@ -164,15 +174,65 @@ class V3Tools:
 
     def create_read_file(self):
         @tool
-        def read_file(path: str) -> str:
+        def read_file(path: str, start_line: Optional[int] = None, end_line: Optional[int] = None) -> str:
             """
-            Reads the content of a file.
+            Reads the content of a file, optionally reading only specific line ranges.
+            
+            Args:
+                path: Path to the file to read
+                start_line: (Optional) Starting line number (1-indexed, inclusive). If provided, only reads from this line.
+                end_line: (Optional) Ending line number (1-indexed, inclusive). If provided, only reads up to this line.
+            
+            Examples:
+                read_file("app.py") - Reads entire file
+                read_file("app.py", start_line=10, end_line=20) - Reads lines 10-20 only
+                read_file("app.py", start_line=50) - Reads from line 50 to end
+            
+            BEST PRACTICE: For large files (>200 lines), use line ranges to avoid token waste.
             Always read a file before editing it to ensure you have the latest content.
             """
             res = self.docker_manager.read_file(self.startup_id, path)
             if res.get("error"):
                 return f"Error reading file: {res['error']}"
-            return res["content"]
+            
+            content = res["content"]
+            
+            # If line ranges specified, extract only those lines
+            if start_line is not None or end_line is not None:
+                lines = content.split("\n")
+                total_lines = len(lines)
+                
+                # Convert to 0-indexed and handle bounds
+                start_idx = (start_line - 1) if start_line else 0
+                end_idx = end_line if end_line else total_lines
+                
+                # Validate ranges
+                if start_idx < 0:
+                    return f"Error: start_line must be >= 1"
+                if start_line and end_line and start_idx >= end_idx:
+                    return f"Error: start_line ({start_line}) must be less than end_line ({end_line})"
+                
+                # Adjust end_idx if it exceeds total lines, and provide a warning
+                if end_idx > total_lines:
+                    # If end_line was specified, but it's beyond the file length, read to the end.
+                    # If end_line was not specified (i.e., end_idx was set to total_lines), this condition won't trigger a warning.
+                    if end_line is not None: 
+                        warning_message = f"Warning: end_line {end_line} exceeds file length ({total_lines} lines). Reading to end.\n"
+                    else:
+                        warning_message = "" # No warning if end_line was not explicitly set
+                    end_idx = total_lines
+                else:
+                    warning_message = ""
+                
+                # Extract the range
+                selected_lines = lines[start_idx:end_idx]
+                
+                # Add helpful context about what was read
+                range_info = f"[Reading lines {start_idx + 1 or 1}-{end_idx} of {total_lines} total lines]\n\n"
+                return warning_message + range_info + "\n".join(selected_lines)
+            
+            return content
+        
         return read_file
 
     def create_update_file(self):
@@ -627,11 +687,66 @@ class V3Tools:
             Use this to diagnose errors, check documentation, or find solutions when internal knowledge fails.
             Example: "latest tailwind css v4 init command error" or "python flask 502 bad gateway fix"
             """
+            import time
+            
+            # Use duckduckgo_search directly (more reliable than langchain wrapper)
             try:
-                search = DuckDuckGoSearchRun()
-                # Run search
-                res = search.invoke(query)
-                return f"Search Results for '{query}':\n{res}"
-            except Exception as e:
-                return f"Error searching web: {str(e)}"
+                from duckduckgo_search import DDGS
+            except ImportError:
+                return "Web search unavailable: duckduckgo_search package not installed. Proceed with local debugging."
+            
+            # Try with retry logic (DuckDuckGo can be rate-limited)
+            max_retries = 2
+            for attempt in range(max_retries):
+                try:
+                    with DDGS() as ddgs:
+                        # Get top 5 results
+                        results = list(ddgs.text(query, max_results=5))
+                        
+                        if results and len(results) > 0:
+                            # Format results
+                            formatted = []
+                            for i, result in enumerate(results, 1):
+                                title = result.get('title', 'No title')
+                                body = result.get('body', result.get('description', 'No description'))
+                                link = result.get('href', result.get('link', ''))
+                                
+                                formatted.append(f"{i}. {title}")
+                                formatted.append(f"   {body}")
+                                if link:
+                                    formatted.append(f"   Link: {link}")
+                                formatted.append("")
+                            
+                            return f"Search Results for '{query}':\n\n" + "\n".join(formatted)
+                        else:
+                            # Empty result
+                            if attempt < max_retries - 1:
+                                time.sleep(1)  # Wait before retry
+                                continue
+                            return f"No results found for '{query}'. Try rephrasing or searching for specific error messages."
+                        
+                except Exception as e:
+                    error_msg = str(e)
+                    
+                    # Check for common errors
+                    if "rate" in error_msg.lower() or "limit" in error_msg.lower() or "429" in error_msg:
+                        if attempt < max_retries - 1:
+                            time.sleep(2)  # Wait longer for rate limits
+                            continue
+                        return f"Web search temporarily unavailable (rate limited). Try again later or search for: '{query}' manually."
+                    
+                    if "timeout" in error_msg.lower() or "connection" in error_msg.lower():
+                        if attempt < max_retries - 1:
+                            time.sleep(1)
+                            continue
+                        return f"Web search timed out. Network may be slow. You can try searching for: '{query}' manually or proceed without web search."
+                    
+                    # Unknown error
+                    if attempt < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                    return f"Web search failed: {error_msg}. Proceed with local debugging or try a different search query."
+            
+            return "Web search failed after retries. Proceed with local investigation."
+        
         return search_web
