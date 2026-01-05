@@ -69,12 +69,6 @@ class V3Architect:
         global_context = f"{project_rules}\n\nMission History:\n{history_str}"
         failed_task = state.get("failed_task")
         
-        # --- V3.1 SCRATCHPAD ---
-        mission_scratchpad_list = state.get("mission_scratchpad", [])
-        scratchpad_str = "No specific constraints."
-        if mission_scratchpad_list:
-             scratchpad_str = "\n".join([f"- {item}" for item in mission_scratchpad_list])
-
         # 1. Setup Tools (Read/List/Search)
         tools_factory = V3Tools(self.docker_manager, startup_id)
         # We want exploration tools. 
@@ -114,9 +108,6 @@ You must EXPLORE the codebase first, then DESIGN the solution.
 4. **PERSISTENT ERRORS**: If a task fails >2 times, you MUST plan to use `search_web` to diagnose (e.g., "npm build error X").
 5. **CHECK VERSIONS**: Do NOT assume config syntax (e.g. Tailwind v3 vs v4). Check `package.json` or run `npm list <pkg>` first.
     - **TAILWIND WARNING**: If `tailwindcss@4` is installed, you MUST use `@import "tailwindcss";` in CSS and `@tailwindcss/postcss` in PostCSS. Do NOT use `@tailwind base` or the old `tailwindcss` plugin.
-
-# PROJECT MEMORY & CONSTRAINTS (CRITICAL)
-{mission_scratchpad}
 
 # WORKFLOW STRATEGY
 1. **DIAGNOSIS**: 
@@ -254,7 +245,7 @@ Constraint: Do NOT return the JSON plan until you have verified the context.
             attempt_success = False
             
             # Prepare System Prompt
-            full_system_prompt = system_prompt.replace("{tech_stack}", tech_stack).replace("{global_context}", global_context).replace("{mission_context}", json.dumps(current_mission.get("mission_context", []), indent=2)).replace("{mission_scratchpad}", scratchpad_str)
+            full_system_prompt = system_prompt.replace("{tech_stack}", tech_stack).replace("{global_context}", global_context).replace("{mission_context}", json.dumps(current_mission.get("mission_context", []), indent=2))
 
             for i in range(20): # Max 20 turns of exploration per attempt
                 # --- V3 CONTEXT VISIBILITY ---

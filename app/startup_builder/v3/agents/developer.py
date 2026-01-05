@@ -43,12 +43,6 @@ class V3Developer:
              return {"status": "done_mission", "logs": ["Developer: No active mission found."]}
              
         current_mission_id = current_mission["id"]
-        # Fetch Persistent Scratchpad
-        mission_scratchpad_list = state.get("mission_scratchpad", [])
-        # Format for Prompt (Numbered List)
-        scratchpad_str = "No specific constraints yet."
-        if mission_scratchpad_list:
-             scratchpad_str = "\n".join([f"- {item}" for item in mission_scratchpad_list])
         
         missions = [] 
         
@@ -182,27 +176,22 @@ class V3Developer:
         # 3. System Prompt
         system_prompt = """
 # ROLE & IDENTITY
-You are a generic but expert Senior Full-Stack Developer. Your goal is to safe execute the given task with production-quality code, verify it, and ensure the startup's requirements are met entirely within this container.
-
-# MODE: {mode}
-# DIAGNOSIS INSTRUCTION: {diagnosis_instruction}
+You are a generic but expert Senior Full-Stack Developer. Your goal is to safely execute the given task with production-quality code, verify it, and ensure the startup's requirements are met entirely within this container.
 
 # CORE OPERATING RULES
 1. **THINK FIRST**: Before ANY tool use, provide a brief (1 sentence) explanation of what you are doing and why.
 2. **LAZY GUARD**: Do NOT just list files. You must take action (write code, run commands).
 3. **NO PLACEHOLDERS**: Use real content from `/app/project_context.json`. No Lorem Ipsum.
-4. **PERSISTENT ERRORS**: If an error occurs >2 times (e.g. build failing), USE `search_web`. Do not blindly retry.
+4. **NO REPETITION**: If you see failed attempts below, try a DIFFERENT approach. Do not repeat the same command.
 5. **CHECK VERSIONS**: Verify package versions (e.g. `npm list`) before assuming configuration syntax (v3 vs v4).
     - **TAILWIND WARNING**: If `tailwindcss@4` is installed, you MUST use `@import "tailwindcss";` in CSS and `@tailwindcss/postcss` in PostCSS. Do NOT use `@tailwind base` or the old `tailwindcss` plugin.
+6. **ESCALATE IF STUCK**: If you cannot identify a new strategy after reviewing failed attempts, return "STATUS: ESCALATE"
 
 # ENVIRONMENT & CONSTRAINTS
 - **OS**: Linux (Headless Docker).
 - **Forbidden**: `docker`, `docker-compose`, `systemctl`.
 - **Ports**: 3000 (Web), 8000 (API), 5000 (Flask).
 - **Blocking**: NEVER run blocking servers (e.g., `npm run dev`) with `run_shell`. Use `ensure_server_running`.
-
-# PROJECT CONSTANTS & MEMORY (CRITICAL)
-{mission_scratchpad}
 
 # TOOL USAGE STANDARDS
 | Tool | Rule |
@@ -211,6 +200,7 @@ You are a generic but expert Senior Full-Stack Developer. Your goal is to safe e
 | `run_shell` | For commands < 5s. If it creates a Job ID, you MUST stop and yield. |
 | `ensure_server_running` | MANDATORY for starting servers. |
 | `run_ui_test` | MANDATORY for UI tasks. Do NOT use manual `npx playwright`. |
+| `search_web` | Use after 2 failures to find solutions. |
 
 # WORKFLOW STRATEGY
 1. **EXPLORE**: Use `list_files(recursive=True)` to see the tree. Don't peck folder-by-folder.
@@ -233,14 +223,17 @@ You are a generic but expert Senior Full-Stack Developer. Your goal is to safe e
 
 
 # CONTEXT & HISTORY
-## Mission Objective (Past Successful Steps)
+## Mission Context (What's Been Completed in This Mission)
 {mission_context}
 
-## Execution Logs (Recent Failures & Tool Outputs)
+## Current Task Execution History
 {task_context_str}
 
-CRITICAL: If retrying based on these logs, ANALYZE WHY the previous attempt failed.
-CHANGE YOUR APPROACH. Do not repeat failed commands.
+CRITICAL: If you see failed attempts above:
+1. ANALYZE the root cause (not just symptoms)
+2. Try a DIFFERENT approach than previous attempts
+3. Check assumptions (file paths, versions, configs)
+4. If stuck after reviewing failures, return "STATUS: ESCALATE"
 """
         
         global_context = state.get("global_context", "No global history yet.")
@@ -259,10 +252,13 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
              task_context.append(f"SYSTEM: Resumed from Async Job. Result: {injected_result}")
              self.copilot.emit_thought(f"Resuming task after async job completion...", "developer")
         
-        # CIRCUIT BREAKER STATE
-        consecutive_failures = 0
-        last_failed_command = ""
-        last_error_log = ""
+        # ATTEMPT TRACKING: Track how many times we've tried this specific task
+        if "attempt_count" not in next_task:
+            next_task["attempt_count"] = 0
+            next_task["failed_attempts"] = []
+        
+        next_task["attempt_count"] += 1
+        MAX_TASK_ATTEMPTS = 3
         
         # TURN LOGIC: We distinguish between "Context Gathering" (Free) and "Actions" (Costly)
         turn_count = 0      # Counts expensive actions (write, run, etc)
@@ -273,53 +269,24 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
         while turn_count < MAX_TURNS and total_steps < MAX_TOTAL_STEPS:
             total_steps += 1
             
-            # --- V3.1 SELF-HEALING TRIGGER (Architecture B) ---
-            if consecutive_failures >= 2:
-                self.copilot.emit_thought("Failure Threshold Reached. Triggering Self-Healing Diagnosis...", "developer")
-                try:
-                    last_error_info = next_task.get("last_error", {"primary_error": "Unknown repeated failure"})
-                    
-                    diagnosis = self._run_diagnosis_procedure(next_task, last_error_info, mission_scratchpad_list, tools, workspace_path)
-                    
-                    if diagnosis["status"] == "fixed":
-                        # 1. Update Scratchpad
-                        new_scratchpad = self._update_scratchpad(diagnosis["new_lesson"], mission_scratchpad_list)
-                        state["mission_scratchpad"] = new_scratchpad
-                        mission_scratchpad_list = new_scratchpad
-                        
-                        # 2. Reset Failures
-                        consecutive_failures = 0
-                        task_context.append(f"SELF-HEALED: {diagnosis['summary']}")
-                        
-                        # 3. Continue execution (skipping the rest of this failed turn)
-                        continue 
-                        
-                    elif diagnosis["status"] == "escalate":
-                         task_context.append(f"DIAGNOSIS FAILED. Root Cause: {diagnosis['reason']}")
-                         # Explicitly return to Router
-                         return {
-                             "status": "fix_required",
-                             "logs": [f"Developer Escaled: {diagnosis['reason'][:200]}..."],
-                             "current_mission": current_mission, # Ensure updates preserved
-                             "mission_scratchpad": mission_scratchpad_list
-                         }
-                except Exception as e:
-                    logger.error(f"Self-Healing Logic Crashed: {e}")
-                    self.copilot.emit_thought(f"Self-Healing Crashed: {e}", "developer")
+            # Check if we've exceeded task attempts - escalate to Architect
+            if next_task["attempt_count"] > MAX_TASK_ATTEMPTS:
+                last_error = next_task.get("last_error", {})
+                error_summary = f"{last_error.get('error_type', 'Unknown')}: {last_error.get('error_message', 'No details')}"
+                
+                return {
+                    "status": "fix_required",
+                    "failed_task": next_task,
+                    "reason": f"Task failed after {MAX_TASK_ATTEMPTS} attempts. Last error: {error_summary}",
+                    "logs": [f"Developer: Escalating to Architect after {MAX_TASK_ATTEMPTS} failed attempts."],
+                    "current_mission": current_mission
+                }
 
-            # Inject task context if we are retrying
-            # We construct the prompt dynamically
-            task_context_str = json.dumps(task_context, indent=2) if task_context else "No actions yet."
+
+            # Build enhanced context with failure history
+            task_context_str = self._build_enhanced_context(next_task, task_context)
             
-            # DYNAMIC DIAGNOSIS LOGIC
-            mode = "IMPLEMENTATION"
-            diagnosis_instruction = "Follow the plan. Write clean code."
-            
-            if task_context: # If retries (context exists)
-                mode = "DEBUGGING / FIXING"
-                diagnosis_instruction = "CRITICAL: You are in DEBUG MODE. Read the logs below. Fix ONLY the Specific Error. Do NOT Rewrite the whole file."
-            
-            current_prompt = system_prompt.replace("{mission_context}", mission_context).replace("{task_context_str}", task_context_str).replace("{mode}", mode).replace("{diagnosis_instruction}", diagnosis_instruction).replace("{mission_scratchpad}", scratchpad_str)
+            current_prompt = system_prompt.replace("{mission_context}", mission_context).replace("{task_context_str}", task_context_str)
             # --- V3 CONTEXT VISIBILITY ---
             # Capture exactly what goes to the LLM for the UI "Glass Box"
             # context_debug = f"""
@@ -449,46 +416,75 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                     verification_status = self._verify_action(tool_name, command_str, str(tool_result))
                     
                     if verification_status == "FAILURE":
-                         consecutive_failures += 1
-                         if consecutive_failures >= 2:
-                             # SELF-HEALING DIAGNOSIS (Replaces Reflector)
-                             last_error_dict = {"primary_error": f"Command Failed: {command_str}\nOutput: {str(tool_result)}"}
-                             
-                             # We pass "." as work_dir, or ideally fetch from context if available.
-                             diag_result = self._run_diagnosis_procedure(next_task, last_error_dict, mission_scratchpad_list, tools, ".")
-                             
-                             if diag_result["status"] == "fixed":
-                                  # Auto-fix successful. 
-                                  # Reset failures so we don't loop immediately.
-                                  consecutive_failures = 0 
-                                  
-                                  new_lesson = diag_result.get("new_lesson", "Context Updated")
-                                  mission_scratchpad_list = self._update_scratchpad(new_lesson, mission_scratchpad_list)
-                                  state["mission_scratchpad"] = mission_scratchpad_list # Update State in memory
-                                  
-                                  task_context.append(f"SYSTEM: Self-Healing Active. Fix Applied. Lesson: {new_lesson}")
-                             else:
-                                  # Escalation
-                                  task_context.append(f"SYSTEM: Self-Healing Failed. Diagnosis: {diag_result['reason']}")
-                                  
-                                  # Update state before returning
-                                  state["mission_scratchpad"] = mission_scratchpad_list
-                                  state["failed_task"] = next_task
-                                  state["task_context"] = task_context
-                                  
-                                  return {
-                                      "status": "fix_required", 
-                                      "failed_task": next_task, 
-                                      "reason": diag_result['reason'],
-                                      "logs": ["Developer: Escalating failure to Architect."]
-                                  }
+                        # Extract structured error information
+                        import datetime
+                        error_info = self._extract_error_info(tool_name, command_str, str(tool_result))
+                        
+                        # Add to failed attempts
+                        next_task["failed_attempts"].append({
+                            "attempt_number": next_task["attempt_count"],
+                            "action": tool_name,
+                            "command": command_str,
+                            "error": error_info,
+                            "timestamp": datetime.datetime.now().isoformat()
+                        })
+                        
+                        # Update last_error for context
+                        next_task["last_error"] = error_info
+                        
+                        # Add to context for next iteration
+                        task_context.append(f"VERIFICATION: FAILED - {error_info['error_type']}")
                     else:
-                         task_context.append(f"VERIFICATION: SUCCESS.")
-                         consecutive_failures = 0 
+                        task_context.append(f"VERIFICATION: SUCCESS")
                     
                     # Append ToolMessage
                     messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
                     
+                    # --- INJECT STRUCTURED FEEDBACK INTO MESSAGE HISTORY ---
+                    if verification_status == "FAILURE":
+                        # Build helpful error analysis message
+                        feedback_parts = [
+                            "⚠️ SYSTEM ANALYSIS: The previous command failed.",
+                            f"Error Type: {error_info['error_type']}"
+                        ]
+                        
+                        if error_info.get('error_message'):
+                            feedback_parts.append(f"Error Message: {error_info['error_message']}")
+                        
+                        if error_info.get('file'):
+                            location = f"{error_info['file']}"
+                            if error_info.get('line'):
+                                location += f":{error_info['line']}"
+                            feedback_parts.append(f"Location: {location}")
+                        
+                        # Add actionable guidance
+                        feedback_parts.append("\n🔍 Next Steps:")
+                        
+                        if error_info['error_type'] == 'SyntaxError':
+                            feedback_parts.append("- Check the syntax in the file mentioned above")
+                            feedback_parts.append("- Look for missing brackets, quotes, or semicolons")
+                        elif error_info['error_type'] == 'ModuleNotFound':
+                            feedback_parts.append("- Install the missing module using npm/pip")
+                            feedback_parts.append("- Verify the import statement is correct")
+                        elif error_info['error_type'] == 'FileNotFound':
+                            feedback_parts.append("- Verify the file path is correct")
+                            feedback_parts.append("- Check if the file was created in the right location")
+                        elif error_info['error_type'] == 'PortInUse':
+                            feedback_parts.append("- Kill the process using the port")
+                            feedback_parts.append("- Or use a different port")
+                        elif error_info['error_type'] == 'CommandNotFound':
+                            feedback_parts.append("- Verify the command is installed")
+                            feedback_parts.append("- Check if you're in the correct directory")
+                        else:
+                            feedback_parts.append("- Analyze the error output above")
+                            feedback_parts.append("- Try a different approach than what just failed")
+                        
+                        feedback_parts.append("\n⚡ IMPORTANT: Do NOT repeat the exact same command. Try a different solution.")
+                        
+                        feedback_message = "\n".join(feedback_parts)
+                        messages.append(HumanMessage(content=feedback_message))
+                    
+
                     # --- MULTIMODAL INJECTION ---
                     # 1. Try JSON Parsing (New Way)
                     snapshots_found = []
@@ -554,13 +550,16 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
                  
                  # --- LAZY / SUCCESS GUARD ---
                  
-                 # 0. Active Failure Guard (New): Did the last action fail?
-                 if consecutive_failures > 0:
-                      logger.warning(f"Failure Guard Triggered. Consecutive Failures: {consecutive_failures}")
-                      rejection_msg = f"SYSTEM ERROR: The last command FAILED. You cannot claim completion in a failure state. Fix the error or try a different approach."
-                      messages.append(HumanMessage(content=rejection_msg))
-                      task_context.append("System: Rejected completion due to active failure state.")
-                      continue
+                 # 0. Active Failure Guard: Did the last action fail?
+                 if next_task.get("failed_attempts") and len(next_task["failed_attempts"]) > 0:
+                      # Check if the last attempt in this turn failed
+                      last_failed = next_task["failed_attempts"][-1]
+                      if last_failed.get("attempt_number") == next_task["attempt_count"]:
+                          logger.warning(f"Failure Guard Triggered. Last action failed.")
+                          rejection_msg = f"SYSTEM ERROR: The last command FAILED. You cannot claim completion in a failure state. Fix the error or try a different approach."
+                          messages.append(HumanMessage(content=rejection_msg))
+                          task_context.append("System: Rejected completion due to active failure state.")
+                          continue
 
                  # 1. Lazy Check: Did we do ANYTHING?
                  if not executed_actions and not injected_result:
@@ -868,6 +867,7 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
         except Exception as e:
             logger.error(f"Image Injection Error: {e}")
 
+
     def _log_to_file(self, message):
          try:
              with open("developer_agent.log", "a") as f:
@@ -875,116 +875,96 @@ CHANGE YOUR APPROACH. Do not repeat failed commands.
          except:
              pass
 
-    def _update_scratchpad(self, new_lesson: str, current_scratchpad: List[str]) -> List[str]:
-        """
-        Updates the scratchpad with hygiene (Max 10 items, deduplication).
-        """
-        # 1. Deduplication
-        cleaned_lesson = new_lesson.strip()
-        if any(cleaned_lesson in item or item in cleaned_lesson for item in current_scratchpad):
-             return current_scratchpad
-             
-        # 2. Add
-        updated = current_scratchpad + [cleaned_lesson]
+    def _extract_error_info(self, tool_name: str, command: str, output: str) -> Dict:
+        """Extract structured error information from tool output."""
+        error_info = {
+            "tool": tool_name,
+            "command": command,
+            "raw_output": output[:500],
+            "error_type": "Unknown",
+            "error_message": None,
+            "file": None,
+            "line": None
+        }
         
-        # 3. Compression Trigger (Simple FIFO for now)
-        if len(updated) > 10:
-             return updated[:5] + updated[-5:]
-             
-        return updated
+        output_lower = output.lower()
+        
+        # Common error patterns
+        if "syntaxerror" in output_lower:
+            error_info["error_type"] = "SyntaxError"
+            match = re.search(r"SyntaxError: (.+)", output, re.IGNORECASE)
+            if match:
+                error_info["error_message"] = match.group(1)
+        
+        elif "enoent" in output_lower or "no such file" in output_lower:
+            error_info["error_type"] = "FileNotFound"
+            match = re.search(r"ENOENT.*'([^']+)'", output)
+            if match:
+                error_info["file"] = match.group(1)
+        
+        elif "eaddrinuse" in output_lower:
+            error_info["error_type"] = "PortInUse"
+            match = re.search(r"port (\d+)", output_lower)
+            if match:
+                error_info["error_message"] = f"Port {match.group(1)} already in use"
+        
+        elif "module not found" in output_lower or "cannot find module" in output_lower:
+            error_info["error_type"] = "ModuleNotFound"
+            match = re.search(r"module ['\"]([^'\"]+)['\"]", output_lower)
+            if match:
+                error_info["error_message"] = f"Missing module: {match.group(1)}"
+        
+        elif "command not found" in output_lower:
+            error_info["error_type"] = "CommandNotFound"
+            match = re.search(r"(\S+): command not found", output)
+            if match:
+                error_info["error_message"] = f"Command '{match.group(1)}' not found"
+        
+        # Extract file/line for any error
+        if not error_info["file"]:
+            match = re.search(r"(\S+\.(?:tsx?|jsx?|py|json)):(\d+)", output)
+            if match:
+                error_info["file"] = match.group(1)
+                error_info["line"] = match.group(2)
+        
+        return error_info
 
-    def _run_diagnosis_procedure(self, task: Dict, last_error: Dict, scratchpad: List[str], tools: List[Any], work_dir: str) -> Dict:
-        """
-        SELF-HEALING LOOP (Architecture B).
-        1. Generate Diagnostic Script.
-        2. Run Script.
-        3. Analyze Output.
-        4. Attempt ONE Atomic Fix.
-        """
-        self.copilot.emit_thought("ENTERING DIAGNOSIS MODE (Self-Healing)...", "developer")
+    def _build_enhanced_context(self, task: Dict, execution_log: List[str]) -> str:
+        """Build enhanced context string with failure history."""
+        attempt_count = task.get("attempt_count", 1)
+        failed_attempts = task.get("failed_attempts", [])
+        last_error = task.get("last_error", {})
         
-        # 1. Generate Script
-        script_prompt = f"""
-You are a DETECTIVE. The task '{task['description']}' failed.
-Error Context: {last_error.get('primary_error')}
-
-ACTION: Write a shell script (`diagnose.sh`) that checks THE ENTIRE ENVIRONMENT relevant to this error.
-- Check config files (cat them).
-- Check ports (netstat/lsof).
-- Check logs.
-- Check versions.
-
-Return ONLY the script content.
-"""
-        # Quick LLM call for script
-        msgs = [HumanMessage(content=script_prompt)]
-        act_res = self.copilot.act(script_prompt, msgs, tools=[], active_node="developer_diagnosis")
+        context_parts = []
         
-        # Robust Content Extraction
-        # act() returns {'content': AIMessage, 'error': ...}
-        ai_msg = act_res.get("content")
-        script_content = ""
-        if hasattr(ai_msg, 'content'):
-             script_content = ai_msg.content
-        elif isinstance(ai_msg, dict):
-             script_content = ai_msg.get("content", "")
-        else:
-             script_content = str(ai_msg)
+        # Attempt info
+        context_parts.append(f"=== ATTEMPT #{attempt_count} ===\n")
         
-        if "```" in script_content:
-             script_content = script_content.split("```")[1].replace("bash", "").replace("sh", "").strip()
-             
-        # 2. Run Script
-        # Use Absolute Path to avoid CWD confusion
-        script_path = "/app/diagnose.sh"
-        write_res = self.docker_manager.write_file(self.context_manager.startup_id, "diagnose.sh", script_content)
+        # Failed attempts summary
+        if failed_attempts:
+            context_parts.append("PREVIOUS FAILED ATTEMPTS:")
+            for fa in failed_attempts:
+                error_type = fa.get('error', {}).get('error_type', 'Unknown Error')
+                context_parts.append(
+                    f"  Attempt {fa['attempt_number']}: "
+                    f"{fa['action']} → {error_type}"
+                )
+                context_parts.append(f"    Command: {fa['command'][:100]}")
+                error_msg = fa.get('error', {}).get('error_message') or fa.get('error', {}).get('raw_output', '')
+                context_parts.append(f"    Error: {error_msg[:200]}\n")
         
-        if write_res.get("error"):
-             self.copilot.emit_thought(f"Diagnosis Error: Failed to write script: {write_res['error']}", "developer")
-             return {"status": "escalate", "reason": f"Diagnostic Setup Failed: {write_res['error']}"}
+        # Last error details
+        if last_error:
+            context_parts.append("\nLAST ERROR:")
+            context_parts.append(f"  Type: {last_error.get('error_type', 'Unknown')}")
+            error_msg = last_error.get('error_message') or last_error.get('raw_output', '')
+            context_parts.append(f"  Message: {error_msg[:200]}")
+            if last_error.get('file'):
+                context_parts.append(f"  Location: {last_error['file']}:{last_error.get('line', '?')}")
         
-        # Run it
-        cmd_res = self.docker_manager.run_command(self.context_manager.startup_id, f"bash {script_path}")
-        diag_output = cmd_res.get("output", "")[:5000] # Cap output
+        # Recent execution log
+        context_parts.append("\nRECENT EXECUTION LOG:")
+        context_parts.append("\n".join(execution_log[-10:]))  # Last 10 entries
         
-        self.copilot.emit_thought(f"Diagnostic Output:\n{diag_output[:500]}...", "developer")
-        
-        # 3. Analyze & Fix
-        analysis_prompt = f"""
-DIAGNOSTIC OUTPUT from `diagnose.sh`:
-{diag_output}
-
-Based on this, what is the ROOT CAUSE and the ATOMIC FIX?
-If you cannot fix it, output "ESCALATE".
-"""
-        msgs = [HumanMessage(content=analysis_prompt)]
-        act_res = self.copilot.act("You are a Senior Debugger. Fix the issue.", msgs, tools=tools, active_node="developer_diagnosis")
-        
-        # Robust Content Extraction
-        ai_msg = act_res.get("content")
-        analysis_content = ""
-        if hasattr(ai_msg, 'content'):
-             analysis_content = ai_msg.content
-        elif isinstance(ai_msg, dict):
-             analysis_content = ai_msg.get("content", "")
-        else:
-             analysis_content = str(ai_msg)
-        
-        # 4. Result
-        if "ESCALATE" in analysis_content:
-             # Propagate the full analysis so Architect knows WHY
-             clean_reason = analysis_content.replace("ESCALATE", "").strip()
-             if not clean_reason: clean_reason = "Analysis failed to provide details."
-             return {"status": "escalate", "reason": clean_reason}
-             
-        return {"status": "fixed", "summary": analysis_content, "new_lesson": f"Constraint Verified: {analysis_content[:50]}..."}
-
-        """Append debug log to a local file for inspection."""
-        try:
-            with open("/home/ubuntu/app_factory/agent_debug.log", "a") as f:
-                import datetime
-                timestamp = datetime.datetime.now().isoformat()
-                f.write(f"[{timestamp}] {message}\\n")
-        except Exception:
-            pass
+        return "\n".join(context_parts)
 
