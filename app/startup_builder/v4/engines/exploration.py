@@ -6,6 +6,7 @@ Responsible for measuring the "Live State" (y) of the codebase plant.
 
 import logging
 from typing import Dict, Any, Optional
+import os
 
 from ..context.librarian import Librarian
 from ..context.context_cache import ContextCache
@@ -23,6 +24,7 @@ class ExplorationEngine:
         self.startup_id = startup_id
         self.librarian = Librarian(workspace_path)
         self.context_cache = ContextCache(workspace_path)
+        self.workspace_root = workspace_path
         self.last_snapshot = {}
         
     def observe_state(self, goal: str, feedback: Optional[Dict[str, Any]] = None, cycle_memory: Dict[str, Any] = None) -> Dict[str, Any]:
