@@ -57,20 +57,49 @@ Mission: {mission_title}
 
 {mission_desc}
 
-Create a strategic plan with 5-10 high-level tasks. Each task should represent a major milestone or feature.
+Create a strategic plan with 15-30 DETAILED tasks. Each task must include:
+
+1. **Clear description** - What needs to be built
+2. **Implementation details** - Specific files to create/modify with exact paths
+3. **Requirements** - Technical details, dependencies, data structures
+4. **Verification steps** - How to test/verify the task is complete
 
 Output format:
 # Strategic Plan: [Mission Title]
 
-## Phase 1: [Phase Name]
-- **Task 1**: [High-level task description]
-- **Task 2**: [High-level task description]
+## Phase 1: [Phase Name] (Tasks 1-5)
 
-## Phase 2: [Phase Name]
-- **Task 3**: [High-level task description]
+**Task 1**: [Clear description]
+
+**Implementation:**
+- Create `path/to/file.js`: [What goes in this file]
+- Create `path/to/other.js`: [What goes in this file]
+- Update `existing/file.js`: [What to add/change]
+- Install dependencies: package1, package2
+
+**Verification:**
+- Test case 1 → expected result
+- Test case 2 → expected result
+- Manual check: description
+
+---
+
+**Task 2**: [Clear description]
+
+**Implementation:**
 ...
 
-IMPORTANT: Keep tasks high-level. Each task will be decomposed into 10-20 atomic tasks later.
+**Verification:**
+...
+
+## Phase 2: [Phase Name] (Tasks 6-10)
+...
+
+IMPORTANT: 
+- Generate 15-30 tasks minimum (not 5-10)
+- Be VERY specific about filenames and paths
+- Include verification steps for each task
+- Tasks should be detailed enough for an LLM to execute with tools
 """
         
         # Get strategic plan from LLM
@@ -114,7 +143,7 @@ IMPORTANT: Keep tasks high-level. Each task will be decomposed into 10-20 atomic
 # STRATEGIC PLANNER - V4 AGENT
 
 ## Your Role
-You are a Senior Technical Architect creating HIGH-LEVEL strategic plans.
+You are a Senior Technical Architect creating DETAILED strategic plans.
 
 ## Project Context
 - Total Files: {context_summary.get('total_files', 0)}
@@ -122,50 +151,99 @@ You are a Senior Technical Architect creating HIGH-LEVEL strategic plans.
 - Key Files: {', '.join(context_summary.get('key_files', [])[:5])}
 
 ## Your Task
-Create a strategic plan with 5-10 HIGH-LEVEL tasks that will be decomposed later.
+Create a strategic plan with 15-30 DETAILED tasks (not vague high-level tasks).
+
+## Task Format
+Each task MUST include:
+
+1. **Clear Description**: What needs to be built
+2. **Implementation Details**: 
+   - Specific file paths (e.g., `backend/src/models/User.js`)
+   - What goes in each file
+   - Dependencies to install
+   - Data structures/schemas
+3. **Verification Steps**:
+   - Test cases with expected results
+   - Manual verification steps
+   - Success criteria
 
 ## Guidelines
-1. **Think in phases**: Setup, Core Features, Integration, Testing
-2. **Each task = 1 major milestone** (e.g., "Implement user authentication")
-3. **Don't specify implementation details** (those come in decomposition)
-4. **Focus on WHAT to build**, not HOW to build it
-5. **Order tasks logically** (dependencies first)
+1. **Be VERY specific**: Include exact file paths, function names, field names
+2. **15-30 tasks**: Break down the mission thoroughly
+3. **Include verification**: How to test each task
+4. **Logical order**: Dependencies first, then features, then integration
+5. **Think like a developer**: What files would you create? What would you test?
 
 ## Output Format
-Markdown with clear phases and tasks. Use this structure:
-
 ```markdown
 # Strategic Plan: [Mission Title]
 
-## Phase 1: [Phase Name]
-- **Task 1**: [Description]
-- **Task 2**: [Description]
+## Phase 1: Foundation (Tasks 1-5)
 
-## Phase 2: [Phase Name]
-- **Task 3**: [Description]
+**Task 1**: [Specific description]
+
+**Implementation:**
+- Create `exact/path/to/file.js`: Description of contents
+- Create `another/file.jsx`: Description of contents  
+- Install dependencies: package1, package2
+- Configure: specific settings
+
+**Verification:**
+- Test: action → expected result
+- Verify: what to check
+- Run: command → expected output
+
+---
+
+**Task 2**: [Specific description]
+
+**Implementation:**
+...
+
+**Verification:**
+...
+
+## Phase 2: Core Features (Tasks 6-12)
+...
+
+## Phase 3: Integration & Testing (Tasks 13-15)
 ...
 ```
 
-## Example
-```markdown
-# Strategic Plan: E-commerce Platform
+## Example Task
 
-## Phase 1: Foundation
-- **Task 1**: Set up backend API structure (Node.js/Express)
-- **Task 2**: Set up frontend framework (React with routing)
+**Task 3**: Create user authentication system with worker/manager roles
 
-## Phase 2: Core Features
-- **Task 3**: Implement user authentication system
-- **Task 4**: Implement product catalog and search
-- **Task 5**: Implement shopping cart functionality
+**Implementation:**
+- Create `backend/src/models/User.js`:
+  - Mongoose schema with fields: name (String), email (String, unique), password (String, hashed), role (enum: 'worker'/'manager')
+  - Pre-save hook to hash password with bcrypt
+  - Method comparePassword(candidatePassword) to verify passwords
+  
+- Create `backend/src/controllers/authController.js`:
+  - register(req, res): Validate input, create user, generate JWT, return token
+  - login(req, res): Find user by email, verify password, generate JWT, return token
+  - Validate email format and password strength (min 8 chars)
+  
+- Create `backend/src/middleware/auth.js`:
+  - verifyToken middleware: Extract JWT from Authorization header, verify, attach user to req.user
+  - Return 401 if token invalid/missing
+  
+- Create `backend/src/routes/auth.js`:
+  - POST /api/auth/register
+  - POST /api/auth/login
+  
+- Install: bcrypt, jsonwebtoken
+- Add JWT_SECRET to .env
 
-## Phase 3: Integration & Testing
-- **Task 6**: Integrate payment gateway
-- **Task 7**: Add comprehensive error handling
-- **Task 8**: Create end-to-end tests
-```
+**Verification:**
+- POST /register with {{name, email, password, role}} → 201 status, returns {{user, token}}
+- POST /login with {{email, password}} → 200 status, returns {{user, token}}
+- Access protected route with valid token → 200 status
+- Access protected route without token → 401 status
+- Check database: password should be hashed (starts with $2b$)
 
-Remember: Keep it HIGH-LEVEL. Details come later in decomposition.
+Remember: Be DETAILED! Include file paths, field names, function signatures, test cases!
 """
     
     def parse_strategic_plan(self, plan_path: str) -> List[Dict[str, Any]]:

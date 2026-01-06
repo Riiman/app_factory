@@ -35,35 +35,31 @@ class TaskExecutor:
     
     def solve_and_execute(
         self,
-        task: Dict[str, Any],
+        task_desc: str,
+        task_logic: str = "",
+        task_action: str = "",
         context: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
-        Solves a high-level Task by generating and executing code.
+        Solves a detailed Task by generating and executing code with multiple steps.
         """
-        task_desc = task.get("description", "Unknown Task")
-        task_logic = task.get("logic", "")
-        task_action = task.get("action", "") # Hint from Planner (e.g. write_file)
-        
         logger.info(f"TaskExecutor: Solving '{task_desc}'")
         self.copilot.emit_thought(f"⚙️ Executing: {task_desc}", "executor")
 
         # 1. Build Prompt for Coder
-        system_prompt = self._build_coder_prompt(task, context)
+        system_prompt = self._build_coder_prompt(task_desc, context)
         
         # 2. Get Tool List
         all_tools = self.tools.get_tool_list()
         
-        # 3. LLM Generation (Single Turn for now, or Loop?)
-        # V4 Philosophy: Atomic Tasks should be solvable in 1-2 turns.
-        # We try up to 3 turns to get a valid tool call.
+        # 3. LLM Generation Loop
+        messages = [HumanMessage(content=f"Task: {task_desc}\n\nPerform the task. Use tools to create files, run commands, and verify. When finished, reply with 'TASK_COMPLETED'.")]
         
-        messages = [HumanMessage(content=f"Task: {task_desc}\nLogic: {task_logic}\nAction Hint: {task_action}\n\nPerform the task.")]
-        
-        success = False
+        task_success = False
         final_result = None
         
-        for turn in range(3):
+        # Allow up to 20 turns for complex detailed tasks
+        for turn in range(20):
             res = self.copilot.act(system_prompt, messages, all_tools, active_node="executor")
             
             if res["error"]:
@@ -73,69 +69,71 @@ class TaskExecutor:
             ai_msg = res["content"]
             messages.append(ai_msg)
             
+            # Check for completion signal
+            if ai_msg.content and "TASK_COMPLETED" in ai_msg.content:
+                task_success = True
+                break
+            
             if ai_msg.content:
                 self.copilot.emit_thought(ai_msg.content, "executor")
             
             if ai_msg.tool_calls:
-                # We have a tool call!
-                # Execute it using V4Executor (which has retry/healing)
+                # Execute tool calls
                 for tool_call in ai_msg.tool_calls:
                     tool_name = tool_call["name"]
                     args = tool_call["args"]
                     
                     self.copilot.emit_thought(f"Running {tool_name}...", "executor")
                     
-                    # Map tool name to function logic if needed? 
-                    # V4Executor expects tool_name + tool_func.
-                    # We need to find the tool_func from all_tools.
                     tool_obj = next((t for t in all_tools if t.name == tool_name), None)
                     
                     if not tool_obj:
-                         final_result = {"success": False, "error": f"Tool {tool_name} not found"}
+                         from langchain_core.messages import ToolMessage
+                         messages.append(ToolMessage(content=f"Error: Tool {tool_name} not found", tool_call_id=tool_call["id"]))
                          continue
 
                     # Execute
                     exec_res = self.executor.execute_tool(
                         tool_name=tool_name,
-                        tool_func=tool_obj,  # Pass the tool object, not the method
+                        tool_func=tool_obj,
                         args=args
                     )
                     
                     result_str = str(exec_res.get("result", exec_res.get("error", "Unknown")))
                     
-                    if exec_res["success"]:
-                        success = True
-                        final_result = exec_res
-                        # We assume atomic task = 1 successful tool call closes it.
-                        break
-                    else:
-                        # Feed failure back to LLM
-                         from langchain_core.messages import ToolMessage
-                         messages.append(ToolMessage(content=f"Tool Failed: {result_str}", tool_call_id=tool_call["id"]))
-                
-                if success:
-                    break
+                    # Feed result back to LLM
+                    from langchain_core.messages import ToolMessage
+                    messages.append(ToolMessage(content=f"Tool Output: {result_str}", tool_call_id=tool_call["id"]))
+            
+            # If no tool calls and no completion signal, hint the user
+            elif not ai_msg.tool_calls and "TASK_COMPLETED" not in ai_msg.content:
+                 messages.append(HumanMessage(content="Please continue with tool calls or reply 'TASK_COMPLETED' if done."))
         
-        if success:
-            return {"status": "success", "result": final_result}
+        if task_success:
+            return {"status": "success", "result": "Task completed successfully"}
         else:
-            return {"status": "failed", "error": "Failed to execute task after 3 turns"}
+            return {"status": "failed", "error": "Task timed out or not completed explicitly"}
 
-    def _build_coder_prompt(self, task, context) -> str:
+    def _build_coder_prompt(self, task_desc: str, context: Dict[str, Any]) -> str:
         return f"""You are a Senior V4 Code Executor.
-Your goal is to IMPLEMENT the given task precisely.
+Your goal is to IMPLEMENT the given detailed task precisely.
 
 # TASK
-Description: {task.get('description')}
-Logic: {task.get('logic')}
-
-# CONSTRAINTS
-1. Use the provided tools.
-2. If writing a file, ensure it is complete.
-3. If running a command, ensure safety.
+{task_desc}
 
 # CONTEXT
 {json.dumps(context or {}, indent=2)}
+
+# INSTRUCTIONS
+1. **Read Strategic Plan**: Use `read_context_cache("strategic_plan")` first to understand context.
+2. **Execute Step-by-Step**: Create files, run commands, update code.
+3. **Verify**: Run tests or verification steps mentioned in the task.
+4. **Completion**: When ALL parts of the task are done and verified, output "TASK_COMPLETED".
+
+# TOOLS
+Use `update_file` to create/edit files.
+Use `run_shell` to run commands.
+Use `read_file` to check content.
 """
 
     def get_stats(self) -> Dict[str, Any]:
@@ -172,7 +170,8 @@ Logic: {task.get('logic')}
         if not tool:
             return {"status": "failed", "error": "update_file tool not found"}
         
-        result = tool.invoke({"file_path": task.file_path, "content": task.content, "action": "create"})
+        # Tool expects 'path' not 'file_path'
+        result = tool.invoke({"path": task.file_path, "content": task.content})
         return {"status": "success" if "✅" in str(result) else "failed", "result": result}
     
     def _execute_update_file(self, task) -> Dict[str, Any]:
@@ -181,7 +180,8 @@ Logic: {task.get('logic')}
         if not tool:
             return {"status": "failed", "error": "update_file tool not found"}
         
-        result = tool.invoke({"file_path": task.file_path, "content": task.content, "action": "update"})
+        # Tool expects 'path' not 'file_path'
+        result = tool.invoke({"path": task.file_path, "content": task.content})
         return {"status": "success" if "✅" in str(result) else "failed", "result": result}
     
     def _execute_run_command(self, task) -> Dict[str, Any]:
@@ -189,6 +189,10 @@ Logic: {task.get('logic')}
         tool = next((t for t in self.tools.get_tool_list() if t.name == "run_shell"), None)
         if not tool:
             return {"status": "failed", "error": "run_shell tool not found"}
+        
+        # Ensure command is not None
+        if not task.command:
+            return {"status": "failed", "error": "No command specified"}
         
         result = tool.invoke({"command": task.command})
         return {"status": "success" if "✅" in str(result) or "exit code 0" in str(result).lower() else "failed", "result": result}

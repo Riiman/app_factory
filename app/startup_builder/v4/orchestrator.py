@@ -53,11 +53,10 @@ class V4Orchestrator:
         self.librarian = Librarian(workspace_path)
         
         # Hierarchical Planning System
+        # Hierarchical Planning System
         from .planning.strategic_planner import StrategicPlanner
-        from .planning.task_decomposer import TaskDecomposer
         
         self.strategic_planner = StrategicPlanner(startup_id, log_callback)
-        self.task_decomposer = TaskDecomposer(startup_id, log_callback)
         self.executor = TaskExecutor(startup_id, log_callback)
         self.verifier = AutoTestGenerator(log_callback)
         
@@ -95,93 +94,81 @@ class V4Orchestrator:
             logger.error(f"Strategic planning failed: {e}")
             return {"status": "failed", "error": f"Strategic planning failed: {e}"}
         
-        # Phase 2 & 3: Decomposition + Execution
-        total_atomic_tasks = 0
-        completed_atomic_tasks = 0
+        # Phase 2: Execute Detailed Tasks
+        completed_tasks = 0
+        failed_tasks = 0
         
-        for i, hl_task in enumerate(high_level_tasks):
-            self._emit_log(f"\n⚙️ [{i+1}/{len(high_level_tasks)}] {hl_task['description']}")
+        for i, task in enumerate(high_level_tasks):
+            self._emit_log(f"\n⚙️ [{i+1}/{len(high_level_tasks)}] {task['description']}")
             
             # Update status: in_progress
             self.strategic_planner.update_task_status(
                 plan_path=strategic_plan_path,
-                task_id=hl_task['id'],
+                task_id=task['id'],
                 status="in_progress"
             )
             
-            # Decompose into atomic tasks
-            self._emit_log(f"  🔍 Decomposing into atomic tasks...")
+            # Execute task with LLM + tools
+            self._emit_log(f"  🤖 LLM executing task...")
             try:
-                atomic_tasks = self.task_decomposer.decompose_task(
-                    high_level_task=hl_task,
-                    context_cache_summary=context_summary,
-                    workspace_path=self.workspace_path
+                # Use solve_and_execute - LLM will use tools to complete the task
+                result = self.executor.solve_and_execute(
+                    task_desc=task['description'],
+                    task_logic="",  # Task description already contains all details
+                    task_action="",
+                    context={"mission": mission, "strategic_plan": strategic_plan_path}
                 )
-                total_atomic_tasks += len(atomic_tasks)
-                self._emit_log(f"  📦 Generated {len(atomic_tasks)} atomic tasks")
+                
+                if result.get("status") == "success":
+                    completed_tasks += 1
+                    self._emit_log(f"  ✅ Task completed successfully")
+                    
+                    # Mark as completed
+                    self.strategic_planner.update_task_status(
+                        plan_path=strategic_plan_path,
+                        task_id=task['id'],
+                        status="completed"
+                    )
+                else:
+                    failed_tasks += 1
+                    error_msg = result.get("error", "Unknown error")
+                    self._emit_log(f"  ❌ Task failed: {error_msg}")
+                    
+                    # Mark as failed
+                    self.strategic_planner.update_task_status(
+                        plan_path=strategic_plan_path,
+                        task_id=task['id'],
+                        status="failed",
+                        notes=f"Error: {error_msg}"
+                    )
             except Exception as e:
-                logger.error(f"Task decomposition failed: {e}")
-                self._emit_log(f"  ❌ Decomposition failed: {e}")
-                # Update status: failed
+                failed_tasks += 1
+                logger.error(f"Task execution failed: {e}")
+                self._emit_log(f"  ❌ Error: {e}")
+                
+                # Mark as failed
                 self.strategic_planner.update_task_status(
                     plan_path=strategic_plan_path,
-                    task_id=hl_task['id'],
+                    task_id=task['id'],
                     status="failed",
-                    notes=f"Decomposition failed: {e}"
+                    notes=f"Exception: {e}"
                 )
-                continue
-            
-            # Execute atomic tasks
-            task_completed_count = 0
-            for j, atomic_task in enumerate(atomic_tasks):
-                self._emit_log(f"    [{j+1}/{len(atomic_tasks)}] {atomic_task.description}")
-                
-                try:
-                    result = self.executor.execute_atomic_task(atomic_task)
-                    
-                    if result["status"] == "success":
-                        completed_atomic_tasks += 1
-                        task_completed_count += 1
-                        self._emit_log(f"      ✅ Success")
-                        
-                        # Update progress in strategic plan
-                        self.strategic_planner.update_task_status(
-                            plan_path=strategic_plan_path,
-                            task_id=hl_task['id'],
-                            status="in_progress",
-                            atomic_tasks_completed=task_completed_count,
-                            atomic_tasks_total=len(atomic_tasks)
-                        )
-                    else:
-                        self._emit_log(f"      ⚠️ Failed: {result.get('error', 'Unknown error')}")
-                except Exception as e:
-                    logger.error(f"Atomic task execution failed: {e}")
-                    self._emit_log(f"      ❌ Error: {e}")
-            
-            # Mark high-level task as completed
-            self.strategic_planner.update_task_status(
-                plan_path=strategic_plan_path,
-                task_id=hl_task['id'],
-                status="completed",
-                atomic_tasks_completed=task_completed_count,
-                atomic_tasks_total=len(atomic_tasks)
-            )
         
         # Summary
         self._emit_log(f"\n✅ Mission Complete!")
-        self._emit_log(f"📊 Completed {completed_atomic_tasks}/{total_atomic_tasks} atomic tasks")
+        self._emit_log(f"📊 Completed {completed_tasks}/{len(high_level_tasks)} tasks ({failed_tasks} failed)")
         
         # Append final summary to strategic plan
         self.strategic_planner.append_execution_log(
             plan_path=strategic_plan_path,
-            message=f"\n\n---\n## Execution Summary\n- Total atomic tasks: {total_atomic_tasks}\n- Completed: {completed_atomic_tasks}\n- Success rate: {(completed_atomic_tasks/total_atomic_tasks*100) if total_atomic_tasks > 0 else 0:.1f}%"
+            message=f"\n\n---\n## Execution Summary\n- Total tasks: {len(high_level_tasks)}\n- Completed: {completed_tasks}\n- Failed: {failed_tasks}\n- Success rate: {(completed_tasks/len(high_level_tasks)*100) if len(high_level_tasks) > 0 else 0:.1f}%"
         )
         
         return {
             "status": "success",
-            "high_level_tasks": len(high_level_tasks),
-            "total_atomic_tasks": total_atomic_tasks,
-            "completed_atomic_tasks": completed_atomic_tasks
+            "total_tasks": len(high_level_tasks),
+            "completed_tasks": completed_tasks,
+            "failed_tasks": failed_tasks
         }
 
 
