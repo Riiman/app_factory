@@ -37,10 +37,18 @@ class V4Orchestrator:
         self.context_manager = ContextManager(self.docker_manager, startup_id)
         
         # Librarian needs workspace path
-        # Assuming generic path pattern for MVP
+        # Use absolute path that works in production
         import os
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        workspace_path = os.path.join(base_path, 'temp_workspaces', str(startup_id))
+        # Try to find the app root directory
+        current_file = os.path.abspath(__file__)
+        # Navigate up to find app_factory or project root
+        app_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+        # Check if we're in the expected structure
+        if not os.path.exists(os.path.join(app_root, 'app')):
+            # Fallback: assume we're in /home/ubuntu/app_factory or similar
+            app_root = '/home/ubuntu/app_factory' if os.path.exists('/home/ubuntu/app_factory') else app_root
+        workspace_path = os.path.join(app_root, 'temp_workspaces', str(startup_id))
+        logger.info(f"Librarian workspace path: {workspace_path}")
         self.librarian = Librarian(workspace_path)
         
         self.planner = TaskPlanner(startup_id, log_callback)

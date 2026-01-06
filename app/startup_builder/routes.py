@@ -429,14 +429,29 @@ def build_product(startup_id):
         features_desc += f"- {f['name']}: {f['description']}\n"
     
     mission_prompt = f"""
-    Build Product: {product.name}
-    Description: {product.description}
-    
-    Features to Implement:
-    {features_desc}
-    
-    Plan and execute implementation for each feature systematically. Use the Librarian to understand existing code structure.
-    """
+Build Complete Product: {product.name}
+Description: {product.description}
+
+CRITICAL REQUIREMENTS:
+1. You MUST implement ALL {len(features)} features listed below
+2. For EACH feature, create complete, working code (not just placeholders)
+3. Each feature should have:
+   - Full implementation with all logic
+   - Proper error handling
+   - Integration with existing codebase
+   - Basic tests/verification
+
+Features to Implement (IN ORDER):
+{features_desc}
+
+IMPORTANT: 
+- Do NOT just create directory structures
+- Do NOT stop after initial setup
+- IMPLEMENT each feature completely before moving to the next
+- Use read_context_cache tool to understand the codebase structure
+- Use list_files and read_file tools to explore existing code
+- Generate a comprehensive plan with 10-20+ tasks covering ALL features
+"""
     
     print(f"Starting V4 Build for {product.name} with {len(features)} features")
     
