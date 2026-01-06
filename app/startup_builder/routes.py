@@ -502,7 +502,8 @@ def build_feature(startup_id):
         "title": f"Implement Feature: {feature.name}",
         "description": mission_prompt,
         "type": "feature_build",
-        "status": "pending"
+        "status": "pending",
+        "feature_id": feature_id 
     }
     
     # Run in background

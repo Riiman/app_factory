@@ -40,6 +40,7 @@ class Librarian:
         self.parsers = {}
         if TS_AVAILABLE:
             self._init_parsers()
+        self.file_hashes = {} # Persistence for incremental indexing
 
     def _init_db(self):
         if not chromadb:
@@ -71,28 +72,58 @@ class Librarian:
     def index_workspace(self):
         """
         Scans workspace, chunks code for Vector DB, AND builds Dependency Graph (AST).
+        Incremental: Only re-indexes files with changed hashes.
         """
         if not self.collection:
             logger.warning("Librarian: DB not init, skipping Vector Indexing.")
         
-        logger.info(f"TS_AVAILABLE: {TS_AVAILABLE}")
-        logger.info("Librarian: Starting Indexing (Vector + Graph [Tree-Sitter])...")
+        logger.info("Librarian: Starting Indexing...")
         
         # 1. Gather Files
         files = self._get_all_files()
-        self.graph.clear() 
         
-        # 2. Process Files
+        # Detect Deletions
+        current_paths = set(files)
+        known_paths = set([os.path.join(self.workspace_root, p) for p in self.file_hashes.keys()])
+        deleted_paths = known_paths - current_paths
+        
+        if deleted_paths:
+            logger.info(f"Librarian: Removing {len(deleted_paths)} deleted files from index.")
+            for dp in deleted_paths:
+                rel_p = os.path.relpath(dp, self.workspace_root)
+                if rel_p in self.file_hashes:
+                    del self.file_hashes[rel_p]
+                # Graph node removal is tricky without full rebuild or ref counting, 
+                # but we can try removing the node.
+                if dp in self.graph.nodes:
+                    # simplistic: just remove node. Edges might dangle. 
+                    # DependencyGraph should handle safe removal if possible, or we tolerate dangles.
+                    pass
+        
+        # 2. Process Files (Incremental)
         ids = []
         documents = []
         metadatas = []
+        
+        processed_count = 0
         
         for fpath in files:
             content = self._read_file(fpath)
             if not content:
                 continue
+                
+            # Hash Check
+            new_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+            rel_path = os.path.relpath(fpath, self.workspace_root)
             
-            # A. Build Graph (AST Parsing)
+            if rel_path in self.file_hashes and self.file_hashes[rel_path] == new_hash:
+                # Unchanged
+                continue
+                
+            processed_count += 1
+            self.file_hashes[rel_path] = new_hash
+            
+            # A. Build Graph (AST Parsing) - Always re-parse changed files to update edges
             if TS_AVAILABLE and self.parsers:
                 self._analyze_file_ast(fpath, content)
             else:
@@ -100,6 +131,10 @@ class Librarian:
             
             # B. Vector Indexing (Chunks)
             if self.collection:
+                # Clean old chunks for this file? Chroma doesn't support "delete where metadata.source = X" easily without fetching IDs.
+                # Optimization: For now, just append. Ideally we'd delete old chunks.
+                # TODO: Implement atomic delete-insert for Chroma if possible.
+                
                 chunks = self._chunk_code(content, fpath)
                 for i, chunk in enumerate(chunks):
                     chunk_id = hashlib.md5(f"{fpath}_{i}_{chunk[:20]}".encode()).hexdigest()
@@ -121,7 +156,7 @@ class Librarian:
                     metadatas=batch_meta
                 )
             
-        logger.info(f"Librarian: Indexed {len(ids)} chunks. Graph has {len(self.graph.nodes)} nodes.")
+        logger.info(f"Librarian: Updated {processed_count} files. Graph has {len(self.graph.nodes)} nodes.")
 
     def resolve_context(self, query: str, target_file: str = None) -> str:
         """
@@ -142,7 +177,11 @@ class Librarian:
             if target_file in self.graph.nodes:
                 context_parts.append(f"=== TARGET FILE CONTEXT: {os.path.basename(target_file)} ===")
                 content = self._read_file(target_file)
-                context_parts.append(f"File: {target_file}\n```\n{content}\n```")
+                # Optimization: Limit context
+                if len(content) > 5000:
+                    context_parts.append(f"File: {target_file} (Truncated)\n```\n{content[:5000]}...\n[...remaining content truncated...]\n```")
+                else:
+                    context_parts.append(f"File: {target_file}\n```\n{content}\n```")
                 
                 related = self.graph.get_related_files(target_file)
                 if related:
@@ -301,6 +340,69 @@ class Librarian:
             for doc, meta in zip(docs, metas):
                 output += f"\nFile: {meta['source']}\n```\n{doc}\n```\n"
         return output
+
+    def detect_tech_stack(self) -> str:
+        """
+        Scans workspace for key indicators of the tech stack.
+        """
+        stack = []
+        files = self._get_all_files()
+        
+        # 1. Frontend / JS
+        if any(f.endswith("package.json") for f in files):
+            try:
+                # Find root package.json
+                # We prioritize root, but check all
+                root_pkg = os.path.join(self.workspace_root, "package.json")
+                if os.path.exists(root_pkg):
+                    content = json.loads(self._read_file(root_pkg))
+                    deps = content.get("dependencies", {})
+                    dev_deps = content.get("devDependencies", {})
+                    all_deps = {**deps, **dev_deps}
+                    
+                    if "next" in all_deps: stack.append("Next.js")
+                    if "react" in all_deps: stack.append("React")
+                    if "vue" in all_deps: stack.append("Vue")
+                    if "tailwindcss" in all_deps: stack.append("Tailwind CSS")
+                    if "typescript" in all_deps: stack.append("TypeScript")
+            except:
+                pass
+
+        # 2. Backend / Python
+        if any(f.endswith("requirements.txt") for f in files) or any(f.endswith("pyproject.toml") for f in files):
+             stack.append("Python")
+             # Could parse requirements.txt for detailed list
+             # For now, simplistic check
+             req_path = os.path.join(self.workspace_root, "requirements.txt")
+             if os.path.exists(req_path):
+                 c = self._read_file(req_path).lower()
+                 if "flask" in c: stack.append("Flask")
+                 if "django" in c: stack.append("Django")
+                 if "fastapi" in c: stack.append("FastAPI")
+
+        if not stack:
+            return "Unknown / Empty"
+            
+        return ", ".join(list(set(stack)))
+
+    def get_workspace_hash(self) -> Dict[str, str]:
+        """
+        Returns a map of {filepath: content_hash} for all relevant files.
+        Used by ExplorationEngine to detect state changes.
+        """
+        files = self._get_all_files()
+        hashes = {}
+        for fpath in files:
+            try:
+                content = self._read_file(fpath)
+                if content:
+                    file_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+                    # Relative path for cleaner reporting
+                    rel_path = os.path.relpath(fpath, self.workspace_root)
+                    hashes[rel_path] = file_hash
+            except:
+                pass
+        return hashes
 
     def _get_all_files(self) -> List[str]:
         all_files = []

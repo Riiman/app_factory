@@ -16,7 +16,12 @@ class FeedbackLoop:
     Role: Analyze execution results to determine next state.
     """
     
-    def measure_error(self, execution_result: Dict[str, Any], goal: str) -> Dict[str, Any]:
+    class LoopDecision:
+        def __init__(self, success: bool, reason: str = ""):
+            self.success = success
+            self.reason = reason
+
+    def analyze_result(self, execution_result: Dict[str, Any], goal: str, cycle_memory: Dict[str, Any] = None) -> 'LoopDecision':
         """
         Analyze the result of the actuation.
         
@@ -28,19 +33,32 @@ class FeedbackLoop:
         success = execution_result.get("success", False)
         
         if success:
-            return {
-                "status": "SUCCESS",
-                "message": "Goal achieved successfully."
-            }
+            return self.LoopDecision(True, "Goal achieved successfully.")
         
         # If failed, extract error signal
         error = execution_result.get("error", "Unknown failure")
         logs = execution_result.get("logs", [])
         
+        # Structure the error for the AI Planner
+        failed_steps = [res for res in logs if not res.get("success")]
+        if failed_steps:
+             primary_failure = failed_steps[0]
+             step_desc = primary_failure.get("step", {}).get("description", "Unknown Step")
+             
+             # Enrich error message
+             error = f"Step Failed: '{step_desc}'. \nError Details: {primary_failure.get('error')}"
+             if primary_failure.get("output"):
+                 error += f"\nCommand Output: {primary_failure.get('output')}"
+        
         logger.warning(f"Feedback: Error detected - {error}")
         
-        return {
-            "status": "RETRY",
-            "error_summary": error,
-            "detailed_logs": logs
-        }
+        # Store analysis in RAM
+        if cycle_memory is not None:
+             cycle_memory['last_analysis'] = {
+                "status": "FAILED",
+                "reason": error,
+                "failed_step_count": len(failed_steps),
+                "total_steps": len(logs)
+            }
+        
+        return self.LoopDecision(False, error)

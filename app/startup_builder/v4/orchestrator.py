@@ -55,68 +55,193 @@ class V4Orchestrator:
         
         self._emit_log(f"System Online: Control Loop Ready for {startup_id}")
 
-    def run_cycle(self, goal: str, max_retries: int = 3) -> Dict[str, Any]:
+    def run_product_build(self, product_context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Execute the Control Loop for a specific Goal.
+        WORKFLOW: Complete Product Build.
+        Iteratively builds features using the Control Loop.
+        """
+        features = product_context.get("features", [])
+        self._emit_log(f"🏭 Starting Product Build Workflow: {len(features)} features")
         
-        Cycle:
-        1. Explore (Measure y)
-        2. Plan (Calculate u)
-        3. Execute (Apply u)
-        4. Feedback (Measure e)
+        # WORKFLOW MEMORY (Long-term Context)
+        workflow_memory = {
+            "decisions": [],
+            "completed_features": []
+        }
+        
+        failed_features = []
+        
+        for i, feature in enumerate(features):
+            f_name = feature.get("name", f"Feature {i+1}")
+            f_id = feature.get("id")
+            
+            self._emit_log(f"\n👉 [Feature {i+1}/{len(features)}] {f_name}")
+            
+            # 1. Sync DB (IN_PROGRESS)
+            if f_id: self._update_feature_status(f_id, "IN_PROGRESS")
+            
+            # 2. Run Control Loop
+            # We construct a goal that includes the feature description and acceptance criteria
+            goal = f"Implement Feature: {f_name}\nDescription: {feature.get('description')}\nCriteria: {feature.get('acceptance_criteria')}"
+            
+            result = self._run_control_loop(goal, max_retries=3, workflow_memory=workflow_memory)
+            
+            # 3. Handle Result
+            if result["status"] == "success":
+                if f_id: self._update_feature_status(f_id, "COMPLETED")
+                workflow_memory["completed_features"].append(f_name)
+                self._emit_log(f"✅ Feature '{f_name}' Completed")
+            else:
+                # Keep status as IN_PROGRESS (or PENDING?) for retry. 
+                # User might want to debug.
+                failed_features.append(f_name)
+                self._emit_log(f"❌ Feature '{f_name}' Failed: {result.get('error')}")
+                # We optionally continue to next feature or stop? 
+                # Usually better to stop if dependencies exist, but for now we continue?
+                # "Trigger cycle for each of them" implies sequence.
+                # Let's continue, maybe next feature works.
+                
+        if failed_features:
+            return {"status": "partial_success", "failed": failed_features}
+        return {"status": "success"}
+
+    def _update_feature_status(self, feature_id: int, status: str):
+        """Helper to sync status to DB."""
+        try:
+             # This requires app context if running in Flask, which Orchestrator usually is.
+             # We perform a local import to avoid circular dep issues at module level
+             from app.extensions import db
+             from app.models import Feature, FeatureStatus
+             
+             f = Feature.query.get(feature_id)
+             if f:
+                 if status == "IN_PROGRESS": f.status = FeatureStatus.IN_PROGRESS
+                 elif status == "COMPLETED": f.status = FeatureStatus.COMPLETED
+                 elif status == "PENDING": f.status = FeatureStatus.PENDING
+                 db.session.commit()
+        except Exception as e:
+            logger.error(f"Failed to sync feature status {feature_id}: {e}")
+
+    def _run_control_loop(self, goal: str, max_retries: int = 3, workflow_memory: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        self._emit_log(f"🚀 Starting Control Cycle for: {goal}")
+        ENGINE: The Core Control Loop.
+        Explore -> Plan -> Execute -> Feedback.
+        """
+        self._emit_log(f"🚀 Control Cycle Start: {goal.splitlines()[0]}...")
+        
+        # CYCLE MEMORY (Short-term RAM)
+        # We inject workflow_memory so Engines can see it.
+        cycle_memory = {
+            "execution_history": [],
+            "workflow_context": workflow_memory or {}
+        }
         
         attempt = 0
         feedback = None
         
         while attempt < max_retries:
             cycle_id = f"cycle_{attempt+1}"
-            self._emit_log(f"\n🔄 Cycle {attempt+1}/{max_retries}")
+            self._emit_log(f"🔄 Loop {attempt+1}/{max_retries}")
             
             try:
-                # 1. EXPLORE (Sensors)
-                self._emit_log("🔭 Exploring current state...")
-                current_state = self.sensors.observe_state(goal, feedback)
+                # A. SENSORS (Explore)
+                # Note: We updated Engines to accept cycle_memory
+                state_snapshot = self.sensors.observe_state(goal, feedback=feedback, cycle_memory=cycle_memory)
                 
-                # 2. PLAN (Controller)
-                self._emit_log("🧠 Planning correction...")
-                micro_plan = self.controller.calculate_correction(goal, current_state)
+                # B. CONTROLLER (Plan)
+                # Updated method name to create_micro_plan
+                micro_plan = self.controller.create_micro_plan(goal, state_snapshot, feedback=feedback, cycle_memory=cycle_memory)
                 
                 if not micro_plan:
-                    self._emit_log("❌ Controller failed to generate plan.")
-                    return {"status": "failed", "error": "Planning failed"}
+                    self._emit_log("⚠️ No plan generated (Goal satisfied or confusion).")
+                    # If goal satisfied, should be caught by feedback? 
+                    # Or maybe planner returns empty if done. 
+                    # Let's assume empty plan = verify? 
+                    # For now, treat as failure or break?
+                    # Let's fail for safety unless we have a "Done" signal.
+                    return {"status": "failed", "error": "Empty Plan"}
                 
-                # 3. EXECUTE (Actuator)
-                self._emit_log(f"💪 Applying {len(micro_plan)} adjustments...")
-                execution_result = self.actuator.apply_control(micro_plan)
+                # C. ACTUATOR (Execute)
+                # Updated method name to execute_plan
+                execution_result = self.actuator.execute_plan(micro_plan, cycle_memory=cycle_memory)
                 
-                # 4. FEEDBACK (Monitor)
-                decision = self.monitor.measure_error(execution_result, goal)
+                # D. MONITOR (Feedback)
+                # Updated method name and return type
+                loop_decision = self.monitor.analyze_result(execution_result, goal, cycle_memory=cycle_memory)
                 
-                if decision["status"] == "SUCCESS":
-                    self._emit_log("✅ Goal Achieved! System Stable.")
-                    return {"status": "success", "attempts": attempt+1}
+                if loop_decision.success:
+                    self._emit_log("✅ Cycle Goal Achieved")
+                    return {"status": "success", "cycles": attempt+1}
                 else:
-                    self._emit_log(f"⚠️ Residual Error: {decision.get('error_summary')}")
+                    self._emit_log(f"⚠️ Variance Detected: {loop_decision.reason}")
                     feedback = {
-                         "last_error": decision.get("error_summary"),
-                         "logs": decision.get("detailed_logs"),
-                         "failed_plan": micro_plan
+                         "last_error": loop_decision.reason,
+                         "failed_plan_step": len(micro_plan) # approximate
                     }
                     attempt += 1
             
             except Exception as e:
-                logger.error(f"Cycle crashed: {e}")
-                self._emit_log(f"❌ Critical System Error: {e}")
+                logger.error(f"Cycle Exception: {e}")
+                import traceback
+                traceback.print_exc()
+                self._emit_log(f"❌ System Exception: {e}")
                 return {"status": "error", "error": str(e)}
         
-        self._emit_log("❌ Start-up Failed: Max retries exceeded.")
         return {"status": "failed", "error": "Max retries exceeded"}
 
-    def run_mission(self, mission: Dict[str, Any]) -> Dict[str, Any]:
-        """Legacy Wrapper: Runs a mission by feeding its description to the Control Loop."""
-        return self.run_cycle(mission.get("description", "Unknown Goal"))
+    def run_chat(self, user_message: str) -> Dict[str, Any]:
+        """
+        WORKFLOW: Chat / Advisor.
+        Quick response, low retries, transient memory.
+        """
+        self._emit_log(f"💬 Chat Request: {user_message[:50]}...")
+        # Goal is just to answer/act on the message
+        return self._run_control_loop(user_message, max_retries=1)
+
+    def run_feature(self, feature_context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        WORKFLOW: Single Feature Build.
+        Standard robust cycle with DB Sync.
+        """
+        description = feature_context.get("description", "")
+        f_id = feature_context.get("feature_id")
+        
+        self._emit_log(f"🔨 Feature Request: {description[:50]}...")
+        
+        # 1. Sync DB (IN_PROGRESS) - Redundant but safe
+        if f_id: self._update_feature_status(f_id, "IN_PROGRESS")
+        
+        # 2. Initialize Memory (Minimal for single feature)
+        workflow_memory = {
+            "decisions": [],
+            "scope": "single_feature"
+        }
+        
+        # 3. Run Loop
+        result = self._run_control_loop(description, max_retries=3, workflow_memory=workflow_memory)
+        
+        # 4. Handle Result
+        if result["status"] == "success":
+             if f_id: self._update_feature_status(f_id, "COMPLETED")
+             self._emit_log("✅ Feature Workflow Completed")
+        else:
+             self._emit_log(f"❌ Feature Workflow Failed: {result.get('error')}")
+             
+        return result
+
+    def run_mission(self, mission_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Legacy Entry Point"""
+        m_type = mission_data.get("type", "general")
+        
+        if m_type == "product_build":
+             return self.run_product_build(mission_data)
+        elif m_type == "feature_build":
+             # Pass full context (including ID)
+             return self.run_feature(mission_data)
+        elif m_type == "chat":
+             return self.run_chat(mission_data.get("description", ""))
+        else:
+             return self._run_control_loop(mission_data.get("description", "Unknown Task"))
 
     def _emit_log(self, message):
         if self.log_callback:

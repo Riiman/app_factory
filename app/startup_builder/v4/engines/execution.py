@@ -25,12 +25,13 @@ class TaskExecutor:
         self.tools = V4Tools(startup_id)
         self.log_callback = log_callback
         
-    def apply_control(self, micro_plan: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def execute_plan(self, micro_plan: List[Dict[str, Any]], cycle_memory: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Execute the micro-plan (Apply Control Signal).
         
         Args:
             micro_plan: List of steps to execute.
+            cycle_memory: Persistent RAM for the current cycle loop.
             
         Returns:
             ExecutionResult: The outcome of the actuation.
@@ -40,6 +41,11 @@ class TaskExecutor:
         results = []
         failed = False
         error = None
+        
+        # Track history in RAM
+        if cycle_memory is not None:
+            if 'execution_history' not in cycle_memory:
+                cycle_memory['execution_history'] = []
         
         for step in micro_plan:
             self._emit_log(f"⚙️ Executing: {step.get('description', 'Unknown Step')}")
@@ -51,14 +57,29 @@ class TaskExecutor:
                     res = self._run_command(step["command"])
                 elif step_type == "file":
                     res = self._update_file(step["path"], step["content"])
+                elif step_type == "message":
+                    # Action: Just speak
+                    res = {"success": True, "output": step.get("content")}
                 else:
                     res = {"success": False, "error": f"Unknown step type: {step_type}"}
                 
+                # Tag result with step metadata for Feedback Loop
+                res['step'] = step
                 results.append(res)
+                
+                # Store in RAM
+                if cycle_memory is not None:
+                    cycle_memory['execution_history'].append({
+                        "step": step,
+                        "result": res
+                    })
                 
                 if not res["success"]:
                     failed = True
-                    error = res.get("error", "Unknown error")
+                    # Enhanced error reporting
+                    error = f"Step '{step.get('description')}' failed: {res.get('error')}"
+                    if res.get('output'): 
+                         error += f"\nOutput: {res.get('output')}"
                     break
                     
             except Exception as e:
@@ -79,11 +100,6 @@ class TaskExecutor:
         tool = next((t for t in self.tools.get_tool_list() if t.name == "run_shell"), None)
         if not tool: return {"success": False, "error": "Tool not found"}
         
-        # Tool returns a string, we need to parse it or trust V4Executor to wrap it?
-        # V4Executor returns dict. Let's use V4Executor directly?
-        # Actually TaskExecutor in v4 used V4Executor.execute_tool
-        
-        # Let's use the tool invoke directly for simplicity in this engine or wrap via executor
         res_str = tool.invoke({"command": command})
         
         # Heuristic success check

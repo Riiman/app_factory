@@ -27,13 +27,15 @@ class StrategicPlanner:
         self.copilot = V4CoPilot(use_thinking=True, log_callback=log_callback)
         self.prompt_enhancer = ArchitectPromptEnhancer()
         
-    def calculate_correction(self, goal: str, current_state: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def create_micro_plan(self, goal: str, current_state: Dict[str, Any], feedback: Optional[Any] = None, cycle_memory: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
         Calculate the control signal (Micro-Plan) to reduce error.
         
         Args:
             goal: The Reference (r).
             current_state: The Measured State (y).
+            feedback: Error signal from previous cycle (optional).
+            cycle_memory: Persistent RAM for the current cycle loop.
             
         Returns:
             MicroPlan: List of atomic actions (u).
@@ -43,7 +45,8 @@ class StrategicPlanner:
         # Unpack State
         focused_context = current_state.get("focused_context", "")
         global_summary = current_state.get("global_summary", {})
-        feedback = current_state.get("feedback_context")
+        # Feedback can come from argument or state
+        feedback_data = feedback or current_state.get("feedback_context")
         
         # 1. Build System Model (Prompt)
         system_prompt = self._build_controller_prompt(global_summary)
@@ -56,11 +59,19 @@ CURRENT STATE (Measured):
 {focused_context}
 
 """
-        if feedback:
+        # Inject Memory into Prompt
+        if cycle_memory:
+            mem_str = json.dumps(cycle_memory, indent=2, default=str)
+            user_prompt += f"""
+CYCLE MEMORY (Scratchpad):
+{mem_str}
+"""
+
+        if feedback_data:
             user_prompt += f"""
 PREVIOUS ERROR (Feedback):
 The previous attempt failed with:
-{json.dumps(feedback, indent=2)}
+{json.dumps(feedback_data, indent=2, default=str)}
 
 CRITICAL: Adjust the plan to fix this error. Do not repeat the same mistake.
 """
@@ -82,6 +93,11 @@ Format:
     "path": "app.py",
     "content": "...",
     "description": "Create server file"
+  },
+  {
+    "type": "message",
+    "content": "The Code Studio logic is...",
+    "description": "Answer the user"
   }
 ]
 ```
@@ -113,7 +129,19 @@ Format:
 You are the CONTROL SYSTEM for a software codebase.
 Your job is to generate a MICRO-PLAN to transition the system from State A to State B.
 
-Project Context:
+## YOUR RESPONSIBILITY
+- **Analyze the Goal vs State**: Determine what is missing or wrong.
+- **Consult Memory**: Check `execution_history` to see what failed previously.
+- **Output a Micro-Plan**: A sequence of atomic steps.
+- **MANDATORY VERIFICATION**: The LAST step MUST be a verification command.
+- **NO BLOCKING COMMANDS**: Do NOT run `npm start` or `python server.py` directly. They will hang the agent. Instead, ask the Verifier (via `generate_verification_script`) to create a safe check script that starts, checks, and kills the server.
+
+## TOOLING
+- `command`: Run shell commands (e.g., install packages, run tests).
+- `file`: Create or update files.
+- `message`: Communicate with the user (Answer questions, provide info).
+
+## Project Context
 - Files: {summary.get('total_files', 0)}
 - Stack: {summary.get('tech_stack', 'Unknown')}
         """
