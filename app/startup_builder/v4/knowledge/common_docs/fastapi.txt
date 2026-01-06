@@ -1,0 +1,49 @@
+# FastAPI Configuration & Best Practices
+
+## Official Documentation
+**URL:** [https://fastapi.tiangolo.com](https://fastapi.tiangolo.com)
+
+## Project Structure & Architecture
+
+### 1. Recommended Structure (Tiangolo)
+```
+/app
+    /routers
+    /models
+    /schemas (Pydantic models)
+    /services (Business Logic)
+    main.py
+    dependencies.py
+```
+Separation of concerns is key.
+
+### 2. Pydantic Models
+- Use `Pydantic` heavily for data validation.
+- Separate **Input Schemas** (UserCreate) from **Output Schemas** (UserResponse) and **DB Models** (SQLAlchemy User).
+
+### 3. Dependency Injection
+- Use `Depends()` for DB sessions, Auth, and shared logic.
+- Creates testable, modular code.
+```python
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.get("/users/")
+def read_users(db: Session = Depends(get_db)):
+    ...
+```
+
+### 4. Async/Await
+- Use `async def` for path operations that do I/O (DB, API calls).
+- Use `def` if the operation is CPU-bound or uses blocking libraries.
+
+### 5. Security
+- Use `fastapi.security` (OAuth2PasswordBearer) for standard auth flows.
+- Never commit `.env` files. Use `pydantic-settings`.
+
+### 6. Validation
+- Use Pydantic's `Field()` to add metadata and constraints (min_length, regex) directly in schemas.

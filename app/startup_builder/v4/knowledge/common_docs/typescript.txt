@@ -1,0 +1,44 @@
+# TypeScript Configuration & Best Practices
+
+## Official Documentation
+**URL:** [https://www.typescriptlang.org](https://www.typescriptlang.org)
+
+## tsconfig.json Best Practices
+
+### 1. Strict Mode
+**ALWAYS** enable strict mode for new projects.
+```json
+{
+  "compilerOptions": {
+    "strict": true
+  }
+}
+```
+This enables: `noImplicitAny`, `strictNullChecks`, `strictFunctionTypes`, etc.
+
+### 2. Target & Module
+- **Target:** `es2022` or `esnext` for modern environments.
+- **Module:** `NodeNext` (for Node) or `ESNext` (for bundlers like Vite/Webpack).
+
+### 3. Interop & Libraries
+```json
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "skipLibCheck": true, // Speeds up build significantly
+    "forceConsistentCasingInFileNames": true
+  }
+}
+```
+
+### 4. Build Organization
+- **rootDir:** `./src` (keep sources contained)
+- **outDir:** `./dist` (keep artifacts separate)
+
+### 5. Type Safety extensions
+- `noUncheckedIndexedAccess`: true (Prevents accessing array/object indices without checking undefined).
+- `noImplicitOverride`: true (Requires `override` keyword in classes).
+
+## General Tips
+- **Avoid `any`:** Use `unknown` if type is truly not known yet.
+- **Interfaces vs Types:** Prefer `interface` for public API definitions (extensible) and `type` for unions/intersections.

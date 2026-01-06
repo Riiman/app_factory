@@ -1,0 +1,44 @@
+# Docker Configuration & Best Practices
+
+## Official Documentation
+**URL:** [https://docs.docker.com](https://docs.docker.com)
+
+## Dockerfile Best Practices
+
+### 1. Base Images
+- **Specific Tags:** Never use `:latest`. Use specific versions (e.g., `node:18-alpine`).
+- **Minimal Images:** Prefer `alpine` or `slim` variants to reduce attack surface and size.
+- **Official Images:** Always use official images from Docker Hub.
+
+### 2. Layering & Caching
+- **Order Matters:** Place frequently changing instructions (COPY .) at the bottom.
+- **Dependency Caching:** Copy dependency manifests first.
+  ```dockerfile
+  COPY package.json .
+  RUN npm install
+  COPY . .
+  ```
+- **Combine Commands:** `RUN apt-get update && apt-get install -y ...` to reduce layers.
+
+### 3. Security
+- **Non-Root User:** Create and switch to a non-root user (e.g., `USER node`) for runtime.
+- **Secrets:** NEVER hardcode secrets in Dockerfile. Use build args or environment variables at runtime.
+
+### 4. Multi-Stage Builds
+Use multi-stage builds to keep production images tiny (exclude build tools).
+```dockerfile
+# Build Stage
+FROM node:18 AS builder
+WORKDIR /app
+COPY . .
+RUN npm run build
+
+# Run Stage
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+CMD ["node", "dist/index.js"]
+```
+
+### 5. .dockerignore
+Always include a `.dockerignore` file (exclude `node_modules`, `.git`, `.env`) to speed up build context transfer.

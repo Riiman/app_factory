@@ -11,6 +11,7 @@ from langchain_core.tools import tool
 
 from ..safety import SafetyCoordinator
 from ..healing import SelfHealer, Failure
+from ..knowledge import CommonKnowledge
 from ...manager import DockerManager
 
 try:
@@ -37,6 +38,7 @@ class V4Tools:
         self.docker_manager = DockerManager()
         self.safety = SafetyCoordinator()
         self.healer = SelfHealer()
+        self.knowledge = CommonKnowledge()
         
         logger.info(f"V4Tools initialized for startup {startup_id}")
     
@@ -46,9 +48,9 @@ class V4Tools:
             self.create_run_shell(),
             self.create_update_file(),
             self.create_read_file(),
-            self.create_read_file(),
             self.create_list_files(),
             self.create_search_internet(),
+            self.create_search_common_knowledge(),
             # Add more tools as needed
         ]
     
@@ -366,3 +368,25 @@ class V4Tools:
                 return f"❌ Error performing search: {e}"
         
         return search_internet
+    
+    def create_search_common_knowledge(self):
+        """Create search_common_knowledge tool"""
+        
+        @tool
+        def search_common_knowledge(query: str) -> str:
+            """
+            Search common technical knowledge (e.g. Jest, Tailwind configs).
+            
+            Args:
+                query: Search query (e.g., "jest config", "tailwind versions")
+                
+            Returns:
+                Relevant documentation snippets
+            """
+            try:
+                result = self.knowledge.search(query)
+                return result
+            except Exception as e:
+                return f"❌ Error searching knowledge: {e}"
+                
+        return search_common_knowledge

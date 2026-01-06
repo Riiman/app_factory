@@ -4,7 +4,7 @@ from . import builder_bp
 from .manager import DockerManager
 from .graph import create_graph
 from .agent import MultiAgentSystem
-from .v3.orchestrator import create_v3_graph
+# from .v3.orchestrator import create_v3_graph
 
 manager = DockerManager()
 agent = MultiAgentSystem()
@@ -256,29 +256,30 @@ def get_status(startup_id):
     """Returns the current state of the agent for UI persistence (Supports V3 & V2)."""
     config = {"configurable": {"thread_id": startup_id}}
     
-    try:
-        from .v3.orchestrator import create_v3_graph
-        v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
-        snapshot = v3_graph.get_state(config)
+    # V3 Status Check Disabled
+    # try:
+    #     from .v3.orchestrator import create_v3_graph
+    #     v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
+    #     snapshot = v3_graph.get_state(config)
         
-        if snapshot.values and snapshot.values.get("status") != "init":
-             state = snapshot.values
-             return jsonify({
-                "status": "active",
-                "version": "v3",
-                "task_status": state.get("status", "unknown"),
-                "logs": state.get("logs", []),
-                "thoughts": state.get("thoughts", []), 
-                "node": snapshot.next[0] if snapshot.next else "idle", 
-                "plan": state.get("plan", []),
-                "total_tasks": len(state.get("plan", [])),
-                "completed_tasks": len([t for t in state.get("plan", []) if t.get("status") == "completed"]),
-                "waiting_approval": False, 
-                "mission_queue": state.get("missions", []), 
-                "current_mission_index": state.get("current_mission_id", 0) 
-            })
-    except Exception as e:
-        print(f"V3 Status Check Error: {e}")
+    #     if snapshot.values and snapshot.values.get("status") != "init":
+    #          state = snapshot.values
+    #          return jsonify({
+    #             "status": "active",
+    #             "version": "v3",
+    #             "task_status": state.get("status", "unknown"),
+    #             "logs": state.get("logs", []),
+    #             "thoughts": state.get("thoughts", []), 
+    #             "node": snapshot.next[0] if snapshot.next else "idle", 
+    #             "plan": state.get("plan", []),
+    #             "total_tasks": len(state.get("plan", [])),
+    #             "completed_tasks": len([t for t in state.get("plan", []) if t.get("status") == "completed"]),
+    #             "waiting_approval": False, 
+    #             "mission_queue": state.get("missions", []), 
+    #             "current_mission_index": state.get("current_mission_id", 0) 
+    #         })
+    # except Exception as e:
+    #     print(f"V3 Status Check Error: {e}")
 
     # 2. Fallback to V2 State
     try:
@@ -546,7 +547,7 @@ def build_product(startup_id):
 
     
     # Run in background
-    run_v3_agent_bg(startup_id, initial_state)
+    # run_v3_agent_bg(startup_id, initial_state)
     
     return jsonify({"status": "success", "message": f"Build started for {product.name}"})
 
@@ -589,15 +590,15 @@ def build_feature(startup_id):
     }
     
     # Run in background
-    run_v3_agent_bg(startup_id, initial_state)
+    # run_v3_agent_bg(startup_id, initial_state)
     
     return jsonify({"status": "success", "message": f"V3 Agent started building feature: {feature.name}"})
 
-@builder_bp.route('/<int:startup_id>/v3/start', methods=['POST'])
-def start_v3_agent(startup_id):
-    data = request.json or {}
-    # startup_id is passed in URL
-    from app.extensions import redis_client
+# @builder_bp.route('/<int:startup_id>/v3/start', methods=['POST'])
+# def start_v3_agent(startup_id):
+#     data = request.json or {}
+#     # startup_id is passed in URL
+#     from app.extensions import redis_client
 
     # CLEAR pending signals
     redis_client.delete(f"signal:{startup_id}")
@@ -628,11 +629,108 @@ def start_v3_agent(startup_id):
         initial_state["logs"] = ["V3 Agent Started with New Mission."]
     
     # Run in background
-    
-    # Run in background
-    run_v3_agent_bg(startup_id, initial_state)
+    # run_v3_agent_bg(startup_id, initial_state)
     
     return jsonify({"status": "success", "message": "V3 Agent Started"})
+
+
+# ==========================================
+# V4 PURE ROUTES
+# ==========================================
+
+@builder_bp.route('/v4/start', methods=['POST'])
+def start_v4_agent():
+    """
+    Entry point for the Pure V4 Agent.
+    Frontend calls this endpoint.
+    """
+    data = request.json or {}
+    startup_id = data.get('startup_id')
+    
+    if not startup_id:
+         return jsonify({"error": "Startup ID required"}), 400
+         
+    mission_description = data.get('mission', 'Proceed with next task')
+    mission_type = data.get('mission_type', 'general')
+    
+    from app.extensions import redis_client
+    # CLEAR pending signals
+    redis_client.delete(f"signal:{startup_id}")
+    
+    print(f"Starting V4 Agent for {startup_id}: {mission_description}")
+    
+    # Construct Mission Object
+    mission_data = {
+        "title": "User Request",
+        "description": mission_description,
+        "type": mission_type,
+        "status": "pending"
+    }
+    
+    # Run in background
+    run_v4_agent_bg(startup_id, mission_data)
+    
+    return jsonify({"status": "success", "message": "V4 Agent Started"})
+
+def run_v4_agent_bg(startup_id, mission_data):
+    """Runs the V4 Orchestrator in a background thread."""
+    from flask import current_app
+    app = current_app._get_current_object()
+    
+    def task():
+        with app.app_context():
+            from app.startup_builder.v4.orchestrator import V4Orchestrator
+            from app.services.notification_service import publish_update
+            
+            # Helper to emit updates to frontend
+            def log_callback(data, node=None):
+                # V4 Orchestrator emits structured dicts or strings
+                logs = []
+                if isinstance(data, dict):
+                    logs = data.get("logs", [])
+                elif isinstance(data, str):
+                    logs = [data]
+                
+                if logs:
+                    publish_update('agent_update', {
+                        'task_status': 'processing', # Active state
+                        'logs': logs
+                    }, rooms=[f"startup_{startup_id}"])
+            
+            try:
+                # 1. Initialize Orchestrator
+                log_callback("Initializing V4 Orchestrator...")
+                orchestrator = V4Orchestrator(startup_id, log_callback=log_callback)
+                
+                # 2. Run Mission
+                result = orchestrator.run_mission(mission_data)
+                
+                # 3. Report Final Status
+                final_status = 'done' if result.get("status") == "success" else 'failed'
+                final_logs = []
+                if result.get("error"):
+                    final_logs.append(f"Mission Failed: {result['error']}")
+                else:
+                    final_logs.append("Mission Completed Successfully.")
+                    
+                publish_update('agent_update', {
+                    'task_status': final_status,
+                    'logs': final_logs
+                }, rooms=[f"startup_{startup_id}"])
+                
+            except Exception as e:
+                print(f"V4 Critical Error: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                publish_update('agent_update', {
+                    'task_status': 'failed',
+                    'logs': [f"Critical System Error: {str(e)}"]
+                }, rooms=[f"startup_{startup_id}"])
+
+    import threading
+    thread = threading.Thread(target=task)
+    thread.start()
 
 def run_v3_agent_bg(startup_id, initial_state):
     """Runs the V3 Agent Graph in background."""

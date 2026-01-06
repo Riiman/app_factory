@@ -1,0 +1,56 @@
+# Tailwind CSS Configuration & Best Practices
+
+## Official Documentation
+**URL:** [https://tailwindcss.com](https://tailwindcss.com)
+
+## Version 4.0 (Beta/Future) - **CSS-First Configuration**
+Tailwind v4 moves configuration *into CSS* and auto-detects content.
+
+### 1. Installation (V4)
+```bash
+npm install tailwindcss@next @tailwindcss/vite@next
+```
+*Note: PostCSS is now optional/integrated.*
+
+### 2. CSS-First Setup (No more tailwind.config.js)
+In your main CSS file, import the framework and configure the theme directly:
+```css
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Satoshi", "sans-serif";
+  --breakpoint-3xl: 1920px;
+  
+  --color-primary: oklch(0.85 0.1 80);
+  --color-primary-600: oklch(0.65 0.2 80);
+}
+```
+
+### 3. Automatic Content Detection
+Tailwind v4 **automatically finds** your template files. You rarely need to configure a `content` array anymore.
+
+### 4. Key Differences from v3
+- **Configuration:** `tailwind.config.js` is deprecated in favor of `@theme` in CSS.
+- **Color Palette:** New OKLCH-based wide-gamut colors by default.
+- **Directives:** `@import "tailwindcss"` replaces the 3 distinct `@tailwind` directives.
+- **Variables:** Theme values are exposed as native CSS variables (e.g. `var(--color-primary)`).
+
+## Version 3.x (Legacy/Stable)
+
+### 1. Configuration (tailwind.config.js)
+**CRITICAL:** You MUST configure the `content` array.
+```javascript
+module.exports = {
+  content: ["./src/**/*.{html,js,jsx,ts,tsx}"],
+  theme: {
+    extend: {},
+  },
+}
+```
+
+### 2. Entry Point
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```

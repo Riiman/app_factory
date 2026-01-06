@@ -1,0 +1,41 @@
+# Jest Configuration & Best Practices
+
+## Official Documentation
+**URL:** [https://jestjs.io](https://jestjs.io)
+
+## Official Usage Guidelines
+Jest is a delightful JavaScript Testing Framework with a focus on simplicity.
+
+### 1. Installation
+```bash
+npm install --save-dev jest
+```
+
+### 2. Configuration (jest.config.js)
+Ideally, use a configuration file.
+```javascript
+/** @type {import('jest').Config} */
+const config = {
+  verbose: true,
+  testEnvironment: 'node', // or 'jsdom' for frontend
+};
+
+module.exports = config;
+```
+
+### 3. Usage with ESM (ECMAScript Modules)
+If using "type": "module" in package.json:
+- Run node with: `NODE_OPTIONS=--experimental-vm-modules npx jest`
+- Or use babel-jest transform.
+
+### 4. Mocking
+- `jest.mock('module_name')` implies automatic mocking.
+- `jest.fn()` creates mock functions.
+
+### 5. Common Pitfalls
+- **Imports:** Jest runs in Node, so it might struggle with raw CSS/Image imports. Use `moduleNameMapper` in config to stub them.
+  ```javascript
+  moduleNameMapper: {
+    '\\.(css|less)$': '<rootDir>/__mocks__/styleMock.js',
+  }
+  ```

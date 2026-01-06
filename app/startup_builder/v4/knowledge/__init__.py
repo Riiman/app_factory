@@ -14,5 +14,10 @@ __all__ = [
     "CodePattern",
     "PatternType",
     "KnowledgeBase",
+    "PatternType",
+    "KnowledgeBase",
     "Execution",
+    "CommonKnowledge",
 ]
+
+from .common_knowledge import CommonKnowledge
