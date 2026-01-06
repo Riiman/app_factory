@@ -249,7 +249,7 @@ class V4Tools:
                     selected_lines = lines[start_idx:end_idx]
                     return "\n".join(selected_lines)
                 
-                return f"{warning_prefix}{content}"
+                return content
                 
             except Exception as e:
                 return f"❌ Error: {e}"

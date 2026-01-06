@@ -71,8 +71,9 @@ class TaskExecutor:
         task_success = False
         final_result = None
         
-        # Allow up to 20 turns for complex detailed tasks
-        for turn in range(20):
+        # Allow up to 40 turns for complex detailed tasks
+        MAX_TURNS = 40
+        for turn in range(MAX_TURNS):
             res = self.copilot.act(system_prompt, messages, all_tools, active_node="executor")
             
             if res["error"]:
@@ -126,6 +127,10 @@ class TaskExecutor:
             # If no tool calls, nudge the user
             elif not ai_msg.tool_calls:
                  messages.append(HumanMessage(content="Please use tools to proceed, or call `finish_task` if done."))
+            
+            # Warning if nearing limit
+            if turn == MAX_TURNS - 5:
+                messages.append(HumanMessage(content=f"WARNING: You are approaching the turn limit ({MAX_TURNS}). Please verify your work and call `finish_task` soon."))
         
         if task_success:
             return {"status": "success", "result": final_result}
