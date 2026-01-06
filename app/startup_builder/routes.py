@@ -1158,7 +1158,7 @@ def ensure_project_context(startup_id, manager):
         context_data = {
             "startup_id": startup_id,
             "name": startup.name,
-            "description": startup.description,
+            "description": startup.submission.product_service_idea if startup.submission else "No description",
         }
         
         # Correctly fetch Evaluation via Submission
