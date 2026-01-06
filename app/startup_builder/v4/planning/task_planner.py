@@ -60,7 +60,7 @@ class TaskPlanner:
         # 1. Gather Context
         project_rules = context_manager.get_global_context()
         summaries = context_manager.get_file_summaries()
-        file_tree_raw = librarian.get_file_tree()
+        file_tree_raw = "\\n".join([f"  {f}" for f in librarian._get_all_files()]) if hasattr(librarian, '_get_all_files') else "[File tree unavailable]"
         
         # Build Semantic Context
         # We can perform a fresh query if needed
