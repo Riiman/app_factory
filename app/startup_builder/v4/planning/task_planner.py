@@ -14,7 +14,7 @@ import uuid
 from typing import Dict, List, Optional, Any
 
 from langchain_core.messages import HumanMessage
-from ...llm.copilot import V4CoPilot
+from ..llm.copilot import V4CoPilot
 from ..prompting.architect_prompts import ArchitectPromptEnhancer
 # from ...context import ContextManager # Dependency injection preferred
 

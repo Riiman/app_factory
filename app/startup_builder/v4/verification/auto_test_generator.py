@@ -7,7 +7,7 @@ Automatically generates unit tests for code using LLM.
 import logging
 from typing import Dict, Any, Optional, List
 from langchain_core.messages import HumanMessage
-from ...llm.copilot import V4CoPilot
+from ..llm.copilot import V4CoPilot
 
 logger = logging.getLogger(__name__)
 
