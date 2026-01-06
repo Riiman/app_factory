@@ -179,7 +179,6 @@ class TaskPlanner:
                          try:
                              self.copilot.emit_thought(f"Checking {tool_name}...", "planner")
                              tool_res = selected_tool.invoke(args)
-                             messages.append(json.dumps(str(tool_res))) # ToolMessage simplified
                              # ACTUALLY we need proper ToolMessage for LangChain
                              from langchain_core.messages import ToolMessage
                              messages.append(ToolMessage(content=str(tool_res), tool_call_id=tool_id))
