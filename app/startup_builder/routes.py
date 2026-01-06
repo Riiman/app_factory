@@ -356,32 +356,24 @@ def run_task(startup_id):
     except Exception as e:
         print(f"Error updating DB status: {e}")
         
-    # Initialize State
-    initial_state = {
-        "startup_id": startup_id,
-        "goal": goal,
-        "context": "",
-        "plan": [],
-        "current_step_index": 0,
-        "current_step": {},
-        "code_changes": {},
-        "error_history": [],
-        "logs": [],
-        "status": "start",
-        "total_tasks": 0,
-        "completed_tasks": 0
+    # V4 PORT: Generic Task
+    mission_data = {
+        "title": "Ad-hoc User Task",
+        "description": goal,
+        "type": "general",
+        "status": "pending"
     }
     
     # Run in background
-    run_agent_bg(startup_id, initial_state, yolo)
+    run_v4_agent_bg(startup_id, mission_data)
     
-    return jsonify({"status": "success", "message": "Task started in background"})
+    return jsonify({"status": "success", "message": "V4 Task started in background"})
 
 @builder_bp.route('/<startup_id>/build-product', methods=['POST'])
 def build_product(startup_id):
     from app.models import Product, ProductStage
     from app.extensions import db, redis_client
-    from .v3.orchestrator import create_v3_graph
+    # from .v3.orchestrator import create_v3_graph
     
     # CLEAR pending signals
     redis_client.delete(f"signal:{startup_id}")
@@ -430,126 +422,34 @@ def build_product(startup_id):
         "features": [f.to_dict() for f in product.features]
     }
     
-    # Check for existing state/missions
-    force_rebuild = data.get('force_rebuild', False)
-    initial_state = None
-    found_checkpoint = False
+    # V4 PORT: Construct Mission for V4 Agent
+    features = product_context.get("features", [])
+    features_desc = ""
+    for f in features:
+        features_desc += f"- {f['name']}: {f['description']}\n"
     
-    if not force_rebuild:
-        try:
-             # Look for existing checkpoint
-             v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
-             config = {"configurable": {"thread_id": startup_id}}
-             snapshot = v3_graph.get_state(config)
-             if snapshot.values and snapshot.values.get("missions"):
-                  found_checkpoint = True
-                  current_status = snapshot.values.get("status")
-                  missions = snapshot.values.get("missions", [])
-                  pending_work = any(m["status"] == "pending" for m in missions)
-                  
-                  if pending_work:
-                      print(f"Resuming existing missions for {startup_id}")
-                      initial_state = None # Default Resume
-                      
-                      # SMART RESUME: Recover from terminal states if work remains
-                      if current_status in ["done", "failed", "stopped"]:
-                          print(f"Auto-Recovering: Resetting status from '{current_status}' to 'routed'")
-                          initial_state = {"status": "routed"}
-                  else:
-                      print(f"Previous build '{current_status}' with no pending work. Starting fresh.")
-                      # Force fresh rebuild
-                      force_rebuild = True
-        except Exception as e:
-            print(f"Error checking existing state: {e}")
-            
-    if found_checkpoint and initial_state is None and not force_rebuild:
-         # Resume confirmed from DB checkpoint
-         pass
-    else:
-        # Check for File-Based Persistence (artifacts/missions.json)
-        # This allows resuming even if DB checkpoint is missing/cleared but workspace is intact.
-        import json
-        missions_file = manager.read_file(startup_id, "artifacts/missions.json")
-        
-        if not force_rebuild and not missions_file.get("error"):
-            try:
-                data = json.loads(missions_file["content"])
-                print(f"Resuming from missions.json for {startup_id}")
-                
-                existing_missions = data.get("missions", [])
-                
-                # --- SMART INCREMENTAL BUILD ---
-                # Check for new features in Product Context not in Existing Missions
-                existing_feature_ids = set()
-                for m in existing_missions:
-                    if m.get("feature_id"):
-                        existing_feature_ids.add(str(m["feature_id"])) # Ensure string comparison
-                
-                new_missions = []
-                current_timestamp = 1000 # dummy or use time
-                import time
-                base_id = len(existing_missions)
-                
-                features = product_context.get("features", [])
-                for f in features:
-                    f_id = str(f["id"])
-                    if f_id not in existing_feature_ids:
-                        print(f"Found New Feature: {f['name']} (ID: {f_id})")
-                        # Create Synthetic Mission
-                        new_missions.append({
-                            "id": base_id + len(new_missions), # increment ID
-                            "title": f"Implement Feature: {f['name']}",
-                            "description": f"Implement the feature '{f['name']}'. Description: {f['description']}",
-                            "status": "pending", # Force pending
-                            "feature_id": f_id
-                        })
-                
-                if new_missions:
-                    print(f"Adding {len(new_missions)} new missions to queue.")
-                    existing_missions.extend(new_missions)
-                    status_override = "routed" # Resumed/Active
-                else:
-                    # No new features.
-                    # Verify if pending work exists in current list
-                    if any(m["status"] == "pending" for m in existing_missions):
-                        status_override = "routed"
-                    else:
-                        print("All features built. No pending work.")
-                        # SAFETY: Do not auto-rebuild.
-                        return jsonify({"status": "no_changes", "message": "Project is already fully built. No new features found. Use 'Force Rebuild' to restart."})
-                
-                initial_state = {
-                    "startup_id": startup_id,
-                    "product_context": product_context,
-                    "missions": existing_missions, # RESTORED: Load missions into state
-                    "current_mission": None, 
-                    "tech_stack": data.get("tech_stack", "Existing"),
-                    "status": status_override, 
-                    "plan": [],
-                    "logs": [f"Smart Resume: Loaded {len(existing_missions)} missions ({len(new_missions)} new)."]
-                }
-            except Exception as e:
-                print(f"Smart Resume Failed (Starting Fresh): {e}")
-                # Fallback to fresh start
-                initial_state = None
-        
-        if not initial_state:
-            # Start fresh (Initializer will run)
-            initial_state = {
-                "startup_id": startup_id,
-                "product_context": product_context, # Passed to V3Initializer
-                "status": "init", # Trigger Initializer
-                "plan": [],
-                # "missions": [], # Initializer will populate
-                "current_mission": None,
-                "logs": [f"Starting V3 Build for Product: {product.name}"]
-            }
-
+    mission_prompt = f"""
+    Build Product: {product.name}
+    Description: {product.description}
     
-    # Run in background
-    # run_v3_agent_bg(startup_id, initial_state)
+    Features to Implement:
+    {features_desc}
     
-    return jsonify({"status": "success", "message": f"Build started for {product.name}"})
+    Plan and execute implementation for each feature systematically. Use the Librarian to understand existing code structure.
+    """
+    
+    print(f"Starting V4 Build for {product.name} with {len(features)} features")
+    
+    mission_data = {
+        "title": f"Build Product: {product.name}",
+        "description": mission_prompt,
+        "type": "product_build",
+        "status": "pending"
+    }
+    
+    run_v4_agent_bg(startup_id, mission_data)
+    
+    return jsonify({"status": "success", "message": f"V4 Build started for {product.name}"})
 
 @builder_bp.route('/<startup_id>/build-feature', methods=['POST'])
 def build_feature(startup_id):
@@ -573,7 +473,7 @@ def build_feature(startup_id):
     
     product = feature.product
     
-    # Synthesize V3 Mission
+    # V4 PORT: Construct Mission for Single Feature
     mission_prompt = (
         f"Implement Feature: '{feature.name}' for Product: '{product.name}'.\n"
         f"Description: {feature.description}\n"
@@ -581,18 +481,17 @@ def build_feature(startup_id):
         f"Ensure it integrates with the existing codebase."
     )
     
-    initial_state = {
-        "startup_id": startup_id,
-        "mission": mission_prompt,
-        "status": "analyzing", # Start with analysis
-        "plan": [],
-        "logs": [f"Starting V3 Build for Feature: {feature.name}"]
+    mission_data = {
+        "title": f"Implement Feature: {feature.name}",
+        "description": mission_prompt,
+        "type": "feature_build",
+        "status": "pending"
     }
     
     # Run in background
-    # run_v3_agent_bg(startup_id, initial_state)
+    run_v4_agent_bg(startup_id, mission_data)
     
-    return jsonify({"status": "success", "message": f"V3 Agent started building feature: {feature.name}"})
+    return jsonify({"status": "success", "message": f"V4 Agent started building feature: {feature.name}"})
 
 # @builder_bp.route('/<int:startup_id>/v3/start', methods=['POST'])
 # def start_v3_agent(startup_id):
