@@ -84,8 +84,8 @@ class V4Executor:
         # Execute with retry logic
         for attempt in range(max_retries):
             try:
-                # Execute tool
-                result = tool_func(**args)
+                # Execute tool (LangChain tools use invoke(input) not invoke(**args))
+                result = tool_func.invoke(args)
                 
                 # Record success
                 self.safety.record_tool_call(tool_name, args, "success")
