@@ -45,6 +45,13 @@ class StrategicPlanner:
         # Unpack State
         focused_context = current_state.get("focused_context", "")
         global_summary = current_state.get("global_summary", {})
+        file_list = current_state.get("file_list", [])
+        
+        # Format File Tree
+        file_tree_str = "\n".join(file_list[:300]) # Cap at 300 files safe limit
+        if len(file_list) > 300:
+             file_tree_str += f"\n... ({len(file_list)-300} more files, consult librarian)"
+
         # Feedback can come from argument or state
         feedback_data = feedback or current_state.get("feedback_context")
         
@@ -55,7 +62,10 @@ class StrategicPlanner:
         user_prompt = f"""
 GOAL (Set Point): {goal}
 
-CURRENT STATE (Measured):
+FILE STRUCTURE (Existing Files):
+{file_tree_str}
+
+CURRENT STATE (Focused Context):
 {focused_context}
 
 """

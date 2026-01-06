@@ -74,8 +74,15 @@ class V4Orchestrator:
         for i, feature in enumerate(features):
             f_name = feature.get("name", f"Feature {i+1}")
             f_id = feature.get("id")
+            f_status = feature.get("status", "pending")
             
-            self._emit_log(f"\n👉 [Feature {i+1}/{len(features)}] {f_name}")
+            # RESUME LOGIC: Skip if already done
+            if f_status == "completed":
+                self._emit_log(f"⏭️ Skipping completed feature: {f_name}")
+                workflow_memory["completed_features"].append(f_name)
+                continue
+            
+            self._emit_log(f"\n👉 [Feature {i+1}/{len(features)}] {f_name} ({f_status})")
             
             # 1. Sync DB (IN_PROGRESS)
             if f_id: self._update_feature_status(f_id, "IN_PROGRESS")
@@ -147,6 +154,11 @@ class V4Orchestrator:
                 # A. SENSORS (Explore)
                 # Note: We updated Engines to accept cycle_memory
                 state_snapshot = self.sensors.observe_state(goal, feedback=feedback, cycle_memory=cycle_memory)
+                
+                # LIVING FILE LIST: Initialize from disk state
+                # This creates the baseline for the "Living Map" that Executor updates in real-time
+                if "file_list" in state_snapshot:
+                    cycle_memory["file_list"] = list(state_snapshot["file_list"]) # Copy
                 
                 # B. CONTROLLER (Plan)
                 # Updated method name to create_micro_plan

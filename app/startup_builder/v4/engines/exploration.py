@@ -45,7 +45,10 @@ class ExplorationEngine:
         # 1b. Update Context Cache (Brain's Long-term Memory)
         # We perform a lightweight scan to update the persistent cache
         tech_stack = self.librarian.detect_tech_stack()
-        files = self.librarian._get_all_files()
+        files = self.librarian.get_all_files()
+        
+        # Calculate relative paths for cleaner context
+        rel_files = [os.path.relpath(f, self.workspace_root) for f in files]
         
         # Minimal context save - we rely on Chroma for heavy lifting
         # But ContextCache needs metadata for the prompt
@@ -55,7 +58,8 @@ class ExplorationEngine:
                 "tech_stack": tech_stack,
                 "indexed_at": "now"
             },
-            "file_summaries": {f: "Indexed" for f in files} # Placeholder
+            "file_summaries": {f: "Indexed" for f in files}, # Placeholder
+            "file_tree": rel_files
         }
         self.context_cache.save_context(context_data)
         
@@ -64,6 +68,13 @@ class ExplorationEngine:
         
         # 3. Global Reading (Broad summary)
         global_summary = self.context_cache.get_summary()
+        
+        return {
+            "focused_context": focused_context,
+            "global_summary": global_summary,
+            "file_list": rel_files, # Explicit file map for "Resume" logic
+            "feedback": feedback
+        }
         
         # 4. Integrate Feedback (If previous measure failed)
         error_context = None

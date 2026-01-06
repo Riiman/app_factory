@@ -80,7 +80,7 @@ class Librarian:
         logger.info("Librarian: Starting Indexing...")
         
         # 1. Gather Files
-        files = self._get_all_files()
+        files = self.get_all_files()
         
         # Detect Deletions
         current_paths = set(files)
@@ -346,7 +346,7 @@ class Librarian:
         Scans workspace for key indicators of the tech stack.
         """
         stack = []
-        files = self._get_all_files()
+        files = self.get_all_files()
         
         # 1. Frontend / JS
         if any(f.endswith("package.json") for f in files):
@@ -390,7 +390,7 @@ class Librarian:
         Returns a map of {filepath: content_hash} for all relevant files.
         Used by ExplorationEngine to detect state changes.
         """
-        files = self._get_all_files()
+        files = self.get_all_files()
         hashes = {}
         for fpath in files:
             try:
@@ -404,7 +404,7 @@ class Librarian:
                 pass
         return hashes
 
-    def _get_all_files(self) -> List[str]:
+    def get_all_files(self) -> List[str]:
         all_files = []
         for root, dirs, files in os.walk(self.workspace_root):
             dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'venv', '__pycache__', 'dist', 'build', 'artifacts']]

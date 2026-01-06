@@ -57,6 +57,17 @@ class TaskExecutor:
                     res = self._run_command(step["command"])
                 elif step_type == "file":
                     res = self._update_file(step["path"], step["content"])
+                    # LIVING FILE LIST: Update memory immediately
+                    if res["success"] and cycle_memory is not None:
+                        if "file_list" in cycle_memory:
+                            # Normalize to ensure "app.py" and "./app.py" match
+                            import os
+                            # We assume paths are relative to workspace root as per prompt convention
+                            # But tool handles absolute. Let's rely on the input string to match the list's format (relative)
+                            # Best verify: clean the path
+                            norm_path = os.path.normpath(step["path"])
+                            if norm_path not in cycle_memory["file_list"] and step["path"] not in cycle_memory["file_list"]:
+                                cycle_memory["file_list"].append(step["path"])
                 elif step_type == "message":
                     # Action: Just speak
                     res = {"success": True, "output": step.get("content")}
