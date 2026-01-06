@@ -97,7 +97,7 @@ class TaskExecutor:
                     # Execute
                     exec_res = self.executor.execute_tool(
                         tool_name=tool_name,
-                        tool_func=tool_obj.invoke, # invoke? or func? LangChain tools have .invoke
+                        tool_func=tool_obj,  # Pass the tool object, not the method
                         args=args
                     )
                     
