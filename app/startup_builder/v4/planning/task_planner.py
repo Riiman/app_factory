@@ -11,7 +11,7 @@ Responsible for:
 import logging
 import json
 import uuid
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TypedDict
 
 from langchain_core.messages import HumanMessage
 from ..llm.copilot import V4CoPilot
@@ -25,6 +25,17 @@ class TaskPlanner:
     Dedicated Planning Engine for V4.
     Replaces the monolithic V3 Architect.
     """
+
+class PlanStep(TypedDict):
+    id: str
+    description: str
+    type: str # 'command', 'file', 'script'
+    dependencies: List[str]
+    status: str
+
+class ExecutionContext(TypedDict):
+    startup_id: str
+    env_vars: Dict[str, str]
     
     def __init__(self, startup_id: str, log_callback=None):
         self.startup_id = startup_id
@@ -85,12 +96,10 @@ class TaskPlanner:
         # For now, let's assume the caller configures tools or we pass them in?
         # To avoid circular imports, we might need to instantiate V3Tools here or get them passed.
         # Let's instantiate V3Tools for now as done in Architect.
-        from ...v3.tools import V3Tools
-        from ...manager import DockerManager
+        from ..tools.v4_tools import V4Tools
         
-        dm = DockerManager() # or get from context_manager if available? context_manager has it.
-        # context_manager.docker_manager is likely available
-        tools_factory = V3Tools(dm, self.startup_id)
+        # V4Tools manages its own DockerManager
+        tools_factory = V4Tools(self.startup_id)
         tools = tools_factory.get_tool_list()
 
         MAX_TURNS = 15
