@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Any
 
 import re
 import json
-from app.startup_builder.v3.agents.core import V3CoPilot
+from app.startup_builder.v4.llm.copilot import V4CoPilot
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class ContextManager:
         to_compress = context_entries[:mid]
         to_keep = context_entries[mid:]
         
-        copilot = V3CoPilot(use_thinking=False)
+        copilot = V4CoPilot(use_thinking=False)
         sys_p = "You are a Project Archivist. Summarize these completed tasks into a concise chronological history."
         user_p = f"Tasks:\n" + "\n".join(to_compress)
         
@@ -175,7 +175,7 @@ class ContextManager:
             
         elif type == "text":
             # LLM Summarization
-            copilot = V3CoPilot(use_thinking=False)
+            copilot = V4CoPilot(use_thinking=False)
             sys_p = f"You are a Context Compressor. Compress this text to under {token_limit} tokens while keeping key technical facts."
             user_p = f"Text to Compress:\n{text[:char_limit*2]}" # Send 2x limit to compress down
             
@@ -313,7 +313,7 @@ class ContextManager:
         content = fres["content"]
         
         # 2. Generate Summary
-        copilot = V3CoPilot(use_thinking=False)
+        copilot = V4CoPilot(use_thinking=False)
         system_prompt = "You are a Tech Lead. Summarize the purpose of this file in ONE concise sentence."
         user_prompt = f"File: {file_path}\nContent:\n{content[:2000]}..." # Truncate for speed
         
