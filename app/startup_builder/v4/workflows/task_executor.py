@@ -13,7 +13,7 @@ from typing import Dict, Any, Callable, Optional, List
 from datetime import datetime
 
 from ..llm.copilot import V4CoPilot
-from ...tools.v4_tools import V4Tools
+from ..tools.v4_tools import V4Tools
 from ...v3.agents.core import V3CoPilot
 from langchain_core.messages import HumanMessage, SystemMessage
 
