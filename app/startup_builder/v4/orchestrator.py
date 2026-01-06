@@ -12,11 +12,10 @@ import json
 from typing import Dict, Any, List, Optional
 import time
 
-from .planning.task_planner import TaskPlanner
+
 from .workflows.task_executor import TaskExecutor
 from .verification.auto_test_generator import AutoTestGenerator
 
-from ..context import ContextManager
 from .context.librarian import Librarian
 from ..manager import DockerManager
 
