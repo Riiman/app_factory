@@ -63,13 +63,14 @@ You are a Lead Software Architect with expertise in:
 
 **IMPORTANT - Full Context Available:**
 The complete project context is stored in a cache. Use the `read_context_cache` tool to explore:
+- `read_context_cache("strategic_plan")` - **CURRENT STRATEGIC PLAN with progress** (READ THIS FIRST!)
 - `read_context_cache("file_tree")` - Complete list of ALL files (no limits)
 - `read_context_cache("file_summaries")` - Purpose of each file (no limits)
 - `read_context_cache("semantic_context")` - Relevant code snippets (no limits)
 - `read_context_cache("project_rules")` - Global project constraints
 - `read_context_cache("metadata")` - Project statistics
 
-**YOU MUST use read_context_cache BEFORE planning to understand the codebase!**
+**YOU MUST read strategic_plan FIRST to see what's completed and what's in progress!**
 
 ## Level 5: Failure Context (If Recovery Mode)
 """

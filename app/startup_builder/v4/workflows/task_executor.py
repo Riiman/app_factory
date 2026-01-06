@@ -144,3 +144,51 @@ Logic: {task.get('logic')}
             'startup_id': self.startup_id,
             'executor': self.executor.get_stats()
         }
+    
+    def execute_atomic_task(self, atomic_task) -> Dict[str, Any]:
+        """
+        Execute a single atomic task WITHOUT LLM.
+        
+        Atomic task has complete instructions - just execute directly.
+        """
+        logger.info(f"[ATOMIC] Executing: {atomic_task.description}")
+        
+        try:
+            if atomic_task.action == "create_file":
+                return self._execute_create_file(atomic_task)
+            elif atomic_task.action == "update_file":
+                return self._execute_update_file(atomic_task)
+            elif atomic_task.action == "run_command":
+                return self._execute_run_command(atomic_task)
+            else:
+                return {"status": "failed", "error": f"Unknown action: {atomic_task.action}"}
+        except Exception as e:
+            logger.error(f"Atomic task execution failed: {e}")
+            return {"status": "failed", "error": str(e)}
+    
+    def _execute_create_file(self, task) -> Dict[str, Any]:
+        """Create a new file with content"""
+        tool = next((t for t in self.tools.get_tool_list() if t.name == "update_file"), None)
+        if not tool:
+            return {"status": "failed", "error": "update_file tool not found"}
+        
+        result = tool.invoke({"file_path": task.file_path, "content": task.content, "action": "create"})
+        return {"status": "success" if "✅" in str(result) else "failed", "result": result}
+    
+    def _execute_update_file(self, task) -> Dict[str, Any]:
+        """Update an existing file"""
+        tool = next((t for t in self.tools.get_tool_list() if t.name == "update_file"), None)
+        if not tool:
+            return {"status": "failed", "error": "update_file tool not found"}
+        
+        result = tool.invoke({"file_path": task.file_path, "content": task.content, "action": "update"})
+        return {"status": "success" if "✅" in str(result) else "failed", "result": result}
+    
+    def _execute_run_command(self, task) -> Dict[str, Any]:
+        """Execute a shell command"""
+        tool = next((t for t in self.tools.get_tool_list() if t.name == "run_shell"), None)
+        if not tool:
+            return {"status": "failed", "error": "run_shell tool not found"}
+        
+        result = tool.invoke({"command": task.command})
+        return {"status": "success" if "✅" in str(result) or "exit code 0" in str(result).lower() else "failed", "result": result}

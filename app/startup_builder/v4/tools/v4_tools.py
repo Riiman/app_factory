@@ -410,9 +410,10 @@ class V4Tools:
                     - "semantic_context": Relevant code snippets
                     - "project_rules": Global project constraints
                     - "metadata": Project statistics
+                    - "strategic_plan": Current strategic plan with progress (IMPORTANT!)
                     
             Returns:
-                Requested section data as JSON string
+                Requested section data as JSON string or markdown
             """
             try:
                 from ..context.context_cache import ContextCache
@@ -427,11 +428,13 @@ class V4Tools:
                 
                 if section == "summary":
                     result = cache.get_summary()
+                    return json.dumps(result, indent=2)
+                elif section == "strategic_plan":
+                    # Return strategic plan as markdown (not JSON)
+                    return cache.get_strategic_plan()
                 else:
                     result = cache.get_section(section)
-                
-                return json.dumps(result, indent=2)
+                    return json.dumps(result, indent=2)
             except Exception as e:
                 return f"❌ Error reading context cache: {e}"
-                
         return read_context_cache

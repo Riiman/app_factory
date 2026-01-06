@@ -173,3 +173,21 @@ class ContextCache:
         except Exception as e:
             logger.error(f"Failed to search files: {e}")
             return []
+    
+    def get_strategic_plan(self) -> str:
+        """
+        Read the current strategic plan with progress.
+        
+        Returns:
+            Strategic plan markdown content or error message
+        """
+        try:
+            plan_path = os.path.join(self.workspace_root, "artifacts", "strategic_plan.md")
+            if not os.path.exists(plan_path):
+                return "Strategic plan not yet created. This will be available after planning phase."
+            
+            with open(plan_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            logger.error(f"Failed to read strategic plan: {e}")
+            return f"Error reading strategic plan: {e}"

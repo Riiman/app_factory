@@ -49,9 +49,15 @@ class V4Orchestrator:
             app_root = '/home/ubuntu/app_factory' if os.path.exists('/home/ubuntu/app_factory') else app_root
         workspace_path = os.path.join(app_root, 'temp_workspaces', str(startup_id))
         logger.info(f"Librarian workspace path: {workspace_path}")
+        self.workspace_path = workspace_path
         self.librarian = Librarian(workspace_path)
         
-        self.planner = TaskPlanner(startup_id, log_callback)
+        # Hierarchical Planning System
+        from .planning.strategic_planner import StrategicPlanner
+        from .planning.task_decomposer import TaskDecomposer
+        
+        self.strategic_planner = StrategicPlanner(startup_id, log_callback)
+        self.task_decomposer = TaskDecomposer(startup_id, log_callback)
         self.executor = TaskExecutor(startup_id, log_callback)
         self.verifier = AutoTestGenerator(log_callback)
         
@@ -59,63 +65,130 @@ class V4Orchestrator:
 
     def run_mission(self, mission: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Executes a mission end-to-end.
+        Execute mission using hierarchical planning:
+        1. Strategic Planning → strategic_plan.md
+        2. Task Decomposition → atomic tasks per high-level task
+        3. Atomic Execution → execute each atomic task
         """
-        logger.info(f"V4Orchestrator: Starting Mission '{mission.get('title')}'")
-        self._emit_log(f"🚀 V4 Agent Started: {mission.get('title')}")
+        self._emit_log(f"🚀 V4 Mission Started: {mission.get('title')}")
         
-        # 1. Index Codebase
+        # Phase 0: Index Codebase
         self._emit_log("📚 Indexing codebase...")
         self.librarian.index_workspace()
         
-        # 2. Planning Phase
-        self._emit_log("🧠 Planning architecture...")
-        plan_result = self.planner.plan_mission(
-            mission=mission,
-            context_manager=self.context_manager,
-            librarian=self.librarian
+        # Get context cache summary
+        from .context.context_cache import ContextCache
+        context_cache = ContextCache(self.workspace_path)
+        context_summary = context_cache.get_summary()
+        
+        # Phase 1: Strategic Planning
+        self._emit_log("🎯 Creating strategic plan...")
+        try:
+            strategic_plan_path = self.strategic_planner.create_strategic_plan(
+                mission=mission,
+                context_cache_summary=context_summary,
+                workspace_path=self.workspace_path
+            )
+            high_level_tasks = self.strategic_planner.parse_strategic_plan(strategic_plan_path)
+            self._emit_log(f"📋 Strategic plan created: {len(high_level_tasks)} high-level tasks")
+        except Exception as e:
+            logger.error(f"Strategic planning failed: {e}")
+            return {"status": "failed", "error": f"Strategic planning failed: {e}"}
+        
+        # Phase 2 & 3: Decomposition + Execution
+        total_atomic_tasks = 0
+        completed_atomic_tasks = 0
+        
+        for i, hl_task in enumerate(high_level_tasks):
+            self._emit_log(f"\n⚙️ [{i+1}/{len(high_level_tasks)}] {hl_task['description']}")
+            
+            # Update status: in_progress
+            self.strategic_planner.update_task_status(
+                plan_path=strategic_plan_path,
+                task_id=hl_task['id'],
+                status="in_progress"
+            )
+            
+            # Decompose into atomic tasks
+            self._emit_log(f"  🔍 Decomposing into atomic tasks...")
+            try:
+                atomic_tasks = self.task_decomposer.decompose_task(
+                    high_level_task=hl_task,
+                    context_cache_summary=context_summary,
+                    workspace_path=self.workspace_path
+                )
+                total_atomic_tasks += len(atomic_tasks)
+                self._emit_log(f"  📦 Generated {len(atomic_tasks)} atomic tasks")
+            except Exception as e:
+                logger.error(f"Task decomposition failed: {e}")
+                self._emit_log(f"  ❌ Decomposition failed: {e}")
+                # Update status: failed
+                self.strategic_planner.update_task_status(
+                    plan_path=strategic_plan_path,
+                    task_id=hl_task['id'],
+                    status="failed",
+                    notes=f"Decomposition failed: {e}"
+                )
+                continue
+            
+            # Execute atomic tasks
+            task_completed_count = 0
+            for j, atomic_task in enumerate(atomic_tasks):
+                self._emit_log(f"    [{j+1}/{len(atomic_tasks)}] {atomic_task.description}")
+                
+                try:
+                    result = self.executor.execute_atomic_task(atomic_task)
+                    
+                    if result["status"] == "success":
+                        completed_atomic_tasks += 1
+                        task_completed_count += 1
+                        self._emit_log(f"      ✅ Success")
+                        
+                        # Update progress in strategic plan
+                        self.strategic_planner.update_task_status(
+                            plan_path=strategic_plan_path,
+                            task_id=hl_task['id'],
+                            status="in_progress",
+                            atomic_tasks_completed=task_completed_count,
+                            atomic_tasks_total=len(atomic_tasks)
+                        )
+                    else:
+                        self._emit_log(f"      ⚠️ Failed: {result.get('error', 'Unknown error')}")
+                except Exception as e:
+                    logger.error(f"Atomic task execution failed: {e}")
+                    self._emit_log(f"      ❌ Error: {e}")
+            
+            # Mark high-level task as completed
+            self.strategic_planner.update_task_status(
+                plan_path=strategic_plan_path,
+                task_id=hl_task['id'],
+                status="completed",
+                atomic_tasks_completed=task_completed_count,
+                atomic_tasks_total=len(atomic_tasks)
+            )
+        
+        # Summary
+        self._emit_log(f"\n✅ Mission Complete!")
+        self._emit_log(f"📊 Completed {completed_atomic_tasks}/{total_atomic_tasks} atomic tasks")
+        
+        # Append final summary to strategic plan
+        self.strategic_planner.append_execution_log(
+            plan_path=strategic_plan_path,
+            message=f"\n\n---\n## Execution Summary\n- Total atomic tasks: {total_atomic_tasks}\n- Completed: {completed_atomic_tasks}\n- Success rate: {(completed_atomic_tasks/total_atomic_tasks*100) if total_atomic_tasks > 0 else 0:.1f}%"
         )
         
-        if plan_result.get("status") == "failed":
-            self._emit_log(f"❌ Planning Failed: {plan_result.get('error')}")
-            return {"status": "failed", "error": plan_result.get("error")}
-            
-        tasks = plan_result["tasks"]
-        self._emit_log(f"📋 Plan generated: {len(tasks)} tasks.")
-        
-        # 3. Execution Phase
-        failed_task = None
-        
-        for i, task in enumerate(tasks):
-             self._emit_log(f"⚙️ Execute [{i+1}/{len(tasks)}]: {task['description']}")
-             
-             # Execute
-             exec_result = self.executor.solve_and_execute(task, context={"mission": mission})
-             
-             if exec_result["status"] == "failed":
-                 self._emit_log(f"⚠️ Task Failed: {task['description']}. Entering Recovery...")
-                 failed_task = task
-                 failed_task["failed_attempts"] = failed_task.get("failed_attempts", []) + [{"error": exec_result["error"]}]
-                 break
-                 
-             # Verification (Optional if task implies it, or we can auto-verify)
-             # If "test" or "verify" in description, we assume executor handled it or we run generic verify?
-             # For V4, we can optionally GENERATE a test if it was a code change.
-             if task.get("action") in ["write_file", "update_file"]:
-                 self._verify_change(task)
-        
-        # 4. Recovery Loop (Simplistic for MVP)
-        if failed_task:
-            return self._handle_failure(mission, failed_task)
-            
-        self._emit_log("✅ Mission Complete.")
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "high_level_tasks": len(high_level_tasks),
+            "total_atomic_tasks": total_atomic_tasks,
+            "completed_atomic_tasks": completed_atomic_tasks
+        }
+
 
     def _verify_change(self, task):
         """Generates and runs a test for a modification."""
         try:
             # Heuristic: If we touched a file, test it.
-            # Real implementation needs to track which file changed.
             pass 
         except:
             pass
