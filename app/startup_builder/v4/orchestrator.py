@@ -25,181 +25,100 @@ logger = logging.getLogger(__name__)
 
 class V4Orchestrator:
     """
-    Manages the lifecycle of a V4 Mission.
+    V4 Orchestrator - The Central Control System.
+    
+    Implements the Explore -> Plan -> Execute -> Feedback Control Loop.
     """
     
     def __init__(self, startup_id: str, log_callback=None):
         self.startup_id = startup_id
         self.log_callback = log_callback
         
-        # Initialize Engines
-        self.docker_manager = DockerManager()
-        self.context_manager = ContextManager(self.docker_manager, startup_id)
-        
-        # Librarian needs workspace path
-        # Use absolute path that works in production
+        # Initialize Context Path
         import os
-        # Try to find the app root directory
         current_file = os.path.abspath(__file__)
-        # Navigate up to find app_factory or project root
         app_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
-        # Check if we're in the expected structure
         if not os.path.exists(os.path.join(app_root, 'app')):
-            # Fallback: assume we're in /home/ubuntu/app_factory or similar
             app_root = '/home/ubuntu/app_factory' if os.path.exists('/home/ubuntu/app_factory') else app_root
-        workspace_path = os.path.join(app_root, 'temp_workspaces', str(startup_id))
-        logger.info(f"Librarian workspace path: {workspace_path}")
-        self.workspace_path = workspace_path
-        self.librarian = Librarian(workspace_path)
+        self.workspace_path = os.path.join(app_root, 'temp_workspaces', str(startup_id))
         
-        # Hierarchical Planning System
-        # Hierarchical Planning System
-        from .planning.strategic_planner import StrategicPlanner
+        # Initialize 4 Engines
+        from .engines.exploration import ExplorationEngine
+        from .engines.planning import StrategicPlanner
+        from .engines.execution import TaskExecutor
+        from .engines.feedback import FeedbackLoop
         
-        self.strategic_planner = StrategicPlanner(startup_id, log_callback)
-        self.executor = TaskExecutor(startup_id, log_callback)
-        self.verifier = AutoTestGenerator(log_callback)
+        self.sensors = ExplorationEngine(startup_id, self.workspace_path)
+        self.controller = StrategicPlanner(startup_id, log_callback)
+        self.actuator = TaskExecutor(startup_id, log_callback)
+        self.monitor = FeedbackLoop()
         
-        logger.info(f"V4Orchestrator online for {startup_id}")
+        self._emit_log(f"System Online: Control Loop Ready for {startup_id}")
+
+    def run_cycle(self, goal: str, max_retries: int = 3) -> Dict[str, Any]:
+        """
+        Execute the Control Loop for a specific Goal.
+        
+        Cycle:
+        1. Explore (Measure y)
+        2. Plan (Calculate u)
+        3. Execute (Apply u)
+        4. Feedback (Measure e)
+        """
+        self._emit_log(f"🚀 Starting Control Cycle for: {goal}")
+        
+        attempt = 0
+        feedback = None
+        
+        while attempt < max_retries:
+            cycle_id = f"cycle_{attempt+1}"
+            self._emit_log(f"\n🔄 Cycle {attempt+1}/{max_retries}")
+            
+            try:
+                # 1. EXPLORE (Sensors)
+                self._emit_log("🔭 Exploring current state...")
+                current_state = self.sensors.observe_state(goal, feedback)
+                
+                # 2. PLAN (Controller)
+                self._emit_log("🧠 Planning correction...")
+                micro_plan = self.controller.calculate_correction(goal, current_state)
+                
+                if not micro_plan:
+                    self._emit_log("❌ Controller failed to generate plan.")
+                    return {"status": "failed", "error": "Planning failed"}
+                
+                # 3. EXECUTE (Actuator)
+                self._emit_log(f"💪 Applying {len(micro_plan)} adjustments...")
+                execution_result = self.actuator.apply_control(micro_plan)
+                
+                # 4. FEEDBACK (Monitor)
+                decision = self.monitor.measure_error(execution_result, goal)
+                
+                if decision["status"] == "SUCCESS":
+                    self._emit_log("✅ Goal Achieved! System Stable.")
+                    return {"status": "success", "attempts": attempt+1}
+                else:
+                    self._emit_log(f"⚠️ Residual Error: {decision.get('error_summary')}")
+                    feedback = {
+                         "last_error": decision.get("error_summary"),
+                         "logs": decision.get("detailed_logs"),
+                         "failed_plan": micro_plan
+                    }
+                    attempt += 1
+            
+            except Exception as e:
+                logger.error(f"Cycle crashed: {e}")
+                self._emit_log(f"❌ Critical System Error: {e}")
+                return {"status": "error", "error": str(e)}
+        
+        self._emit_log("❌ Start-up Failed: Max retries exceeded.")
+        return {"status": "failed", "error": "Max retries exceeded"}
 
     def run_mission(self, mission: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute mission using hierarchical planning:
-        1. Strategic Planning → strategic_plan.md
-        2. Task Decomposition → atomic tasks per high-level task
-        3. Atomic Execution → execute each atomic task
-        """
-        self._emit_log(f"🚀 V4 Mission Started: {mission.get('title')}")
-        
-        # Phase 0: Index Codebase
-        self._emit_log("📚 Indexing codebase...")
-        self.librarian.index_workspace()
-        
-        # Get context cache summary
-        from .context.context_cache import ContextCache
-        context_cache = ContextCache(self.workspace_path)
-        context_summary = context_cache.get_summary()
-        
-        # Phase 1: Strategic Planning
-        self._emit_log("🎯 Creating strategic plan...")
-        try:
-            strategic_plan_path = self.strategic_planner.create_strategic_plan(
-                mission=mission,
-                context_cache_summary=context_summary,
-                workspace_path=self.workspace_path
-            )
-            high_level_tasks = self.strategic_planner.parse_strategic_plan(strategic_plan_path)
-            self._emit_log(f"📋 Strategic plan created: {len(high_level_tasks)} high-level tasks")
-        except Exception as e:
-            logger.error(f"Strategic planning failed: {e}")
-            return {"status": "failed", "error": f"Strategic planning failed: {e}"}
-        
-        # Phase 2: Execute Detailed Tasks
-        completed_tasks = 0
-        failed_tasks = 0
-        
-        for i, task in enumerate(high_level_tasks):
-            self._emit_log(f"\n⚙️ [{i+1}/{len(high_level_tasks)}] {task['description']}")
-            
-            # Update status: in_progress
-            self.strategic_planner.update_task_status(
-                plan_path=strategic_plan_path,
-                task_id=task['id'],
-                status="in_progress"
-            )
-            
-            # Execute task with LLM + tools
-            self._emit_log(f"  🤖 LLM executing task...")
-            try:
-                # Use solve_and_execute - LLM will use tools to complete the task
-                result = self.executor.solve_and_execute(
-                    task_desc=task['description'],
-                    task_logic="",  # Task description already contains all details
-                    task_action="",
-                    context={"mission": mission, "strategic_plan": strategic_plan_path}
-                )
-                
-                if result.get("status") == "success":
-                    completed_tasks += 1
-                    self._emit_log(f"  ✅ Task completed successfully")
-                    
-                    # Mark as completed
-                    self.strategic_planner.update_task_status(
-                        plan_path=strategic_plan_path,
-                        task_id=task['id'],
-                        status="completed"
-                    )
-                else:
-                    failed_tasks += 1
-                    error_msg = result.get("error", "Unknown error")
-                    self._emit_log(f"  ❌ Task failed: {error_msg}")
-                    
-                    # Mark as failed
-                    self.strategic_planner.update_task_status(
-                        plan_path=strategic_plan_path,
-                        task_id=task['id'],
-                        status="failed",
-                        notes=f"Error: {error_msg}"
-                    )
-            except Exception as e:
-                failed_tasks += 1
-                logger.error(f"Task execution failed: {e}")
-                self._emit_log(f"  ❌ Error: {e}")
-                
-                # Mark as failed
-                self.strategic_planner.update_task_status(
-                    plan_path=strategic_plan_path,
-                    task_id=task['id'],
-                    status="failed",
-                    notes=f"Exception: {e}"
-                )
-        
-        # Summary
-        self._emit_log(f"\n✅ Mission Complete!")
-        self._emit_log(f"📊 Completed {completed_tasks}/{len(high_level_tasks)} tasks ({failed_tasks} failed)")
-        
-        # Append final summary to strategic plan
-        self.strategic_planner.append_execution_log(
-            plan_path=strategic_plan_path,
-            message=f"\n\n---\n## Execution Summary\n- Total tasks: {len(high_level_tasks)}\n- Completed: {completed_tasks}\n- Failed: {failed_tasks}\n- Success rate: {(completed_tasks/len(high_level_tasks)*100) if len(high_level_tasks) > 0 else 0:.1f}%"
-        )
-        
-        return {
-            "status": "success",
-            "total_tasks": len(high_level_tasks),
-            "completed_tasks": completed_tasks,
-            "failed_tasks": failed_tasks
-        }
-
-
-    def _verify_change(self, task):
-        """Generates and runs a test for a modification."""
-        try:
-            # Heuristic: If we touched a file, test it.
-            pass 
-        except:
-            pass
-
-    def _handle_failure(self, mission, failed_task):
-        """Simplistic recovery: Ask Planner to Replan."""
-        self._emit_log("🔄 Re-planning to fix failure...")
-        
-        plan_result = self.planner.plan_mission(
-            mission=mission,
-            context_manager=self.context_manager,
-            librarian=self.librarian,
-            failed_task=failed_task
-        )
-        
-        if plan_result["status"] == "success":
-            # In a real system, we would merge plans. 
-            # Here we just stop and say "Manual intervention or recursive loop needed"
-            # to avoid infinite recursion key error in this MVP.
-            return {"status": "recovery_planned", "new_plan": plan_result["tasks"]}
-            
-        return {"status": "failed", "error": "Recovery planning failed."}
+        """Legacy Wrapper: Runs a mission by feeding its description to the Control Loop."""
+        return self.run_cycle(mission.get("description", "Unknown Goal"))
 
     def _emit_log(self, message):
         if self.log_callback:
-            self.log_callback({"logs": [message]}, None)
+            self.log_callback(message)
         logger.info(message)

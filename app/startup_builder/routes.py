@@ -455,11 +455,13 @@ IMPORTANT:
     
     print(f"Starting V4 Build for {product.name} with {len(features)} features")
     
+    # Passes structured features for MissionController.plan_iterative_product_build
     mission_data = {
         "title": f"Build Product: {product.name}",
         "description": mission_prompt,
         "type": "product_build",
-        "status": "pending"
+        "status": "pending",
+        "features": [f.to_dict() for f in product.features] 
     }
     
     run_v4_agent_bg(startup_id, mission_data)

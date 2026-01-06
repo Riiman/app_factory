@@ -1,0 +1,130 @@
+"""
+V4 Planning Engine - The Controller.
+
+Responsible for calculating the Control Signal (Micro-Plan) to reduce the error 
+between Goal (r) and State (y).
+"""
+
+import logging
+import json
+from typing import Dict, Any, List, Optional
+from langchain_core.messages import HumanMessage
+
+from ..llm.copilot import V4CoPilot
+from ..prompting.architect_prompts import ArchitectPromptEnhancer
+
+logger = logging.getLogger(__name__)
+
+class StrategicPlanner:
+    """
+    The Controller of the Agentic Control Loop.
+    
+    Role: Calculate the correction needed (Micro-Plan) based on error.
+    """
+    
+    def __init__(self, startup_id: str, log_callback=None):
+        self.startup_id = startup_id
+        self.copilot = V4CoPilot(use_thinking=True, log_callback=log_callback)
+        self.prompt_enhancer = ArchitectPromptEnhancer()
+        
+    def calculate_correction(self, goal: str, current_state: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Calculate the control signal (Micro-Plan) to reduce error.
+        
+        Args:
+            goal: The Reference (r).
+            current_state: The Measured State (y).
+            
+        Returns:
+            MicroPlan: List of atomic actions (u).
+        """
+        logger.info(f"🧠 Controller: Calculating correction for '{goal}'")
+        
+        # Unpack State
+        focused_context = current_state.get("focused_context", "")
+        global_summary = current_state.get("global_summary", {})
+        feedback = current_state.get("feedback_context")
+        
+        # 1. Build System Model (Prompt)
+        system_prompt = self._build_controller_prompt(global_summary)
+        
+        # 2. Build Error Signal (User Prompt)
+        user_prompt = f"""
+GOAL (Set Point): {goal}
+
+CURRENT STATE (Measured):
+{focused_context}
+
+"""
+        if feedback:
+            user_prompt += f"""
+PREVIOUS ERROR (Feedback):
+The previous attempt failed with:
+{json.dumps(feedback, indent=2)}
+
+CRITICAL: Adjust the plan to fix this error. Do not repeat the same mistake.
+"""
+
+        user_prompt += """
+Generate a MICRO-PLAN (Control Signal) to achieve the Goal from the Current State.
+Return a JSON array of steps. Each step must be Atomic.
+
+Format:
+```json
+[
+  {
+    "type": "command",
+    "command": "pip install flask",
+    "description": "Install dependency"
+  },
+  {
+    "type": "file",
+    "path": "app.py",
+    "content": "...",
+    "description": "Create server file"
+  }
+]
+```
+"""
+        
+        # 3. Compute Control Signal (LLM Inference)
+        messages = [HumanMessage(content=user_prompt)]
+        
+        # Retry loop for valid JSON
+        for _ in range(3):
+            try:
+                res = self.copilot.ask(system_prompt, user_prompt)
+                content = res.content if hasattr(res, 'content') else str(res)
+                
+                # Extract JSON
+                micro_plan = self._extract_json(content)
+                if micro_plan:
+                    logger.info(f"🧠 Controller: Generated {len(micro_plan)} control steps")
+                    return micro_plan
+            except Exception as e:
+                logger.warning(f"Controller inference failed: {e}")
+                
+        # Use fallback if inference fails
+        logger.error("Controller failed to generate valid plan")
+        return []
+
+    def _build_controller_prompt(self, summary: Dict[str, Any]) -> str:
+        return f"""
+You are the CONTROL SYSTEM for a software codebase.
+Your job is to generate a MICRO-PLAN to transition the system from State A to State B.
+
+Project Context:
+- Files: {summary.get('total_files', 0)}
+- Stack: {summary.get('tech_stack', 'Unknown')}
+        """
+        
+    def _extract_json(self, text: str) -> Optional[List[Dict[str, Any]]]:
+        try:
+            # Find JSON between backticks or just valid JSON
+            import re
+            match = re.search(r'```json(.*?)```', text, re.DOTALL)
+            if match:
+                return json.loads(match.group(1))
+            return json.loads(text)
+        except:
+            return None

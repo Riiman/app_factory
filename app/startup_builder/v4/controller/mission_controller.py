@@ -88,6 +88,63 @@ class MissionController:
         self.completed_missions: List[MissionResult] = []
         self.mission_queue: List[MissionPlan] = []
     
+    def plan_iterative_product_build(
+        self,
+        mission_id: str,
+        product_name: str,
+        product_description: str,
+        features: List[Dict[str, Any]],
+        context: Optional[Dict[str, Any]] = None
+    ) -> MissionPlan:
+        """
+        Plan an iterative product build (Feature by Feature).
+        Creates a 'Parent Mission' containing 'Child Tasks' where each task is a full Feature Build.
+        """
+        context = context or {}
+        logger.info(f"Planning Iterative Build for {product_name} ({len(features)} features)")
+        
+        # 1. Create Ordered Task List from Features
+        # Each feature becomes a high-level task for the V4 Orchestrator
+        tasks = []
+        
+        # Task 0: Project Initialization (if needed)
+        # We assume the first feature might drive this, or we add an explicit init task.
+        # For now, let's map features directly.
+        
+        for i, feature in enumerate(features):
+            f_name = feature.get("name", f"Feature {i+1}")
+            f_goal = feature.get("description", "")
+            
+            # Construct a rich goal for the Orchestrator
+            rich_goal = f"Implement Feature: {f_name}. Requirements: {f_goal}"
+            if i == 0:
+                rich_goal += " Note: This is the first feature. Initialize the project structure if missing."
+            else:
+                rich_goal += " Note: Integrate with existing codebase."
+                
+            tasks.append({
+                "id": f"feature_{i+1}",
+                "description": rich_goal,
+                "type": "feature_build",
+                "status": "pending",
+                "feature_metadata": feature # Store raw feature data
+            })
+            
+        return MissionPlan(
+            mission_id=mission_id,
+            mission_type="iterative_product_build",
+            description=f"Build Product: {product_name}",
+            priority=MissionPriority.HIGH,
+            tasks=tasks,
+            estimated_time=len(tasks) * 300.0, # 5 mins per feature
+            estimated_cost=len(tasks) * 0.5,
+            metadata={
+                "product_name": product_name,
+                "total_features": len(features),
+                **context
+            }
+        )
+
     def plan_mission(
         self,
         mission_id: str,
@@ -97,164 +154,128 @@ class MissionController:
         context: Optional[Dict[str, Any]] = None
     ) -> MissionPlan:
         """
-        Plan a mission execution.
-        
-        Args:
-            mission_id: Unique mission identifier
-            mission_type: Type of mission
-            description: Mission description
-            priority: Mission priority
-            context: Additional context
-            
-        Returns:
-            Mission plan
+        Plan a single mission execution.
         """
         context = context or {}
         
         logger.info(f"Planning mission {mission_id}: {mission_type}")
         
-        # Select strategy
-        strategy = None
-        if self.strategy_selector:
-            strategy = self.strategy_selector.select_strategy(
-                mission_type,
-                description,
-                context
-            )
+        # Fallback to simple planning if not product build
+        # ... logic ...
         
-        # Query similar missions from knowledge base
-        similar_missions = []
-        if self.knowledge_base:
-            similar_missions = self.knowledge_base.query_similar(
-                mission_type,
-                description,
-                k=3,
-                success_only=True
-            )
+        # Simple heuristic task breakdown
+        tasks = [
+            {
+                "id": "task_1",
+                "description": description, # Just map description to one big task for V4 cycle
+                "type": "implementation",
+                "status": "pending"
+            }
+        ]
         
-        # Break down into tasks (simplified)
-        tasks = self._plan_tasks(mission_type, description, context, similar_missions)
-        
-        # Estimate resources
-        estimated_time = strategy.estimated_time if strategy else 120.0
-        estimated_cost = strategy.estimated_cost if strategy else 1.0
-        
-        plan = MissionPlan(
+        return MissionPlan(
             mission_id=mission_id,
             mission_type=mission_type,
             description=description,
             priority=priority,
-            strategy=strategy,
             tasks=tasks,
-            estimated_time=estimated_time,
-            estimated_cost=estimated_cost,
-            metadata={
-                "planned_at": datetime.utcnow().isoformat(),
-                "similar_missions": len(similar_missions),
-                **context
-            }
+            metadata=context
         )
-        
-        logger.info(f"Mission plan created: {len(tasks)} tasks, ~{estimated_time:.0f}s, ~${estimated_cost:.2f}")
-        
-        return plan
     
     def execute_mission(
         self,
         plan: MissionPlan,
-        executor_callback: Optional[Any] = None
+        executor_callback: Optional[Any] = None,
+        on_task_start: Optional[Any] = None,
+        on_task_complete: Optional[Any] = None
     ) -> MissionResult:
         """
-        Execute a mission plan.
-        
-        Args:
-            plan: Mission plan to execute
-            executor_callback: Callback to actual executor (V3 orchestrator)
-            
-        Returns:
-            Mission result
+        Execute a mission plan task-by-task.
+        Propagates `executor_callback` (V4 Orchestrator Cycle) to each task.
+        Supports callbacks for external state sync (e.g., Database updates).
         """
-        logger.info(f"Executing mission {plan.mission_id}")
+        logger.info(f"Executing mission {plan.mission_id} ({len(plan.tasks)} tasks)")
         
         self.active_missions[plan.mission_id] = plan
-        
         start_time = datetime.utcnow()
         
-        # Initialize safety if available
-        if self.safety_coordinator:
-            self.safety_coordinator.start_task()
-        
-        # Execute (would call V3 orchestrator here)
-        # For now, simulate execution
-        success = True
-        tasks_completed = len(plan.tasks)
+        tasks_completed = 0
         tasks_failed = 0
-        quality_score = 8.5
         error_message = None
         
-        # If executor callback provided, use it
-        if executor_callback:
-            try:
-                result = executor_callback(plan)
-                success = result.get('success', True)
-                tasks_completed = result.get('tasks_completed', len(plan.tasks))
-                tasks_failed = result.get('tasks_failed', 0)
-                quality_score = result.get('quality_score', 8.5)
-                error_message = result.get('error_message')
-            except Exception as e:
-                logger.error(f"Execution failed: {e}")
-                success = False
-                error_message = str(e)
+        # Iterate through tasks (Iterative Build)
+        for i, task in enumerate(plan.tasks):
+            logger.info(f"👉 Starting Task {i+1}/{len(plan.tasks)}: {task['description']}")
+            
+            # Update status
+            task['status'] = 'in_progress'
+            
+            # Notify Start
+            if on_task_start:
+                try:
+                    on_task_start(task)
+                except Exception as e:
+                    logger.error(f"on_task_start callback failed: {e}")
+            
+            success = False
+            if executor_callback:
+                try:
+                    # Execute the V4 Cycle for this Task's Goal
+                    result = executor_callback(task['description'])
+                    
+                    if result.get("status") == "success":
+                        success = True
+                    else:
+                        success = False
+                        error_message = result.get("error", "Unknown error")
+                        
+                except Exception as e:
+                    logger.error(f"Task Execution Error: {e}")
+                    error_message = str(e)
+                    success = False
+            else:
+                # Simulation Mode
+                success = True
+            
+            # Record Result
+            if success:
+                task['status'] = 'completed'
+                tasks_completed += 1
+                logger.info(f"✅ Task {i+1} Completed")
+            else:
+                task['status'] = 'failed'
+                tasks_failed += 1
+                logger.error(f"❌ Task {i+1} Failed: {error_message}")
+                
+            # Notify Completion
+            if on_task_complete:
+                try:
+                    on_task_complete(task, success)
+                except Exception as e:
+                    logger.error(f"on_task_complete callback failed: {e}")
+
+            if not success:
+                # Break on build failure
+                break
         
-        # Calculate execution time
         execution_time = (datetime.utcnow() - start_time).total_seconds()
         
-        # Record outcome
-        if self.strategy_selector and plan.strategy:
-            self.strategy_selector.record_outcome(
-                plan.mission_type,
-                plan.strategy.strategy_type,
-                success
-            )
+        final_success = (tasks_failed == 0 and tasks_completed > 0)
         
-        # Record in knowledge base
-        if self.knowledge_base:
-            if success:
-                self.knowledge_base.record_success(
-                    mission_type=plan.mission_type,
-                    task_description=plan.description,
-                    approach=plan.strategy.name if plan.strategy else "default",
-                    execution_time=execution_time,
-                    quality_score=quality_score
-                )
-            else:
-                self.knowledge_base.record_failure(
-                    mission_type=plan.mission_type,
-                    task_description=plan.description,
-                    approach=plan.strategy.name if plan.strategy else "default",
-                    error_message=error_message or "Unknown error",
-                    execution_time=execution_time
-                )
-        
-        # Create result
         result = MissionResult(
             mission_id=plan.mission_id,
-            status=MissionStatus.COMPLETED if success else MissionStatus.FAILED,
-            success=success,
+            status=MissionStatus.COMPLETED if final_success else MissionStatus.FAILED,
+            success=final_success,
             execution_time=execution_time,
-            actual_cost=plan.estimated_cost,  # Would track actual cost
-            quality_score=quality_score,
+            actual_cost=0.0,
+            quality_score=10.0 if final_success else 0.0,
             tasks_completed=tasks_completed,
             tasks_failed=tasks_failed,
             error_message=error_message
         )
         
-        # Clean up
         del self.active_missions[plan.mission_id]
         self.completed_missions.append(result)
-        
-        logger.info(f"Mission {plan.mission_id} completed: {success} ({execution_time:.1f}s)")
-        
         return result
     
     def _plan_tasks(
