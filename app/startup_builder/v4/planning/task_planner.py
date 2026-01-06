@@ -117,6 +117,17 @@ class TaskPlanner:
         else:
             user_prompt = f"Mission: {mission_title}\nDescription: {mission.get('description')}\n\nStart your exploration and planning."
 
+        # DEBUG: Log prompt sizes
+        system_prompt_size = len(system_prompt)
+        user_prompt_size = len(user_prompt)
+        total_chars = system_prompt_size + user_prompt_size
+        estimated_tokens = total_chars // 4  # Rough estimate: 1 token ≈ 4 chars
+        logger.info(f"Prompt sizes - System: {system_prompt_size} chars, User: {user_prompt_size} chars")
+        logger.info(f"Total: {total_chars} chars (~{estimated_tokens} tokens)")
+        
+        if estimated_tokens > 100000:
+            logger.error(f"Prompt too large! Estimated {estimated_tokens} tokens (limit: 128000)")
+
         # 4. Agent Loop (Exploration -> Planning)
         # We allow a few turns for "Thinking" and "Exploration" (reading files)
         # before forcing the JSON output.
