@@ -51,6 +51,7 @@ class V4Tools:
             self.create_list_files(),
             self.create_search_internet(),
             self.create_search_common_knowledge(),
+            self.create_read_context_cache(),
             # Add more tools as needed
         ]
     
@@ -390,3 +391,47 @@ class V4Tools:
                 return f"❌ Error searching knowledge: {e}"
                 
         return search_common_knowledge
+    
+    def create_read_context_cache(self):
+        """Create read_context_cache tool"""
+        
+        @tool
+        def read_context_cache(section: str) -> str:
+            """
+            Read project context from cache (unlimited size).
+            
+            Use this to explore the full codebase context without token limits.
+            
+            Args:
+                section: Section to read. Options:
+                    - "summary": Minimal project summary
+                    - "file_tree": Complete list of all files
+                    - "file_summaries": Purpose of each file
+                    - "semantic_context": Relevant code snippets
+                    - "project_rules": Global project constraints
+                    - "metadata": Project statistics
+                    
+            Returns:
+                Requested section data as JSON string
+            """
+            try:
+                from ..context.context_cache import ContextCache
+                import json
+                
+                # Get workspace root from docker manager
+                import os
+                base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+                workspace_path = os.path.join(base_path, 'temp_workspaces', str(self.startup_id))
+                
+                cache = ContextCache(workspace_path)
+                
+                if section == "summary":
+                    result = cache.get_summary()
+                else:
+                    result = cache.get_section(section)
+                
+                return json.dumps(result, indent=2)
+            except Exception as e:
+                return f"❌ Error reading context cache: {e}"
+                
+        return read_context_cache

@@ -57,44 +57,57 @@ class TaskPlanner:
         mission_title = mission.get("title", "Unknown Mission")
         logger.info(f"TaskPlanner: Starting planning for '{mission_title}' (Recovery={bool(failed_task)})")
 
-        # 1. Gather Context (with size limits to prevent token overflow)
+        # 1. Save FULL context to cache (NO LIMITS!) and get minimal summary
+        from ..context.context_cache import ContextCache
+        import os
+        from datetime import datetime
+        
+        # Get workspace root
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        workspace_path = os.path.join(base_path, 'temp_workspaces', str(self.startup_id))
+        
+        context_cache = ContextCache(workspace_path)
+        
+        # Gather FULL context (no truncation)
         project_rules = context_manager.get_global_context()
         summaries = context_manager.get_file_summaries()
         
-        # Get file list and format as tree (limit to 100 files)
         try:
             all_files = librarian._get_all_files()
-            limited_files = all_files[:100]  # Limit to prevent token overflow
-            file_tree_raw = "\n".join([f"  {f}" for f in limited_files])
-            if len(all_files) > 100:
-                file_tree_raw += f"\n  ... and {len(all_files) - 100} more files"
         except Exception as e:
-            logger.warning(f"Failed to get file tree: {e}")
-            file_tree_raw = "[File tree unavailable]"
+            logger.warning(f"Failed to get file list: {e}")
+            all_files = []
         
-        # Build Semantic Context (limit to 5000 chars)
         try:
-            semantic_context = librarian.query(f"{mission_title} {mission.get('description', '')}", n_results=3)
-            if len(semantic_context) > 5000:
-                semantic_context = semantic_context[:5000] + "\n... [truncated]"
+            semantic_context = librarian.query(f"{mission_title} {mission.get('description', '')}", n_results=5)
         except Exception as e:
             logger.warning(f"Semantic search failed: {e}")
             semantic_context = "[Semantic search unavailable]"
         
-        # Format File Tree with Purpose (limit summaries)
-        summary_items = list(summaries.items())[:20]  # Limit to 20 file summaries
-        summary_text = "\n".join([f"- {k}: {v}" for k,v in summary_items if v])
-        if len(summary_text) > 3000:
-            summary_text = summary_text[:3000] + "\n... [truncated]"
-        file_tree = f"{file_tree_raw}\n\n=== FILE PURPOSE INDEX (Top 20) ===\n{summary_text}"
+        # Save FULL context to cache (unlimited size)
+        context_cache.save_context({
+            "metadata": {
+                "total_files": len(all_files),
+                "tech_stack": tech_stack,
+                "indexed_at": datetime.now().isoformat(),
+                "mission_title": mission_title
+            },
+            "file_tree": all_files,  # FULL list, no limits
+            "file_summaries": summaries,  # ALL summaries, no limits
+            "semantic_context": semantic_context,  # FULL results, no limits
+            "project_rules": project_rules
+        })
         
-        # 2. Build Enhanced Prompt
+        # Get minimal summary for prompt (< 1000 tokens)
+        minimal_summary = context_cache.get_summary()
+        
+        logger.info(f"Context cache saved. Summary: {minimal_summary.get('total_files', 0)} files")
+        
+        # 2. Build Enhanced Prompt with MINIMAL context
         system_prompt = self.prompt_enhancer.build_enhanced_architect_prompt(
             mission=mission,
             failed_task=failed_task,
-            global_context=project_rules,
-            semantic_context=semantic_context,
-            file_tree=file_tree,
+            minimal_summary=minimal_summary,  # Only minimal summary, not full context
             tech_stack=tech_stack
         )
         

@@ -16,9 +16,7 @@ class ArchitectPromptEnhancer:
     def build_enhanced_architect_prompt(
         mission: Dict[str, Any],
         failed_task: Optional[Dict[str, Any]] = None,
-        global_context: str = "",
-        semantic_context: str = "",
-        file_tree: str = "",
+        minimal_summary: Dict[str, Any] = None,
         tech_stack: str = "General"
     ) -> str:
         """
@@ -58,15 +56,20 @@ You are a Lead Software Architect with expertise in:
 **Description:** {mission.get('description', 'N/A')}
 **Status:** {mission.get('status', 'pending')}
 
-## Level 4: Codebase Context
-### Global History
-{global_context}
+## Level 4: Project Context (Minimal Summary)
+**Total Files:** {minimal_summary.get('total_files', 0) if minimal_summary else 0}
+**Tech Stack:** {minimal_summary.get('tech_stack', tech_stack) if minimal_summary else tech_stack}
+**Key Files:** {', '.join(minimal_summary.get('key_files', [])[:5]) if minimal_summary else 'Use read_context_cache tool'}
 
-### Semantic Context (RAG)
-{semantic_context}
+**IMPORTANT - Full Context Available:**
+The complete project context is stored in a cache. Use the `read_context_cache` tool to explore:
+- `read_context_cache("file_tree")` - Complete list of ALL files (no limits)
+- `read_context_cache("file_summaries")` - Purpose of each file (no limits)
+- `read_context_cache("semantic_context")` - Relevant code snippets (no limits)
+- `read_context_cache("project_rules")` - Global project constraints
+- `read_context_cache("metadata")` - Project statistics
 
-### File Structure
-{file_tree}
+**YOU MUST use read_context_cache BEFORE planning to understand the codebase!**
 
 ## Level 5: Failure Context (If Recovery Mode)
 """
