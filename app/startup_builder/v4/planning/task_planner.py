@@ -20,12 +20,6 @@ from ..prompting.architect_prompts import ArchitectPromptEnhancer
 
 logger = logging.getLogger(__name__)
 
-class TaskPlanner:
-    """
-    Dedicated Planning Engine for V4.
-    Replaces the monolithic V3 Architect.
-    """
-
 class PlanStep(TypedDict):
     id: str
     description: str
@@ -36,6 +30,12 @@ class PlanStep(TypedDict):
 class ExecutionContext(TypedDict):
     startup_id: str
     env_vars: Dict[str, str]
+
+class TaskPlanner:
+    """
+    Dedicated Planning Engine for V4.
+    Replaces the monolithic V3 Architect.
+    """
     
     def __init__(self, startup_id: str, log_callback=None):
         self.startup_id = startup_id
