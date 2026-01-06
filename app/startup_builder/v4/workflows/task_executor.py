@@ -49,11 +49,24 @@ class TaskExecutor:
         # 1. Build Prompt for Coder
         system_prompt = self._build_coder_prompt(task_desc, context)
         
-        # 2. Get Tool List
-        all_tools = self.tools.get_tool_list()
+        # Define finish_task tool locally
+        from langchain_core.tools import tool
+        
+        @tool
+        def finish_task(summary: str = "Task finished") -> str:
+            """
+            Call this when the task is fully completed and verified.
+            
+            Args:
+                summary: Brief summary of what was done.
+            """
+            return "Task Completed"
+
+        # 2. Get Tool List and add finish_task
+        all_tools = self.tools.get_tool_list() + [finish_task]
         
         # 3. LLM Generation Loop
-        messages = [HumanMessage(content=f"Task: {task_desc}\n\nPerform the task. Use tools to create files, run commands, and verify. When finished, reply with 'TASK_COMPLETED'.")]
+        messages = [HumanMessage(content=f"Task: {task_desc}\n\nPerform the task using tools. When finished, you MUST call the `finish_task` tool.")]
         
         task_success = False
         final_result = None
@@ -69,11 +82,6 @@ class TaskExecutor:
             ai_msg = res["content"]
             messages.append(ai_msg)
             
-            # Check for completion signal
-            if ai_msg.content and "TASK_COMPLETED" in ai_msg.content:
-                task_success = True
-                break
-            
             if ai_msg.content:
                 self.copilot.emit_thought(ai_msg.content, "executor")
             
@@ -83,16 +91,23 @@ class TaskExecutor:
                     tool_name = tool_call["name"]
                     args = tool_call["args"]
                     
+                    # Handle finish_task specially
+                    if tool_name == "finish_task":
+                         task_success = True
+                         final_result = args.get("summary", "Task finished")
+                         self.copilot.emit_thought(f"✅ Task Completed: {final_result}", "executor")
+                         break
+                    
                     self.copilot.emit_thought(f"Running {tool_name}...", "executor")
                     
                     tool_obj = next((t for t in all_tools if t.name == tool_name), None)
                     
                     if not tool_obj:
                          from langchain_core.messages import ToolMessage
-                         messages.append(ToolMessage(content=f"Error: Tool {tool_name} not found", tool_call_id=tool_call["id"]))
+                         messages.append(ToolMessage(content=f"Error: Tool {tool_name} not found. Did you mean 'finish_task'?", tool_call_id=tool_call["id"]))
                          continue
 
-                    # Execute
+                    # Execute normal tools
                     exec_res = self.executor.execute_tool(
                         tool_name=tool_name,
                         tool_func=tool_obj,
@@ -104,15 +119,18 @@ class TaskExecutor:
                     # Feed result back to LLM
                     from langchain_core.messages import ToolMessage
                     messages.append(ToolMessage(content=f"Tool Output: {result_str}", tool_call_id=tool_call["id"]))
+                
+                if task_success:
+                    break
             
-            # If no tool calls and no completion signal, hint the user
-            elif not ai_msg.tool_calls and "TASK_COMPLETED" not in ai_msg.content:
-                 messages.append(HumanMessage(content="Please continue with tool calls or reply 'TASK_COMPLETED' if done."))
+            # If no tool calls, nudge the user
+            elif not ai_msg.tool_calls:
+                 messages.append(HumanMessage(content="Please use tools to proceed, or call `finish_task` if done."))
         
         if task_success:
-            return {"status": "success", "result": "Task completed successfully"}
+            return {"status": "success", "result": final_result}
         else:
-            return {"status": "failed", "error": "Task timed out or not completed explicitly"}
+            return {"status": "failed", "error": "Task timed out. Did you forget to call `finish_task`?"}
 
     def _build_coder_prompt(self, task_desc: str, context: Dict[str, Any]) -> str:
         return f"""You are a Senior V4 Code Executor.
@@ -125,15 +143,16 @@ Your goal is to IMPLEMENT the given detailed task precisely.
 {json.dumps(context or {}, indent=2)}
 
 # INSTRUCTIONS
-1. **Read Strategic Plan**: Use `read_context_cache("strategic_plan")` first to understand context.
+1. **Read Strategic Plan**: Use `read_context_cache("strategic_plan")` first.
 2. **Execute Step-by-Step**: Create files, run commands, update code.
 3. **Verify**: Run tests or verification steps mentioned in the task.
-4. **Completion**: When ALL parts of the task are done and verified, output "TASK_COMPLETED".
+4. **Completion**: You MUST call `finish_task(summary="...")` when done.
 
 # TOOLS
 Use `update_file` to create/edit files.
 Use `run_shell` to run commands.
 Use `read_file` to check content.
+Use `finish_task` when ALL parts are done.
 """
 
     def get_stats(self) -> Dict[str, Any]:
