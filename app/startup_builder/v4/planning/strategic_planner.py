@@ -267,17 +267,26 @@ Remember: Be DETAILED! Include file paths, field names, function signatures, tes
             if line.startswith('## Phase'):
                 current_phase = line.replace('## Phase', '').strip()
             
-            # Detect tasks
-            elif line.startswith('- **Task'):
+            # Detect tasks (new format: **Task 1**: Description) OR old format (- **Task 1**: ...)
+            elif '**Task' in line and (line.startswith('**Task') or line.startswith('- **Task')):
                 # Extract task description
-                # Format: - **Task 1**: Description
-                parts = line.split('**:', 1)
+                # Format: **Task 1**: Description OR \- **Task 1**: Description
+                if ':**' in line:  # Handle **Task 1:** case if generic
+                     parts = line.split(':**', 1)
+                elif '**:' in line: # Handle **Task 1**: case
+                     parts = line.split('**:', 1)
+                else:
+                    continue
+
                 if len(parts) == 2:
-                    description = parts[1].strip()
+                    current_description = parts[1].strip()
+                    # Capture full task block? No, just the header description is enough for the list.
+                    # The executor reads the FULL plan anyway.
+                    
                     tasks.append({
                         "id": f"task_{task_id}",
                         "phase": current_phase,
-                        "description": description,
+                        "description": current_description,
                         "status": "pending"
                     })
                     task_id += 1
