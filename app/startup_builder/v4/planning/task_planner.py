@@ -57,18 +57,36 @@ class TaskPlanner:
         mission_title = mission.get("title", "Unknown Mission")
         logger.info(f"TaskPlanner: Starting planning for '{mission_title}' (Recovery={bool(failed_task)})")
 
-        # 1. Gather Context
+        # 1. Gather Context (with size limits to prevent token overflow)
         project_rules = context_manager.get_global_context()
         summaries = context_manager.get_file_summaries()
-        file_tree_raw = "\\n".join([f"  {f}" for f in librarian._get_all_files()]) if hasattr(librarian, '_get_all_files') else "[File tree unavailable]"
         
-        # Build Semantic Context
-        # We can perform a fresh query if needed
-        semantic_context = librarian.query(f"{mission_title} {mission.get('description', '')}")
+        # Get file list and format as tree (limit to 100 files)
+        try:
+            all_files = librarian._get_all_files()
+            limited_files = all_files[:100]  # Limit to prevent token overflow
+            file_tree_raw = "\n".join([f"  {f}" for f in limited_files])
+            if len(all_files) > 100:
+                file_tree_raw += f"\n  ... and {len(all_files) - 100} more files"
+        except Exception as e:
+            logger.warning(f"Failed to get file tree: {e}")
+            file_tree_raw = "[File tree unavailable]"
         
-        # Format File Tree with Purpose
-        summary_text = "\n".join([f"- {k}: {v}" for k,v in summaries.items() if v])
-        file_tree = f"{file_tree_raw}\n\n=== FILE PURPOSE INDEX ===\n{summary_text}"
+        # Build Semantic Context (limit to 5000 chars)
+        try:
+            semantic_context = librarian.query(f"{mission_title} {mission.get('description', '')}", n_results=3)
+            if len(semantic_context) > 5000:
+                semantic_context = semantic_context[:5000] + "\n... [truncated]"
+        except Exception as e:
+            logger.warning(f"Semantic search failed: {e}")
+            semantic_context = "[Semantic search unavailable]"
+        
+        # Format File Tree with Purpose (limit summaries)
+        summary_items = list(summaries.items())[:20]  # Limit to 20 file summaries
+        summary_text = "\n".join([f"- {k}: {v}" for k,v in summary_items if v])
+        if len(summary_text) > 3000:
+            summary_text = summary_text[:3000] + "\n... [truncated]"
+        file_tree = f"{file_tree_raw}\n\n=== FILE PURPOSE INDEX (Top 20) ===\n{summary_text}"
         
         # 2. Build Enhanced Prompt
         system_prompt = self.prompt_enhancer.build_enhanced_architect_prompt(
