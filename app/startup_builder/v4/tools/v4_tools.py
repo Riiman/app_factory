@@ -93,7 +93,7 @@ class V4Tools:
                 healing_result = self.healer.heal(failure, {"command": command})
                 
                 if healing_result and healing_result.success:
-                    return f"❌ Blocked: {reason}\n\n💡 Suggested fix:\n{healing_result.suggested_fix}"
+                    return f"❌ Blocked: {reason}\n\n💡 Suggested fix:\n{healing_result.message}"
                 
                 return f"❌ Blocked: {reason}"
             
@@ -128,7 +128,7 @@ class V4Tools:
                     healing_result = self.healer.heal(failure, {"command": command})
                     
                     if healing_result and healing_result.success:
-                        return f"❌ Command failed (exit code {exit_code}):\n{output}\n\n💡 Suggested fix:\n{healing_result.suggested_fix}"
+                        return f"❌ Command failed (exit code {exit_code}):\n{output}\n\n💡 Suggested fix:\n{healing_result.message}"
                     
                     return f"❌ Command failed (exit code {exit_code}):\n{output}"
                 
@@ -153,7 +153,7 @@ class V4Tools:
                 healing_result = self.healer.heal(failure, {"command": command})
                 
                 if healing_result and healing_result.success:
-                    return f"❌ Error: {e}\n\n💡 Suggested fix:\n{healing_result.suggested_fix}"
+                    return f"❌ Error: {e}\n\n💡 Suggested fix:\n{healing_result.message}"
                 
                 return f"❌ Error: {e}"
         
