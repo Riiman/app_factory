@@ -8,7 +8,7 @@ from langgraph.graph import END
 
 from .manager import DockerManager
 # from .context import ContextManager # Deprecated
-from .v3.context.librarian import Librarian
+from .v4.context.librarian import Librarian
 from .lsp import LSPHandler
 from .utils import JsonRepair
 
