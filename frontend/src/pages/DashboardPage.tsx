@@ -543,7 +543,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const response = await api.updateCampaign(startupData.id, campaignId, updatedData);
-            setMarketingCampaigns(prev => prev ? prev.map(c => c.campaign_id === campaignId ? response.campaign : c) : null);
+            setMarketingCampaigns(prev => prev ? prev.map(c => c.campaign_id === campaignId ? response : c) : null);
             setIsEditCampaignModalOpen(false);
         } catch (error) { console.error("Failed to update campaign:", error); }
     };
@@ -551,7 +551,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const response = await api.updateFounder(startupData.id, founderId, updatedData);
-            setFounders(prev => prev ? prev.map(f => f.id === founderId ? response.founder : f) : null);
+            setFounders(prev => prev ? prev.map(f => f.id === founderId ? response : f) : null);
             setIsEditFounderModalOpen(false);
         } catch (error) { console.error("Failed to update founder:", error); }
     };
@@ -566,7 +566,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const response = await api.updateProduct(startupData.id, productId, updatedData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? response.product : p) : null);
+            setProducts(prev => prev ? prev.map(p => p.id === productId ? response : p) : null);
             setIsEditProductModalOpen(false);
         } catch (error) { console.error("Failed to update product:", error); }
     };
@@ -574,7 +574,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const response = await api.updateProductBusinessDetails(startupData.id, productId, updatedData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, business_details: response.product_business_details } : p) : null);
+            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, business_details: response } : p) : null);
             setIsEditProductBusinessDetailsModalOpen(false);
         } catch (error) { console.error("Failed to update product business details:", error); }
     };
@@ -582,7 +582,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const response = await api.updateFundingRound(startupData.id, roundId, updatedData);
-            setFundingRounds(prev => prev ? prev.map(r => r.round_id === roundId ? response.round : r) : null);
+            setFundingRounds(prev => prev ? prev.map(r => r.round_id === roundId ? response : r) : null);
             setIsEditFundingRoundModalOpen(false);
         } catch (error) { console.error("Failed to update funding round:", error); }
     };
@@ -590,7 +590,7 @@ const DashboardPage: React.FC = () => {
         if (!startupData) return;
         try {
             const response = await api.updateMetric(startupData.id, productId, metricId, updatedData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, product_metrics: p.product_metrics.map(m => m.metric_id === metricId ? response.metric : m) } : p) : null);
+            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, product_metrics: p.product_metrics.map(m => m.metric_id === metricId ? response : m) } : p) : null);
             setIsEditMetricModalOpen(false);
         } catch (error) { console.error("Failed to update metric:", error); }
     };
