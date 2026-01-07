@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, Product, Founder, MarketingCampaign, ProductMetric, ProductBusinessDetails, Investor, ActivityLog, DashboardNotification, Feature, Fundraise } from '@/types/dashboard-types';
+import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, Product, Founder, MarketingCampaign, ProductMetric, ProductBusinessDetails, Investor, ActivityLog, DashboardNotification, Feature, Fundraise, NextFundingGoal } from '@/types/dashboard-types';
 import api, { getWebSocketUrl } from '@/utils/api';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
@@ -770,7 +770,7 @@ const DashboardPage: React.FC = () => {
                                 isOpen={isAddInvestmentModalOpen}
                                 onClose={() => setIsAddInvestmentModalOpen(false)}
                                 onAdd={handleCreateInvestment}
-                                investors={investors || []}
+                                investors={(investors || []).filter(i => !selectedRound.investors.some(ri => ri.investor?.investor_id === i.investor_id))}
                             />
                         </>
                     }
@@ -952,7 +952,7 @@ const DashboardPage: React.FC = () => {
             {isCreateContentItemModalOpen && <CreateContentItemModal onClose={() => setIsCreateContentItemModalOpen(false)} onCreate={handleCreateContentItem} campaigns={(marketingCampaigns || []).filter(c => c.content_mode)} defaultCampaignId={selectedCampaignForContent} />}
             {isCreateFounderModalOpen && <CreateFounderModal onClose={() => setIsCreateFounderModalOpen(false)} onCreate={handleCreateFounder} />}
             {isEditBusinessOverviewModalOpen && <EditBusinessOverviewModal businessOverview={startupData?.business_overview || {} as BusinessOverview} onClose={() => setIsEditBusinessOverviewModalOpen(false)} onUpdate={handleUpdateBusinessOverview} />}
-            {isEditFundraisingGoalsModalOpen && <EditFundraisingGoalsModal fundraiseDetails={startupData?.fundraise_details || {}} nextFundingGoal={startupData?.fundraise_details?.next_funding_goal || {}} onClose={() => setIsEditFundraisingGoalsModalOpen(false)} onUpdate={handleUpdateFundraisingGoals} />}
+            {isEditFundraisingGoalsModalOpen && <EditFundraisingGoalsModal fundraiseDetails={startupData?.fundraise_details || {} as Fundraise} nextFundingGoal={startupData?.fundraise_details?.next_funding_goal || {} as NextFundingGoal} onClose={() => setIsEditFundraisingGoalsModalOpen(false)} onUpdate={handleUpdateFundraisingGoals} />}
             {isEditCampaignModalOpen && selectedCampaignToEdit && startupData?.products && <EditCampaignModal campaign={selectedCampaignToEdit} onClose={() => setIsEditCampaignModalOpen(false)} onUpdate={(updatedData) => handleUpdateCampaign(selectedCampaignToEdit.campaign_id, updatedData)} products={startupData.products} />}
             {isEditFounderModalOpen && selectedFounderToEdit && <EditFounderModal founder={selectedFounderToEdit} onClose={() => setIsEditFounderModalOpen(false)} onUpdate={(updatedData) => handleUpdateFounder(selectedFounderToEdit.id, updatedData)} />}
             {isEditProductModalOpen && selectedProductToEdit && <EditProductModal product={selectedProductToEdit} onClose={() => setIsEditProductModalOpen(false)} onUpdate={(updatedData) => handleUpdateProduct(selectedProductToEdit.id, updatedData)} />}

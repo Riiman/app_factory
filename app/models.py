@@ -843,7 +843,8 @@ class RoundInvestor(db.Model):
             'investor_id': self.investor_id,
             'amount_invested': float(self.amount_invested) if self.amount_invested is not None else None,
             'investor_name': self.investor.name,
-            'firm_name': self.investor.firm_name
+            'firm_name': self.investor.firm_name,
+            'investor': self.investor.to_dict()
         }
 
 class ActivityLog(db.Model):
