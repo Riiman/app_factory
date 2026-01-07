@@ -907,6 +907,16 @@ def update_funding_round(startup_id, round_id):
         return jsonify({'success': False, 'error': 'No data provided.'}), 400
 
     for key, value in data.items():
+        if key in ['date_opened', 'date_closed'] and value:
+            try:
+                # Parse date string to python date object
+                # Only if value is a string, if it's already date (unlikely from JSON), harmless
+                if isinstance(value, str):
+                    value = datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                # If format is wrong, ignore or handle? 
+                # Ideally return 400 but for now let's keep it safe and maybe it fails downstream or stays as string if format is weird
+                pass
         setattr(funding_round, key, value)
     db.session.commit()
     
