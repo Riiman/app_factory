@@ -19,21 +19,14 @@ class TaskExecutor:
     Role: Apply the micro-plan to the codebase.
     """
     
-    def __init__(self, startup_id: str, runtime, log_callback=None):
+    def __init__(self, startup_id: str, runtime, log_callback=None, verifier=None):
         self.startup_id = startup_id
-        # self.executor = V4Executor(startup_id) # V4Executor might need runtime too?
-        # Let's check V4Executor. It uses V4Tools?
-        # If V4Executor uses V4Tools, it needs runtime passed to IT.
-        # But I don't see V4Executor init. Assuming it might not use Tools directly or uses its own instance.
-        # Wait, Line 24: self.executor = V4Executor(startup_id).
-        # And Line 25: self.tools = V4Tools(startup_id).
-        # TaskExecutor seems to duplicate tool init?
-        # Let's simply update V4Tools init here.
         
         self.runtime = runtime
         self.executor = V4Executor(startup_id)
         self.tools = V4Tools(startup_id, runtime)
         self.log_callback = log_callback
+        self.verifier = verifier # V5 Injection
         
     def execute_plan(self, micro_plan: List[Dict[str, Any]], cycle_memory: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -81,6 +74,14 @@ class TaskExecutor:
                 elif step_type == "message":
                     # Action: Just speak
                     res = {"success": True, "output": step.get("content")}
+                elif step_type == "verification":
+                    # Delegate to VerificationEngine
+                    if self.verifier:
+                        context = step.get("feature_context", "General Check")
+                        v_res = self.verifier.verify_implementation(context)
+                        res = {"success": v_res.get("success", False), "output": str(v_res)}
+                    else:
+                        res = {"success": True, "output": "Verification skipped (No Verifier)"}
                 else:
                     res = {"success": False, "error": f"Unknown step type: {step_type}"}
                 

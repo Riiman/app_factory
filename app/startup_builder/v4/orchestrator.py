@@ -68,13 +68,16 @@ class V4Orchestrator:
 
         self.sensors = ExplorationEngine(startup_id, self.workspace_path)
         self.controller = StrategicPlanner(startup_id, legacy_log_callback)
-        # V5: Pass runtime to Actuator
-        self.actuator = TaskExecutor(startup_id, self.runtime, legacy_log_callback)
-        self.monitor = FeedbackLoop()
+        
+        # V5 Special Engines
         
         # V5 Special Engines
         self.architect = ScaffoldingEngine(self.runtime)
         self.verifier = VerificationEngine(self.runtime)
+        
+        # V5: Pass runtime and verifier to Actuator
+        self.actuator = TaskExecutor(startup_id, self.runtime, legacy_log_callback, verifier=self.verifier)
+        self.monitor = FeedbackLoop()
         
         self._emit_log(f"System Online: Control Loop Ready for {startup_id}")
 

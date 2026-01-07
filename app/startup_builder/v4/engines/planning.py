@@ -108,9 +108,16 @@ Format:
     "type": "message",
     "content": "The Code Studio logic is...",
     "description": "Answer the user"
+  },
+  {
+    "type": "verification",
+    "feature_context": "Implement feature X...",
+    "description": "Verify implementation with AlphaCodium Flow"
   }
 ]
 ```
+
+CRITICAL: If you are writing code for a feature, YOU MUST include a 'verification' step at the end to ensure it works.
 """
         
         # 3. Compute Control Signal (LLM Inference)
