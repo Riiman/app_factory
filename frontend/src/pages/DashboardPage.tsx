@@ -105,6 +105,8 @@ const DashboardPage: React.FC = () => {
     useEffect(() => {
         if (startup) {
             setStartupData(startup);
+            console.log("Startup Data Received:", startup);
+            console.log("Funding Rounds in Data:", startup.funding_rounds);
             setTasks(startup.tasks || []);
             setExperiments(startup.experiments || []);
             setArtifacts(startup.artifacts || []);
