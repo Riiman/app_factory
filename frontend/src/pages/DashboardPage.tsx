@@ -770,7 +770,7 @@ const DashboardPage: React.FC = () => {
                                 isOpen={isAddInvestmentModalOpen}
                                 onClose={() => setIsAddInvestmentModalOpen(false)}
                                 onAdd={handleCreateInvestment}
-                                investors={(investors || []).filter(i => !selectedRound.investors.some(ri => ri.investor?.investor_id === i.investor_id))}
+                                investors={(investors || []).filter(i => !(selectedRound.investors || []).some(ri => ri.investor?.investor_id === i.investor_id))}
                             />
                         </>
                     }

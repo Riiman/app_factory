@@ -27,7 +27,10 @@ def get_startup(startup_id):
 
     if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
         return jsonify({'success': False, 'error': 'Unauthorized access to startup data.'}), 403
-    return jsonify({'success': True, 'startup': startup.to_dict(include_relations=['monthly_data', 'marketing_campaigns', 'products'])}), 200
+    startup_data = startup.to_dict(include_relations=['monthly_data', 'marketing_campaigns', 'products'])
+    import logging
+    logging.info(f"Startup {startup_id} Funding Rounds: {json.dumps(startup_data.get('funding_rounds', []), default=str)}")
+    return jsonify({'success': True, 'startup': startup_data}), 200
 
 @startups_bp.route('/<int:startup_id>/tasks', methods=['GET'])
 @jwt_required()
