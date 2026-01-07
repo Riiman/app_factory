@@ -613,7 +613,7 @@ const DashboardPage: React.FC = () => {
             const investor = investors?.find(i => i.investor_id === investorId);
 
             setFundingRounds(prev => prev ? prev.map(r => {
-                if (r.round_id === selectedRoundIdForInvestment) {
+                if (r?.round_id === selectedRoundIdForInvestment) {
                     const updatedRound = { ...r, amount_raised: (r.amount_raised || 0) + amount };
                     if (investor) {
                         updatedRound.investors = [...(updatedRound.investors || []), {
@@ -745,7 +745,7 @@ const DashboardPage: React.FC = () => {
                     />;
                 }
                 if (activeSubPage === 'Funding Rounds') {
-                    const selectedRound = fundingRounds?.find(r => r.round_id === selectedFundingRoundId);
+                    const selectedRound = fundingRounds?.find(r => r?.round_id === selectedFundingRoundId);
                     if (selectedRound) {
                         return <><FundingRoundDetailPage
                             round={selectedRound}
