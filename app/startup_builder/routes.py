@@ -461,7 +461,8 @@ IMPORTANT:
         "description": mission_prompt,
         "type": "product_build",
         "status": "pending",
-        "features": [f.to_dict() for f in product.features] 
+        "features": [f.to_dict() for f in product.features],
+        "force_rebuild": data.get('force_rebuild', False) 
     }
     
     run_v4_agent_bg(startup_id, mission_data)

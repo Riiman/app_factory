@@ -134,8 +134,11 @@ CRITICAL: If you are writing code for a feature, YOU MUST include a 'verificatio
                 if micro_plan:
                     logger.info(f"🧠 Controller: Generated {len(micro_plan)} control steps")
                     return micro_plan
+                else:
+                    self.copilot.emit_thought(f"⚠️ Plan Generation Failed. Raw Output: {content[:500]}...", "planning")
             except Exception as e:
                 logger.warning(f"Controller inference failed: {e}")
+                self.copilot.emit_thought(f"⚠️ Controller Inference Error: {e}", "planning")
                 
         # Use fallback if inference fails
         logger.error("Controller failed to generate valid plan")
@@ -164,12 +167,8 @@ Your job is to generate a MICRO-PLAN to transition the system from State A to St
         """
         
     def _extract_json(self, text: str) -> Optional[List[Dict[str, Any]]]:
+        from ..utils import JsonRepair
         try:
-            # Find JSON between backticks or just valid JSON
-            import re
-            match = re.search(r'```json(.*?)```', text, re.DOTALL)
-            if match:
-                return json.loads(match.group(1))
-            return json.loads(text)
+            return JsonRepair.parse(text)
         except:
             return None

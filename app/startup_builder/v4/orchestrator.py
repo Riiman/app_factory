@@ -291,13 +291,30 @@ class V4Orchestrator:
 
     def _ensure_scaffolding(self, context: Dict[str, Any]):
         """
-        V5: Run Scaffolding Engine if workspace is empty.
+        V5: Run Scaffolding Engine if workspace is empty or force_rebuild is requested.
         """
         # Check if workspace is empty (ignoring hidden files)
         if not os.path.exists(self.workspace_path):
             os.makedirs(self.workspace_path)
-            
+
+        force_rebuild = context.get("force_rebuild", False)
         files = [f for f in os.listdir(self.workspace_path) if not f.startswith('.')]
+        
+        if force_rebuild:
+            self._emit_log("⚠️ Force Rebuild Detected: Cleaning workspace for fresh start...")
+            # Clean workspace
+            for f in files:
+                full_path = os.path.join(self.workspace_path, f)
+                try:
+                     if os.path.isdir(full_path):
+                         import shutil
+                         shutil.rmtree(full_path)
+                     else:
+                         os.remove(full_path)
+                except Exception as e:
+                     self._emit_log(f"⚠️ Failed to delete {f}: {e}")
+            files = [] # Reset files list to trigger scaffolding
+
         if not files:
             self._emit_log("🏗️ Workspace Empty. Engaging Architect for Scaffolding...")
             
