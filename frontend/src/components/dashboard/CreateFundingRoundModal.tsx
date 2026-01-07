@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { FundingRound } from '@/types/dashboard-types';
+import { FundingRound, Investor } from '@/types/dashboard-types';
 import { FUNDING_ROUND_TYPES } from '@/constants';
 
 type Status = 'Planned' | 'In Progress' | 'Closed';
@@ -20,9 +20,11 @@ interface CreateFundingRoundModalProps {
     onClose: () => void;
     /**
      * Callback function triggered on form submission with the new round data.
-     * @param {Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'round_investors'>} roundData - The new round data for the backend.
+     * @param {Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'investors'>} roundData - The new round data for the backend.
      */
-    onCreate: (roundData: Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'round_investors'>) => void;
+    onCreate: (roundData: Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'investors'>) => void;
+    /** List of available investors for the dropdown. */
+    investors?: Investor[];
 }
 
 const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
@@ -32,7 +34,7 @@ const FormField = ({ label, id, children }: { label: string, id: string, childre
     </div>
 );
 
-const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClose, onCreate }) => {
+const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClose, onCreate, investors = [] }) => {
     // Form state
     const [roundType, setRoundType] = useState('Seed');
     const [status, setStatus] = useState<Status>('Planned');
@@ -99,7 +101,12 @@ const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClo
                             <input type="date" id="round-date-opened" value={dateOpened} onChange={e => setDateOpened(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
                         <FormField label="Lead Investor (Optional)" id="round-lead-investor">
-                            <input type="text" id="round-lead-investor" value={leadInvestor} onChange={e => setLeadInvestor(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
+                            <select id="round-lead-investor" value={leadInvestor} onChange={e => setLeadInvestor(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
+                                <option value="">Select Lead Investor</option>
+                                {investors.map(investor => (
+                                    <option key={investor.investor_id} value={investor.name}>{investor.name}</option>
+                                ))}
+                            </select>
                         </FormField>
                         <FormField label="Notes (Optional)" id="round-notes">
                             <textarea id="round-notes" value={notes} onChange={e => setNotes(e.target.value)} rows={4} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm"></textarea>

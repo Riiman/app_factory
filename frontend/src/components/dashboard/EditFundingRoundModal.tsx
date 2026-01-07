@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { FundingRound } from '@/types/dashboard-types';
+import { FundingRound, Investor } from '@/types/dashboard-types';
 import { FUNDING_ROUND_TYPES } from '@/constants';
 
 type Status = 'Planned' | 'In Progress' | 'Closed';
@@ -24,6 +24,8 @@ interface EditFundingRoundModalProps {
      * @param {Partial<FundingRound>} updatedRoundData - The updated round data for the backend.
      */
     onUpdate: (updatedRoundData: Partial<FundingRound>) => void;
+    /** List of available investors for the dropdown. */
+    investors?: Investor[];
 }
 
 const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
@@ -33,7 +35,7 @@ const FormField = ({ label, id, children }: { label: string, id: string, childre
     </div>
 );
 
-const EditFundingRoundModal: React.FC<EditFundingRoundModalProps> = ({ round, onClose, onUpdate }) => {
+const EditFundingRoundModal: React.FC<EditFundingRoundModalProps> = ({ round, onClose, onUpdate, investors = [] }) => {
     // Form state, initialized with existing round data
     const [roundType, setRoundType] = useState(round.round_type || '');
     const [status, setStatus] = useState<Status>(round.status || 'Planned');
@@ -120,7 +122,12 @@ const EditFundingRoundModal: React.FC<EditFundingRoundModalProps> = ({ round, on
                             </FormField>
                         </div>
                         <FormField label="Lead Investor (Optional)" id="edit-round-lead-investor">
-                            <input type="text" id="edit-round-lead-investor" value={leadInvestor} onChange={e => setLeadInvestor(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
+                            <select id="edit-round-lead-investor" value={leadInvestor} onChange={e => setLeadInvestor(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
+                                <option value="">Select Lead Investor</option>
+                                {investors.map(investor => (
+                                    <option key={investor.investor_id} value={investor.name}>{investor.name}</option>
+                                ))}
+                            </select>
                         </FormField>
                         <FormField label="Pitch Deck URL (Optional)" id="edit-round-pitch-deck-url">
                             <input type="url" id="edit-round-pitch-deck-url" value={pitchDeckUrl} onChange={e => setPitchDeckUrl(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
