@@ -29,6 +29,13 @@ interface CreateContentItemModalProps {
     defaultCampaignId?: number | null;
 }
 
+const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <div className="mt-1">{children}</div>
+    </div>
+);
+
 const CreateContentItemModal: React.FC<CreateContentItemModalProps> = ({ onClose, onCreate, campaigns, defaultCampaignId }) => {
     // Form state
     const [title, setTitle] = useState('');
@@ -55,13 +62,6 @@ const CreateContentItemModal: React.FC<CreateContentItemModalProps> = ({ onClose
         }, parseInt(campaignId, 10));
     };
 
-    const FormField = ({ label, id, children }: { label: string, id: string, children: React.ReactNode }) => (
-        <div>
-            <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
-            <div className="mt-1">{children}</div>
-        </div>
-    );
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
@@ -72,7 +72,7 @@ const CreateContentItemModal: React.FC<CreateContentItemModalProps> = ({ onClose
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <FormField label="Campaign" id="content-campaign">
-                             <select id="content-campaign" value={campaignId} onChange={e => setCampaignId(e.target.value)} required disabled={!!defaultCampaignId} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm disabled:bg-gray-100">
+                            <select id="content-campaign" value={campaignId} onChange={e => setCampaignId(e.target.value)} required disabled={!!defaultCampaignId} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm disabled:bg-gray-100">
                                 <option value="">Select a campaign...</option>
                                 {campaigns.map(c => <option key={c.campaign_id} value={c.campaign_id}>{c.campaign_name}</option>)}
                             </select>
@@ -80,7 +80,7 @@ const CreateContentItemModal: React.FC<CreateContentItemModalProps> = ({ onClose
                         <FormField label="Content Title" id="content-title">
                             <input type="text" id="content-title" value={title} onChange={e => setTitle(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField label="Content Type" id="content-type">
                                 <input type="text" id="content-type" value={contentType} onChange={e => setContentType(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., Blog Post, Tweet" />
                             </FormField>
@@ -89,10 +89,10 @@ const CreateContentItemModal: React.FC<CreateContentItemModalProps> = ({ onClose
                             </FormField>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <FormField label="Publish Date" id="content-publish-date">
+                            <FormField label="Publish Date" id="content-publish-date">
                                 <input type="date" id="content-publish-date" value={publishDate} onChange={e => setPublishDate(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
-                             <FormField label="Status" id="content-status">
+                            <FormField label="Status" id="content-status">
                                 <select id="content-status" value={status} onChange={e => setStatus(e.target.value as MarketingContentStatus)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                                     {Object.values(MarketingContentStatus).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
