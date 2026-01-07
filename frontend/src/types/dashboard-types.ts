@@ -38,16 +38,16 @@ export enum ProductStage {
 }
 
 export enum MarketingCampaignStatus {
-  PLANNED = 'planned',
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
-  PAUSED = 'paused',
+  PLANNED = 'PLANNED',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  PAUSED = 'PAUSED',
 }
 
 export enum MarketingContentStatus {
-  PLANNED = 'planned',
-  PUBLISHED = 'published',
-  CANCELLED = 'cancelled',
+  PLANNED = 'PLANNED',
+  PUBLISHED = 'PUBLISHED',
+  CANCELLED = 'CANCELLED',
 }
 
 export enum TaskStatus {
