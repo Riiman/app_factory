@@ -758,6 +758,49 @@ def create_content_item(startup_id, campaign_id):
     
     return jsonify({'success': True, 'message': 'Content item created successfully.', 'item': new_item.to_dict()}), 201
 
+
+@startups_bp.route('/<int:startup_id>/campaigns/<int:campaign_id>', methods=['PUT'])
+@jwt_required()
+def update_campaign(startup_id, campaign_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    campaign = MarketingCampaign.query.get_or_404(campaign_id)
+    if campaign.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Campaign does not belong to this startup.'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'}), 400
+
+    for key, value in data.items():
+        if key == 'status':
+            try:
+                campaign.status = MarketingCampaignStatus(value)
+            except ValueError:
+                pass
+        elif key in ['start_date', 'end_date'] and value:
+            try:
+                if isinstance(value, str):
+                    setattr(campaign, key, datetime.strptime(value, '%Y-%m-%d').date())
+            except ValueError:
+                pass
+        elif key == 'spend' and value is not None:
+             setattr(campaign, key, float(value))
+        else:
+            setattr(campaign, key, value)
+            
+    db.session.commit()
+    
+    publish_update("campaign_updated", {"startup_id": startup_id, "campaign": campaign.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    return jsonify({'success': True, 'campaign': campaign.to_dict()}), 200
+
+
 @startups_bp.route('/<int:startup_id>/founders', methods=['POST'])
 @jwt_required()
 def create_founder(startup_id):
