@@ -19,10 +19,20 @@ class TaskExecutor:
     Role: Apply the micro-plan to the codebase.
     """
     
-    def __init__(self, startup_id: str, log_callback=None):
+    def __init__(self, startup_id: str, runtime, log_callback=None):
         self.startup_id = startup_id
+        # self.executor = V4Executor(startup_id) # V4Executor might need runtime too?
+        # Let's check V4Executor. It uses V4Tools?
+        # If V4Executor uses V4Tools, it needs runtime passed to IT.
+        # But I don't see V4Executor init. Assuming it might not use Tools directly or uses its own instance.
+        # Wait, Line 24: self.executor = V4Executor(startup_id).
+        # And Line 25: self.tools = V4Tools(startup_id).
+        # TaskExecutor seems to duplicate tool init?
+        # Let's simply update V4Tools init here.
+        
+        self.runtime = runtime
         self.executor = V4Executor(startup_id)
-        self.tools = V4Tools(startup_id)
+        self.tools = V4Tools(startup_id, runtime)
         self.log_callback = log_callback
         
     def execute_plan(self, micro_plan: List[Dict[str, Any]], cycle_memory: Dict[str, Any] = None) -> Dict[str, Any]:

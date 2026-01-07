@@ -12,7 +12,13 @@ from langchain_core.tools import tool
 from ..safety import SafetyCoordinator
 from ..healing import SelfHealer, Failure
 from ..knowledge import CommonKnowledge
-from ...manager import DockerManager
+from ..safety import SafetyCoordinator
+from ..healing import SelfHealer, Failure
+from ..knowledge import CommonKnowledge
+# from ...manager import DockerManager # Legacy
+# from .v4_tools_impl import run_shell_tool, update_file_tool, read_file_tool  # Removed invalid import
+
+from ..engines.runtime import DockerRuntime
 
 try:
     from duckduckgo_search import DDGS
@@ -33,9 +39,9 @@ class V4Tools:
     - Returns structured results
     """
     
-    def __init__(self, startup_id: str):
+    def __init__(self, startup_id: str, runtime: DockerRuntime):
         self.startup_id = startup_id
-        self.docker_manager = DockerManager()
+        self.runtime = runtime
         self.safety = SafetyCoordinator()
         self.healer = SelfHealer()
         self.knowledge = CommonKnowledge()
@@ -103,7 +109,27 @@ class V4Tools:
                 if directory != ".":
                     final_cmd = f"cd {directory} && {command}"
                 
-                result = self.docker_manager.run_command(self.startup_id, final_cmd)
+                # V5 Runtime: Interactive execution
+                logger.info(f"V5 Executing: {final_cmd}")
+                
+                # Check for blocking vs background requirements?
+                # For now, we use the simple block helper. 
+                # Ideally we should monitor the stream, but for this step we will rely on the runtime's implementation.
+                # Since runtime.run_command_block is async-ish (returns "Sent"), we need to handle expectations.
+                # However, the Agent expects OUTPUT. 
+                
+                # TEMPORARY FIX: Use container.exec_run for blocking output to satisfy 'run_shell' contract.
+                # We use the PERSISTENT terminal only for explicit interactive sessions.
+                # But 'run_shell' usually expects atomic execution.
+                # Let's use container.exec_run for reliability here, consistent with VerificationEngine.
+                
+                exit_code, output_bytes = self.runtime.container.exec_run(
+                    final_cmd, 
+                    workdir="/app"
+                )
+                output = output_bytes.decode('utf-8', errors='replace')
+                
+                result = {"output": output, "exit_code": exit_code}
                 
                 # Record success
                 self.safety.record_tool_call(
@@ -113,8 +139,8 @@ class V4Tools:
                 )
                 
                 # Return output
-                output = result.get("output", "")
-                exit_code = result.get("exit_code", 0)
+                # output = result.get("output", "")
+                # exit_code = result.get("exit_code", 0)
                 
                 if exit_code != 0:
                     # Command failed - try to heal
@@ -190,10 +216,15 @@ class V4Tools:
             
             # Write file
             try:
-                result = self.docker_manager.write_file(self.startup_id, path, content)
+                # V5 Runtime: Write directly to mounted workspace
+                # self.runtime.workspace_path maps to /app in container
+                full_path = os.path.join(self.runtime.workspace_path, path)
+                dir_path = os.path.dirname(full_path)
                 
-                if result.get("error"):
-                    raise Exception(result["error"])
+                os.makedirs(dir_path, exist_ok=True)
+                
+                with open(full_path, "w") as f:
+                    f.write(content)
                 
                 # Record success
                 self.safety.record_tool_call(
@@ -233,12 +264,14 @@ class V4Tools:
                 File content
             """
             try:
-                result = self.docker_manager.read_file(self.startup_id, path)
+                # V5 Runtime: Read locally from mounted workspace
+                full_path = os.path.join(self.runtime.workspace_path, path)
                 
-                if result.get("error"):
-                    return f"❌ Error: {result['error']}"
+                if not os.path.exists(full_path):
+                    return f"❌ Error: File not found: {path}"
                 
-                content = result.get("content", "")
+                with open(full_path, "r") as f:
+                    content = f.read()
                 
                 # Handle line ranges
                 if start_line is not None or end_line is not None:
