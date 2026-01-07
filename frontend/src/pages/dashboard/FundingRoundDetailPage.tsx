@@ -52,11 +52,11 @@ const DetailItem: React.FC<{ label: string; value: string | number | undefined }
 );
 
 const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, investors, linkedTasks, linkedArtifacts, onBack, onEditRound, onAddInvestor, onAddTask, onAddArtifact }) => {
-    
+
     const getInvestorName = (investorId: number) => {
         return investors.find(i => i.investor_id === investorId)?.name || 'Unknown Investor';
     };
-    
+
     return (
         <div className="space-y-6">
             <button onClick={onBack} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
@@ -70,7 +70,7 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
                         <h1 className="text-2xl font-bold text-gray-900">{round.round_type} Round</h1>
                         <p className="text-gray-600">Status: {round.status}</p>
                     </div>
-                    <button onClick={() => onEditRound(round)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1"/> Edit Round</button>
+                    <button onClick={() => onEditRound(round)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1" /> Edit Round</button>
                 </div>
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                     <DetailItem label="Amount Raised" value={formatCurrency(round.amount_raised)} />
@@ -81,9 +81,9 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card 
+                <Card
                     title="Investors in this Round"
-                    actions={<button onClick={() => onAddInvestor(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Investor</button>}
+                    actions={<button onClick={() => onAddInvestor(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Add Investment</button>}
                 >
                     <div className="overflow-x-auto">
                         <table className="min-w-full">
@@ -97,7 +97,7 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
                                 {round.investors.map(ri => (
                                     <tr key={ri.investor.investor_id} className="border-b">
                                         <td className="py-3 text-sm text-gray-800">{getInvestorName(ri.investor.investor_id)}</td>
-                                        <td className="py-3 text-sm text-gray-600 text-right">{formatCurrency(ri.investor.amount_invested)}</td>
+                                        <td className="py-3 text-sm text-gray-600 text-right">{formatCurrency(ri.amount_invested)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -106,26 +106,26 @@ const FundingRoundDetailPage: React.FC<FundingRoundDetailPageProps> = ({ round, 
                 </Card>
 
                 <div className="space-y-6">
-                    <Card 
+                    <Card
                         title="Linked Tasks"
-                        actions={<button onClick={() => onAddTask(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Task</button>}
+                        actions={<button onClick={() => onAddTask(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Add Task</button>}
                     >
-                         <ul className="space-y-2">
+                        <ul className="space-y-2">
                             {linkedTasks.map(task => (
                                 <li key={task.id} className="flex items-center text-sm text-gray-700">
-                                    <ClipboardList size={14} className="mr-2 text-gray-400"/> {task.name}
+                                    <ClipboardList size={14} className="mr-2 text-gray-400" /> {task.name}
                                 </li>
                             ))}
                         </ul>
                     </Card>
-                    <Card 
+                    <Card
                         title="Linked Artifacts"
-                        actions={<button onClick={() => onAddArtifact(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1"/> Add Artifact</button>}
+                        actions={<button onClick={() => onAddArtifact(round.round_id)} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Add Artifact</button>}
                     >
                         <ul className="space-y-2">
                             {linkedArtifacts.map(artifact => (
                                 <li key={artifact.id} className="flex items-center text-sm text-gray-700">
-                                   <Paperclip size={14} className="mr-2 text-gray-400"/> {artifact.name}
+                                    <Paperclip size={14} className="mr-2 text-gray-400" /> {artifact.name}
                                 </li>
                             ))}
                         </ul>

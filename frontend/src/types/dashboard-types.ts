@@ -337,7 +337,7 @@ export interface RoundInvestor {
 export interface FundingRound {
   round_id: number;
   startup_id: number;
-  round_type: 'Pre-Seed' | 'Seed' | 'Series A';
+  round_type: string;
   status: 'Planned' | 'In Progress' | 'Closed';
   target_amount: number;
   amount_raised: number;
@@ -502,7 +502,10 @@ export interface Startup {
   contract?: Contract;
   activity?: ActivityLog[];
   notifications?: DashboardNotification[];
+  overall_progress?: number;
 }
+
+export type FundraiseDetails = Fundraise;
 
 export interface ActivityLog {
   id: number;

@@ -6,6 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Fundraise, NextFundingGoal } from '@/types/dashboard-types';
+import { FUNDING_ROUND_TYPES } from '@/constants';
+
 
 /**
  * Props for the EditFundraisingGoalsModal component.
@@ -54,7 +56,7 @@ const EditFundraisingGoalsModal: React.FC<EditFundraisingGoalsModalProps> = ({ f
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         onUpdate(
             {
                 funding_stage: fundingStage,
@@ -80,7 +82,17 @@ const EditFundraisingGoalsModal: React.FC<EditFundraisingGoalsModalProps> = ({ f
                         <h3 className="text-lg font-semibold text-gray-800">Current Fundraise Details</h3>
                         <div>
                             <label htmlFor="funding-stage" className="block text-sm font-medium text-gray-700">Funding Stage</label>
-                            <input type="text" id="funding-stage" value={fundingStage} onChange={e => setFundingStage(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
+                            <select
+                                id="funding-stage"
+                                value={fundingStage}
+                                onChange={e => setFundingStage(e.target.value)}
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                            >
+                                <option value="">Select Stage</option>
+                                {FUNDING_ROUND_TYPES.map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
                             <label htmlFor="amount-raised" className="block text-sm font-medium text-gray-700">Amount Raised</label>

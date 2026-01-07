@@ -10,6 +10,7 @@ import { BusinessOverview, BusinessMonthlyData } from '@/types/dashboard-types';
 import Card from '@/components/Card';
 import { Edit } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { formatCurrency, formatCompactCurrency, formatDate } from '../../utils/formatters';
 
 /**
  * Props for the BusinessOverviewPage component.
@@ -24,18 +25,9 @@ interface BusinessOverviewPageProps {
     onEdit: () => void;
 }
 
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-};
-
 const BusinessOverviewPage: React.FC<BusinessOverviewPageProps> = ({ businessOverview, monthlyData = [], onEdit }) => {
     const sortedData = [...monthlyData].sort((a, b) => new Date(a.month_start).getTime() - new Date(b.month_start).getTime());
-    
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -51,8 +43,8 @@ const BusinessOverviewPage: React.FC<BusinessOverviewPageProps> = ({ businessOve
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={sortedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month_start" tickFormatter={(date) => new Date(date).toLocaleString('default', { month: 'short', year: '2-digit' })} />
-                            <YAxis tickFormatter={(value) => `$${(value / 1000)}k`} />
+                            <XAxis dataKey="month_start" tickFormatter={(date) => formatDate(date, { month: 'short', year: '2-digit' })} />
+                            <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
                             <Tooltip formatter={(value: number) => formatCurrency(value)} />
                             <Legend />
                             <Line type="monotone" dataKey="total_revenue" name="Total Revenue" stroke="#4F46E5" activeDot={{ r: 8 }} />
@@ -65,15 +57,15 @@ const BusinessOverviewPage: React.FC<BusinessOverviewPageProps> = ({ businessOve
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card title="Business Model">
-                    <p className="text-gray-700">{businessOverview.business_model}</p>
+                    <p className="text-gray-700">{businessOverview?.business_model || 'No business model defined.'}</p>
                 </Card>
                 <Card title="Key Partners">
-                    <p className="text-gray-700">{businessOverview.key_partners}</p>
+                    <p className="text-gray-700">{businessOverview?.key_partners || 'No key partners listed.'}</p>
                 </Card>
             </div>
 
             <Card title="Notes">
-                <p className="text-gray-700 whitespace-pre-wrap">{businessOverview.notes}</p>
+                <p className="text-gray-700 whitespace-pre-wrap">{businessOverview?.notes || ''}</p>
             </Card>
         </div>
     );

@@ -25,18 +25,18 @@ interface ProductMetricsPageProps {
 
 const ProductMetricsPage: React.FC<ProductMetricsPageProps> = ({ products, onAddNewMetric }) => {
     // Flatten all metrics from all products and add product name for context
-    const allMetrics = products.flatMap(product => 
+    const allMetrics = products.flatMap(product =>
         product.product_metrics.map(metric => ({
             ...metric,
             productName: product.name,
         }))
-    );
+    ).filter(Boolean);
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Product Metrics</h1>
-                <button 
+                <button
                     onClick={onAddNewMetric}
                     className="flex items-center px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
                     <Plus className="h-5 w-5 mr-2" />

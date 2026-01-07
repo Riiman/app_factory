@@ -241,163 +241,62 @@ class Api {
 
   async createTask(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/tasks`, data);
-    await this.createActivity({
-      user_id: 1, // Admin or Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Task',
-      target_id: response.task.id,
-      details: data.name
-    });
-    return response;
+    return response.task;
   }
 
   async createExperiment(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/experiments`, data);
-    await this.createActivity({
-      user_id: 1, // Admin or Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Experiment',
-      target_id: response.experiment.id,
-      details: data.name
-    });
-    return response;
+    return response.experiment;
   }
 
   async createArtifact(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/artifacts`, data);
-    await this.createActivity({
-      user_id: 1, // Admin or Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Artifact',
-      target_id: response.artifact.id,
-      details: data.name
-    });
-    return response;
+    return response.artifact;
   }
 
   async createProduct(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Product',
-      target_id: response.product.id,
-      details: data.name
-    });
-    return response;
+    return response.product;
   }
 
   async createFeature(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/features`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Feature',
-      target_id: response.feature.id,
-      details: data.name
-    });
-    return response;
+    return response.feature;
   }
 
   async createMetric(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/metrics`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Metric',
-      target_id: response.metric.id,
-      details: data.name
-    });
-    return response;
+    return response.metric;
   }
 
   async createIssue(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/issues`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'reported',
-      target_type: 'Issue',
-      target_id: response.issue.id,
-      details: data.title
-    });
-    return response;
+    return response.issue;
   }
 
   async createMonthlyReport(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/monthly-reports`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'submitted',
-      target_type: 'Report',
-      target_id: response.report.id,
-      details: `Report for ${data.month}`
-    });
-    await this.createNotification({
-      user_id: 1, // Admin
-      title: 'Monthly Report Submitted',
-      message: `Startup has submitted a monthly report for ${data.month}.`,
-      type: 'info'
-    });
-    return response;
+    return response.report;
   }
 
   async createFundingRound(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/funding-rounds`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Funding',
-      target_id: response.round.id,
-      details: `${data.round_type} Round`
-    });
-    return response;
+    return response.round;
   }
 
   async createInvestor(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/investors`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Investor',
-      target_id: response.investor.id,
-      details: data.name
-    });
-    return response;
+    return response.investor;
   }
 
   async createCampaign(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/campaigns`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Campaign',
-      target_id: response.campaign.id,
-      details: data.campaign_name
-    });
-    return response;
+    return response.campaign;
   }
 
   async updateCampaign(startupId: number, campaignId: number, data: Partial<MarketingCampaign>) {
     const response = await this.put(`/startups/${startupId}/campaigns/${campaignId}`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Campaign',
-      target_id: campaignId,
-      details: `Campaign updated`
-    });
+
     return response.campaign;
   }
 
@@ -444,40 +343,16 @@ class Api {
 
   async createFounder(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/founders`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Founder',
-      target_id: response.founder.id,
-      details: `${data.first_name} ${data.last_name}`
-    });
-    return response;
+    return response.founder;
   }
 
   async updateStartupSettings(startupId: number, data: any) {
     const response = await this.put(`/startups/${startupId}/settings`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Settings',
-      target_id: startupId,
-      details: 'Startup settings updated'
-    });
     return response;
   }
 
   async updateBusinessOverview(startupId: number, data: Partial<BusinessOverview>) {
     const response = await this.put(`/startups/${startupId}/business-overview`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Overview',
-      target_id: startupId,
-      details: 'Business overview updated'
-    });
     return response.business_overview; // Assuming backend returns updated business_overview directly
   }
 
@@ -490,14 +365,7 @@ class Api {
       fundraise: fundraiseData,
       next_funding_goal: nextFundingGoalData
     });
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Fundraising',
-      target_id: startupId,
-      details: 'Fundraising goals updated'
-    });
+
     return response;
   }
 
@@ -556,6 +424,13 @@ class Api {
 
   async generateAssets(startupId: number, generateProduct: boolean, generateGtm: boolean) {
     return this.post(`/startups/${startupId}/assets/generate`, { generate_product: generateProduct, generate_gtm: generateGtm });
+  }
+
+  async createInvestment(startupId: number, roundId: number, investorId: number, amountInvested: number) {
+    return this.post(`/startups/${startupId}/funding-rounds/${roundId}/investments`, {
+      investor_id: investorId,
+      amount_invested: amountInvested
+    });
   }
 }
 

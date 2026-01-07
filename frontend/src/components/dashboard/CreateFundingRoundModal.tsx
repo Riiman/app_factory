@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { FundingRound } from '@/types/dashboard-types';
+import { FUNDING_ROUND_TYPES } from '@/constants';
 
 type Status = 'Planned' | 'In Progress' | 'Closed';
 
@@ -70,7 +71,12 @@ const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClo
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField label="Round Type" id="round-type">
-                                <input type="text" id="round-type" value={roundType} onChange={e => setRoundType(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., Pre-Seed, Seed, Series A" />
+                                <select id="round-type" value={roundType} onChange={e => setRoundType(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
+                                    <option value="">Select Round Type</option>
+                                    {FUNDING_ROUND_TYPES.map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
                             </FormField>
                             <FormField label="Status" id="round-status">
                                 <select id="round-status" value={status} onChange={e => setStatus(e.target.value as Status)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
@@ -81,21 +87,21 @@ const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClo
                             </FormField>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <FormField label="Target Amount" id="round-target">
+                            <FormField label="Target Amount" id="round-target">
                                 <input type="number" id="round-target" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 1000000" />
                             </FormField>
-                             <FormField label="Pre-money Valuation" id="round-valuation">
+                            <FormField label="Pre-money Valuation" id="round-valuation">
                                 {/* FIX: Corrected a typo in the onChange event handler. It should be e.target.value, not e.g.target.value. */}
                                 <input type="number" id="round-valuation" value={valuationPre} onChange={e => setValuationPre(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 7000000" />
                             </FormField>
                         </div>
-                         <FormField label="Date Opened" id="round-date-opened">
+                        <FormField label="Date Opened" id="round-date-opened">
                             <input type="date" id="round-date-opened" value={dateOpened} onChange={e => setDateOpened(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
-                         <FormField label="Lead Investor (Optional)" id="round-lead-investor">
+                        <FormField label="Lead Investor (Optional)" id="round-lead-investor">
                             <input type="text" id="round-lead-investor" value={leadInvestor} onChange={e => setLeadInvestor(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
-                         <FormField label="Notes (Optional)" id="round-notes">
+                        <FormField label="Notes (Optional)" id="round-notes">
                             <textarea id="round-notes" value={notes} onChange={e => setNotes(e.target.value)} rows={4} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm"></textarea>
                         </FormField>
                     </div>

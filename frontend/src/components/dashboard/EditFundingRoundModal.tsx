@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { FundingRound } from '@/types/dashboard-types';
+import { FUNDING_ROUND_TYPES } from '@/constants';
 
 type Status = 'Planned' | 'In Progress' | 'Closed';
 
@@ -79,7 +80,12 @@ const EditFundingRoundModal: React.FC<EditFundingRoundModalProps> = ({ round, on
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField label="Round Type" id="edit-round-type">
-                                <input type="text" id="edit-round-type" value={roundType} onChange={e => setRoundType(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., Pre-Seed, Seed, Series A" />
+                                <select id="edit-round-type" value={roundType} onChange={e => setRoundType(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
+                                    <option value="">Select Round Type</option>
+                                    {FUNDING_ROUND_TYPES.map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
                             </FormField>
                             <FormField label="Status" id="edit-round-status">
                                 <select id="edit-round-status" value={status} onChange={e => setStatus(e.target.value as Status)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
@@ -90,10 +96,10 @@ const EditFundingRoundModal: React.FC<EditFundingRoundModalProps> = ({ round, on
                             </FormField>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <FormField label="Target Amount" id="edit-round-target">
+                            <FormField label="Target Amount" id="edit-round-target">
                                 <input type="number" id="edit-round-target" value={targetAmount} onChange={e => setTargetAmount(e.target.value === '' ? '' : Number(e.target.value))} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 1000000" />
                             </FormField>
-                             <FormField label="Amount Raised (Optional)" id="edit-round-amount-raised">
+                            <FormField label="Amount Raised (Optional)" id="edit-round-amount-raised">
                                 <input type="number" id="edit-round-amount-raised" value={amountRaised} onChange={e => setAmountRaised(e.target.value === '' ? '' : Number(e.target.value))} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 500000" />
                             </FormField>
                         </div>
@@ -105,7 +111,7 @@ const EditFundingRoundModal: React.FC<EditFundingRoundModalProps> = ({ round, on
                                 <input type="number" id="edit-round-valuation-post" value={valuationPost} onChange={e => setValuationPost(e.target.value === '' ? '' : Number(e.target.value))} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 7500000" />
                             </FormField>
                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField label="Date Opened (Optional)" id="edit-round-date-opened">
                                 <input type="date" id="edit-round-date-opened" value={dateOpened} onChange={e => setDateOpened(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
@@ -113,13 +119,13 @@ const EditFundingRoundModal: React.FC<EditFundingRoundModalProps> = ({ round, on
                                 <input type="date" id="edit-round-date-closed" value={dateClosed} onChange={e => setDateClosed(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
                         </div>
-                         <FormField label="Lead Investor (Optional)" id="edit-round-lead-investor">
+                        <FormField label="Lead Investor (Optional)" id="edit-round-lead-investor">
                             <input type="text" id="edit-round-lead-investor" value={leadInvestor} onChange={e => setLeadInvestor(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
-                         <FormField label="Pitch Deck URL (Optional)" id="edit-round-pitch-deck-url">
+                        <FormField label="Pitch Deck URL (Optional)" id="edit-round-pitch-deck-url">
                             <input type="url" id="edit-round-pitch-deck-url" value={pitchDeckUrl} onChange={e => setPitchDeckUrl(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
-                         <FormField label="Notes (Optional)" id="edit-round-notes">
+                        <FormField label="Notes (Optional)" id="edit-round-notes">
                             <textarea id="edit-round-notes" value={notes} onChange={e => setNotes(e.target.value)} rows={4} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm"></textarea>
                         </FormField>
                     </div>

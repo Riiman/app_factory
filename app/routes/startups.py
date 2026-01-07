@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import requests
-from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem, MarketingOverview, MarketingContentCalendar, Feature, User, UserRole, Fundraise, NextFundingGoal, ProductBusinessDetails, ActivityLog
+from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem, MarketingOverview, MarketingContentCalendar, Feature, User, UserRole, Fundraise, NextFundingGoal, ProductBusinessDetails, ActivityLog, BusinessOverview, RoundInvestor
 from app.startup_builder.manager import DockerManager
 
 from app import db
@@ -79,14 +79,25 @@ def create_task(startup_id):
     db.session.refresh(new_task)
 
     # --- Publish notification to Redis ---
-    # --- Publish notification to Redis ---
     publish_update("dashboard_update", {
         "model": "Task",
         "id": new_task.id,
         "startup_id": startup_id,
         "timestamp": datetime.now().isoformat()
     }, rooms=[f"user_{startup.user_id}", "admin"])
-    # redis_client.publish(REDIS_CHANNEL, json.dumps(message))
+
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='created',
+        target_type='Task',
+        target_id=new_task.id,
+        details=new_task.name
+    )
+    db.session.add(activity)
+    db.session.commit()
+    pass
     
     return jsonify({
         'success': True,
@@ -251,6 +262,18 @@ def create_experiment(startup_id):
     
     publish_update("experiment_created", {"startup_id": startup_id, "experiment": new_experiment.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
     
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='created',
+        target_type='Experiment',
+        target_id=new_experiment.id,
+        details=new_experiment.name
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
     return jsonify({'success': True, 'experiment': new_experiment.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/artifacts', methods=['POST'])
@@ -271,6 +294,18 @@ def create_artifact(startup_id):
     
     publish_update("artifact_created", {"startup_id": startup_id, "artifact": new_artifact.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
     
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='created',
+        target_type='Artifact',
+        target_id=new_artifact.id,
+        details=new_artifact.name
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
     return jsonify({'success': True, 'artifact': new_artifact.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/products', methods=['POST'])
@@ -285,11 +320,32 @@ def create_product(startup_id):
     data = request.get_json()
     if not data or 'name' not in data:
         return jsonify({'success': False, 'error': 'Product name is required.'}), 400
+    
+    try:
+        if 'targeted_launch_date' in data and data['targeted_launch_date']:
+            data['targeted_launch_date'] = datetime.strptime(data['targeted_launch_date'], '%Y-%m-%d').date()
+        if 'actual_launch_date' in data and data['actual_launch_date']:
+            data['actual_launch_date'] = datetime.strptime(data['actual_launch_date'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Invalid date format. Expected YYYY-MM-DD.'}), 400
+
     new_product = Product(startup_id=startup_id, **data)
     db.session.add(new_product)
     db.session.commit()
     
     publish_update("product_created", {"startup_id": startup_id, "product": new_product.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='created',
+        target_type='Product',
+        target_id=new_product.id,
+        details=new_product.name
+    )
+    db.session.add(activity)
+    db.session.commit()
     
     return jsonify({'success': True, 'product': new_product.to_dict()}), 201
 
@@ -310,6 +366,18 @@ def create_feature(startup_id, product_id):
     db.session.commit()
     
     publish_update("feature_created", {"startup_id": startup_id, "product_id": product_id, "feature": new_feature.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='added',
+        target_type='Feature',
+        target_id=new_feature.id,
+        details=new_feature.name
+    )
+    db.session.add(activity)
+    db.session.commit()
     
     return jsonify({'success': True, 'feature': new_feature.to_dict()}), 201
 
@@ -358,11 +426,28 @@ def create_metric(startup_id, product_id):
     data = request.get_json()
     if not data or 'metric_name' not in data:
         return jsonify({'success': False, 'error': 'Metric name is required.'}), 400
+    if 'date_recorded' in data and data['date_recorded']:
+        try:
+            data['date_recorded'] = datetime.strptime(data['date_recorded'], '%Y-%m-%d').date()
+        except ValueError:
+             return jsonify({'success': False, 'error': 'Invalid date format for date_recorded. Expected YYYY-MM-DD.'}), 400
     new_metric = ProductMetric(product_id=product_id, **data)
     db.session.add(new_metric)
     db.session.commit()
     
     publish_update("metric_created", {"startup_id": startup_id, "product_id": product_id, "metric": new_metric.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='added',
+        target_type='Metric',
+        target_id=new_metric.metric_id,
+        details=new_metric.metric_name
+    )
+    db.session.add(activity)
+    db.session.commit()
     
     return jsonify({'success': True, 'metric': new_metric.to_dict()}), 201
 
@@ -384,6 +469,18 @@ def create_issue(startup_id, product_id):
     
     publish_update("issue_created", {"startup_id": startup_id, "product_id": product_id, "issue": new_issue.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
     
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='reported',
+        target_type='Issue',
+        target_id=new_issue.issue_id,
+        details=new_issue.title
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
     return jsonify({'success': True, 'issue': new_issue.to_dict()}), 201
 
 @startups_bp.route('/<int:startup_id>/monthly-reports', methods=['POST'])
@@ -398,11 +495,44 @@ def create_monthly_report(startup_id):
     data = request.get_json()
     if not data or 'month_start' not in data:
         return jsonify({'success': False, 'error': 'Month start date is required.'}), 400
+    
+    try:
+        data['month_start'] = datetime.strptime(data['month_start'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Invalid date format for month_start. Expected YYYY-MM-DD.'}), 400
+
     new_report = BusinessMonthlyData(startup_id=startup_id, created_by=user_id, **data)
     db.session.add(new_report)
     db.session.commit()
     
     publish_update("monthly_report_created", {"startup_id": startup_id, "report": new_report.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='submitted',
+        target_type='Report',
+        target_id=new_report.record_id,
+        details=f"Report for {data.get('month', 'unknown')}"
+    )
+    db.session.add(activity)
+    
+    # Notification for Admin
+    # Assuming DashboardNotification is available (imported as Notification or similar, verify import)
+    # If not imported, we need to import it or use a service.
+    # notification_service.py handled publish_update, but storing notification in DB?
+    # Let's import DashboardNotification if not present.
+    from app.models import DashboardNotification
+    
+    notification = DashboardNotification(
+        user_id=1, # Admin ID fixed as 1 for now based on api.ts
+        title='Monthly Report Submitted',
+        message=f"Startup {startup.name} has submitted a monthly report.",
+        type='info'
+    )
+    db.session.add(notification)
+    db.session.commit()
     
     return jsonify({'success': True, 'report': new_report.to_dict()}), 201
 
@@ -418,11 +548,32 @@ def create_funding_round(startup_id):
     data = request.get_json()
     if not data or 'round_type' not in data:
         return jsonify({'success': False, 'error': 'Round type is required.'}), 400
+
+    try:
+        if 'date_opened' in data and data['date_opened']:
+            data['date_opened'] = datetime.strptime(data['date_opened'], '%Y-%m-%d').date()
+        if 'date_closed' in data and data['date_closed']:
+            data['date_closed'] = datetime.strptime(data['date_closed'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Invalid date format. Expected YYYY-MM-DD.'}), 400
+
     new_round = FundingRound(startup_id=startup_id, **data)
     db.session.add(new_round)
     db.session.commit()
     
     publish_update("funding_round_created", {"startup_id": startup_id, "round": new_round.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='added',
+        target_type='Funding',
+        target_id=new_round.round_id,
+        details=f"{new_round.round_type} Round"
+    )
+    db.session.add(activity)
+    db.session.commit()
     
     return jsonify({'success': True, 'round': new_round.to_dict()}), 201
 
@@ -444,7 +595,81 @@ def create_investor(startup_id):
     
     publish_update("investor_created", {"startup_id": startup_id, "investor": new_investor.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
     
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='added',
+        target_type='Investor',
+        target_id=new_investor.investor_id,
+        details=new_investor.name
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
     return jsonify({'success': True, 'investor': new_investor.to_dict()}), 201
+
+@startups_bp.route('/<int:startup_id>/funding-rounds/<int:round_id>/investments', methods=['POST'])
+@jwt_required()
+def create_investment(startup_id, round_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    funding_round = FundingRound.query.get_or_404(round_id)
+    if funding_round.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Funding round does not belong to this startup.'}), 400
+
+    data = request.get_json()
+    if not data or 'investor_id' not in data or 'amount_invested' not in data:
+        return jsonify({'success': False, 'error': 'Investor ID and Amount Invested are required.'}), 400
+
+    investor_id = data['investor_id']
+    amount_invested = data['amount_invested']
+
+    # Check if investment already exists
+    existing_investment = RoundInvestor.query.filter_by(round_id=round_id, investor_id=investor_id).first()
+    if existing_investment:
+         return jsonify({'success': False, 'error': 'This investor has already invested in this round.'}), 400
+
+    new_investment = RoundInvestor(
+        round_id=round_id,
+        investor_id=investor_id,
+        amount_invested=amount_invested
+    )
+    db.session.add(new_investment)
+    
+    # Update amount raised for the round
+    funding_round.amount_raised = (funding_round.amount_raised or 0) + float(amount_invested)
+    
+    db.session.commit()
+    
+    # Fetch investor name for activity log
+    investor = Investor.query.get(investor_id)
+    
+    publish_update("investment_added", {
+        "startup_id": startup_id, 
+        "round_id": round_id,
+        "investment": new_investment.to_dict()
+    }, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='invested',
+        target_type='Funding',
+        target_id=funding_round.round_id,
+        details=f"{investor.name if investor else 'Investor'} invested {amount_invested}"
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'investment': new_investment.to_dict()}), 201
+
 
 @startups_bp.route('/<int:startup_id>/campaigns', methods=['POST'])
 @jwt_required()
@@ -458,11 +683,32 @@ def create_campaign(startup_id):
     data = request.get_json()
     if not data or 'campaign_name' not in data:
         return jsonify({'success': False, 'error': 'Campaign name is required.'}), 400
+
+    try:
+        if 'start_date' in data and data['start_date']:
+            data['start_date'] = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+        if 'end_date' in data and data['end_date']:
+            data['end_date'] = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Invalid date format. Expected YYYY-MM-DD.'}), 400
+
     new_campaign = MarketingCampaign(startup_id=startup_id, created_by=user_id, **data)
     db.session.add(new_campaign)
     db.session.commit()
     
     publish_update("campaign_created", {"startup_id": startup_id, "campaign": new_campaign.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='launched',
+        target_type='Campaign',
+        target_id=new_campaign.campaign_id,
+        details=new_campaign.campaign_name
+    )
+    db.session.add(activity)
+    db.session.commit()
     
     return jsonify({'success': True, 'campaign': new_campaign.to_dict()}), 201
 
@@ -479,6 +725,12 @@ def create_content_item(startup_id, campaign_id):
     data = request.get_json()
     if not data or 'title' not in data:
         return jsonify({'success': False, 'error': 'Content item title is required.'}), 400
+
+    try:
+        if 'publish_date' in data and data['publish_date']:
+            data['publish_date'] = datetime.strptime(data['publish_date'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Invalid date format. Expected YYYY-MM-DD.'}), 400
 
     campaign = MarketingCampaign.query.get_or_404(campaign_id)
 
@@ -519,6 +771,18 @@ def create_founder(startup_id):
     db.session.commit()
     
     publish_update("founder_created", {"startup_id": startup_id, "founder": new_founder.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='added',
+        target_type='Founder',
+        target_id=new_founder.id,
+        details=new_founder.name
+    )
+    db.session.add(activity)
+    db.session.commit()
     
     return jsonify({'success': True, 'message': 'Founder created successfully.', 'founder': new_founder.to_dict()}), 201
 
@@ -721,6 +985,18 @@ def update_startup_settings(startup_id):
     
     publish_update("startup_settings_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
 
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup.id,
+        action='updated',
+        target_type='Startup',
+        target_id=startup.id,
+        details='Updated settings'
+    )
+    db.session.add(activity)
+    db.session.commit()
+
     return jsonify({
         'success': True,
         'message': 'Settings updated successfully.',
@@ -755,6 +1031,18 @@ def update_business_overview(startup_id):
     db.session.refresh(business_overview)
 
     publish_update("business_overview_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
+
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup.id,
+        action='updated',
+        target_type='Business',
+        target_id=startup.id,
+        details='Updated business overview'
+    )
+    db.session.add(activity)
+    db.session.commit()
 
     return jsonify({'success': True, 'business_overview': business_overview.to_dict()}), 200
 
@@ -802,6 +1090,18 @@ def update_fundraise_details(startup_id):
     db.session.refresh(fundraise)
 
     publish_update("fundraise_details_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
+
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup.id,
+        action='updated',
+        target_type='Fundraising',
+        target_id=fundraise.id,
+        details='Updated fundraising goals'
+    )
+    db.session.add(activity)
+    db.session.commit()
 
     return jsonify({
         'success': True,
@@ -854,6 +1154,18 @@ def update_marketing_overview(startup_id):
     db.session.refresh(startup)
 
     publish_update("marketing_overview_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
+
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup.id,
+        action='updated',
+        target_type='Marketing',
+        target_id=startup.id,
+        details='Updated marketing overview'
+    )
+    db.session.add(activity)
+    db.session.commit()
 
     return jsonify({'success': True, 'marketing_overview': startup.marketing_overview.to_dict()}), 200
     return jsonify({'success': True, 'marketing_overview': startup.marketing_overview.to_dict()}), 200

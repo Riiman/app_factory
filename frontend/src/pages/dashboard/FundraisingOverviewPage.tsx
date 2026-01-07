@@ -5,33 +5,25 @@
  */
 
 import React from 'react';
-import { FundraiseDetails } from '@/types/dashboard-types';
+import { Fundraise } from '@/types/dashboard-types';
 import Card from '@/components/Card';
 import { Target, TrendingUp, Calendar, Edit } from 'lucide-react';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 
 /**
  * Props for the FundraisingOverviewPage component.
  * @interface FundraisingOverviewPageProps
  */
 interface FundraisingOverviewPageProps {
-    /** The fundraising details object, including next goals. The backend should provide an object conforming to the `FundraiseDetails` interface. */
-    fundraiseDetails: FundraiseDetails;
+    /** The fundraising details object, including next goals. The backend should provide an object conforming to the `Fundraise` interface. */
+    fundraiseDetails: Fundraise;
     /** Callback function to open the edit modal. */
     onEdit: () => void;
 }
 
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-};
-
 const FundraisingOverviewPage: React.FC<FundraisingOverviewPageProps> = ({ fundraiseDetails, onEdit }) => {
-    const { funding_stage, amount_raised, next_funding_goals } = fundraiseDetails || {};
-    const { target_amount, target_valuation, target_close_date } = next_funding_goals || {};
+    const { funding_stage, amount_raised, next_funding_goal } = fundraiseDetails || {};
+    const { target_amount, target_valuation, target_close_date } = next_funding_goal || {};
 
     return (
         <div className="space-y-6">
@@ -42,15 +34,15 @@ const FundraisingOverviewPage: React.FC<FundraisingOverviewPageProps> = ({ fundr
                     <span className="text-sm font-medium">Edit Goals</span>
                 </button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card title="Current Status">
                     <div className="space-y-4">
                         <div>
                             <p className="text-sm font-medium text-gray-500">Current Funding Stage</p>
-                            <p className="text-2xl font-bold text-gray-900">{funding_stage}</p>
+                            <p className="text-2xl font-bold text-gray-900">{funding_stage || 'Not specified'}</p>
                         </div>
-                         <div>
+                        <div>
                             <p className="text-sm font-medium text-gray-500">Total Amount Raised to Date</p>
                             <p className="text-2xl font-bold text-gray-900">{formatCurrency(amount_raised)}</p>
                         </div>
@@ -73,11 +65,11 @@ const FundraisingOverviewPage: React.FC<FundraisingOverviewPageProps> = ({ fundr
                                 <p className="text-xl font-bold text-gray-900">{formatCurrency(target_valuation)}</p>
                             </div>
                         </div>
-                         <div className="flex items-center">
+                        <div className="flex items-center">
                             <Calendar className="h-6 w-6 text-brand-primary mr-4" />
                             <div>
                                 <p className="text-sm font-medium text-gray-500">Target Close Date</p>
-                                <p className="text-xl font-bold text-gray-900">{new Date(target_close_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                <p className="text-xl font-bold text-gray-900">{formatDate(target_close_date)}</p>
                             </div>
                         </div>
                     </div>
