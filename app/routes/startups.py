@@ -643,7 +643,8 @@ def create_investment(startup_id, round_id):
     db.session.add(new_investment)
     
     # Update amount raised for the round
-    funding_round.amount_raised = (funding_round.amount_raised or 0) + float(amount_invested)
+    from decimal import Decimal
+    funding_round.amount_raised = (funding_round.amount_raised or Decimal(0)) + Decimal(str(amount_invested))
     
     db.session.commit()
     
