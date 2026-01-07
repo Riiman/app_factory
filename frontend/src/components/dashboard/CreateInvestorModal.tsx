@@ -45,7 +45,12 @@ const CreateInvestorModal: React.FC<CreateInvestorModalProps> = ({ onClose, onCr
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name) return;
+
+        // Validation for mandatory fields
+        if (!name.trim()) {
+            alert('Please enter an investor name.');
+            return;
+        }
 
         onCreate({
             name,
@@ -68,15 +73,15 @@ const CreateInvestorModal: React.FC<CreateInvestorModalProps> = ({ onClose, onCr
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField label="Name" id="investor-name">
+                            <FormField label="Name *" id="investor-name">
                                 <input type="text" id="investor-name" value={name} onChange={e => setName(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
-                             <FormField label="Firm Name" id="investor-firm">
+                            <FormField label="Firm Name" id="investor-firm">
                                 <input type="text" id="investor-firm" value={firmName} onChange={e => setFirmName(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <FormField label="Type" id="investor-type">
+                            <FormField label="Type" id="investor-type">
                                 <select id="investor-type" value={type} onChange={e => setType(e.target.value as InvestorType)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                                     <option>Angel</option>
                                     <option>VC</option>
@@ -84,7 +89,7 @@ const CreateInvestorModal: React.FC<CreateInvestorModalProps> = ({ onClose, onCr
                                     <option>Accelerator</option>
                                 </select>
                             </FormField>
-                             <FormField label="Email" id="investor-email">
+                            <FormField label="Email" id="investor-email">
                                 <input type="email" id="investor-email" value={email} onChange={e => setEmail(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
                         </div>

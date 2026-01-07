@@ -38,7 +38,16 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name) return;
+
+        // Validation for mandatory fields
+        if (!name.trim()) {
+            alert('Please enter a product name.');
+            return;
+        }
+        if (!version.trim()) {
+            alert('Please enter a version number (e.g., 1.0.0).');
+            return;
+        }
 
         onCreate({
             name,
@@ -48,6 +57,9 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
             targeted_launch_date: targetedLaunchDate,
             customer_segment: customerSegment,
             unique_value_prop: uniqueValueProp,
+            product_metrics: [],
+            product_issues: [],
+            marketing_campaigns: [],
         });
     };
 
@@ -68,27 +80,27 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
                             <label htmlFor="product-description" className="block text-sm font-medium text-gray-700">Description</label>
                             <textarea id="product-description" value={description} onChange={e => setDescription(e.target.value)} rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"></textarea>
                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label htmlFor="product-version" className="block text-sm font-medium text-gray-700">Version</label>
                                 <input type="text" id="product-version" value={version} onChange={e => setVersion(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                             </div>
-                             <div>
+                            <div>
                                 <label htmlFor="product-stage" className="block text-sm font-medium text-gray-700">Stage</label>
                                 <select id="product-stage" value={stage} onChange={e => setStage(e.target.value as ProductStage)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm">
                                     {Object.values(ProductStage).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                         </div>
-                         <div>
+                        <div>
                             <label htmlFor="product-customer-segment" className="block text-sm font-medium text-gray-700">Customer Segment</label>
                             <input type="text" id="product-customer-segment" value={customerSegment} onChange={e => setCustomerSegment(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
-                         <div>
+                        <div>
                             <label htmlFor="product-uvp" className="block text-sm font-medium text-gray-700">Unique Value Proposition</label>
                             <input type="text" id="product-uvp" value={uniqueValueProp} onChange={e => setUniqueValueProp(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
-                         <div>
+                        <div>
                             <label htmlFor="product-launch-date" className="block text-sm font-medium text-gray-700">Targeted Launch Date</label>
                             <input type="date" id="product-launch-date" value={targetedLaunchDate} onChange={e => setTargetedLaunchDate(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>

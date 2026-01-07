@@ -43,7 +43,20 @@ const EditCampaignModal: React.FC<EditCampaignModalProps> = ({ campaign, onClose
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!campaignName) return;
+
+        // Validation for mandatory fields
+        if (!campaignName.trim()) {
+            alert('Please enter a campaign name.');
+            return;
+        }
+        if (!channel.trim()) {
+            alert('Please specify a channel.');
+            return;
+        }
+        if (!startDate) {
+            alert('Please select a start date.');
+            return;
+        }
 
         onUpdate({
             campaign_name: campaignName,
@@ -86,7 +99,7 @@ const EditCampaignModal: React.FC<EditCampaignModalProps> = ({ campaign, onClose
                             <FormField label="End Date" id="edit-campaign-end-date">
                                 <input type="date" id="edit-campaign-end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
-                             <FormField label="Status" id="edit-campaign-status">
+                            <FormField label="Status" id="edit-campaign-status">
                                 <select id="edit-campaign-status" value={status} onChange={e => setStatus(e.target.value as MarketingCampaignStatus)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                                     {Object.values(MarketingCampaignStatus).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>

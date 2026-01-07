@@ -63,7 +63,16 @@ const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCr
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !location) return;
+
+        // Validation for mandatory fields
+        if (!name.trim()) {
+            alert('Please enter an artifact name.');
+            return;
+        }
+        if (!location.trim()) {
+            alert(type === 'text' ? 'Please enter the content.' : 'Please enter the location/URL.');
+            return;
+        }
 
         let linked_to_type: LinkedEntityType | undefined;
         switch (scope) {
@@ -83,7 +92,7 @@ const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCr
             linked_to_type,
         });
     };
-    
+
     const scopeOptions = [Scope.GENERAL, Scope.PRODUCT, Scope.FUNDRAISING, Scope.MARKETING];
 
     /** Renders the correct input field based on the selected artifact type. */
@@ -97,7 +106,7 @@ const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCr
                 return <input type="text" placeholder="/path/to/file.pdf" value={location} onChange={e => setLocation(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />;
         }
     };
-    
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
@@ -108,7 +117,7 @@ const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCr
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Artifact Name</label>
+                            <label className="block text-sm font-medium text-gray-700">Artifact Name <span className="text-red-500">*</span></label>
                             <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
                         <div>
@@ -117,24 +126,24 @@ const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCr
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Type</label>
+                                <label className="block text-sm font-medium text-gray-700">Type <span className="text-red-500">*</span></label>
                                 <select value={type} onChange={e => setType(e.target.value as ArtifactType)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm">
                                     {Object.values(ArtifactType).map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700">{type === 'TEXT' ? 'Content' : 'Location'}</label>
+                                <label className="block text-sm font-medium text-gray-700">{type === 'TEXT' ? 'Content' : 'Location'} <span className="text-red-500">*</span></label>
                                 {renderLocationInput()}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Scope</label>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Scope <span className="text-red-500">*</span></label>
                                 <select value={scope} onChange={e => setScope(e.target.value as Scope)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm">
                                     {scopeOptions.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
-                             <div>
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700">Link To</label>
                                 <select value={linkedToId} onChange={e => setLinkedToId(e.target.value)} disabled={scope === Scope.GENERAL} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm disabled:bg-gray-100">
                                     <option value="">{scope === Scope.GENERAL ? 'N/A' : `Select ${scope}...`}</option>

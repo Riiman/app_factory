@@ -24,6 +24,12 @@ const EditFeatureModal: React.FC<EditFeatureModalProps> = ({ feature, onClose, o
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!name.trim()) {
+            alert('Please enter a feature name.');
+            return;
+        }
+
         setIsLoading(true);
         try {
             await onUpdate({
@@ -53,7 +59,7 @@ const EditFeatureModal: React.FC<EditFeatureModalProps> = ({ feature, onClose, o
                 <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1">
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Feature Name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Feature Name <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 value={name}

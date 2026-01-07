@@ -38,7 +38,7 @@ const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({ onClose, 
     const [availableLinks, setAvailableLinks] = useState<LinkableItem[]>([]);
 
     /** Effect to update linkable items when scope changes. */
-     useEffect(() => {
+    useEffect(() => {
         setLinkedToId('');
         setAvailableLinks(linkableItems[scope] || []);
     }, [scope, linkableItems]);
@@ -48,7 +48,20 @@ const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({ onClose, 
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !assumption || !validationMethod) return;
+
+        // Validation for mandatory fields
+        if (!name.trim()) {
+            alert('Please enter an experiment name.');
+            return;
+        }
+        if (!assumption.trim()) {
+            alert('Please enter your assumption/hypothesis.');
+            return;
+        }
+        if (!validationMethod.trim()) {
+            alert('Please describe the validation method.');
+            return;
+        }
 
         let linked_to_type: LinkedEntityType | undefined;
         switch (scope) {
@@ -81,19 +94,19 @@ const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({ onClose, 
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div>
-                            <label htmlFor="exp-name" className="block text-sm font-medium text-gray-700">Experiment Name</label>
+                            <label htmlFor="exp-name" className="block text-sm font-medium text-gray-700">Experiment Name <span className="text-red-500">*</span></label>
                             <input type="text" id="exp-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
-                         <div>
+                        <div>
                             <label htmlFor="exp-description" className="block text-sm font-medium text-gray-700">Description</label>
                             <textarea id="exp-description" value={description} onChange={e => setDescription(e.target.value)} rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"></textarea>
                         </div>
                         <div>
-                            <label htmlFor="exp-assumption" className="block text-sm font-medium text-gray-700">Assumption / Hypothesis</label>
+                            <label htmlFor="exp-assumption" className="block text-sm font-medium text-gray-700">Assumption / Hypothesis <span className="text-red-500">*</span></label>
                             <textarea id="exp-assumption" value={assumption} onChange={e => setAssumption(e.target.value)} required rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"></textarea>
                         </div>
                         <div>
-                            <label htmlFor="exp-validation" className="block text-sm font-medium text-gray-700">Validation Method</label>
+                            <label htmlFor="exp-validation" className="block text-sm font-medium text-gray-700">Validation Method <span className="text-red-500">*</span></label>
                             <textarea id="exp-validation" value={validationMethod} onChange={e => setValidationMethod(e.target.value)} required rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"></textarea>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

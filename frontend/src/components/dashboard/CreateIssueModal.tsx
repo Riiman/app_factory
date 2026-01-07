@@ -49,9 +49,9 @@ const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ onClose, onCreate, 
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title || !localProductId) {
-             alert("Please fill out all required fields, including selecting a product.");
-             return;
+        if (!title.trim() || !localProductId) {
+            alert(localProductId ? "Please enter the issue title." : "Please select a product.");
+            return;
         }
         onCreate({
             title,
@@ -73,7 +73,7 @@ const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ onClose, onCreate, 
                         {/* Conditionally render the product selector if no specific product ID is passed */}
                         {!productId && (
                             <div>
-                                <label htmlFor="issue-product" className="block text-sm font-medium text-gray-700">Product</label>
+                                <label htmlFor="issue-product" className="block text-sm font-medium text-gray-700">Product <span className="text-red-500">*</span></label>
                                 <select id="issue-product" value={localProductId} onChange={e => setLocalProductId(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                                     <option value="">Select a product...</option>
                                     {(products || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -81,7 +81,7 @@ const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ onClose, onCreate, 
                             </div>
                         )}
                         <div>
-                            <label htmlFor="issue-title" className="block text-sm font-medium text-gray-700">Title</label>
+                            <label htmlFor="issue-title" className="block text-sm font-medium text-gray-700">Title <span className="text-red-500">*</span></label>
                             <input type="text" id="issue-title" value={title} onChange={e => setTitle(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
                         </div>
                         <div>

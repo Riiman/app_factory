@@ -41,7 +41,20 @@ const CreateFounderModal: React.FC<CreateFounderModalProps> = ({ onClose, onCrea
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !role || !email) return;
+
+        // Validation for mandatory fields
+        if (!name.trim()) {
+            alert('Please enter the full name.');
+            return;
+        }
+        if (!role.trim()) {
+            alert('Please enter the role.');
+            return;
+        }
+        if (!email.trim()) {
+            alert('Please enter the email address.');
+            return;
+        }
 
         onCreate({
             name,
@@ -51,7 +64,7 @@ const CreateFounderModal: React.FC<CreateFounderModalProps> = ({ onClose, onCrea
             linkedin_link: linkedinLink || undefined,
         });
     };
-    
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
@@ -62,21 +75,21 @@ const CreateFounderModal: React.FC<CreateFounderModalProps> = ({ onClose, onCrea
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField label="Full Name" id="founder-name">
+                            <FormField label="Full Name *" id="founder-name">
                                 <input type="text" id="founder-name" value={name} onChange={e => setName(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
-                             <FormField label="Role" id="founder-role">
+                            <FormField label="Role *" id="founder-role">
                                 <input type="text" id="founder-role" value={role} onChange={e => setRole(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., CEO, CTO" />
                             </FormField>
                         </div>
-                        <FormField label="Email" id="founder-email">
+                        <FormField label="Email *" id="founder-email">
                             <input type="email" id="founder-email" value={email} onChange={e => setEmail(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField label="Phone Number (Optional)" id="founder-phone">
                                 <input type="tel" id="founder-phone" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
-                             <FormField label="LinkedIn Profile (Optional)" id="founder-linkedin">
+                            <FormField label="LinkedIn Profile (Optional)" id="founder-linkedin">
                                 <input type="url" id="founder-linkedin" value={linkedinLink} onChange={e => setLinkedinLink(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="https://..." />
                             </FormField>
                         </div>

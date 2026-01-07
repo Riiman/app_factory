@@ -65,7 +65,12 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, li
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name) return; // Basic validation
+
+        // Validation for mandatory fields
+        if (!name.trim()) {
+            alert('Please enter a task name.');
+            return;
+        }
 
         let linked_to_type: LinkedEntityType | undefined;
         switch (scope) {
@@ -85,7 +90,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, li
             linked_to_type,
         });
     };
-    
+
     const scopeOptions = [Scope.GENERAL, Scope.PRODUCT, Scope.FUNDRAISING, Scope.MARKETING];
 
     return (
@@ -98,7 +103,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, li
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div>
-                            <label htmlFor="task-name" className="block text-sm font-medium text-gray-700">Task Name</label>
+                            <label htmlFor="task-name" className="block text-sm font-medium text-gray-700">Task Name <span className="text-red-500">*</span></label>
                             <input type="text" id="task-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
                         <div>
@@ -118,13 +123,13 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, li
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div>
+                            <div>
                                 <label htmlFor="task-scope" className="block text-sm font-medium text-gray-700">Scope</label>
                                 <select id="task-scope" value={scope} onChange={e => setScope(e.target.value as Scope)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm">
                                     {scopeOptions.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
-                             <div>
+                            <div>
                                 <label htmlFor="task-linked-to" className="block text-sm font-medium text-gray-700">Link To</label>
                                 <select id="task-linked-to" value={linkedToId} onChange={e => setLinkedToId(e.target.value)} disabled={scope === Scope.GENERAL} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm disabled:bg-gray-100">
                                     <option value="">{scope === Scope.GENERAL ? 'N/A' : `Select ${scope}...`}</option>

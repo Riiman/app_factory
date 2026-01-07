@@ -31,14 +31,14 @@ const FormField = ({ label, id, children }: { label: string, id: string, childre
 );
 
 const CreateMonthlyReportModal: React.FC<CreateMonthlyReportModalProps> = ({ onClose, onCreate }) => {
-    
+
     // Helper to get the first day of the current month in YYYY-MM-DD format
     const getFirstDayOfCurrentMonth = () => {
         const date = new Date();
         const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
         return firstDay.toISOString().split('T')[0];
     };
-    
+
     // Form state
     const [monthStart, setMonthStart] = useState(getFirstDayOfCurrentMonth());
     const [totalRevenue, setTotalRevenue] = useState('');
@@ -59,7 +59,18 @@ const CreateMonthlyReportModal: React.FC<CreateMonthlyReportModalProps> = ({ onC
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!monthStart || !totalRevenue || !totalExpenses) return;
+        if (!monthStart) {
+            alert('Please select the reporting month.');
+            return;
+        }
+        if (!totalRevenue || isNaN(parseFloat(totalRevenue))) {
+            alert('Please enter a valid total revenue.');
+            return;
+        }
+        if (!totalExpenses || isNaN(parseFloat(totalExpenses))) {
+            alert('Please enter a valid total expenses amount.');
+            return;
+        }
 
         const revenueNum = parseFloat(totalRevenue);
         const expensesNum = parseFloat(totalExpenses);
@@ -90,29 +101,29 @@ const CreateMonthlyReportModal: React.FC<CreateMonthlyReportModalProps> = ({ onC
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                        
-                        <FormField label="Month" id="report-month">
+
+                        <FormField label="Month *" id="report-month">
                             <input type="date" id="report-month" value={monthStart} onChange={e => setMonthStart(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
 
                         <h3 className="text-lg font-medium text-gray-800 border-t pt-4">Financials</h3>
                         <FormRow>
-                            <FormField label="Total Revenue" id="report-revenue">
+                            <FormField label="Total Revenue *" id="report-revenue">
                                 <input type="number" id="report-revenue" value={totalRevenue} onChange={e => setTotalRevenue(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 15000" />
                             </FormField>
-                             <FormField label="Total Expenses" id="report-expenses">
+                            <FormField label="Total Expenses *" id="report-expenses">
                                 <input type="number" id="report-expenses" value={totalExpenses} onChange={e => setTotalExpenses(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 25000" />
                             </FormField>
                         </FormRow>
                         <FormRow>
-                             <FormField label="MRR" id="report-mrr">
+                            <FormField label="MRR" id="report-mrr">
                                 <input type="number" id="report-mrr" value={mrr} onChange={e => setMrr(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
-                             <FormField label="Cash in Bank (End of Month)" id="report-cash">
+                            <FormField label="Cash in Bank (End of Month)" id="report-cash">
                                 <input type="number" id="report-cash" value={cashInBank} onChange={e => setCashInBank(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
                         </FormRow>
-                        
+
                         <h3 className="text-lg font-medium text-gray-800 border-t pt-4">Customers</h3>
                         <FormRow>
                             <FormField label="New Customers" id="report-new-customers">
@@ -122,7 +133,7 @@ const CreateMonthlyReportModal: React.FC<CreateMonthlyReportModalProps> = ({ onC
                                 <input type="number" id="report-total-customers" value={totalCustomers} onChange={e => setTotalCustomers(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </FormField>
                         </FormRow>
-                         <FormField label="Churn Rate (%)" id="report-churn">
+                        <FormField label="Churn Rate (%)" id="report-churn">
                             <input type="number" step="0.1" id="report-churn" value={churnRate} onChange={e => setChurnRate(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
 

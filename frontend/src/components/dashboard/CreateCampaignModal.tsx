@@ -39,7 +39,20 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ onClose, onCr
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!campaignName) return;
+
+        // Validation for mandatory fields
+        if (!campaignName.trim()) {
+            alert('Please enter a campaign name.');
+            return;
+        }
+        if (!channel.trim()) {
+            alert('Please specify a channel (e.g., Email, Social Media).');
+            return;
+        }
+        if (!startDate) {
+            alert('Please select a start date.');
+            return;
+        }
 
         onCreate({
             campaign_name: campaignName,
@@ -50,6 +63,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ onClose, onCr
             content_mode: contentMode,
             scope: productId ? 'product' : 'overall',
             product_id: productId ? parseInt(productId, 10) : undefined,
+            content_calendars: [], // Initialize with empty calendar list
         });
     };
 
@@ -77,12 +91,12 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ onClose, onCr
                             </FormField>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <FormField label="Status" id="campaign-status">
+                            <FormField label="Status" id="campaign-status">
                                 <select id="campaign-status" value={status} onChange={e => setStatus(e.target.value as MarketingCampaignStatus)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                                     {Object.values(MarketingCampaignStatus).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </FormField>
-                             <FormField label="Link to Product (Optional)" id="campaign-product">
+                            <FormField label="Link to Product (Optional)" id="campaign-product">
                                 <select id="campaign-product" value={productId} onChange={e => setProductId(e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                                     <option value="">None (Overall Campaign)</option>
                                     {(products || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}

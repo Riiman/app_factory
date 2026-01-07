@@ -47,8 +47,8 @@ const CreateMetricModal: React.FC<CreateMetricModalProps> = ({ onClose, onCreate
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!metricName || !value || !localProductId) {
-            alert("Please fill out all required fields, including selecting a product.");
+        if (!metricName.trim() || !value || !localProductId) {
+            alert(localProductId ? "Please fill out all required fields." : "Please select a product.");
             return;
         }
         onCreate({
@@ -71,7 +71,7 @@ const CreateMetricModal: React.FC<CreateMetricModalProps> = ({ onClose, onCreate
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         {!productId && (
                             <div>
-                                <label htmlFor="metric-product" className="block text-sm font-medium text-gray-700">Product</label>
+                                <label htmlFor="metric-product" className="block text-sm font-medium text-gray-700">Product <span className="text-red-500">*</span></label>
                                 <select id="metric-product" value={localProductId} onChange={e => setLocalProductId(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                                     <option value="">Select a product...</option>
                                     {(products || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -79,12 +79,12 @@ const CreateMetricModal: React.FC<CreateMetricModalProps> = ({ onClose, onCreate
                             </div>
                         )}
                         <div>
-                            <label htmlFor="metric-name" className="block text-sm font-medium text-gray-700">Metric Name</label>
+                            <label htmlFor="metric-name" className="block text-sm font-medium text-gray-700">Metric Name <span className="text-red-500">*</span></label>
                             <input type="text" id="metric-name" value={metricName} onChange={e => setMetricName(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="metric-value" className="block text-sm font-medium text-gray-700">Value</label>
+                                <label htmlFor="metric-value" className="block text-sm font-medium text-gray-700">Value <span className="text-red-500">*</span></label>
                                 <input type="number" id="metric-value" value={value} onChange={e => setValue(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
                             </div>
                             <div>
@@ -93,7 +93,7 @@ const CreateMetricModal: React.FC<CreateMetricModalProps> = ({ onClose, onCreate
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                             <div>
+                            <div>
                                 <label htmlFor="metric-period" className="block text-sm font-medium text-gray-700">Period</label>
                                 <select id="metric-period" value={period} onChange={e => setPeriod(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                                     <option>monthly</option>
@@ -103,7 +103,7 @@ const CreateMetricModal: React.FC<CreateMetricModalProps> = ({ onClose, onCreate
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="metric-date-recorded" className="block text-sm font-medium text-gray-700">Date Recorded</label>
+                                <label htmlFor="metric-date-recorded" className="block text-sm font-medium text-gray-700">Date Recorded <span className="text-red-500">*</span></label>
                                 <input type="date" id="metric-date-recorded" value={dateRecorded} onChange={e => setDateRecorded(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
                             </div>
                         </div>

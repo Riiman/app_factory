@@ -45,7 +45,16 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onClose, o
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name) return;
+
+        // Validation for mandatory fields
+        if (!name.trim()) {
+            alert('Please enter a product name.');
+            return;
+        }
+        if (!version.trim()) {
+            alert('Please enter the current version.');
+            return;
+        }
 
         onUpdate({
             name,
@@ -68,34 +77,34 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onClose, o
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div>
-                            <label htmlFor="edit-product-name" className="block text-sm font-medium text-gray-700">Product Name</label>
+                            <label htmlFor="edit-product-name" className="block text-sm font-medium text-gray-700">Product Name <span className="text-red-500">*</span></label>
                             <input type="text" id="edit-product-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
                         <div>
                             <label htmlFor="edit-product-description" className="block text-sm font-medium text-gray-700">Description</label>
                             <textarea id="edit-product-description" value={description} onChange={e => setDescription(e.target.value)} rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"></textarea>
                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="edit-product-version" className="block text-sm font-medium text-gray-700">Version</label>
+                                <label htmlFor="edit-product-version" className="block text-sm font-medium text-gray-700">Version <span className="text-red-500">*</span></label>
                                 <input type="text" id="edit-product-version" value={version} onChange={e => setVersion(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                             </div>
-                             <div>
+                            <div>
                                 <label htmlFor="edit-product-stage" className="block text-sm font-medium text-gray-700">Stage</label>
                                 <select id="edit-product-stage" value={stage} onChange={e => setStage(e.target.value as ProductStage)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm">
                                     {Object.values(ProductStage).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                         </div>
-                         <div>
+                        <div>
                             <label htmlFor="edit-product-customer-segment" className="block text-sm font-medium text-gray-700">Customer Segment</label>
                             <input type="text" id="edit-product-customer-segment" value={customerSegment} onChange={e => setCustomerSegment(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
-                         <div>
+                        <div>
                             <label htmlFor="edit-product-uvp" className="block text-sm font-medium text-gray-700">Unique Value Proposition</label>
                             <input type="text" id="edit-product-uvp" value={uniqueValueProp} onChange={e => setUniqueValueProp(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
-                         <div>
+                        <div>
                             <label htmlFor="edit-product-launch-date" className="block text-sm font-medium text-gray-700">Targeted Launch Date</label>
                             <input type="date" id="edit-product-launch-date" value={targetedLaunchDate} onChange={e => setTargetedLaunchDate(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>

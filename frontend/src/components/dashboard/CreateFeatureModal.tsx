@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Feature } from '@/types/dashboard-types';
+import { Feature, FeatureStatus } from '@/types/dashboard-types';
 
 /**
  * Props for the CreateFeatureModal component.
@@ -37,11 +37,17 @@ const CreateFeatureModal: React.FC<CreateFeatureModalProps> = ({ onClose, onCrea
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name) return; // Simple validation
+
+        // Validation for mandatory fields
+        if (!name.trim()) {
+            alert('Please enter a feature name.');
+            return;
+        }
         onCreate({
             name,
             description,
             acceptance_criteria: acceptanceCriteria,
+            status: FeatureStatus.PENDING,
         });
     };
 
@@ -55,7 +61,7 @@ const CreateFeatureModal: React.FC<CreateFeatureModalProps> = ({ onClose, onCrea
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div>
-                            <label htmlFor="feature-name" className="block text-sm font-medium text-gray-700">Feature Name</label>
+                            <label htmlFor="feature-name" className="block text-sm font-medium text-gray-700">Feature Name <span className="text-red-500">*</span></label>
                             <input type="text" id="feature-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
                         </div>
                         <div>

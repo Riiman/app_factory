@@ -49,7 +49,24 @@ const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClo
      */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!roundType || !targetAmount || !valuationPre) return;
+
+        // Validation for mandatory fields
+        if (!roundType) {
+            alert('Please select a round type.');
+            return;
+        }
+        if (!targetAmount || isNaN(parseFloat(targetAmount))) {
+            alert('Please enter a valid target amount.');
+            return;
+        }
+        if (!valuationPre || isNaN(parseFloat(valuationPre))) {
+            alert('Please enter a valid pre-money valuation.');
+            return;
+        }
+        if (!dateOpened) {
+            alert('Please select the opening date.');
+            return;
+        }
 
         onCreate({
             round_type: roundType,
@@ -72,7 +89,7 @@ const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClo
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField label="Round Type" id="round-type">
+                            <FormField label="Round Type *" id="round-type">
                                 <select id="round-type" value={roundType} onChange={e => setRoundType(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                                     <option value="">Select Round Type</option>
                                     {FUNDING_ROUND_TYPES.map(type => (
@@ -80,7 +97,7 @@ const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClo
                                     ))}
                                 </select>
                             </FormField>
-                            <FormField label="Status" id="round-status">
+                            <FormField label="Status *" id="round-status">
                                 <select id="round-status" value={status} onChange={e => setStatus(e.target.value as Status)} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm">
                                     <option>Planned</option>
                                     <option>In Progress</option>
@@ -89,15 +106,15 @@ const CreateFundingRoundModal: React.FC<CreateFundingRoundModalProps> = ({ onClo
                             </FormField>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField label="Target Amount" id="round-target">
+                            <FormField label="Target Amount *" id="round-target">
                                 <input type="number" id="round-target" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 1000000" />
                             </FormField>
-                            <FormField label="Pre-money Valuation" id="round-valuation">
+                            <FormField label="Pre-money Valuation *" id="round-valuation">
                                 {/* FIX: Corrected a typo in the onChange event handler. It should be e.target.value, not e.g.target.value. */}
                                 <input type="number" id="round-valuation" value={valuationPre} onChange={e => setValuationPre(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., 7000000" />
                             </FormField>
                         </div>
-                        <FormField label="Date Opened" id="round-date-opened">
+                        <FormField label="Date Opened *" id="round-date-opened">
                             <input type="date" id="round-date-opened" value={dateOpened} onChange={e => setDateOpened(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                         </FormField>
                         <FormField label="Lead Investor (Optional)" id="round-lead-investor">
