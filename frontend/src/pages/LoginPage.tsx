@@ -59,7 +59,9 @@ const LoginPage: FC = () => {
       }
     } catch (err: any) {
       console.error("Google Sign-In Error:", err);
-      setError(err.message || 'Failed to sign in with Google.');
+      // Assuming api wrapper throws an object with message or error property.
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to sign in with Google.';
+      setError(errorMessage);
     }
   };
 

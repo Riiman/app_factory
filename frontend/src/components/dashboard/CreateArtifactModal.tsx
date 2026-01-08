@@ -52,6 +52,7 @@ const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCr
             if (scope === Scope.GENERAL) {
                 setAvailableLinks([]);
             } else {
+                console.log(`[CreateArtifactModal] Updating available links for scope: ${scope}`, linkableItems[scope]);
                 setAvailableLinks(linkableItems[scope] || []);
             }
         }
@@ -132,7 +133,7 @@ const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCr
                                 </select>
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700">{type === 'TEXT' ? 'Content' : 'Location'} <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-medium text-gray-700">{type === ArtifactType.TEXT ? 'Content' : 'Location'} <span className="text-red-500">*</span></label>
                                 {renderLocationInput()}
                             </div>
                         </div>
@@ -146,7 +147,7 @@ const CreateArtifactModal: React.FC<CreateArtifactModalProps> = ({ onClose, onCr
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Link To</label>
                                 <select value={linkedToId} onChange={e => setLinkedToId(e.target.value)} disabled={scope === Scope.GENERAL} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm disabled:bg-gray-100">
-                                    <option value="">{scope === Scope.GENERAL ? 'N/A' : `Select ${scope}...`}</option>
+                                    <option value="">{scope === Scope.GENERAL ? 'N/A' : (availableLinks.length > 0 ? `Select ${scope}...` : `No ${scope}s found`)}</option>
                                     {availableLinks.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                                 </select>
                             </div>

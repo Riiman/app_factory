@@ -24,6 +24,9 @@ const SignupPage: FC = () => {
   const [recaptchaResolved, setRecaptchaResolved] = useState(false); // To track reCAPTCHA status
   const [isSigningUp, setIsSigningUp] = useState(false); // To prevent redirect during signup flow
   const [isMockVerification, setIsMockVerification] = useState(false); // For development without billing
+  const [signupMode, setSignupMode] = useState<'create' | 'join'>('create'); // 'create' or 'join'
+  const [organizationName, setOrganizationName] = useState('');
+  const [organizationId, setOrganizationId] = useState('');
 
   useEffect(() => {
     if (!(window as any).recaptchaVerifier) {
@@ -57,7 +60,10 @@ const SignupPage: FC = () => {
       navigate('/start-submission');
     } catch (err: any) {
       console.error("Google Sign-In Error:", err);
-      setError(err.message || 'Failed to sign in with Google.');
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to sign in with Google.';
+      setError(errorMessage);
+      // If backend failed, sign out from Firebase to reset state
+      await signOut(auth);
     }
   };
 
@@ -74,13 +80,25 @@ const SignupPage: FC = () => {
       await sendEmailVerification(firebaseUser);
 
       const idToken = await firebaseUser.getIdToken();
-      // Create backend user immediately to prevent AuthContext from logging out
-      await api.post('/auth/signup', {
-        firebase_id_token: idToken,
-        full_name: fullName,
-        email: firebaseUser.email,
-        phone_number: phoneNumber || firebaseUser.phoneNumber,
-      });
+
+
+      if (signupMode === 'create') {
+        await api.post('/auth/organization/signup', {
+          firebase_id_token: idToken,
+          organization_name: organizationName,
+          full_name: fullName,
+          email: firebaseUser.email,
+          phone_number: phoneNumber || firebaseUser.phoneNumber,
+        });
+      } else {
+        await api.post('/auth/signup', {
+          firebase_id_token: idToken,
+          organization_id: organizationId,
+          full_name: fullName,
+          email: firebaseUser.email,
+          phone_number: phoneNumber || firebaseUser.phoneNumber,
+        });
+      }
 
       setMessage('Account created. Redirecting to login...');
 
@@ -111,8 +129,35 @@ const SignupPage: FC = () => {
 
     } catch (err: any) {
       console.error("Signup Error:", err);
-      setError(err.message || 'An unknown error occurred during signup.');
+
+      let errorMessage = 'An unknown error occurred during signup.';
+
+      // Handle Firebase Auth Errors specially
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'A user with this email address already exists. Please sign in instead.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (err.response?.data?.error) {
+        // Backend error
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        // Fallback to error message, stripping "Firebase: " prefix if present for cleaner look
+        errorMessage = err.message.replace('Firebase: ', '');
+      }
+
+      setError(errorMessage);
       setIsSigningUp(false); // Reset on error
+
+      // If error is related to existing user, sign out ensures clean state
+      if (
+        errorMessage.toLowerCase().includes('user already exists') ||
+        errorMessage.toLowerCase().includes('auth/email-already-in-use') ||
+        err.code === 'auth/email-already-in-use'
+      ) {
+        await signOut(auth);
+      }
     }
   };
 
@@ -165,14 +210,42 @@ const SignupPage: FC = () => {
         title="Create your new account"
         footer={<>Already a member? <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">Sign in</Link></>}
       >
+        <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
+          <button
+            type="button"
+            onClick={() => setSignupMode('create')}
+            className={`w-full sm:w-auto px-4 py-2 rounded-md text-sm font-medium ${signupMode === 'create' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            Create Organization
+          </button>
+          <button
+            type="button"
+            onClick={() => setSignupMode('join')}
+            className={`w-full sm:w-auto px-4 py-2 rounded-md text-sm font-medium ${signupMode === 'join' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            Join Organization
+          </button>
+        </div>
+
         {!confirmationResult ? (
           <form className="space-y-6" onSubmit={handleSubmit}>
             <Input id="name-signup" label="Full Name" type="text" required value={fullName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)} />
             <Input id="email-signup" label="Email address" type="email" required value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} />
             <Input id="password-signup" label="Password" type="password" required value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} />
             <Input id="phone-signup" label="Phone Number (e.g., +15551234567)" type="tel" required value={phoneNumber} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhoneNumber(e.target.value)} />
+
+            {signupMode === 'create' ? (
+              <Input id="org-name" label="Organization Name" type="text" required value={organizationName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrganizationName(e.target.value)} placeholder="e.g. Acme Corp" />
+            ) : (
+              <Input id="org-id" label="Organization Invite Code" type="text" required value={organizationId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrganizationId(e.target.value)} placeholder="e.g. 9c3c2dde" />
+            )}
+
             <div id="recaptcha-container"></div>
-            <div><Button type="submit" className="w-full justify-center">Create Account</Button></div>
+            <div>
+              <Button type="submit" className="w-full justify-center" disabled={isSigningUp}>
+                {isSigningUp ? 'Signing up...' : (signupMode === 'create' ? 'Create & Signup' : 'Join & Signup')}
+              </Button>
+            </div>
           </form>
         ) : (
           <form className="space-y-6" onSubmit={handlePhoneVerification}>

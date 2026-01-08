@@ -208,6 +208,29 @@ class Artifact(db.Model):
             'linked_to_id': self.linked_to_id,
             'linked_to_type': self.linked_to_type,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+import secrets
+
+class Organization(db.Model):
+    """Represents a tenant organization containing users and startups."""
+    __tablename__ = 'organizations'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    invite_code = db.Column(db.String(10), unique=True, nullable=False, default=lambda: secrets.token_hex(4))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    users = db.relationship('User', back_populates='organization')
+    startups = db.relationship('Startup', back_populates='organization')
+    submissions = db.relationship('Submission', back_populates='organization')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'invite_code': self.invite_code,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
 class User(db.Model):
@@ -223,7 +246,10 @@ class User(db.Model):
     full_name = db.Column(db.String(100), nullable=False)
     is_verified = db.Column(db.Boolean, default=False) # This will primarily be driven by email_verified/phone_verified
     role = db.Column(db.Enum(UserRole), default=UserRole.USER, nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True) # Check note on migration
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    organization = db.relationship('Organization', back_populates='users')
     
     # OAuth provider IDs (kept for now, can be linked to Firebase in future)
     google_id = db.Column(db.String(128), unique=True, nullable=True)
@@ -248,6 +274,8 @@ class User(db.Model):
             'full_name': self.full_name,
             'is_verified': self.is_verified,
             'role': self.role.value,
+            'organization_id': self.organization_id,
+            'organization': self.organization.to_dict() if self.organization else None,
             'created_at': self.created_at.isoformat(),
             'startup_id': startup.id if startup else None
         }
@@ -258,7 +286,9 @@ class Startup(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('submissions.id'), unique=True, nullable=False)
+
     
     name = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(255), unique=True, nullable=False, index=True)
@@ -298,6 +328,7 @@ class Startup(db.Model):
     # New relationships for pre-admission stages
     scope_document = db.relationship('ScopeDocument', back_populates='startup', uselist=False, cascade='all, delete-orphan')
     contract = db.relationship('Contract', back_populates='startup', uselist=False, cascade='all, delete-orphan')
+    organization = db.relationship('Organization', back_populates='startups')
 
     def to_dict(self, include_relations=False):
         """
@@ -960,6 +991,7 @@ class Submission(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True)
     
     # Columns corresponding to chatbot keys
     startup_name = db.Column(db.String(200), nullable=True)
@@ -982,7 +1014,9 @@ class Submission(db.Model):
     user = db.relationship('User', back_populates='submissions')
     evaluation = db.relationship('Evaluation', back_populates='submission', uselist=False, cascade='all, delete-orphan')
     # In Submission model
+    # In Submission model
     startup = db.relationship('Startup', back_populates='submission', uselist=False)
+    organization = db.relationship('Organization', back_populates='submissions')
     
     # New relationships for pre-admission stages
     evaluation_tasks = db.relationship('EvaluationTask', order_by=EvaluationTask.id, back_populates='submission', cascade="all, delete-orphan")
@@ -991,6 +1025,8 @@ class Submission(db.Model):
         data = {
             'id': self.id,
             'user_id': self.user_id,
+            'user_id': self.user_id,
+            'organization_id': self.organization_id,
             'user': self.user.to_dict(),
             'startup_name': self.startup_name,
             'founders_and_inspiration': self.founders_and_inspiration,

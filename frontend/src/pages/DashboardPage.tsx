@@ -511,8 +511,8 @@ const DashboardPage: React.FC = () => {
     const handleCreateFounder = async (newFounderData: Omit<Founder, 'id' | 'startup_id'>) => {
         if (!startupData) return;
         try {
-            const response = await api.createFounder(startupData.id, newFounderData);
-            setFounders(prev => [...(prev || []), response.founder]);
+            const newFounder = await api.createFounder(startupData.id, newFounderData);
+            setFounders(prev => [...(prev || []), newFounder]);
             setIsCreateFounderModalOpen(false);
         } catch (error) { console.error("Failed to create founder:", error); }
     };

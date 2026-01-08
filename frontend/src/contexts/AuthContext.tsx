@@ -96,6 +96,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
+                // Prevent auto-sync on signup page to avoid race condition with organization signup
+                if (window.location.pathname === '/signup') {
+                    console.log("AUTH: Skipping auto-sync on signup page.");
+                    return;
+                }
                 await fetchUserData(firebaseUser);
             } else {
                 localStorage.removeItem('access_token');

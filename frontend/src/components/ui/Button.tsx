@@ -21,7 +21,10 @@ const Button: FC<ButtonProps> = ({ children, variant = 'primary', size = 'md', c
   };
 
   return (
-    <button className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`} {...props}>
+    <button
+      className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${props.disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+      {...props}
+    >
       {children}
     </button>
   );

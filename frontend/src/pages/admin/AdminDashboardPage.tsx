@@ -56,8 +56,9 @@ const NavItem: React.FC<{
   </li>
 );
 const AdminDashboardPage: React.FC = () => {
-  const { handleLogout, token } = useAuth();
+  const { handleLogout, token, user } = useAuth();
   const queryClient = useQueryClient();
+  const inviteCode = user?.organization?.invite_code;
 
   // --- React Query for Data Fetching ---
   const { data: adminData, isLoading, isError, error } = useQuery({
@@ -563,10 +564,15 @@ const AdminDashboardPage: React.FC = () => {
   return (
     <div className="flex h-screen bg-brand-background">
       <aside className="w-64 bg-brand-surface border-r border-slate-200 flex flex-col">
-        <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+        <div className="p-4 border-b border-slate-200 flex flex-col justify-between">
           <h1 className="text-xl font-bold text-brand-primary flex items-center">
             <Building2 className="mr-2" /> StartupOS Admin
           </h1>
+          {inviteCode && (
+            <div className="mt-2 text-xs text-slate-500 bg-slate-100 rounded px-2 py-1">
+              Invite Code: <span className="font-mono font-bold text-slate-700 select-all cursor-pointer" onClick={() => { navigator.clipboard.writeText(inviteCode); toast.success('Invite Code Copied!') }} title="Click to copy">{inviteCode}</span>
+            </div>
+          )}
         </div>
         <nav className="flex-grow p-2 space-y-4">
           <div>

@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, session
 from app.extensions import db
 from app.models import Submission, Startup, User, Founder, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole, ScopeStatus, ContractStatus
 from app.utils.decorators import admin_required
+from flask_jwt_extended import get_jwt_identity
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 import re
@@ -17,33 +18,85 @@ from app.email_utils import send_submission_status_email
 
 print("--- DEBUG: Importing admin.py ---")
 
+
+def validate_admin_access(entity, user):
+    """
+    Checks if the admin user has access to the given entity (Startup, Submission, User).
+    Super Admins (Org 1) have global access.
+    """
+    if not user or not entity:
+        return False
+        
+    # Super Admin
+    if user.organization_id == 1:
+        return True
+        
+    # Check Organization Match
+    # Entity can be Startup, Submission, or User - all have organization_id
+    if hasattr(entity, 'organization_id'):
+        if entity.organization_id != user.organization_id:
+            return False
+            
+    # For Startup, we might want to double check logic, but org match is key for Admin.
+    return True
+
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 @admin_bp.route('/submissions', methods=['GET'])
 @admin_required
 def get_all_submissions():
-    submissions = Submission.query.filter(
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    query = Submission.query.filter(
         Submission.status.notin_([SubmissionStatus.DRAFT, SubmissionStatus.FINALIZE_SUBMISSION])
-    ).all()
+    )
+    
+    # Filter by Org unless Super Admin (Org ID 1)
+    if user.organization_id != 1:
+        query = query.filter(Submission.organization_id == user.organization_id)
+        
+    submissions = query.all()
     print(f"--- DEBUG: Found {len(submissions)} submissions in get_all_submissions ---")
     return jsonify({'success': True, 'submissions': [s.to_dict() for s in submissions]}), 200
 
 @admin_bp.route('/startups', methods=['GET'])
 @admin_required
 def get_all_startups():
-    startups = Startup.query.options(joinedload(Startup.submission)).all()
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    query = Startup.query.options(joinedload(Startup.submission))
+    
+    # Filter by Org unless Super Admin (Org ID 1)
+    if user.organization_id != 1:
+        query = query.filter(Startup.organization_id == user.organization_id)
+        
+    startups = query.all()
     return jsonify({'success': True, 'startups': [s.to_dict(include_relations=True) for s in startups]}), 200
 
 @admin_bp.route('/startups/<int:startup_id>', methods=['GET'])
 @admin_required
 def get_startup_detail(startup_id):
     startup = Startup.query.get_or_404(startup_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not validate_admin_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized access to startup.'}), 403
+        
     return jsonify({'success': True, 'startup': startup.to_dict(include_relations=True)}), 200
 
 @admin_bp.route('/startups/<int:startup_id>/stage', methods=['PUT'])
 @admin_required
 def update_startup_stage(startup_id):
     startup = Startup.query.get_or_404(startup_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not validate_admin_access(startup, user):
+         return jsonify({'success': False, 'error': 'Unauthorized access to startup.'}), 403
+
     data = request.get_json()
     new_stage_str = data.get('current_stage')
 
@@ -66,6 +119,12 @@ def update_startup_stage(startup_id):
 @admin_required
 def update_submission_status(submission_id):
     submission = Submission.query.get_or_404(submission_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not validate_admin_access(submission, user):
+         return jsonify({'success': False, 'error': 'Unauthorized access to submission.'}), 403
+
     data = request.get_json()
     new_status_str = data.get('status')
 
@@ -193,6 +252,12 @@ def update_submission_status(submission_id):
     @admin_required
     def create_evaluation_task(submission_id):
         submission = Submission.query.get_or_404(submission_id)
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not validate_admin_access(submission, user):
+             return jsonify({'success': False, 'error': 'Unauthorized access to submission.'}), 403
+
         data = request.get_json()
     
         title = data.get('title')
@@ -221,13 +286,28 @@ print("--- DEBUG: Defining get_all_users route ---")
 @admin_bp.route('/users', methods=['GET'])
 @admin_required
 def get_all_users():
-    users = User.query.all()
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    query = User.query
+    
+    # Filter by Org unless Super Admin (Org ID 1)
+    if user.organization_id != 1:
+        query = query.filter(User.organization_id == user.organization_id)
+        
+    users = query.all()
     return jsonify({'success': True, 'users': [u.to_dict() for u in users]}), 200
 
 @admin_bp.route('/users/<int:user_id>/role', methods=['PUT'])
 @admin_required
-def update_user_role(user_id):
-    user = User.query.get_or_404(user_id)
+def update_user_role(target_user_id):
+    target_user = User.query.get_or_404(target_user_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not validate_admin_access(target_user, user):
+         return jsonify({'success': False, 'error': 'Unauthorized access to user.'}), 403
+
     data = request.get_json()
     new_role_str = data.get('role')
 
@@ -250,6 +330,12 @@ def update_user_role(user_id):
 @admin_required
 def update_scope_document(startup_id):
     startup = Startup.query.get_or_404(startup_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not validate_admin_access(startup, user):
+         return jsonify({'success': False, 'error': 'Unauthorized access to startup.'}), 403
+
     if not startup.scope_document:
         return jsonify({'success': False, 'error': 'Scope document not found for this startup'}), 404
     
@@ -267,6 +353,12 @@ def update_scope_document(startup_id):
 @admin_required
 def add_scope_comment(startup_id):
     startup = Startup.query.get_or_404(startup_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not validate_admin_access(startup, user):
+         return jsonify({'success': False, 'error': 'Unauthorized access to startup.'}), 403
+
     if not startup.scope_document:
         return jsonify({'success': False, 'error': 'Scope document not found for this startup'}), 404
 
@@ -293,6 +385,12 @@ def add_scope_comment(startup_id):
 @admin_required
 def update_contract(startup_id):
     startup = Startup.query.get_or_404(startup_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not validate_admin_access(startup, user):
+         return jsonify({'success': False, 'error': 'Unauthorized access to startup.'}), 403
+
     if not startup.contract:
         return jsonify({'success': False, 'error': 'Contract not found for this startup'}), 404
 
@@ -322,6 +420,12 @@ def update_contract(startup_id):
 @admin_required
 def add_contract_comment(startup_id):
     startup = Startup.query.get_or_404(startup_id)
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not validate_admin_access(startup, user):
+         return jsonify({'success': False, 'error': 'Unauthorized access to startup.'}), 403
+
     if not startup.contract:
         return jsonify({'success': False, 'error': 'Contract not found for this startup'}), 404
 
@@ -352,7 +456,19 @@ def add_contract_comment(startup_id):
 @admin_bp.route('/activity', methods=['GET'])
 @admin_required
 def get_recent_activity():
-    activities = ActivityLog.query.order_by(ActivityLog.created_at.desc()).limit(50).all()
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    query = db.session.query(ActivityLog).outerjoin(Startup, ActivityLog.startup_id == Startup.id)
+
+    # Filter by Org unless Super Admin (Org ID 1)
+    if user.organization_id != 1:
+        # Filter where Startup belongs to user's org OR (startup_id is null AND user_id belongs to org?? - simpler to just rely on startup linkage for now)
+        # To be robust:
+        # Activities on Startups in my Org
+        query = query.filter(Startup.organization_id == user.organization_id)
+        
+    activities = query.order_by(ActivityLog.created_at.desc()).limit(50).all()
     return jsonify({'success': True, 'activity': [a.to_dict() for a in activities]}), 200
 
 @admin_bp.route('/activity', methods=['POST'])

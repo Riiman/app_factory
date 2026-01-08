@@ -31,7 +31,7 @@ const TeamPage: React.FC<TeamPageProps> = ({ founders, onAddNewFounder, onEditFo
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Team</h1>
-                <button 
+                <button
                     onClick={onAddNewFounder}
                     className="flex items-center px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
                     <Plus className="h-5 w-5 mr-2" />
@@ -39,7 +39,7 @@ const TeamPage: React.FC<TeamPageProps> = ({ founders, onAddNewFounder, onEditFo
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {founders.map(founder => (
+                {founders.filter(f => f).map(founder => (
                     <Card key={founder.id} className="flex flex-col">
                         <div className="flex-grow">
                             <div className="flex justify-between items-start">

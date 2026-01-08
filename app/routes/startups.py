@@ -14,6 +14,21 @@ from app.services.notification_service import publish_update
 import shutil
 import time
 from app import db
+import logging
+
+def validate_startup_access(startup, user):
+    if not user:
+        return False
+        
+    # Super Admin Check: Org 1 + Admin Role
+    if user.organization_id == 1 and user.role == UserRole.ADMIN:
+        return True
+
+    if startup.organization_id != user.organization_id:
+        return False
+    if startup.user_id != user.id and user.role != UserRole.ADMIN:
+        return False
+    return True
 
 startups_bp = Blueprint('startups', __name__, url_prefix='/api/startups')
 
@@ -25,7 +40,7 @@ def get_startup(startup_id):
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
 
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized access to startup data.'}), 403
     startup_data = startup.to_dict(include_relations=['monthly_data', 'marketing_campaigns', 'products'])
     import logging
@@ -40,7 +55,7 @@ def get_tasks(startup_id):
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
 
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     tasks = [task.to_dict() for task in startup.tasks]
     return jsonify({'success': True, 'tasks': tasks}), 200
@@ -53,7 +68,7 @@ def create_task(startup_id):
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
     
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized to add task to this startup.'}), 403
 
     data = request.get_json()
@@ -116,7 +131,7 @@ def update_task(startup_id, task_id):
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
     
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized to update task for this startup.'}), 403
 
     task = Task.query.get_or_404(task_id)
@@ -158,7 +173,7 @@ def get_experiments(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     experiments = [exp.to_dict() for exp in startup.experiments]
     return jsonify({'success': True, 'experiments': experiments}), 200
@@ -170,7 +185,7 @@ def get_artifacts(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     artifacts = [art.to_dict() for art in startup.artifacts]
     return jsonify({'success': True, 'artifacts': artifacts}), 200
@@ -182,7 +197,7 @@ def get_products(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     products = [p.to_dict() for p in startup.products]
     return jsonify({'success': True, 'products': products}), 200
@@ -194,7 +209,7 @@ def get_monthly_reports(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     reports = [r.to_dict() for r in startup.monthly_data]
     return jsonify({'success': True, 'reports': reports}), 200
@@ -206,7 +221,7 @@ def get_funding_rounds(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     rounds = [r.to_dict() for r in startup.funding_rounds]
     return jsonify({'success': True, 'rounds': rounds}), 200
@@ -218,7 +233,7 @@ def get_investors(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     investors = [i.to_dict() for i in Investor.query.all()]
     return jsonify({'success': True, 'investors': investors}), 200
@@ -230,7 +245,7 @@ def get_campaigns(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     campaigns = [c.to_dict() for c in startup.marketing_campaigns]
     return jsonify({'success': True, 'campaigns': campaigns}), 200
@@ -242,7 +257,7 @@ def get_founders(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     founders = [f.to_dict() for f in startup.founders]
     return jsonify({'success': True, 'founders': founders}), 200
@@ -254,7 +269,7 @@ def create_experiment(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized to add experiment to this startup.'}), 403
     data = request.get_json()
     if not data or 'name' not in data:
@@ -286,12 +301,38 @@ def create_artifact(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized to add artifact to this startup.'}), 403
+        
     data = request.get_json()
     if not data or 'name' not in data:
         return jsonify({'success': False, 'error': 'Artifact name is required.'}), 400
-    new_artifact = Artifact(startup_id=startup_id, **data)
+        
+    # Process Enums
+    scope_str = data.get('scope', 'GENERAL')
+    # Use proper case for special scopes if needed, or simple upper() if all keys are upper
+    # Scope in models.py has keys: PRODUCT, BUSINESS, FUNDRAISE, MARKETING, GENERAL, DASHBOARD, WORKSPACE, TEAM, SETTINGS
+    # All keys are UPPERCASE. Values are mixed. 
+    # Frontend sends values (e.g. 'product', 'Dashboard').
+    # We map value to Key. 
+    # Simple upper() works for 'product' -> 'PRODUCT'.
+    # For 'Dashboard' -> 'DASHBOARD'.
+    scope_key = scope_str.upper() if scope_str else 'GENERAL'
+
+    type_str = data.get('type', 'LINK').upper()
+    
+    new_artifact = Artifact(
+        startup_id=startup_id,
+        name=data['name'],
+        description=data.get('description'),
+        type=type_str,
+        location=data['location'],
+        scope=scope_key,
+        linked_to_id=data.get('linked_to_id'),
+        linked_to_type=data.get('linked_to_type')
+    )
+    
     db.session.add(new_artifact)
     db.session.commit()
     
@@ -318,7 +359,7 @@ def create_product(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized to add product to this startup.'}), 403
     data = request.get_json()
     if not data or 'name' not in data:
@@ -365,7 +406,7 @@ def create_feature(startup_id, product_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized to add feature to this startup.'}), 403
     data = request.get_json()
     if not data or 'name' not in data:
@@ -397,7 +438,7 @@ def update_feature(startup_id, product_id, feature_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     product = Product.query.get_or_404(product_id)
@@ -430,7 +471,7 @@ def create_metric(startup_id, product_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json()
     if not data or 'metric_name' not in data:
@@ -467,7 +508,7 @@ def create_issue(startup_id, product_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json()
     if not data or 'title' not in data:
@@ -499,7 +540,7 @@ def create_monthly_report(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json()
     if not data or 'month_start' not in data:
@@ -552,7 +593,7 @@ def create_funding_round(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json()
     if not data or 'round_type' not in data:
@@ -599,7 +640,7 @@ def create_investor(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json()
     if not data or 'name' not in data:
@@ -631,7 +672,7 @@ def create_investment(startup_id, round_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     funding_round = FundingRound.query.get_or_404(round_id)
@@ -694,7 +735,7 @@ def create_campaign(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json()
     if not data or 'campaign_name' not in data:
@@ -741,7 +782,7 @@ def create_content_item(startup_id, campaign_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     data = request.get_json()

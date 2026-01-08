@@ -160,9 +160,16 @@ export interface ScopeDocument {
   updated_at: string;
 }
 
+export interface Organization {
+  id: number;
+  name: string;
+  invite_code: string;
+  created_at: string;
+}
+
 export interface User {
   id: number;
-  firebase_uid?: string;
+  firebase_uid: string;
   email: string;
   phone_number?: string;
   mobile?: string;
@@ -170,10 +177,12 @@ export interface User {
   phone_verified: boolean;
   full_name: string;
   is_verified: boolean;
-  role: UserRole;
+  role: UserRole | string; // Allow string for compatibility
   created_at: string;
-  startup_id?: number;
   token?: string;
+  organization_id?: number;
+  organization?: Organization;
+  startup_id?: number | null;
 }
 
 export interface Submission {
