@@ -325,10 +325,16 @@ def create_product(startup_id):
         return jsonify({'success': False, 'error': 'Product name is required.'}), 400
     
     try:
-        if 'targeted_launch_date' in data and data['targeted_launch_date']:
-            data['targeted_launch_date'] = datetime.strptime(data['targeted_launch_date'], '%Y-%m-%d').date()
-        if 'actual_launch_date' in data and data['actual_launch_date']:
-            data['actual_launch_date'] = datetime.strptime(data['actual_launch_date'], '%Y-%m-%d').date()
+        if 'targeted_launch_date' in data:
+            if data['targeted_launch_date']:
+                data['targeted_launch_date'] = datetime.strptime(data['targeted_launch_date'], '%Y-%m-%d').date()
+            else:
+                data['targeted_launch_date'] = None
+        if 'actual_launch_date' in data:
+            if data['actual_launch_date']:
+                data['actual_launch_date'] = datetime.strptime(data['actual_launch_date'], '%Y-%m-%d').date()
+            else:
+                data['actual_launch_date'] = None
     except ValueError:
         return jsonify({'success': False, 'error': 'Invalid date format. Expected YYYY-MM-DD.'}), 400
 
@@ -553,10 +559,16 @@ def create_funding_round(startup_id):
         return jsonify({'success': False, 'error': 'Round type is required.'}), 400
 
     try:
-        if 'date_opened' in data and data['date_opened']:
-            data['date_opened'] = datetime.strptime(data['date_opened'], '%Y-%m-%d').date()
-        if 'date_closed' in data and data['date_closed']:
-            data['date_closed'] = datetime.strptime(data['date_closed'], '%Y-%m-%d').date()
+        if 'date_opened' in data:
+            if data['date_opened']:
+                data['date_opened'] = datetime.strptime(data['date_opened'], '%Y-%m-%d').date()
+            else:
+                data['date_opened'] = None
+        if 'date_closed' in data:
+            if data['date_closed']:
+                data['date_closed'] = datetime.strptime(data['date_closed'], '%Y-%m-%d').date()
+            else:
+                 data['date_closed'] = None
     except ValueError:
         return jsonify({'success': False, 'error': 'Invalid date format. Expected YYYY-MM-DD.'}), 400
 
@@ -689,10 +701,16 @@ def create_campaign(startup_id):
         return jsonify({'success': False, 'error': 'Campaign name is required.'}), 400
 
     try:
-        if 'start_date' in data and data['start_date']:
-            data['start_date'] = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
-        if 'end_date' in data and data['end_date']:
-            data['end_date'] = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+        if 'start_date' in data:
+            if data['start_date']:
+                data['start_date'] = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+            else:
+                 data['start_date'] = None
+        if 'end_date' in data:
+            if data['end_date']:
+                data['end_date'] = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+            else:
+                data['end_date'] = None
     except ValueError:
         return jsonify({'success': False, 'error': 'Invalid date format. Expected YYYY-MM-DD.'}), 400
 
@@ -783,12 +801,15 @@ def update_campaign(startup_id, campaign_id):
                 campaign.status = MarketingCampaignStatus(value)
             except ValueError:
                 pass
-        elif key in ['start_date', 'end_date'] and value:
-            try:
-                if isinstance(value, str):
-                    setattr(campaign, key, datetime.strptime(value, '%Y-%m-%d').date())
-            except ValueError:
-                pass
+        elif key in ['start_date', 'end_date']:
+            if value:
+                try:
+                    if isinstance(value, str):
+                        setattr(campaign, key, datetime.strptime(value, '%Y-%m-%d').date())
+                except ValueError:
+                    pass
+            else:
+                setattr(campaign, key, None)
         elif key == 'spend' and value is not None:
              setattr(campaign, key, float(value))
         else:
@@ -953,16 +974,19 @@ def update_funding_round(startup_id, round_id):
         return jsonify({'success': False, 'error': 'No data provided.'}), 400
 
     for key, value in data.items():
-        if key in ['date_opened', 'date_closed'] and value:
-            try:
-                # Parse date string to python date object
-                # Only if value is a string, if it's already date (unlikely from JSON), harmless
-                if isinstance(value, str):
-                    value = datetime.strptime(value, '%Y-%m-%d').date()
-            except ValueError:
-                # If format is wrong, ignore or handle? 
-                # Ideally return 400 but for now let's keep it safe and maybe it fails downstream or stays as string if format is weird
-                pass
+        if key in ['date_opened', 'date_closed']:
+            if value:
+                try:
+                    # Parse date string to python date object
+                    # Only if value is a string, if it's already date (unlikely from JSON), harmless
+                    if isinstance(value, str):
+                        value = datetime.strptime(value, '%Y-%m-%d').date()
+                except ValueError:
+                    # If format is wrong, ignore or handle? 
+                    # Ideally return 400 but for now let's keep it safe and maybe it fails downstream or stays as string if format is weird
+                    pass
+            else:
+                value = None
         setattr(funding_round, key, value)
     db.session.commit()
     

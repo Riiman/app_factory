@@ -63,7 +63,7 @@ const EditCampaignModal: React.FC<EditCampaignModalProps> = ({ campaign, onClose
             objective,
             channel,
             start_date: startDate,
-            end_date: endDate,
+            end_date: endDate || undefined,
             status,
             content_mode: contentMode,
             scope: productId ? 'product' : 'overall', // Adjust scope based on product linkage

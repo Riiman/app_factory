@@ -54,7 +54,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
             description,
             stage,
             version,
-            targeted_launch_date: targetedLaunchDate,
+            targeted_launch_date: targetedLaunchDate || undefined,
             customer_segment: customerSegment,
             unique_value_prop: uniqueValueProp,
             product_metrics: [],

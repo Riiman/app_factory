@@ -61,7 +61,7 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onClose, o
             description,
             stage,
             version,
-            targeted_launch_date: targetedLaunchDate,
+            targeted_launch_date: targetedLaunchDate || undefined,
             customer_segment: customerSegment,
             unique_value_prop: uniqueValueProp,
         });
