@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { BusinessMonthlyData } from '@/types/dashboard-types';
+import Papa from 'papaparse';
 
 /**
  * Props for the CreateMonthlyReportModal component.
@@ -51,6 +52,37 @@ const CreateMonthlyReportModal: React.FC<CreateMonthlyReportModalProps> = ({ onC
     const [keyHighlights, setKeyHighlights] = useState('');
     const [keyChallenges, setKeyChallenges] = useState('');
     const [nextFocus, setNextFocus] = useState('');
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        Papa.parse(file, {
+            header: true,
+            complete: (results: any) => {
+                const data = results.data[0]; // Assuming one row for now or user picks the relevant one. Let's take the first non-empty row.
+                if (data) {
+                    // Flexible mapping based on template headers
+                    if (data['Month']) setMonthStart(data['Month']); // Should be YYYY-MM-DD
+                    if (data['Revenue']) setTotalRevenue(data['Revenue']);
+                    if (data['Expenses']) setTotalExpenses(data['Expenses']);
+                    if (data['MRR']) setMrr(data['MRR']);
+                    if (data['Cash in Bank']) setCashInBank(data['Cash in Bank']);
+                    if (data['New Customers']) setNewCustomers(data['New Customers']);
+                    if (data['Total Customers']) setTotalCustomers(data['Total Customers']);
+                    if (data['Churn Rate']) setChurnRate(data['Churn Rate']);
+                    if (data['Highlights']) setKeyHighlights(data['Highlights']);
+                    if (data['Challenges']) setKeyChallenges(data['Challenges']);
+                    if (data['Next Focus']) setNextFocus(data['Next Focus']);
+                }
+            },
+            error: (error: any) => {
+                console.error("CSV Parse Error:", error);
+                alert("Failed to parse CSV file.");
+            }
+        });
+    };
+
 
     /**
      * Handles form submission.
@@ -99,8 +131,22 @@ const CreateMonthlyReportModal: React.FC<CreateMonthlyReportModalProps> = ({ onC
                     <h2 className="text-xl font-bold text-gray-900">Add New Monthly Report</h2>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={24} /></button>
                 </div>
+
+                <div className="px-6 pt-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div>
+                            <p className="text-sm font-medium text-gray-700">Auto-fill with CSV</p>
+                            <a href="/monthly_report_template.csv" download className="text-xs text-brand-primary hover:underline">Download Template</a>
+                        </div>
+                        <label className="cursor-pointer px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            <span>Upload CSV</span>
+                            <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+                        </label>
+                    </div>
+                </div>
+
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                    <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
 
                         <FormField label="Month *" id="report-month">
                             <input type="date" id="report-month" value={monthStart} onChange={e => setMonthStart(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
