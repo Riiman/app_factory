@@ -284,6 +284,94 @@ def login():
         current_app.logger.error(f"Firebase login error: {e}")
         return jsonify({'success': False, 'error': f'Authentication failed: {str(e)}'}), 500
 
+@auth_bp.route('/assign-organization', methods=['POST'])
+@jwt_required()
+def assign_organization():
+    """
+    Assign an organization to an OAuth user who signed in without one.
+    Supports both creating a new organization or joining an existing one.
+    """
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found.'}), 404
+    
+    # Check if user already has an organization
+    if user.organization_id:
+        return jsonify({'success': False, 'error': 'User already belongs to an organization.'}), 400
+    
+    data = request.get_json()
+    mode = data.get('mode')  # 'create' or 'join'
+    
+    try:
+        if mode == 'create':
+            organization_name = data.get('organization_name')
+            if not organization_name:
+                return jsonify({'success': False, 'error': 'Organization name is required.'}), 400
+            
+            # Create new organization
+            new_org = Organization(name=organization_name)
+            db.session.add(new_org)
+            db.session.flush()
+            
+            # Assign user to organization and make them admin
+            user.organization_id = new_org.id
+            user.role = UserRole.ADMIN
+            db.session.commit()
+            
+            # Generate new token with organization info
+            access_token = create_access_token(
+                identity=str(user.id), 
+                additional_claims={"role": user.role.value, "organization_id": new_org.id}
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': 'Organization created successfully.',
+                'organization': new_org.to_dict(),
+                'invite_code': new_org.invite_code,
+                'user': user.to_dict(),
+                'access_token': access_token
+            }), 201
+            
+        elif mode == 'join':
+            invite_code = data.get('invite_code')
+            if not invite_code:
+                return jsonify({'success': False, 'error': 'Invite code is required.'}), 400
+            
+            # Find organization by invite code
+            org = Organization.query.filter_by(invite_code=invite_code).first()
+            if not org:
+                return jsonify({'success': False, 'error': 'Invalid invite code.'}), 400
+            
+            # Assign user to organization
+            user.organization_id = org.id
+            user.role = UserRole.USER
+            db.session.commit()
+            
+            # Generate new token with organization info
+            access_token = create_access_token(
+                identity=str(user.id), 
+                additional_claims={"role": user.role.value, "organization_id": org.id}
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': 'Successfully joined organization.',
+                'organization': org.to_dict(),
+                'user': user.to_dict(),
+                'access_token': access_token
+            }), 200
+            
+        else:
+            return jsonify({'success': False, 'error': 'Invalid mode. Use "create" or "join".'}), 400
+            
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Assign organization error: {e}")
+        return jsonify({'success': False, 'error': 'Failed to assign organization.'}), 500
+
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():

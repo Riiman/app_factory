@@ -9,6 +9,7 @@ import { GoogleIcon, LinkedInIcon } from '../components/Icons';
 import { auth } from '../firebase';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, RecaptchaVerifier, linkWithPhoneNumber, GoogleAuthProvider, signOut, signInWithPopup } from "firebase/auth";
 import { useAuth } from '../contexts/AuthContext';
+import OrganizationSelectionModal from '../components/auth/OrganizationSelectionModal';
 
 const SignupPage: FC = () => {
   const navigate = useNavigate();
@@ -27,6 +28,11 @@ const SignupPage: FC = () => {
   const [signupMode, setSignupMode] = useState<'create' | 'join'>('create'); // 'create' or 'join'
   const [organizationName, setOrganizationName] = useState('');
   const [organizationId, setOrganizationId] = useState('');
+
+  // OAuth organization modal state
+  const [showOrgModal, setShowOrgModal] = useState(false);
+  const [pendingOAuthToken, setPendingOAuthToken] = useState<string | null>(null);
+  const [isOrgModalLoading, setIsOrgModalLoading] = useState(false);
 
   useEffect(() => {
     if (!(window as any).recaptchaVerifier) {
@@ -55,15 +61,62 @@ const SignupPage: FC = () => {
       const firebaseUser = result.user;
       const idToken = await firebaseUser.getIdToken();
 
-      // Reuse login endpoint which creates user if missing
-      await api.post('/auth/login', { firebase_id_token: idToken });
-      navigate('/start-submission');
+      // Try to login/create user
+      const response = await api.post('/auth/login', { firebase_id_token: idToken });
+
+      // Check if user has an organization
+      if (!response.user.organization_id) {
+        // User doesn't have an organization, show modal
+        setPendingOAuthToken(response.access_token);
+        setShowOrgModal(true);
+      } else {
+        // User has organization, proceed normally
+        localStorage.setItem('access_token', response.access_token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       console.error("Google Sign-In Error:", err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to sign in with Google.';
       setError(errorMessage);
       // If backend failed, sign out from Firebase to reset state
       await signOut(auth);
+    }
+  };
+
+  const handleOrgModalSubmit = async (mode: 'create' | 'join', value: string) => {
+    setIsOrgModalLoading(true);
+    setError('');
+
+    try {
+      if (!pendingOAuthToken) {
+        throw new Error('No authentication token found');
+      }
+
+      const payload = mode === 'create'
+        ? { mode: 'create', organization_name: value }
+        : { mode: 'join', invite_code: value };
+
+      // Set the token temporarily for this request
+      const originalToken = localStorage.getItem('access_token');
+      localStorage.setItem('access_token', pendingOAuthToken);
+
+      const response = await api.post('/auth/assign-organization', payload);
+
+      // Update with new token that includes organization info
+      localStorage.setItem('access_token', response.access_token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+
+      setShowOrgModal(false);
+      setPendingOAuthToken(null);
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error("Organization assignment error:", err);
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to assign organization.';
+      setError(errorMessage);
+      throw err; // Re-throw to let modal handle it
+    } finally {
+      setIsOrgModalLoading(false);
     }
   };
 
@@ -275,6 +328,18 @@ const SignupPage: FC = () => {
         </div>
       </AuthFormWrapper>
       <Footer />
+
+      {/* Organization Selection Modal for OAuth users */}
+      <OrganizationSelectionModal
+        isOpen={showOrgModal}
+        onClose={() => {
+          setShowOrgModal(false);
+          setPendingOAuthToken(null);
+          signOut(auth); // Sign out if user cancels
+        }}
+        onSubmit={handleOrgModalSubmit}
+        isLoading={isOrgModalLoading}
+      />
     </div>
   );
 };
