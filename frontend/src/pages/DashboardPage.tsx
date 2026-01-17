@@ -58,10 +58,12 @@ import AddInvestmentModal from '@/components/dashboard/AddInvestmentModal';
 import EditFundingRoundModal from '@/components/dashboard/EditFundingRoundModal';
 import EditMetricModal from '@/components/dashboard/EditMetricModal';
 import EditFeatureModal from '@/components/dashboard/EditFeatureModal';
+import UserSettingsPage from '@/pages/dashboard/UserSettingsPage';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { BusinessOverview, StartupStage } from '@/types/dashboard-types';
 import AssetGenerationModal from '@/components/dashboard/AssetGenerationModal';
+import RequireScope from '@/components/auth/RequireScope';
 
 type CreateModalType = 'task' | 'experiment' | 'artifact';
 
@@ -850,27 +852,33 @@ const DashboardPage: React.FC = () => {
                 />;
 
             case Scope.WORKSPACE:
-                if (activeSubPage === 'Tasks') return <TasksPage tasks={tasks} startupId={startupData.id} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
-                if (activeSubPage === 'Experiments') return <ExperimentsPage startupId={startupData.id} experiments={experiments || []} setExperiments={setExperiments} onExperimentClick={handleOpenExperimentModal} onAddNewExperiment={() => setIsCreateExperimentModalOpen(true)} />;
-                if (activeSubPage === 'Artifacts') return <ArtifactsPage artifacts={artifacts} startupId={startupData.id} setArtifacts={setArtifacts} onArtifactClick={handleOpenArtifactModal} getLinkedEntityName={getLinkedEntityName} onAddNewArtifact={() => setIsCreateArtifactModalOpen(true)} />;
-                return <TasksPage tasks={tasks} startupId={startupData.id} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
+                return (
+                    <RequireScope scope="WORKSPACE" showError>
+                        {activeSubPage === 'Tasks' && <TasksPage tasks={tasks} startupId={startupData.id} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />}
+                        {activeSubPage === 'Experiments' && <ExperimentsPage startupId={startupData.id} experiments={experiments || []} setExperiments={setExperiments} onExperimentClick={handleOpenExperimentModal} onAddNewExperiment={() => setIsCreateExperimentModalOpen(true)} />}
+                        {activeSubPage === 'Artifacts' && <ArtifactsPage artifacts={artifacts} startupId={startupData.id} setArtifacts={setArtifacts} onArtifactClick={handleOpenArtifactModal} getLinkedEntityName={getLinkedEntityName} onAddNewArtifact={() => setIsCreateArtifactModalOpen(true)} />}
+                    </RequireScope>
+                );
 
             case Scope.TEAM:
-                return <TeamPage
-                    startupId={startupData.id}
-                    founders={founders}
-                    setFounders={setFounders}
-                    onAddNewFounder={() => setIsCreateFounderModalOpen(true)}
-                    onEditFounder={(founder) => { setSelectedFounderToEdit(founder); setIsEditFounderModalOpen(true); }}
-                    onDeleteFounder={handleDeleteFounder}
-                />;
+                return (
+                    <RequireScope scope="TEAM" showError>
+                        <TeamPage startupId={startupData.id} />
+                    </RequireScope>
+                );
             case Scope.SETTINGS:
-                return <SettingsPage
-                    startupName={startupData.name}
-                    startupSlug={startupData.slug}
-                    nextMilestone={startupData.next_milestone}
-                    onSave={handleUpdateStartupSettings}
-                />;
+                return (
+                    <RequireScope scope="SETTINGS" showError>
+                        <SettingsPage
+                            startupName={startupData.name}
+                            startupSlug={startupData.slug}
+                            nextMilestone={startupData.next_milestone}
+                            onSave={handleUpdateStartupSettings}
+                        />
+                    </RequireScope>
+                );
+            case Scope.USER_SETTINGS:
+                return <UserSettingsPage />;
             default:
                 return <DashboardOverview startupData={startupData} recentActivity={activity} />;
         }
@@ -887,16 +895,44 @@ const DashboardPage: React.FC = () => {
         'Settings': Scope.SETTINGS
     };
 
-    const menuItems = [
-        { name: 'Dashboard', icon: Home, subItems: [] },
-        { name: 'Product', icon: Package, subItems: ['Products List', 'Product Metrics', 'Issues & Feedback'] },
-        { name: 'Business', icon: Briefcase, subItems: ['Overview & Model', 'Monthly Reporting'] },
-        { name: 'Fundraising', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor CRM'] },
-        { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar'] },
-        { name: 'Workspace', icon: BookOpen, subItems: ['Tasks', 'Experiments', 'Artifacts'] },
-        { name: 'Team', icon: Users, subItems: [] },
-        { name: 'Settings', icon: Settings, subItems: [] }
-    ];
+    const menuItems = React.useMemo(() => {
+        console.log("DEBUG: Dashboard User Object:", user);
+        console.log("DEBUG: User Scopes:", user?.scopes);
+
+        const allItems = [
+            { name: 'Dashboard', icon: Home, subItems: [], requiredScope: null }, // Always visible
+            { name: 'Product', icon: Package, subItems: ['Products List', 'Product Metrics', 'Issues & Feedback'], requiredScope: 'PRODUCT' },
+            { name: 'Business', icon: Briefcase, subItems: ['Overview & Model', 'Monthly Reporting'], requiredScope: 'BUSINESS' },
+            { name: 'Fundraising', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor CRM'], requiredScope: 'FUNDRAISE' },
+            { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar'], requiredScope: 'MARKETING' },
+            { name: 'Workspace', icon: BookOpen, subItems: ['Tasks', 'Experiments', 'Artifacts'], requiredScope: 'WORKSPACE' },
+            { name: 'Team', icon: Users, subItems: [], requiredScope: 'TEAM' },
+            { name: 'Settings', icon: Settings, subItems: [], requiredScope: 'SETTINGS' }
+        ];
+
+        if (!user) return [];
+
+        // Admin or Owner (if we had owner check here, but role='admin' covers super admins)
+        // For startup owners, the backend User.role might just be 'user', but they own the startup.
+        // We can check if user.id === startupData?.user_id if we have startupData.
+
+        const isOwner = startupData && user.id === startupData.user_id;
+        const isAdmin = user.role === 'admin';
+
+        if (isOwner || isAdmin) {
+            return allItems;
+        }
+
+        // Filter for Team Members
+        // Get scopes from user object (we added this to interface)
+        const userScopes = (user.scopes || []).map(s => s.toUpperCase());
+
+        return allItems.filter(item => {
+            if (!item.requiredScope) return true; // Always show Dashboard
+            return userScopes.includes(item.requiredScope);
+        });
+
+    }, [user, startupData]);
 
     if (isLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -922,9 +958,9 @@ const DashboardPage: React.FC = () => {
                 <Header
                     startupName={startupData.name}
                     currentStage={startupData.current_stage}
-                    user={startupData.user}
+                    user={user}
                     onCreateClick={handleOpenCreateModal}
-                    onSettingsClick={() => handleNavClick(Scope.SETTINGS)}
+                    onSettingsClick={() => handleNavClick(Scope.USER_SETTINGS)}
                     onLogout={handleLogout}
                     notificationCenter={<NotificationCenter notifications={notifications} onMarkAsRead={handleMarkNotificationAsRead} />}
                 />

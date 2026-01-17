@@ -50,7 +50,7 @@ def create_app(config_class=Config):
     CORS(app, supports_credentials=True, origins=cors_origins)
     
     from .extensions import socketio
-    socketio.init_app(app)
+    socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet', message_queue='redis://localhost:6379/0')
 
     # Configure the shared Celery instance
     configure_celery(app)

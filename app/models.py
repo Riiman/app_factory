@@ -264,6 +264,15 @@ class User(db.Model):
 
     def to_dict(self):
         startup = self.startups[0] if self.startups else None
+        scopes = []
+        
+        if startup:
+             # Owners get all scopes capabilities by default
+             scopes = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
+        elif hasattr(self, 'team_memberships') and self.team_memberships:
+            startup = self.team_memberships[0].startup
+            scopes = self.team_memberships[0].scopes or []
+
         return {
             'id': self.id,
             'firebase_uid': self.firebase_uid,
@@ -277,7 +286,8 @@ class User(db.Model):
             'organization_id': self.organization_id,
             'organization': self.organization.to_dict() if self.organization else None,
             'created_at': self.created_at.isoformat(),
-            'startup_id': startup.id if startup else None
+            'startup_id': startup.id if startup else None,
+            'scopes': scopes
         }
 
 class Startup(db.Model):
@@ -328,7 +338,9 @@ class Startup(db.Model):
     # New relationships for pre-admission stages
     scope_document = db.relationship('ScopeDocument', back_populates='startup', uselist=False, cascade='all, delete-orphan')
     contract = db.relationship('Contract', back_populates='startup', uselist=False, cascade='all, delete-orphan')
+    contract = db.relationship('Contract', back_populates='startup', uselist=False, cascade='all, delete-orphan')
     organization = db.relationship('Organization', back_populates='startups')
+    team_members = db.relationship('TeamMember', back_populates='startup', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self, include_relations=False):
         """
@@ -373,8 +385,38 @@ class Startup(db.Model):
                 'investors': [investor.to_dict() for investor in Investor.query.all()],
                 'scope_document': self.scope_document.to_dict() if self.scope_document else None,
                 'contract': self.contract.to_dict() if self.contract else None,
+                'team_members': [member.to_dict() for member in self.team_members],
             })
         return data
+
+class TeamMember(db.Model):
+    """Represents a team member with specific access scopes to a startup."""
+    __tablename__ = 'team_members'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    role = db.Column(db.String(50), default='Member') # Job Title / Role
+    linkedin = db.Column(db.String(255), nullable=True) # LinkedIn Profile URL
+    scopes = db.Column(db.JSON, nullable=True) # List of allowed scopes e.g. ['MARKETING', 'PRODUCT']
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', back_populates='team_members')
+    user = db.relationship('User', backref='team_memberships')
+
+    __table_args__ = (db.UniqueConstraint('startup_id', 'user_id', name='_startup_user_uc'),)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'user_id': self.user_id,
+            'user_email': self.user.email if self.user else None,
+            'user_name': self.user.full_name if self.user else None,
+            'role': self.role,
+            'linkedin': self.linkedin,
+            'scopes': self.scopes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
 
 class Product(db.Model):
     """Represents a product developed by a startup, including its features, metrics, and business details."""

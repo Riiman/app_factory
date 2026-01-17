@@ -183,6 +183,7 @@ export interface User {
   organization_id?: number;
   organization?: Organization;
   startup_id?: number | null;
+  scopes?: string[];
 }
 
 export interface Submission {
@@ -477,6 +478,18 @@ export interface Fundraise {
   next_funding_goal?: NextFundingGoal;
 }
 
+export interface TeamMember {
+  id: number;
+  startup_id: number;
+  user_id: number;
+  user_email?: string;
+  user_name?: string;
+  role: string;
+  linkedin?: string;
+  scopes?: string[];
+  created_at?: string;
+}
+
 export interface Startup {
   id: number;
   user_id: number;
@@ -504,6 +517,7 @@ export interface Startup {
   tasks: Task[];
   experiments: Experiment[];
   artifacts: Artifact[];
+  team_members?: TeamMember[];
   marketing_overview?: MarketingOverview;
   business_overview?: BusinessOverview;
   fundraise_details?: Fundraise;

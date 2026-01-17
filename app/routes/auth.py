@@ -252,11 +252,28 @@ def login():
         submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
         submission_status = submission.status.value if submission else "not_started"
 
+        user_dict = user.to_dict()
+        
+        # Explicitly patch scopes for team members to ensure frontend gets them
+        if not user.startups:
+             from app.models import TeamMember
+             tm = TeamMember.query.filter_by(user_id=user.id).first()
+             if tm:
+                 user_dict['scopes'] = tm.scopes
+                 print(f"DEBUG_AUTH: Explicitly injected scopes: {tm.scopes}")
+                 # Also ensure startup_id is set if missing
+                 if not user_dict.get('startup_id'):
+                     user_dict['startup_id'] = tm.startup_id
+        else:
+             # User is an owner
+             print(f"DEBUG_AUTH: User {user.email} is an owner. Injecting FULL scopes.")
+             user_dict['scopes'] = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
+
         response = {
             'success': True,
             'is_logged_in': True, # For consistency with useAuth hook
             'access_token': access_token,
-            'user': user.to_dict(),
+            'user': user_dict,
             'submission_status': submission_status,
             'submission_data': submission.to_dict() if submission else None,
         }
@@ -371,6 +388,57 @@ def assign_organization():
         db.session.rollback()
         current_app.logger.error(f"Assign organization error: {e}")
         return jsonify({'success': False, 'error': 'Failed to assign organization.'}), 500
+
+@auth_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+
+    data = request.get_json()
+    full_name = data.get('full_name')
+
+    try:
+        if full_name:
+            user.full_name = full_name
+            # Sync with Firebase
+            auth.update_user(user.firebase_uid, display_name=full_name)
+        
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'message': 'Profile updated successfully',
+            'user': user.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Update profile error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@auth_bp.route('/password', methods=['PUT'])
+@jwt_required()
+def change_password():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+
+    data = request.get_json()
+    new_password = data.get('new_password')
+    
+    if not new_password or len(new_password) < 6:
+        return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+
+    try:
+        # We trust the JWT authentication here. 
+        # In a stricter system, we might require re-authentication (current_password).
+        auth.update_user(user.firebase_uid, password=new_password)
+        return jsonify({'success': True, 'message': 'Password updated successfully'}), 200
+    except Exception as e:
+        current_app.logger.error(f"Change password error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()

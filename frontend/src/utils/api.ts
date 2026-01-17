@@ -432,6 +432,28 @@ class Api {
       amount_invested: amountInvested
     });
   }
+  async addTeamMember(startupId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/team`, data);
+    return response;
+  }
+
+  async getTeamMembers(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/team`);
+    if (!response.ok) throw new Error('Failed to fetch team members');
+    return (await response.json()).members;
+  }
+
+  async removeTeamMember(startupId: number, userId: number) {
+    const response = await this.fetch(`/startups/${startupId}/team/${userId}`, {
+      method: 'DELETE',
+    });
+    return response.json();
+  }
+
+  async updateTeamMember(startupId: number, userId: number, data: any) {
+    const response = await this.put(`/startups/${startupId}/team/${userId}`, data);
+    return response;
+  }
 }
 
 export default new Api();

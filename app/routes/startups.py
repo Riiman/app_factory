@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import requests
-from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem, MarketingOverview, MarketingContentCalendar, Feature, User, UserRole, Fundraise, NextFundingGoal, ProductBusinessDetails, ActivityLog, BusinessOverview, RoundInvestor, MarketingCampaignStatus
+from app.models import Startup, Task, Experiment, Artifact, Product, BusinessMonthlyData, FundingRound, Investor, MarketingCampaign, Founder, ProductMetric, ProductIssue, MarketingContentItem, MarketingOverview, MarketingContentCalendar, Feature, User, UserRole, Fundraise, NextFundingGoal, ProductBusinessDetails, ActivityLog, BusinessOverview, RoundInvestor, MarketingCampaignStatus, TeamMember
 from app.startup_builder.manager import DockerManager
 
 from app import db
@@ -15,8 +15,11 @@ import shutil
 import time
 from app import db
 import logging
+from firebase_admin import auth as firebase_auth
+import secrets
+import string
 
-def validate_startup_access(startup, user):
+def validate_startup_access(startup, user, required_scope=None):
     if not user:
         return False
         
@@ -25,10 +28,31 @@ def validate_startup_access(startup, user):
         return True
 
     if startup.organization_id != user.organization_id:
+        # Organization check failed
         return False
-    if startup.user_id != user.id and user.role != UserRole.ADMIN:
-        return False
-    return True
+
+    # Owner Check
+    if startup.user_id == user.id:
+        return True
+    
+    # Org Admin Check
+    if user.role == UserRole.ADMIN:
+        return True
+
+    # Team Member Check
+    # Check if user is a team member with appropriate scope
+    member = TeamMember.query.filter_by(startup_id=startup.id, user_id=user.id).first()
+    if member:
+        # If no specific scope required, basic access is granted
+        if required_scope is None:
+            return True
+        # If scope required, check if user has it
+        # Scopes in DB are like ['MARKETING', 'PRODUCT']
+        # required_scope should be passed as string 'MARKETING' etc.
+        if member.scopes and required_scope in member.scopes:
+            return True
+            
+    return False
 
 startups_bp = Blueprint('startups', __name__, url_prefix='/api/startups')
 
@@ -1239,7 +1263,7 @@ def get_marketing_overview(startup_id):
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
 
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user, required_scope='MARKETING'):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     marketing_overview = startup.marketing_overview
@@ -1258,7 +1282,8 @@ def update_marketing_overview(startup_id):
     user_id_from_jwt = get_jwt_identity()
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    
+    if not validate_startup_access(startup, user, required_scope='MARKETING'):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     data = request.get_json()
@@ -1300,7 +1325,7 @@ def get_startup_activity(startup_id):
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
 
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
+    if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     activities = ActivityLog.query.filter_by(startup_id=startup_id).order_by(ActivityLog.created_at.desc()).limit(50).all()
@@ -1314,8 +1339,27 @@ def generate_assets(startup_id):
     user_id = int(user_id_from_jwt)
     user = User.query.get(user_id)
 
-    if startup.user_id != user_id and (not user or user.role != UserRole.ADMIN):
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    # Allow if user has PRODUCT or MARKETING scope
+    # Since validate_startup_access checks for a single required_scope, 
+    # we can do a custom check or just allow any member for now to avoid blocking.
+    # Ideally: check if they have PRODUCT OR MARKETING.
+    has_access = False
+    if validate_startup_access(startup, user, required_scope='PRODUCT'):
+        has_access = True
+    elif validate_startup_access(startup, user, required_scope='MARKETING'):
+        has_access = True
+    elif validate_startup_access(startup, user) and startup.user_id == user.id: # Owner fallback (covered by validate but explicit here for logic flow)
+         has_access = True
+    # Basic member check if we want to be lenient? 
+    # Let's be strict: Needs PRODUCT or MARKETING.
+    # But validate_startup_access(..., required_scope=None) returns True for ANY member.
+    # Let's restrict generation to those who can manage Product or Marketing.
+    
+    if not has_access:
+         # Fallback: If they are Admin or Owner, validate_startup_access would return True above.
+         # Wait, validate_startup_access(..., 'PRODUCT') returns True for Owner/Admin too.
+         # So the above logic covers Owner/Admin/ProductMember/MarketingMember.
+         return jsonify({'success': False, 'error': 'Unauthorized. Requires PRODUCT or MARKETING access.'}), 403
 
     data = request.get_json() or {}
     generate_product = data.get('generate_product', True)
@@ -1499,3 +1543,188 @@ def proxy_to_container(startup_id, subpath):
             return jsonify({"error": str(e)}), 500
     
     return jsonify({"error": "Unknown error"}), 500
+
+@startups_bp.route('/<int:startup_id>/team', methods=['GET'])
+@jwt_required()
+def get_team_members(startup_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    
+    if not validate_startup_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+    members = []
+    # Add Owner
+    if startup.user:
+        members.append({
+            'user_id': startup.user.id,
+            'user_email': startup.user.email,
+            'user_name': startup.user.full_name,
+            'role': 'Owner',
+            'scopes': ['ALL'],
+            'status': 'Active'
+        })
+        
+    # Add Team Members
+    for member in startup.team_members:
+        members.append(member.to_dict())
+        
+    return jsonify({'success': True, 'members': members}), 200
+
+@startups_bp.route('/<int:startup_id>/team', methods=['POST'])
+@jwt_required()
+def add_team_member(startup_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    
+    # Only Owner or Admin can add members
+    if not validate_startup_access(startup, current_user):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+    # Extra check: Only Owner or Org Admin can manage team
+    is_owner = startup.user_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN and startup.organization_id == current_user.organization_id
+    
+    if not (is_owner or is_admin):
+         return jsonify({'success': False, 'error': 'Only the owner or admin can manage team members.'}), 403
+
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+    scopes = data.get('scopes', []) # List of strings
+    full_name = data.get('full_name', 'Team Member')
+    role_title = data.get('role', 'Member')
+    linkedin = data.get('linkedin')
+    
+    if not email or not password:
+        return jsonify({'success': False, 'error': 'Email and Password are required.'}), 400
+
+    # 1. Check if user exists in DB
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        # Check if already a member of this startup
+        existing_member = TeamMember.query.filter_by(startup_id=startup.id, user_id=existing_user.id).first()
+        if existing_member:
+             return jsonify({'success': False, 'error': 'User is already a member of this team.'}), 400
+        
+        # Add existing user to team
+        new_member = TeamMember(
+            startup_id=startup.id,
+            user_id=existing_user.id,
+            role=role_title,
+            linkedin=linkedin,
+            scopes=scopes
+        )
+        db.session.add(new_member)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'member': new_member.to_dict()}), 200
+
+    try:
+        # 2. Create User in Firebase (for NEW users)
+        # Check if exists in Firebase (edge case where DB sync failed)
+        try:
+            firebase_user = firebase_auth.get_user_by_email(email)
+            # If exists in Firebase but not in DB, we should probably sync them, 
+            # but for now let's treat as "User exists" and create local DB record
+            pass 
+        except firebase_auth.UserNotFoundError:
+             # Create new Firebase user
+             firebase_user = firebase_auth.create_user(
+                email=email,
+                password=password,
+                display_name=full_name,
+                email_verified=False
+            )
+        
+        # 3. Create User in DB (if we didn't find existing_user above)
+        # Verify again to be safe (race condition)
+        if not existing_user:
+             # Logic for if we found in Firebase but not DB
+             uid = firebase_user.uid
+             new_user = User(
+                firebase_uid=uid,
+                email=email,
+                full_name=full_name,
+                role=UserRole.USER,
+                organization_id=startup.organization_id, 
+                email_verified=False
+             )
+             db.session.add(new_user)
+             db.session.flush() # Get ID
+             
+             # 4. Create TeamMember entry
+             new_member = TeamMember(
+                startup_id=startup.id,
+                user_id=new_user.id,
+                role=role_title,
+                linkedin=linkedin,
+                scopes=scopes
+             )
+             db.session.add(new_member)
+             db.session.commit()
+
+             return jsonify({'success': True, 'member': new_member.to_dict()}), 201
+        
+        # Notification (Optional)
+        # publish_update("team_member_added", ...)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Team member added successfully.',
+            'member': new_member.to_dict()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error adding team member: {e}")
+        return jsonify({'success': False, 'error': f'Failed to add team member: {str(e)}'}), 500
+
+@startups_bp.route('/<int:startup_id>/team/<int:member_user_id>', methods=['DELETE'])
+@jwt_required()
+def remove_team_member(startup_id, member_user_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    
+    is_owner = startup.user_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN and startup.organization_id == current_user.organization_id
+    
+    if not (is_owner or is_admin):
+         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+         
+    member = TeamMember.query.filter_by(startup_id=startup.id, user_id=member_user_id).first()
+    if not member:
+        return jsonify({'success': False, 'error': 'Member not found.'}), 404
+        
+    db.session.delete(member)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Team member removed.'}), 200
+
+@startups_bp.route('/<int:startup_id>/team/<int:member_user_id>', methods=['PUT'])
+@jwt_required()
+def update_team_member(startup_id, member_user_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    
+    is_owner = startup.user_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN and startup.organization_id == current_user.organization_id
+    
+    if not (is_owner or is_admin):
+         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+         
+    member = TeamMember.query.filter_by(startup_id=startup.id, user_id=member_user_id).first()
+    if not member:
+        return jsonify({'success': False, 'error': 'Member not found.'}), 404
+        
+    data = request.get_json()
+    if 'scopes' in data:
+        member.scopes = data['scopes']
+        
+    db.session.commit()
+    return jsonify({'success': True, 'member': member.to_dict()}), 200
+
