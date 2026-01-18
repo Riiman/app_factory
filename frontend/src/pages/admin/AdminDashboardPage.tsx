@@ -11,8 +11,8 @@ import ScopingView from './ScopingView';
 import ContractView from './ContractView';
 
 import Overview from './Overview';
-import RecentActivityFeed from '../../components/dashboard/RecentActivityFeed';
-import NotificationCenter from '../../components/dashboard/NotificationCenter';
+import RecentActivityFeed from '@/modules/dashboard/components/RecentActivityFeed';
+import NotificationCenter from '@/modules/dashboard/components/NotificationCenter';
 import { Building2, LayoutDashboard, Inbox, FileClock, FileSignature, FileText, Briefcase, LogOut } from 'lucide-react';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,10 +22,10 @@ type ActiveView = 'overview' | 'submissions' | 'in-review' | 'scoping' | 'contra
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // ... (imports remain the same)
-import CreateTaskModal from '../../components/dashboard/CreateTaskModal';
-import CreateExperimentModal from '../../components/dashboard/CreateExperimentModal';
-import CreateArtifactModal from '../../components/dashboard/CreateArtifactModal';
-import EditFeatureModal from '../../components/dashboard/EditFeatureModal';
+import CreateTaskModal from '@/modules/dashboard/components/CreateTaskModal';
+import CreateExperimentModal from '@/modules/dashboard/components/CreateExperimentModal';
+import CreateArtifactModal from '@/modules/dashboard/components/CreateArtifactModal';
+import EditFeatureModal from '@/modules/product/components/EditFeatureModal';
 
 
 const NavItem: React.FC<{
@@ -624,6 +624,7 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.BUSINESS]: [],
             [Scope.WORKSPACE]: [],
             [Scope.TEAM]: [],
+            [Scope.USER_SETTINGS]: [],
             [Scope.SETTINGS]: [],
             [Scope.DASHBOARD]: []
           }}
@@ -642,6 +643,7 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.BUSINESS]: [],
             [Scope.WORKSPACE]: [],
             [Scope.TEAM]: [],
+            [Scope.USER_SETTINGS]: [],
             [Scope.SETTINGS]: [],
             [Scope.DASHBOARD]: []
           }}
@@ -660,6 +662,7 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.BUSINESS]: [],
             [Scope.WORKSPACE]: [],
             [Scope.TEAM]: [],
+            [Scope.USER_SETTINGS]: [],
             [Scope.SETTINGS]: [],
             [Scope.DASHBOARD]: []
           }}

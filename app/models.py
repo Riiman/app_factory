@@ -367,6 +367,8 @@ class Startup(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'user': self.user.to_dict() if self.user else None,
+            'has_product': db.session.query(Product.id).filter_by(startup_id=self.id).first() is not None,
+            'has_gtm': db.session.query(MarketingCampaign.campaign_id).filter_by(startup_id=self.id).first() is not None,
         }
         if include_relations:
             data.update({
@@ -652,6 +654,7 @@ class MarketingOverview(db.Model):
     marketing_id = db.Column(db.Integer, primary_key=True)
     startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), unique=True, nullable=False)
     positioning_statement = db.Column(db.Text, nullable=True)
+    brand_details = db.Column(db.JSON, nullable=True) # Store brand voice, archetype, audience, etc.
 
     startup = db.relationship('Startup', back_populates='marketing_overview')
 
@@ -660,6 +663,7 @@ class MarketingOverview(db.Model):
             'marketing_id': self.marketing_id,
             'startup_id': self.startup_id,
             'positioning_statement': self.positioning_statement,
+            'brand_details': self.brand_details,
         }
 
 class MarketingCampaignStatus(Enum):
@@ -674,6 +678,7 @@ class MarketingCampaignStatus(Enum):
 class MarketingContentStatus(Enum):
     """Defines the status of a marketing content item."""
     PLANNED = "PLANNED"
+    DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
     CANCELLED = "CANCELLED"
 
@@ -716,8 +721,9 @@ class MarketingCampaign(db.Model):
             'campaign_name': self.campaign_name,
             'objective': self.objective,
             'channel': self.channel,
-            'start_date': self.start_date.isoformat() if self.start_date else None,
-            'end_date': self.end_date.isoformat() if self.end_date else None,
+            # Handle potential string vs date object issues
+            'start_date': self.start_date.isoformat() if hasattr(self.start_date, 'isoformat') else str(self.start_date) if self.start_date else None,
+            'end_date': self.end_date.isoformat() if hasattr(self.end_date, 'isoformat') else str(self.end_date) if self.end_date else None,
             'spend': float(self.spend) if self.spend is not None else None,
             'impressions': self.impressions,
             'clicks': self.clicks,
@@ -767,7 +773,14 @@ class MarketingContentItem(db.Model):
     title = db.Column(db.String(255), nullable=False)
     content_type = db.Column(db.String(100), nullable=True)
     content_body = db.Column(db.Text, nullable=True)
+    content_brief = db.Column(db.Text, nullable=True) # The instruction/idea for the content
     channel = db.Column(db.String(100), nullable=True)
+    
+    # New fields for Phase 2 (Image Generation)
+    media_type = db.Column(db.String(20), default='text_only') # 'text_only', 'image', 'video'
+    image_url = db.Column(db.Text, nullable=True)
+    image_prompt = db.Column(db.Text, nullable=True)
+
     publish_date = db.Column(db.Date, nullable=True)
     status = db.Column(db.Enum(MarketingContentStatus), default=MarketingContentStatus.PLANNED, nullable=False)
     performance = db.Column(db.JSON, nullable=True) # Store as JSON for flexible performance metrics
@@ -784,12 +797,39 @@ class MarketingContentItem(db.Model):
             'title': self.title,
             'content_type': self.content_type,
             'content_body': self.content_body,
+            'content_brief': self.content_brief,
             'channel': self.channel,
+            'media_type': self.media_type,
+            'image_url': self.image_url,
+            'image_prompt': self.image_prompt,
             'publish_date': self.publish_date.isoformat() if self.publish_date else None,
             'status': str(self.status),
             'performance': self.performance,
             'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+class MarketingSettings(db.Model):
+    """Stores configuration and credentials for external marketing integrations."""
+    __tablename__ = 'marketing_settings'
+    setting_id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    provider = db.Column(db.String(50), nullable=False) # 'linkedin', 'twitter', 'instagram', 'facebook', 'email_sendgrid', 'email_mailgun'
+    credentials = db.Column(db.JSON, nullable=True) # Encrypted or raw JSON of keys/tokens
+    is_active = db.Column(db.Boolean, default=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('marketing_settings', lazy=True))
+
+    def to_dict(self):
+        return {
+            'setting_id': self.setting_id,
+            'startup_id': self.startup_id,
+            'provider': self.provider,
+            'is_active': self.is_active,
+            'credentials': self.credentials, # In a real app, mask secrets here!
+            'updated_at': self.updated_at.isoformat()
         }
 
 class Fundraise(db.Model):

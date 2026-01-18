@@ -75,6 +75,19 @@ def create_app(config_class=Config):
 
         app.register_blueprint(submissions_bp)
         app.register_blueprint(startups_bp)
+        
+        # Register separated services
+        from .modules.marketing.routes import marketing_bp
+        from .modules.product.routes import product_bp
+        from .modules.business.routes import business_bp
+        from .modules.fundraising.routes import fundraising_bp
+        from .modules.dashboard.routes import dashboard_bp
+        
+        app.register_blueprint(marketing_bp)
+        app.register_blueprint(product_bp)
+        app.register_blueprint(business_bp)
+        app.register_blueprint(fundraising_bp)
+        app.register_blueprint(dashboard_bp)
         app.register_blueprint(stages_bp)
         app.register_blueprint(admin_bp)
         app.register_blueprint(admin_scope_bp)
@@ -92,6 +105,9 @@ def create_app(config_class=Config):
         # Register V4 routes
         from .routes.v4_builder import v4_builder
         app.register_blueprint(v4_builder)
+
+        from .services.chatbot.routes import ai_bp
+        app.register_blueprint(ai_bp)
         
         # Import sockets to register events
         from .startup_builder import sockets

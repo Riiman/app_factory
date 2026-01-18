@@ -6,6 +6,7 @@ from langchain_openai import AzureChatOpenAI
 import json
 from datetime import datetime, timedelta
 from app.services.notification_service import publish_update
+from app.services.image_service import generate_marketing_image
 
 # Remove extract_json_from_string function, as model_kwargs will handle JSON output
 
@@ -154,8 +155,12 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                     # --- Generate Content Calendar ---
                     content_calendar_prompt = PromptTemplate.from_template(
                         "For the '{campaign_name}' marketing campaign, generate a content calendar with 3-5 content ideas. "
-                        "For each content item, provide a title and a brief description. "
-                        "Output a JSON array of objects, each with 'title' (string) and 'description' (string) keys, e.g., [{{'title': 'Content 1', 'description': '...'}}].\n\n"
+                        "For each content item, provide:\n"
+                        "1. 'title' (string): A catchy headline.\n"
+                        "2. 'description' (string): The caption or body copy.\n"
+                        "3. 'platform' (string): Best platform for this content (e.g., LinkedIn, Instagram, Blog).\n"
+                        "4. 'image_idea' (string): A detailed visual description for an AI image generator to create an accompanying image.\n\n"
+                        "Output a JSON array of objects, e.g., [{{'title': '...', 'description': '...', 'platform': 'LinkedIn', 'image_idea': 'A professional photo of...'}}].\n\n"
                         "Campaign Objective:\n{campaign_objective}"
                     )
                     content_calendar_chain = content_calendar_prompt | llm
@@ -192,11 +197,21 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                                     content_item = MarketingContentItem(
                                         calendar_id=content_calendar.calendar_id,
                                         title=item_data.get('title'),
-                                        content_body=item_data.get('description'),
+                                        content_brief=item_data.get('description'), # Map description to brief
+                                        content_body=None, # Leave body empty for generation
+                                        platform=item_data.get('platform', 'General'),
+                                        media_type='image' if item_data.get('image_idea') else 'text_only',
+                                        image_prompt=item_data.get('image_idea'),
                                         created_by=startup.user_id,
                                         publish_date=publish_date,
                                         created_at=datetime.utcnow()
                                     )
+                                    
+                                    # Generate Image if prompt exists
+                                    if content_item.image_prompt:
+                                        image_url = generate_marketing_image(content_item.image_prompt)
+                                        content_item.image_url = image_url
+
                                     db.session.add(content_item)
                                     publish_date += timedelta(days=3)
                                 else:
@@ -222,30 +237,41 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
             print(f"Error publishing campaigns_generated event: {e}")
 
 
-        # --- Generate Positioning Statement ---
-        positioning_prompt = PromptTemplate.from_template(
-            "Based on the following scope document, write a concise and compelling positioning statement for the startup. "
-            "The positioning statement should be a single sentence. "
-            "Output a JSON object with a single key 'positioning_statement' and the statement as the value.\n\n"
+        # --- Generate Brand Identity (Positioning + Voice) ---
+        brand_prompt = PromptTemplate.from_template(
+            "Based on the following scope document, define the brand identity for the startup.\n"
+            "1. Write a concise positioning statement (single sentence).\n"
+            "2. Define the Tone of Voice (e.g., Professional, Witty, Empathetic).\n"
+            "3. Identify the Brand Archetype (e.g., The Creator, The Ruler).\n"
+            "4. List 3 key Target Audiences.\n"
+            "5. List 3 Key Messaging Pillars.\n\n"
+            "Output a JSON object with keys:\n"
+            "- 'positioning_statement' (string)\n"
+            "- 'brand_details' (object with keys: 'tone_of_voice' (string), 'brand_archetype' (string), 'target_audience' (list of strings), 'key_messaging_pillars' (list of strings)).\n\n"
             "Scope Document:\n{scope_content}"
         )
-        positioning_chain = positioning_prompt | llm
-        positioning_json_str = positioning_chain.invoke({"scope_content": scope_content}).content
+        brand_chain = brand_prompt | llm
+        brand_json_str = brand_chain.invoke({"scope_content": scope_content}).content
 
         try:
-            positioning_data = json.loads(positioning_json_str)
-            positioning_statement = positioning_data.get('positioning_statement')
+            brand_data = json.loads(brand_json_str)
+            positioning_statement = brand_data.get('positioning_statement')
+            brand_details = brand_data.get('brand_details')
 
-            if positioning_statement:
+            if positioning_statement or brand_details:
                 marketing_overview = MarketingOverview.query.filter_by(startup_id=startup.id).first()
                 if not marketing_overview:
                     marketing_overview = MarketingOverview(startup_id=startup.id)
                     db.session.add(marketing_overview)
                 
-                marketing_overview.positioning_statement = positioning_statement
+                if positioning_statement:
+                    marketing_overview.positioning_statement = positioning_statement
+                
+                if brand_details:
+                    marketing_overview.brand_details = brand_details
                 
         except json.JSONDecodeError:
-            print(f"--- [Generation Task] Warning: Failed to decode JSON for positioning statement for startup ID: {startup_id}. Raw output: {positioning_json_str} ---")
+            print(f"--- [Generation Task] Warning: Failed to decode JSON for brand identity for startup ID: {startup_id}. Raw output: {brand_json_str} ---")
 
 
     db.session.commit()
@@ -253,3 +279,167 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
     publish_update("assets_generated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
     
     print(f"--- [Generation Task] Successfully generated assets for startup ID: {startup.id} ---")
+
+def generate_ad_hoc_content(startup_id, topic, channel, content_type='text_only'):
+    """
+    Generates a single ad-hoc content item for a startup.
+    """
+    startup = Startup.query.get(startup_id)
+    if not startup:
+        print(f"--- [Ad-Hoc Task] Error: Startup not found for ID {startup_id}. ---")
+        return None
+
+    # Get Brand Voice context
+    marketing_overview = MarketingOverview.query.filter_by(startup_id=startup.id).first()
+    brand_context = ""
+    if marketing_overview and marketing_overview.brand_details:
+        details = marketing_overview.brand_details
+        brand_context = (
+            f"Tone: {details.get('tone_of_voice', 'Professional')}.\n"
+            f"Target Audience: {', '.join(details.get('target_audience', []))}.\n"
+            f"Brand Archetype: {details.get('brand_archetype', 'N/A')}."
+        )
+
+    # Find or Create "Ad-Hoc" Campaign and Calendar
+    ad_hoc_campaign = MarketingCampaign.query.filter_by(startup_id=startup.id, campaign_name="Ad-Hoc Content").first()
+    if not ad_hoc_campaign:
+        ad_hoc_campaign = MarketingCampaign(
+            startup_id=startup.id,
+            campaign_name="Ad-Hoc Content",
+            objective="To store single, quick-create content items.",
+            created_by=startup.user_id,
+            content_mode=True,
+            start_date=datetime.utcnow()
+        )
+        db.session.add(ad_hoc_campaign)
+        db.session.flush()
+
+    ad_hoc_calendar = MarketingContentCalendar.query.filter_by(campaign_id=ad_hoc_campaign.campaign_id).first()
+    if not ad_hoc_calendar:
+        ad_hoc_calendar = MarketingContentCalendar(
+            campaign_id=ad_hoc_campaign.campaign_id,
+            title="Ad-Hoc Content Calendar",
+            description="Calendar for ad-hoc items",
+            owner_id=startup.user_id,
+            start_date=datetime.utcnow()
+        )
+        db.session.add(ad_hoc_calendar)
+        db.session.flush()
+    
+    # Initialize LLM
+    llm = AzureChatOpenAI(
+        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
+        api_version=os.environ.get("AZURE_OPENAI_API_VERSION"),
+        openai_api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+        azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
+        temperature=0.7,
+        max_tokens=2000,
+        model_kwargs={"response_format": {"type": "json_object"}}
+    )
+
+    # Generate Content
+    prompt = PromptTemplate.from_template(
+        "Generate a marketing content item for specific channel.\n"
+        "Brand Context:\n{brand_context}\n\n"
+        "Topic: {topic}\n"
+        "Channel: {channel}\n"
+        "Content Type: {content_type}\n\n"
+        "If content type implies an image (like 'Post with Image'), provide a detailed 'image_idea' prompt for DALL-E.\n"
+        "Output JSON with keys: 'title', 'content_body', 'image_idea' (optional)."
+    )
+    
+    chain = prompt | llm
+    result_json = chain.invoke({
+        "brand_context": brand_context,
+        "topic": topic,
+        "channel": channel,
+        "content_type": content_type
+    }).content
+
+    try:
+        data = json.loads(result_json)
+        
+        content_item = MarketingContentItem(
+            calendar_id=ad_hoc_calendar.calendar_id,
+            title=data.get('title', f"Ad-Hoc: {topic[:20]}..."),
+            content_body=data.get('content_body'),
+            channel=channel,
+            media_type='image' if data.get('image_idea') else 'text_only',
+            image_prompt=data.get('image_idea'),
+            created_by=startup.user_id,
+            publish_date=datetime.utcnow(),
+            status='DRAFT'
+        )
+
+        if content_item.image_prompt:
+            image_url = generate_marketing_image(content_item.image_prompt)
+            content_item.image_url = image_url
+
+        db.session.add(content_item)
+        db.session.commit()
+        
+        return content_item.to_dict()
+
+    except Exception as e:
+        print(f"Error generating ad-hoc content: {e}")
+        return None
+
+def generate_final_content(startup_id, content_id):
+    """
+    Generates the final content body for a content item based on its brief and optional brand context.
+    """
+    startup = Startup.query.get(startup_id)
+    if not startup:
+        print(f"--- [Generate Content] Error: Startup not found for ID {startup_id}. ---")
+        return None
+
+    content_item = MarketingContentItem.query.get(content_id)
+    if not content_item:
+        print(f"--- [Generate Content] Error: Content item not found for ID {content_id}. ---")
+        return None
+
+    # Get Brand Voice context
+    marketing_overview = MarketingOverview.query.filter_by(startup_id=startup.id).first()
+    brand_context = ""
+    if marketing_overview and marketing_overview.brand_details:
+        details = marketing_overview.brand_details
+        brand_context = (
+            f"Tone: {details.get('tone_of_voice', 'Professional')}.\n"
+            f"Target Audience: {', '.join(details.get('target_audience', []))}.\n"
+            f"Brand Archetype: {details.get('brand_archetype', 'N/A')}."
+        )
+
+    llm = AzureChatOpenAI(
+        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
+        api_version=os.environ.get("AZURE_OPENAI_API_VERSION"),
+        openai_api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+        azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
+        temperature=0.7,
+        max_tokens=2000,
+    )
+
+    prompt = PromptTemplate.from_template(
+        "You are an expert content creator. Generate the final, publication-ready content body for a marketing post.\n\n"
+        "Brand Identity:\n{brand_context}\n\n"
+        "Content Channel: {channel} (Format the content appropriately for this specific platform, e.g., hashtags for Twitter/Instagram, subject line if Email).\n"
+        "Content Type: {content_type}\n"
+        "Content Brief/Instruction: {content_brief}\n\n"
+        "Task: Write the final content body text. Do not include 'Title:' or metadata, just the actual post content."
+    )
+
+    chain = prompt | llm
+    result = chain.invoke({
+        "brand_context": brand_context,
+        "channel": content_item.channel or "General",
+        "content_type": content_item.content_type or "Post",
+        "content_brief": content_item.content_brief or content_item.title
+    }).content
+
+    # Clean up result (remove quotes if wrapped)
+    final_content = result.strip().strip('"')
+
+    content_item.content_body = final_content
+    content_item.status = 'DRAFT' # Ensure it's in draft mode after generation
+    db.session.commit()
+
+    return content_item.to_dict()

@@ -3,67 +3,69 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, Product, Founder, MarketingCampaign, ProductMetric, ProductBusinessDetails, Investor, ActivityLog, DashboardNotification, Feature, Fundraise, NextFundingGoal } from '@/types/dashboard-types';
+import { Scope, Startup, BusinessMonthlyData, FundingRound, Task, Experiment, Artifact, Product, MarketingCampaign, ProductMetric, ProductBusinessDetails, Investor, ActivityLog, DashboardNotification, Feature, Fundraise, NextFundingGoal } from '@/types/dashboard-types';
 import api, { getWebSocketUrl } from '@/utils/api';
-import Sidebar from '@/components/dashboard/Sidebar';
-import Header from '@/components/dashboard/Header';
-import DashboardOverview from './dashboard/DashboardOverview';
-import NotificationCenter from '@/components/dashboard/NotificationCenter';
-import TasksPage from './dashboard/TasksPage';
-import ProductListPage from './dashboard/ProductListPage';
-import ProductDetailPage from './dashboard/ProductDetailPage';
-import ProductMetricsPage from './dashboard/ProductMetricsPage';
-import ProductIssuesPage from './dashboard/ProductIssuesPage';
-import BusinessOverviewPage from './dashboard/BusinessOverviewPage';
-import BusinessMonthlyReportingPage from './dashboard/BusinessMonthlyReportingPage';
-import MonthlyReportDetailModal from '@/components/dashboard/MonthlyReportDetailModal';
-import FundraisingOverviewPage from './dashboard/FundraisingOverviewPage';
-import FundingRoundsPage from './dashboard/FundingRoundsPage';
-import InvestorCrmPage from './dashboard/InvestorCrmPage';
-import FundingRoundDetailPage from './dashboard/FundingRoundDetailPage';
-import MarketingOverviewPage from './dashboard/MarketingOverviewPage';
-import MarketingCampaignsPage from './dashboard/MarketingCampaignsPage';
-import MarketingCampaignDetailPage from './dashboard/MarketingCampaignDetailPage';
-import MarketingContentCalendarPage from './dashboard/MarketingContentCalendarPage';
-import TaskDetailModal from '@/components/dashboard/TaskDetailModal';
-import ExperimentsPage from './dashboard/ExperimentsPage';
-import ExperimentDetailModal from '@/components/dashboard/ExperimentDetailModal';
-import ArtifactsPage from './dashboard/ArtifactsPage';
-import ArtifactDetailModal from '@/components/dashboard/ArtifactDetailModal';
-import TeamPage from './dashboard/TeamPage';
-import SettingsPage from './dashboard/SettingsPage';
+import Sidebar from '@/modules/dashboard/components/Sidebar';
+import Header from '@/modules/dashboard/components/Header';
+import DashboardOverview from '@/modules/dashboard/pages/DashboardOverview';
+import NotificationCenter from '@/modules/dashboard/components/NotificationCenter';
+import TasksPage from '@/modules/dashboard/pages/TasksPage';
+import ProductListPage from '@/modules/product/pages/ProductListPage';
+import ProductDetailPage from '@/modules/product/pages/ProductDetailPage';
+import ProductMetricsPage from '@/modules/product/pages/ProductMetricsPage';
+import ProductIssuesPage from '@/modules/product/pages/ProductIssuesPage';
+import BusinessOverviewPage from '@/modules/business/pages/BusinessOverviewPage';
+import BusinessMonthlyReportingPage from '@/modules/business/pages/BusinessMonthlyReportingPage';
+import MonthlyReportDetailModal from '@/modules/business/components/MonthlyReportDetailModal';
+import FundraisingOverviewPage from '@/modules/fundraising/pages/FundraisingOverviewPage';
+import FundingRoundsPage from '@/modules/fundraising/pages/FundingRoundsPage';
+import InvestorCrmPage from '@/modules/fundraising/pages/InvestorCrmPage';
+import FundingRoundDetailPage from '@/modules/fundraising/pages/FundingRoundDetailPage';
+import MarketingOverviewPage from '@/modules/marketing/pages/MarketingOverviewPage';
+import MarketingCampaignsPage from '@/modules/marketing/pages/MarketingCampaignsPage';
+import MarketingCampaignDetailPage from '@/modules/marketing/pages/MarketingCampaignDetailPage';
+import MarketingContentCalendarPage from '@/modules/marketing/pages/MarketingContentCalendarPage';
+import MarketingSettingsPage from '@/modules/marketing/pages/MarketingSettingsPage';
+import TaskDetailModal from '@/modules/dashboard/components/TaskDetailModal';
+import ExperimentsPage from '@/modules/dashboard/pages/ExperimentsPage';
+import ExperimentDetailModal from '@/modules/dashboard/components/ExperimentDetailModal';
+import ArtifactsPage from '@/modules/dashboard/pages/ArtifactsPage';
+import ArtifactDetailModal from '@/modules/dashboard/components/ArtifactDetailModal';
+import TeamPage from '@/modules/team/pages/TeamPage';
+import SettingsPage from '@/modules/settings/pages/SettingsPage';
 import { Home, Package, Briefcase, DollarSign, Megaphone, BookOpen, Users, Settings } from 'lucide-react';
-import CreateModal from '@/components/dashboard/CreateModal';
-import CreateTaskModal from '@/components/dashboard/CreateTaskModal';
-import CreateExperimentModal from '@/components/dashboard/CreateExperimentModal';
-import CreateArtifactModal from '@/components/dashboard/CreateArtifactModal';
-import CreateProductModal from '@/components/dashboard/CreateProductModal';
-import CreateFeatureModal from '@/components/dashboard/CreateFeatureModal';
-import CreateMetricModal from '@/components/dashboard/CreateMetricModal';
-import CreateIssueModal from '@/components/dashboard/CreateIssueModal';
-import CreateMonthlyReportModal from '@/components/dashboard/CreateMonthlyReportModal';
-import CreateFundingRoundModal from '@/components/dashboard/CreateFundingRoundModal';
-import CreateInvestorModal from '@/components/dashboard/CreateInvestorModal';
-import CreateCampaignModal from '@/components/dashboard/CreateCampaignModal';
-import CreateContentItemModal from '@/components/dashboard/CreateContentItemModal';
-import CreateFounderModal from '@/components/dashboard/CreateFounderModal';
-import EditBusinessOverviewModal from '@/components/dashboard/EditBusinessOverviewModal';
-import EditFundraisingGoalsModal from '@/components/dashboard/EditFundraisingGoalsModal';
-import EditCampaignModal from '@/components/dashboard/EditCampaignModal';
-import EditFounderModal from '@/components/dashboard/EditFounderModal';
-import EditProductModal from '@/components/dashboard/EditProductModal';
-import EditProductBusinessDetailsModal from '@/components/dashboard/EditProductBusinessDetailsModal';
-import AddInvestmentModal from '@/components/dashboard/AddInvestmentModal';
+import CreateModal from '@/modules/dashboard/components/CreateModal';
+import CreateTaskModal from '@/modules/dashboard/components/CreateTaskModal';
+import CreateExperimentModal from '@/modules/dashboard/components/CreateExperimentModal';
+import CreateArtifactModal from '@/modules/dashboard/components/CreateArtifactModal';
+import CreateProductModal from '@/modules/product/components/CreateProductModal';
+import CreateFeatureModal from '@/modules/product/components/CreateFeatureModal';
+import CreateMetricModal from '@/modules/product/components/CreateMetricModal';
+import CreateIssueModal from '@/modules/product/components/CreateIssueModal';
+import CreateMonthlyReportModal from '@/modules/business/components/CreateMonthlyReportModal';
+import CreateFundingRoundModal from '@/modules/fundraising/components/CreateFundingRoundModal';
+import CreateInvestorModal from '@/modules/fundraising/components/CreateInvestorModal';
+import CreateCampaignModal from '@/modules/marketing/components/CreateCampaignModal';
+import CreateContentItemModal from '@/modules/marketing/components/CreateContentItemModal';
 
-import EditFundingRoundModal from '@/components/dashboard/EditFundingRoundModal';
-import EditMetricModal from '@/components/dashboard/EditMetricModal';
-import EditFeatureModal from '@/components/dashboard/EditFeatureModal';
-import UserSettingsPage from '@/pages/dashboard/UserSettingsPage';
+import EditBusinessOverviewModal from '@/modules/business/components/EditBusinessOverviewModal';
+import EditFundraisingGoalsModal from '@/modules/fundraising/components/EditFundraisingGoalsModal';
+import EditCampaignModal from '@/modules/marketing/components/EditCampaignModal';
+
+import EditProductModal from '@/modules/product/components/EditProductModal';
+import EditProductBusinessDetailsModal from '@/modules/product/components/EditProductBusinessDetailsModal';
+import AddInvestmentModal from '@/modules/fundraising/components/AddInvestmentModal';
+
+import EditFundingRoundModal from '@/modules/fundraising/components/EditFundingRoundModal';
+import EditMetricModal from '@/modules/product/components/EditMetricModal';
+import EditFeatureModal from '@/modules/product/components/EditFeatureModal';
+import UserSettingsPage from '@/modules/settings/pages/UserSettingsPage';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { BusinessOverview, StartupStage } from '@/types/dashboard-types';
-import AssetGenerationModal from '@/components/dashboard/AssetGenerationModal';
+import AssetGenerationModal from '@/modules/dashboard/components/AssetGenerationModal';
 import RequireScope from '@/components/auth/RequireScope';
+import AiAssistant from '@/modules/dashboard/components/AiAssistant';
 
 type CreateModalType = 'task' | 'experiment' | 'artifact';
 
@@ -75,215 +77,69 @@ const DashboardPage: React.FC = () => {
         queryKey: ['startupData', user?.startup_id],
         queryFn: async () => {
             if (!user?.startup_id) throw new Error("Startup ID not found");
-            const data = await api.getStartupData(user.startup_id);
-            // Also fetch marketing overview and merge it
-            const marketingOverview = await api.getMarketingOverview(user.startup_id);
-            const activity = await api.getRecentActivity(user.startup_id);
-            const notifications = await api.getNotifications();
-            return { ...data, marketing_overview: marketingOverview, activity, notifications };
+            return api.getStartupData(user.startup_id);
         },
         enabled: !!user?.startup_id,
-        // Refetch data on window focus for consistency
         refetchOnWindowFocus: true,
     });
 
+    const { data: notifications = [] } = useQuery({
+        queryKey: ['notifications'],
+        queryFn: () => api.getNotifications(),
+        enabled: !!user?.startup_id,
+    });
+
     const isLoading = authLoading || (!!user?.startup_id && isQueryLoading);
-
-    // --- Local State for UI rendering (populated by useQuery) ---
-    // These act as a bridge until all create/update handlers are also refactored
-    const [startupData, setStartupData] = useState<Startup | null>(null);
-    const [tasks, setTasks] = useState<Task[] | null>(null);
-    const [experiments, setExperiments] = useState<Experiment[] | null>(null);
-    const [artifacts, setArtifacts] = useState<Artifact[] | null>(null);
-    const [products, setProducts] = useState<Product[] | null>(null);
-    const [monthlyReports, setMonthlyReports] = useState<BusinessMonthlyData[] | null>(null);
-    const [fundingRounds, setFundingRounds] = useState<FundingRound[] | null>(null);
-    const [investors, setInvestors] = useState<Investor[] | null>(null);
-    const [founders, setFounders] = useState<Founder[] | null>(null);
-    const [marketingCampaigns, setMarketingCampaigns] = useState<MarketingCampaign[] | null>(null);
-    const [activity, setActivity] = useState<ActivityLog[]>([]);
-    const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
-
-    useEffect(() => {
-        if (startup) {
-            setStartupData(startup);
-            setTasks(startup.tasks || []);
-            setExperiments(startup.experiments || []);
-            setArtifacts(startup.artifacts || []);
-            setProducts(startup.products || []);
-            setMonthlyReports(startup.monthly_data || []);
-            setFundingRounds(startup.funding_rounds || []);
-            setInvestors(startup.investors || []);
-            setFounders(startup.founders || []);
-            setMarketingCampaigns(startup.marketing_campaigns || []);
-            setActivity(startup.activity || []);
-            setNotifications(startup.notifications || []);
-        }
-    }, [startup]);
-
-    // --- Socket.IO Listener for Real-time Updates ---
     const queryClient = useQueryClient();
 
+    // --- Socket.IO Listener for Real-time Updates ---
     useEffect(() => {
         if (!user?.startup_id || !token) return;
 
-        // NEW: Native WebSocket Connection
         const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
         const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
-        ws.onopen = () => {
-            console.log('Connected to dashboard notifications WebSocket (Native)');
-        };
+        ws.onopen = () => { console.log('Connected to dashboard notifications WebSocket'); };
 
         ws.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                console.log("Received WS message:", message);
                 const { type, data } = message;
 
-                if (data.startup_id !== user.startup_id) {
-                    // For 'analysis_completed', the payload might be keyed differently or we filter by startup_id
-                    // But wait, the admin dashboard sends submission_id. 
-                    // Let's assume dashboard checks startup_id if present.
-                    // The backend 'analysis_completed' for startup dashboard might need check
-                    // Actually analysis_completed sends submission_id and we have no startup_id in data top level?
-                    // Let's check backend payload: "startup_id": submission.startup.id if submission.startup else None
-                    // Wait, in analyzer_service.py/admin.py: analysis_completed -> submission_id, evaluation, submission_status. 
-                    // It does NOT send startup_id in payload in analyzer_service.py?
-                    // Ah, analyzer_service.py does NOT send startup_id in analysis_completed!
-                    // 'submission_status_updated' sends startup_id. 'analysis_completed' sends message, submission_id, evaluation.
-                    // But this is Startup Dashboard. It knows its own submission_id.
+                if (data.startup_id !== user.startup_id && type !== 'analysis_completed') {
+                    // Filter out if needed, though usually user specific tokens prevent this.
                 }
 
                 switch (type) {
                     case 'assets_generation_completed':
-                        if (data.status === 'error') {
-                            toast.error(data.message || "Failed to generate assets.");
-                        } else {
-                            toast.success(data.message || "Assets generated successfully!");
-                            // Optimistic update using payload
-                            if (data.startup) {
-                                queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
-                                    if (!oldData) return data.startup;
-                                    return {
-                                        ...data.startup,
-                                        marketing_overview: oldData.marketing_overview,
-                                        activity: oldData.activity,
-                                        notifications: oldData.notifications
-                                    };
-                                });
-                            }
-                        }
+                        toast.success(data.message || "Assets generated successfully!");
+                        queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
+                        queryClient.invalidateQueries({ queryKey: ['marketingOverview', user.startup_id] });
+                        queryClient.invalidateQueries({ queryKey: ['campaigns', user.startup_id] });
                         break;
-
                     case 'scope_generation_completed':
-                        if (data.status === 'error') {
-                            toast.error(data.message || "Failed to generate scope.");
-                        } else {
-                            toast.success(data.message || "Scope generated successfully!");
-                            if (data.startup) {
-                                queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
-                                    if (!oldData) return data.startup;
-                                    return {
-                                        ...data.startup,
-                                        marketing_overview: oldData.marketing_overview,
-                                        activity: oldData.activity,
-                                        notifications: oldData.notifications
-                                    };
-                                });
-                            }
-                        }
-                        break;
-
                     case 'contract_generation_completed':
-                        if (data.status === 'error') {
-                            toast.error(data.message || "Failed to generate contract.");
-                        } else {
-                            toast.success(data.message || "Contract generated successfully!");
-                            if (data.startup) {
-                                queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
-                                    if (!oldData) return data.startup;
-                                    return {
-                                        ...data.startup,
-                                        marketing_overview: oldData.marketing_overview,
-                                        activity: oldData.activity,
-                                        notifications: oldData.notifications
-                                    };
-                                });
-                            }
-                        }
+                        toast.success(data.message || "Generated successfully!");
+                        queryClient.invalidateQueries({ queryKey: ['startupData', user.startup_id] });
                         break;
-
-                    case 'analysis_completed':
-                        // analysis_completed payload: { submission_id, evaluation, submission_status }
-                        // We need to merge this into the existing startup.submission
-                        toast.success(data.message || "Evaluation analysis completed!");
-                        queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
-                            if (!oldData || !oldData.submission) return oldData;
-                            return {
-                                ...oldData,
-                                submission: {
-                                    ...oldData.submission,
-                                    status: data.submission_status,
-                                    evaluation: data.evaluation
-                                }
-                            };
-                        });
-                        break;
-
-                    case 'analysis_failed':
-                        toast.error(data.message || "Evaluation analysis failed.");
-                        // No data update needed for failure, maybe just status?
-                        break;
-
                     case 'product_generated':
-                        if (data.startup_id === user.startup_id) {
-                            toast.success("Product generated successfully!");
-                            queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
-                                if (!oldData) return oldData;
-                                const newProduct = data.product;
-                                // Avoid duplicates
-                                if (oldData.products?.find((p: Product) => p.id === newProduct.id)) return oldData;
-                                return {
-                                    ...oldData,
-                                    products: [...(oldData.products || []), newProduct]
-                                };
-                            });
-                        }
+                        toast.success("Product generated successfully!");
+                        queryClient.invalidateQueries({ queryKey: ['products', user.startup_id] });
                         break;
-
                     case 'campaigns_generated':
-                        if (data.startup_id === user.startup_id) {
-                            toast.success("Marketing campaigns generated successfully!");
-                            queryClient.setQueryData(['startupData', user.startup_id], (oldData: any) => {
-                                if (!oldData) return oldData;
-                                // Replace campaigns or merge? Usually replaces initial empty ones.
-                                return {
-                                    ...oldData,
-                                    marketing_campaigns: data.campaigns || []
-                                };
-                            });
-                        }
+                        toast.success("Marketing campaigns generated successfully!");
+                        queryClient.invalidateQueries({ queryKey: ['campaigns', user.startup_id] });
                         break;
-
                     default:
-                        // Ignore unknown events
                         break;
                 }
-
-            } catch (error) {
-                console.error("Failed to parse WebSocket message:", error);
-            }
+            } catch (error) { console.error("WS Error", error); }
         };
 
-        ws.onclose = () => {
-            console.log('Disconnected from dashboard notifications WebSocket');
-        };
-
-        return () => {
-            ws.close();
-        };
+        return () => { ws.close(); };
     }, [user?.startup_id, token, queryClient]);
+
+
 
     // --- Asset Generation Modal Logic ---
     const [isAssetGenerationModalOpen, setIsAssetGenerationModalOpen] = useState(false);
@@ -292,19 +148,19 @@ const DashboardPage: React.FC = () => {
     useEffect(() => {
         if (hasCheckedAssetsRef.current) return;
 
-        if (startupData && startupData.current_stage === StartupStage.ADMITTED) {
-            const hasProduct = (startupData.products || []).length > 0;
-            const hasGtm = (startupData.marketing_campaigns || []).length > 0;
+        if (startup && startup.current_stage === StartupStage.ADMITTED) {
+            const hasProduct = startup.has_product ?? (startup.products || []).length > 0;
+            const hasGtm = startup.has_gtm ?? (startup.marketing_campaigns || []).length > 0;
 
             if (!hasProduct || !hasGtm) {
-                const hideModal = localStorage.getItem(`hide_asset_modal_${startupData.id}`);
+                const hideModal = localStorage.getItem(`hide_asset_modal_${startup.id}`);
                 if (!hideModal) {
                     setIsAssetGenerationModalOpen(true);
                 }
             }
             hasCheckedAssetsRef.current = true;
         }
-    }, [startupData]);
+    }, [startup]);
 
 
     // --- UI State (Navigation, Modals, etc.) ---
@@ -336,15 +192,15 @@ const DashboardPage: React.FC = () => {
     const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
     const [isCreateContentItemModalOpen, setIsCreateContentItemModalOpen] = useState(false);
     const [selectedCampaignForContent, setSelectedCampaignForContent] = useState<number | null>(null);
-    const [isCreateFounderModalOpen, setIsCreateFounderModalOpen] = useState(false);
+
     const [isEditBusinessOverviewModalOpen, setIsEditBusinessOverviewModalOpen] = useState(false);
     const [isEditFundraisingGoalsModalOpen, setIsEditFundraisingGoalsModalOpen] = useState(false);
     const [isEditCampaignModalOpen, setIsEditCampaignModalOpen] = useState(false);
     const [selectedCampaignToEdit, setSelectedCampaignToEdit] = useState<MarketingCampaign | null>(null);
     const [selectedLinkedScope, setSelectedLinkedScope] = useState<Scope | null>(null);
     const [selectedLinkedId, setSelectedLinkedId] = useState<number | null>(null);
-    const [isEditFounderModalOpen, setIsEditFounderModalOpen] = useState(false);
-    const [selectedFounderToEdit, setSelectedFounderToEdit] = useState<Founder | null>(null);
+
+
     const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false);
     const [selectedProductToEdit, setSelectedProductToEdit] = useState<Product | null>(null);
     const [isEditProductBusinessDetailsModalOpen, setIsEditProductBusinessDetailsModalOpen] = useState(false);
@@ -401,233 +257,186 @@ const DashboardPage: React.FC = () => {
     };
 
     // --- Create/Update/Delete Handlers (Unchanged for now) ---
+    // --- Create/Update/Delete Handlers (Refactored to Invalidate Queries) ---
     const handleCreateTask = async (newTaskData: Omit<Task, 'id' | 'startup_id' | 'created_at'>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newTask = await api.createTask(startupData.id, newTaskData);
-            setTasks(prev => [...(prev || []), newTask]);
+            await api.createTask(startup.id, newTaskData);
+            queryClient.invalidateQueries({ queryKey: ['tasks', startup.id] });
+            queryClient.invalidateQueries({ queryKey: ['dashboardOverview', startup.id] });
             setIsCreateTaskModalOpen(false);
         } catch (error) { console.error("Failed to create task:", error); }
     };
-    // ... all other handleCreate, handleUpdate, handleDelete functions remain the same for now...
     const handleCreateExperiment = async (newExperimentData: Omit<Experiment, 'id' | 'startup_id' | 'created_at' | 'status'>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newExperiment = await api.createExperiment(startupData.id, newExperimentData);
-            setExperiments(prev => [...(prev || []), newExperiment]);
+            await api.createExperiment(startup.id, newExperimentData);
+            queryClient.invalidateQueries({ queryKey: ['experiments', startup.id] });
             setIsCreateExperimentModalOpen(false);
         } catch (error) { console.error("Failed to create experiment:", error); }
     };
     const handleCreateArtifact = async (newArtifactData: Omit<Artifact, 'id' | 'startup_id' | 'created_at'>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newArtifact = await api.createArtifact(startupData.id, newArtifactData);
-            setArtifacts(prev => [...(prev || []), newArtifact]);
+            await api.createArtifact(startup.id, newArtifactData);
+            queryClient.invalidateQueries({ queryKey: ['artifacts', startup.id] });
             setIsCreateArtifactModalOpen(false);
         } catch (error) { console.error("Failed to create artifact:", error); }
     };
     const handleCreateProduct = async (newProductData: Omit<Product, 'id' | 'startup_id' | 'tech_stack' | 'features' | 'metrics' | 'issues' | 'business_details'>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newProduct = await api.createProduct(startupData.id, newProductData);
-            setProducts(prev => [...(prev || []), newProduct]);
+            await api.createProduct(startup.id, newProductData);
+            queryClient.invalidateQueries({ queryKey: ['products', startup.id] });
             setIsCreateProductModalOpen(false);
         } catch (error) { console.error("Failed to create product:", error); }
     };
+    // Note: Some handlers like createFeature need to invalidate 'products' as specific product data changed
     const handleCreateFeature = async (newFeatureData: Omit<any, 'id' | 'product_id'>, productId: number) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newFeature = await api.createFeature(startupData.id, productId, newFeatureData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, features: [...p.features, newFeature] } : p) : null);
+            await api.createFeature(startup.id, productId, newFeatureData);
+            queryClient.invalidateQueries({ queryKey: ['products', startup.id] }); // Or more specific if DetailPage has specific key
             setIsCreateFeatureModalOpen(false);
         } catch (error) { console.error("Failed to create feature:", error); }
     };
     const handleCreateMetric = async (newMetricData: Omit<ProductMetric, 'metric_id' | 'product_id'>, productId: number) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newMetric = await api.createMetric(startupData.id, productId, newMetricData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, product_metrics: [...p.product_metrics, newMetric] } : p) : null);
+            await api.createMetric(startup.id, productId, newMetricData);
+            queryClient.invalidateQueries({ queryKey: ['products', startup.id] });
             setIsCreateMetricModalOpen(false);
         } catch (error) { console.error("Failed to create metric:", error); }
     };
     const handleCreateIssue = async (newIssueData: Omit<any, 'issue_id' | 'product_id' | 'created_by' | 'created_at'>, productId: number) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newIssue = await api.createIssue(startupData.id, productId, newIssueData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, product_issues: [...p.product_issues, newIssue] } : p) : null);
+            await api.createIssue(startup.id, productId, newIssueData);
+            queryClient.invalidateQueries({ queryKey: ['products', startup.id] });
             setIsCreateIssueModalOpen(false);
         } catch (error) { console.error("Failed to create issue:", error); }
     };
     const handleCreateMonthlyReport = async (newReportData: Omit<BusinessMonthlyData, 'record_id' | 'startup_id' | 'created_by' | 'created_at'>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newReport = await api.createMonthlyReport(startupData.id, newReportData);
-            setMonthlyReports(prev => [...(prev || []), newReport]);
+            await api.createMonthlyReport(startup.id, newReportData);
+            queryClient.invalidateQueries({ queryKey: ['businessMonthlyReports', startup.id] });
+            queryClient.invalidateQueries({ queryKey: ['businessOverview', startup.id] }); // Metrics might update
             setIsCreateReportModalOpen(false);
         } catch (error) { console.error("Failed to create monthly report:", error); }
     };
     const handleCreateFundingRound = async (newRoundData: Omit<FundingRound, 'round_id' | 'startup_id' | 'created_at' | 'amount_raised' | 'valuation_post' | 'investors'>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newRound = await api.createFundingRound(startupData.id, newRoundData);
-            setFundingRounds(prev => [...(prev || []), newRound]);
+            await api.createFundingRound(startup.id, newRoundData);
+            queryClient.invalidateQueries({ queryKey: ['fundingRounds', startup.id] });
             setIsCreateFundingRoundModalOpen(false);
         } catch (error) { console.error("Failed to create funding round:", error); }
     };
     const handleCreateInvestor = async (newInvestorData: Omit<Investor, 'investor_id' | 'created_at'>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newInvestor = await api.createInvestor(startupData.id, newInvestorData);
-            setInvestors(prev => [...(prev || []), newInvestor]);
+            await api.createInvestor(startup.id, newInvestorData);
+            queryClient.invalidateQueries({ queryKey: ['investors', startup.id] });
             setIsCreateInvestorModalOpen(false);
         } catch (error) { console.error("Failed to create investor:", error); }
     };
     const handleCreateCampaign = async (newCampaignData: Omit<MarketingCampaign, 'campaign_id' | 'startup_id' | 'created_by' | 'created_at' | 'content_calendar' | 'spend'>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newCampaign = await api.createCampaign(startupData.id, newCampaignData);
-            setMarketingCampaigns(prev => [...(prev || []), { ...newCampaign, content_mode: newCampaignData.content_mode }]);
+            await api.createCampaign(startup.id, newCampaignData);
+            queryClient.invalidateQueries({ queryKey: ['campaigns', startup.id] });
             setIsCreateCampaignModalOpen(false);
         } catch (error) { console.error("Failed to create campaign:", error); }
     };
     const handleCreateContentItem = async (newContentData: Omit<any, 'content_id' | 'calendar_id' | 'created_by' | 'created_at'>, campaignId: number) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const newItem = await api.createContentItem(startupData.id, campaignId, newContentData);
-            setMarketingCampaigns(prev => {
-                if (!prev) return null;
-                return prev.map(c => {
-                    if (c.campaign_id === campaignId && c.content_calendars && c.content_calendars.length > 0) {
-                        const updatedContentCalendars = c.content_calendars.map((calendar, index) => {
-                            if (index === 0) { return { ...calendar, content_items: [...calendar.content_items, newItem] }; }
-                            return calendar;
-                        });
-                        return { ...c, content_calendars: updatedContentCalendars };
-                    }
-                    return c;
-                });
-            });
+            await api.createContentItem(startup.id, campaignId, newContentData);
+            queryClient.invalidateQueries({ queryKey: ['campaigns', startup.id] });
             setIsCreateContentItemModalOpen(false);
         } catch (error) { console.error("Failed to create content item:", error); }
     };
-    const handleCreateFounder = async (newFounderData: Omit<Founder, 'id' | 'startup_id'>) => {
-        if (!startupData) return;
-        try {
-            const newFounder = await api.createFounder(startupData.id, newFounderData);
-            setFounders(prev => [...(prev || []), newFounder]);
-            setIsCreateFounderModalOpen(false);
-        } catch (error) { console.error("Failed to create founder:", error); }
-    };
     const handleUpdateStartupSettings = async (updatedSettings: { name: string; slug: string; next_milestone: string }) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const updatedStartup = await api.updateStartupSettings(startupData.id, updatedSettings);
-            setStartupData(updatedStartup);
+            await api.updateStartupSettings(startup.id, updatedSettings);
+            queryClient.invalidateQueries({ queryKey: ['startupData', startup.id] });
         } catch (error) { console.error("Failed to update startup settings:", error); }
     };
+
     const handleUpdateBusinessOverview = async (updatedData: Partial<BusinessOverview>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const updatedBusinessOverview = await api.updateBusinessOverview(startupData.id, updatedData);
-            setStartupData(prev => prev ? ({ ...prev, business_overview: updatedBusinessOverview }) : null);
+            await api.updateBusinessOverview(startup.id, updatedData);
+            queryClient.invalidateQueries({ queryKey: ['businessOverview', startup.id] });
             setIsEditBusinessOverviewModalOpen(false);
         } catch (error) { console.error("Failed to update business overview:", error); }
     };
-    const handleUpdateFundraisingGoals = async (updatedFundraiseData: Partial<Fundraise>, updatedNextFundingGoalData: Partial<any>) => {
-        if (!startupData) return;
+
+    const handleUpdateFundraisingGoals = async (updatedData: Partial<Fundraise>) => {
+        if (!startup) return;
         try {
-            const response = await api.updateFundraisingGoals(startupData.id, updatedFundraiseData, updatedNextFundingGoalData);
-            setStartupData(prev => prev ? ({ ...prev, fundraise_details: response.fundraise_details }) : null);
+            await api.updateFundraisingGoals(startup.id, updatedData, {});
+            queryClient.invalidateQueries({ queryKey: ['fundraiseDetails', startup.id] });
             setIsEditFundraisingGoalsModalOpen(false);
         } catch (error) { console.error("Failed to update fundraising goals:", error); }
     };
+    // Update handlers for modals that are still in DashboardPage
     const handleUpdateCampaign = async (campaignId: number, updatedData: Partial<MarketingCampaign>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const response = await api.updateCampaign(startupData.id, campaignId, updatedData);
-            setMarketingCampaigns(prev => prev ? prev.map(c => c.campaign_id === campaignId ? response : c) : null);
+            await api.updateCampaign(startup.id, campaignId, updatedData);
+            queryClient.invalidateQueries({ queryKey: ['campaigns', startup.id] });
             setIsEditCampaignModalOpen(false);
         } catch (error) { console.error("Failed to update campaign:", error); }
     };
-    const handleUpdateFounder = async (founderId: number, updatedData: Partial<Founder>) => {
-        if (!startupData) return;
-        try {
-            const response = await api.updateFounder(startupData.id, founderId, updatedData);
-            setFounders(prev => prev ? prev.map(f => f.id === founderId ? response : f) : null);
-            setIsEditFounderModalOpen(false);
-        } catch (error) { console.error("Failed to update founder:", error); }
-    };
-    const handleDeleteFounder = async (founderId: number) => {
-        if (!startupData) return;
-        try {
-            await api.deleteFounder(startupData.id, founderId);
-            setFounders(prev => prev ? prev.filter(f => f.id !== founderId) : null);
-        } catch (error) { console.error("Failed to delete founder:", error); }
-    };
     const handleUpdateProduct = async (productId: number, updatedData: Partial<Product>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const response = await api.updateProduct(startupData.id, productId, updatedData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? response : p) : null);
+            await api.updateProduct(startup.id, productId, updatedData);
+            queryClient.invalidateQueries({ queryKey: ['products', startup.id] });
             setIsEditProductModalOpen(false);
         } catch (error) { console.error("Failed to update product:", error); }
     };
     const handleUpdateProductBusinessDetails = async (productId: number, updatedData: Partial<ProductBusinessDetails>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const response = await api.updateProductBusinessDetails(startupData.id, productId, updatedData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, business_details: response } : p) : null);
+            await api.updateProductBusinessDetails(startup.id, productId, updatedData);
+            queryClient.invalidateQueries({ queryKey: ['products', startup.id] });
             setIsEditProductBusinessDetailsModalOpen(false);
         } catch (error) { console.error("Failed to update product business details:", error); }
     };
     const handleUpdateFundingRound = async (roundId: number, updatedData: Partial<FundingRound>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const response = await api.updateFundingRound(startupData.id, roundId, updatedData);
-            setFundingRounds(prev => prev ? prev.map(r => r.round_id === roundId ? response : r) : null);
+            await api.updateFundingRound(startup.id, roundId, updatedData);
+            queryClient.invalidateQueries({ queryKey: ['fundingRounds', startup.id] });
             setIsEditFundingRoundModalOpen(false);
         } catch (error) { console.error("Failed to update funding round:", error); }
     };
     const handleUpdateMetric = async (productId: number, metricId: number, updatedData: Partial<ProductMetric>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const response = await api.updateMetric(startupData.id, productId, metricId, updatedData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, product_metrics: p.product_metrics.map(m => m.metric_id === metricId ? response : m) } : p) : null);
+            await api.updateMetric(startup.id, productId, metricId, updatedData);
+            queryClient.invalidateQueries({ queryKey: ['products', startup.id] });
             setIsEditMetricModalOpen(false);
         } catch (error) { console.error("Failed to update metric:", error); }
     };
     const handleUpdateFeature = async (productId: number, featureId: number, updatedData: Partial<Feature>) => {
-        if (!startupData) return;
+        if (!startup) return;
         try {
-            const response = await api.updateFeature(startupData.id, productId, featureId, updatedData);
-            setProducts(prev => prev ? prev.map(p => p.id === productId ? { ...p, features: p.features.map(f => f.id === featureId ? response : f) } : p) : null);
+            await api.updateFeature(startup.id, productId, featureId, updatedData);
+            queryClient.invalidateQueries({ queryKey: ['products', startup.id] });
             setIsEditFeatureModalOpen(false);
         } catch (error) { console.error("Failed to update feature:", error); }
     };
 
     const handleCreateInvestment = async (investorId: number, amount: number) => {
-        if (!startupData || selectedRoundIdForInvestment === null) return;
+        if (!startup || selectedRoundIdForInvestment === null) return;
         try {
-            await api.createInvestment(startupData.id, selectedRoundIdForInvestment, investorId, amount);
-            // Optimistically update the UI is tricky without full investor object, so we rely on refetch or partial update
-            // Ideally we should refetch or have the backend return the enriched object.
-            // For now, let's assume we can find the investor in the 'investors' list.
-            const investor = investors?.find(i => i.investor_id === investorId);
-
-            setFundingRounds(prev => prev ? prev.map(r => {
-                if (r?.round_id === selectedRoundIdForInvestment) {
-                    const updatedRound = { ...r, amount_raised: (r.amount_raised || 0) + amount };
-                    if (investor) {
-                        updatedRound.investors = [...(updatedRound.investors || []), {
-                            investor: investor,
-                            amount_invested: amount
-                        } as any]; // Cast to avoid strict type issues if properties missing
-                    }
-                    return updatedRound;
-                }
-                return r;
-            }) : null);
-
+            await api.createInvestment(startup.id, selectedRoundIdForInvestment, investorId, amount);
+            queryClient.invalidateQueries({ queryKey: ['fundingRounds', startup.id] });
             setIsAddInvestmentModalOpen(false);
         } catch (error) { console.error("Failed to create investment:", error); }
     };
@@ -641,52 +450,38 @@ const DashboardPage: React.FC = () => {
     const handleBackToList = () => setSelectedProductId(null);
     const handleBackToRoundsList = () => setSelectedFundingRoundId(null);
     const handleBackToCampaignsList = () => setSelectedCampaignId(null);
+
     const getLinkedEntityName = (type?: string, id?: number): string | null => {
-        // ... same as before
-        if (!type || !id || !startupData) return null;
-        switch (type) {
-            case 'Product': return startupData.products.find(p => p.id === id)?.name || null;
-            case 'FundingRound': return startupData.funding_rounds.find(r => r.round_id === id)?.round_type || null;
-            case 'MarketingCampaign': return startupData.marketing_campaigns.find(c => c.campaign_id === id)?.campaign_name || null;
-            default: return null;
-        }
+        if (!type || !id) return null;
+        return `${type} #${id}`; // Placeholder until backend update
     };
+
     const handlePositioningStatementUpdate = (newStatement: string) => {
-        // ... same as before
-        setStartupData(prev => {
-            if (!prev) return null;
-            const newMarketingOverview = prev.marketing_overview ? { ...prev.marketing_overview, positioning_statement: newStatement } : { marketing_id: 0, startup_id: prev.id, positioning_statement: newStatement };
-            return { ...prev, marketing_overview: newMarketingOverview };
-        });
+        queryClient.invalidateQueries({ queryKey: ['marketingOverview', startup?.id] });
     };
 
     const handleMarkNotificationAsRead = async (id: number) => {
         try {
             await api.markNotificationAsRead(id);
-            // Optimistically update local state
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
         } catch (error) { console.error("Failed to mark notification as read:", error); }
     };
 
+    const startupData = startup; // Alias for compatibility if needed, but we prefer using 'startup'
+
     // --- Render Logic ---
     const renderContent = () => {
-        // ... This function remains the same, but it will now use the local state
-        // that is populated by the useEffect listening to the `useQuery` data.
-        if (!startupData) return null;
-        // ... same switch statement as before
+        if (!startup) return null;
+
         switch (activeScope) {
             case Scope.DASHBOARD:
-                return <DashboardOverview startupData={{ ...startupData, monthly_data: monthlyReports || [] }} recentActivity={activity} />;
+                return <DashboardOverview startupId={startup.id} />;
 
             case Scope.PRODUCT:
                 if (activeSubPage === 'Products List') {
-                    const selectedProduct = products?.find(p => p.id === selectedProductId);
-                    if (selectedProduct) {
+                    if (selectedProductId) {
                         return <ProductDetailPage
-                            product={selectedProduct}
-                            linkedTasks={tasks?.filter(t => t.linked_to_type === 'Product' && t.linked_to_id === selectedProduct.id) || []}
-                            linkedExperiments={experiments?.filter(e => e.linked_to_type === 'Product' && e.linked_to_id === selectedProduct.id) || []}
-                            linkedArtifacts={artifacts?.filter(a => a.linked_to_type === 'Product' && a.linked_to_id === selectedProduct.id) || []}
+                            productId={selectedProductId}
                             onBack={handleBackToList}
                             onAddFeature={() => setIsCreateFeatureModalOpen(true)}
                             onAddMetric={() => setIsCreateMetricModalOpen(true)}
@@ -709,110 +504,83 @@ const DashboardPage: React.FC = () => {
                             }}
                         />;
                     }
-                    return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} isGeneratingProduct={startupData.is_generating_product} />;
+                    return <ProductListPage startupId={startup.id} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} isGeneratingProduct={startup.is_generating_product} />;
                 }
                 if (activeSubPage === 'Product Metrics') {
-                    return <ProductMetricsPage startupId={startupData.id} products={products || []} setProducts={setProducts} onAddNewMetric={() => setIsCreateMetricModalOpen(true)} />;
+                    return <ProductMetricsPage startupId={startup.id} onAddNewMetric={() => setIsCreateMetricModalOpen(true)} />;
                 }
                 if (activeSubPage === 'Issues & Feedback') {
-                    return <ProductIssuesPage startupId={startupData.id} products={products} setProducts={setProducts} onAddNewIssue={() => setIsCreateIssueModalOpen(true)} />;
+                    return <ProductIssuesPage startupId={startup.id} onAddNewIssue={() => setIsCreateIssueModalOpen(true)} />;
                 }
-                return <ProductListPage startupId={startupData.id} products={products || []} setProducts={setProducts} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} isGeneratingProduct={startupData.is_generating_product} />;
+                return <ProductListPage startupId={startup.id} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} isGeneratingProduct={startup.is_generating_product} />;
 
             case Scope.BUSINESS:
                 if (activeSubPage === 'Overview & Model') {
-                    return <BusinessOverviewPage
-                        businessOverview={startupData.business_overview || {} as BusinessOverview}
-                        monthlyData={monthlyReports || []}
-                        onEdit={() => setIsEditBusinessOverviewModalOpen(true)}
-                    />;
-                } if (activeSubPage === 'Monthly Reporting') {
+                    return <BusinessOverviewPage startupId={startup.id} />;
+                }
+                if (activeSubPage === 'Monthly Reporting') {
                     return <BusinessMonthlyReportingPage
-                        startupId={startupData.id}
-                        monthlyData={monthlyReports || []}
-                        setMonthlyData={setMonthlyReports}
+                        startupId={startup.id}
                         onRowClick={handleOpenReportModal}
                         onAddNewReport={() => setIsCreateReportModalOpen(true)}
                     />;
                 }
-                return <BusinessOverviewPage
-                    businessOverview={startupData.business_overview || {} as BusinessOverview}
-                    monthlyData={monthlyReports || []}
-                    onEdit={() => setIsEditBusinessOverviewModalOpen(true)}
-                />; case Scope.FUNDRAISING:
+                return <BusinessOverviewPage startupId={startup.id} />;
+
+            case Scope.FUNDRAISING:
                 if (activeSubPage === 'Overview') {
-                    return <FundraisingOverviewPage
-                        fundraiseDetails={startupData.fundraise_details as Fundraise}
-                        onEdit={() => setIsEditFundraisingGoalsModalOpen(true)}
-                    />;
+                    return <FundraisingOverviewPage startupId={startup.id} />;
                 }
                 if (activeSubPage === 'Funding Rounds') {
-                    const selectedRound = fundingRounds?.find(r => r?.round_id === selectedFundingRoundId);
-                    if (selectedRound) {
-                        return <><FundingRoundDetailPage
-                            round={selectedRound}
-                            investors={investors || []}
-                            linkedTasks={tasks?.filter(t => t.linked_to_type === 'FundingRound' && t.linked_to_id === selectedRound.round_id) || []}
-                            linkedArtifacts={artifacts?.filter(a => a.linked_to_type === 'FundingRound' && a.linked_to_id === selectedRound.round_id) || []}
-                            onBack={handleBackToRoundsList}
-                            onEditRound={(round) => { setSelectedFundingRoundToEdit(round); setIsEditFundingRoundModalOpen(true); }}
-                            onAddInvestor={openAddInvestmentModal}
-                            onAddTask={(roundId) => {
-                                setSelectedLinkedScope(Scope.FUNDRAISING);
-                                setSelectedLinkedId(roundId);
-                                setIsCreateTaskModalOpen(true);
-                            }}
-                            onAddArtifact={(roundId) => {
-                                setSelectedLinkedScope(Scope.FUNDRAISING);
-                                setSelectedLinkedId(roundId);
-                                setIsCreateArtifactModalOpen(true);
-                            }}
-                        />
-                            <AddInvestmentModal
-                                isOpen={isAddInvestmentModalOpen}
-                                onClose={() => setIsAddInvestmentModalOpen(false)}
-                                onAdd={handleCreateInvestment}
-                                investors={(investors || []).filter(i => !(selectedRound.investors || []).some(ri => ri.investor?.investor_id === i.investor_id))}
-                            />
-                        </>
+                    if (selectedFundingRoundId) {
+                        return (
+                            <>
+                                <FundingRoundDetailPage
+                                    roundId={selectedFundingRoundId}
+                                    onBack={handleBackToRoundsList}
+                                    onEditRound={(round) => { setSelectedFundingRoundToEdit(round); setIsEditFundingRoundModalOpen(true); }}
+                                    onAddInvestor={() => setIsAddInvestmentModalOpen(true)}
+                                    onAddTask={(roundId) => {
+                                        setSelectedLinkedScope(Scope.FUNDRAISING);
+                                        setSelectedLinkedId(roundId);
+                                        setIsCreateTaskModalOpen(true);
+                                    }}
+                                    onAddArtifact={(roundId) => {
+                                        setSelectedLinkedScope(Scope.FUNDRAISING);
+                                        setSelectedLinkedId(roundId);
+                                        setIsCreateArtifactModalOpen(true);
+                                    }}
+                                />
+                                <AddInvestmentModal
+                                    isOpen={isAddInvestmentModalOpen}
+                                    onClose={() => setIsAddInvestmentModalOpen(false)}
+                                    onAdd={handleCreateInvestment}
+                                    startupId={startup.id}
+                                />
+                            </>
+                        );
                     }
                     return <FundingRoundsPage
-                        startupId={startupData.id}
-                        fundingRounds={fundingRounds}
-                        setFundingRounds={setFundingRounds}
+                        startupId={startup.id}
                         onSelectRound={handleSelectFundingRound}
                         onAddNewRound={() => setIsCreateFundingRoundModalOpen(true)}
                     />;
                 }
                 if (activeSubPage === 'Investor CRM') {
-                    return <InvestorCrmPage
-                        startupId={startupData.id}
-                        investors={investors}
-                        setInvestors={setInvestors}
-                        onAddNewInvestor={() => setIsCreateInvestorModalOpen(true)}
-                    />;
+                    return <InvestorCrmPage startupId={startup.id} onAddNewInvestor={() => setIsCreateInvestorModalOpen(true)} />;
                 }
-                return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details as Fundraise} onEdit={() => setIsEditFundraisingGoalsModalOpen(true)} />;
+                return <FundraisingOverviewPage startupId={startup.id} />;
 
             case Scope.MARKETING:
-                const selectedCampaign = (marketingCampaigns || []).find(c => c.campaign_id === selectedCampaignId);
                 if (activeSubPage === 'Overview') {
-                    return <MarketingOverviewPage
-                        marketingOverview={startupData.marketing_overview}
-                        campaigns={marketingCampaigns || []}
-                        startupId={startupData.id}
-                        onPositioningStatementUpdate={handlePositioningStatementUpdate}
-                        isGeneratingGtm={startupData.is_generating_gtm}
-                    />;
+                    return <MarketingOverviewPage startupId={startup.id} onPositioningStatementUpdate={handlePositioningStatementUpdate} isGeneratingGtm={startup.is_generating_gtm} />;
                 }
                 if (activeSubPage === 'Campaigns') {
-                    if (selectedCampaign) {
+                    if (selectedCampaignId) {
                         return <MarketingCampaignDetailPage
-                            campaign={selectedCampaign}
-                            linkedTasks={tasks?.filter(t => t.linked_to_type === 'MarketingCampaign' && t.linked_to_id === selectedCampaign.campaign_id) || []}
-                            linkedArtifacts={artifacts?.filter(a => a.linked_to_type === 'MarketingCampaign' && a.linked_to_id === selectedCampaign.campaign_id) || []}
+                            campaignId={selectedCampaignId}
                             onBack={handleBackToCampaignsList}
-                            onAddContentItem={() => handleOpenCreateContentItemModal(selectedCampaign.campaign_id)}
+                            onAddContentItem={() => handleOpenCreateContentItemModal(selectedCampaignId)}
                             onEditCampaign={(campaign) => { setSelectedCampaignToEdit(campaign); setIsEditCampaignModalOpen(true); }}
                             onAddTask={(campaignId) => {
                                 setSelectedLinkedScope(Scope.MARKETING);
@@ -824,55 +592,49 @@ const DashboardPage: React.FC = () => {
                                 setSelectedLinkedId(campaignId);
                                 setIsCreateArtifactModalOpen(true);
                             }}
-                        />
+                        />;
                     }
-                    return <MarketingCampaignsPage
-                        startupId={startupData.id}
-                        campaigns={marketingCampaigns || []}
-                        setCampaigns={setMarketingCampaigns}
-                        onSelectCampaign={handleSelectCampaign}
-                        onAddNewCampaign={() => setIsCreateCampaignModalOpen(true)}
-                        isGeneratingGtm={startupData.is_generating_gtm}
+                    return <MarketingCampaignsPage startupId={startup.id} onSelectCampaign={handleSelectCampaign} onAddNewCampaign={() => setIsCreateCampaignModalOpen(true)} isGeneratingGtm={startup.is_generating_gtm} />;
+                }
+                if (activeSubPage === 'Content Calendar') {
+                    return <MarketingContentCalendarPage
+                        startupId={startup.id}
+                        onAddNewContentItem={() => handleOpenCreateContentItemModal()}
                     />;
                 }
                 if (activeSubPage === 'Content Calendar') {
                     return <MarketingContentCalendarPage
-                        startupId={startupData.id}
-                        campaigns={marketingCampaigns || []}
-                        setCampaigns={setMarketingCampaigns}
+                        startupId={startup.id}
                         onAddNewContentItem={() => handleOpenCreateContentItemModal()}
                     />;
                 }
-                return <MarketingOverviewPage
-                    marketingOverview={startupData.marketing_overview}
-                    campaigns={marketingCampaigns || []}
-                    startupId={startupData.id}
-                    onPositioningStatementUpdate={handlePositioningStatementUpdate}
-                    isGeneratingGtm={startupData.is_generating_gtm}
-                />;
+                if (activeSubPage === 'Settings') {
+                    return <MarketingSettingsPage startupId={startup.id} />;
+                }
+                return <MarketingOverviewPage startupId={startup.id} onPositioningStatementUpdate={handlePositioningStatementUpdate} isGeneratingGtm={startup.is_generating_gtm} />;
 
             case Scope.WORKSPACE:
                 return (
                     <RequireScope scope="WORKSPACE" showError>
-                        {activeSubPage === 'Tasks' && <TasksPage tasks={tasks} startupId={startupData.id} setTasks={setTasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />}
-                        {activeSubPage === 'Experiments' && <ExperimentsPage startupId={startupData.id} experiments={experiments || []} setExperiments={setExperiments} onExperimentClick={handleOpenExperimentModal} onAddNewExperiment={() => setIsCreateExperimentModalOpen(true)} />}
-                        {activeSubPage === 'Artifacts' && <ArtifactsPage artifacts={artifacts} startupId={startupData.id} setArtifacts={setArtifacts} onArtifactClick={handleOpenArtifactModal} getLinkedEntityName={getLinkedEntityName} onAddNewArtifact={() => setIsCreateArtifactModalOpen(true)} />}
+                        {activeSubPage === 'Tasks' && <TasksPage startupId={startup.id} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />}
+                        {activeSubPage === 'Experiments' && <ExperimentsPage startupId={startup.id} onExperimentClick={handleOpenExperimentModal} onAddNewExperiment={() => setIsCreateExperimentModalOpen(true)} />}
+                        {activeSubPage === 'Artifacts' && <ArtifactsPage startupId={startup.id} onArtifactClick={handleOpenArtifactModal} getLinkedEntityName={getLinkedEntityName} onAddNewArtifact={() => setIsCreateArtifactModalOpen(true)} />}
                     </RequireScope>
                 );
 
             case Scope.TEAM:
                 return (
                     <RequireScope scope="TEAM" showError>
-                        <TeamPage startupId={startupData.id} />
+                        <TeamPage startupId={startup.id} />
                     </RequireScope>
                 );
             case Scope.SETTINGS:
                 return (
                     <RequireScope scope="SETTINGS" showError>
                         <SettingsPage
-                            startupName={startupData.name}
-                            startupSlug={startupData.slug}
-                            nextMilestone={startupData.next_milestone}
+                            startupName={startup.name}
+                            startupSlug={startup.slug}
+                            nextMilestone={startup.next_milestone}
                             onSave={handleUpdateStartupSettings}
                         />
                     </RequireScope>
@@ -880,7 +642,7 @@ const DashboardPage: React.FC = () => {
             case Scope.USER_SETTINGS:
                 return <UserSettingsPage />;
             default:
-                return <DashboardOverview startupData={startupData} recentActivity={activity} />;
+                return <DashboardOverview startupId={startup.id} />;
         }
     };
 
@@ -896,15 +658,12 @@ const DashboardPage: React.FC = () => {
     };
 
     const menuItems = React.useMemo(() => {
-        console.log("DEBUG: Dashboard User Object:", user);
-        console.log("DEBUG: User Scopes:", user?.scopes);
-
         const allItems = [
-            { name: 'Dashboard', icon: Home, subItems: [], requiredScope: null }, // Always visible
+            { name: 'Dashboard', icon: Home, subItems: [], requiredScope: null },
             { name: 'Product', icon: Package, subItems: ['Products List', 'Product Metrics', 'Issues & Feedback'], requiredScope: 'PRODUCT' },
             { name: 'Business', icon: Briefcase, subItems: ['Overview & Model', 'Monthly Reporting'], requiredScope: 'BUSINESS' },
             { name: 'Fundraising', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor CRM'], requiredScope: 'FUNDRAISE' },
-            { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar'], requiredScope: 'MARKETING' },
+            { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar', 'Settings'], requiredScope: 'MARKETING' },
             { name: 'Workspace', icon: BookOpen, subItems: ['Tasks', 'Experiments', 'Artifacts'], requiredScope: 'WORKSPACE' },
             { name: 'Team', icon: Users, subItems: [], requiredScope: 'TEAM' },
             { name: 'Settings', icon: Settings, subItems: [], requiredScope: 'SETTINGS' }
@@ -912,37 +671,31 @@ const DashboardPage: React.FC = () => {
 
         if (!user) return [];
 
-        // Admin or Owner (if we had owner check here, but role='admin' covers super admins)
-        // For startup owners, the backend User.role might just be 'user', but they own the startup.
-        // We can check if user.id === startupData?.user_id if we have startupData.
-
-        const isOwner = startupData && user.id === startupData.user_id;
+        const isOwner = startup && user.id === startup.user_id;
         const isAdmin = user.role === 'admin';
 
         if (isOwner || isAdmin) {
             return allItems;
         }
 
-        // Filter for Team Members
-        // Get scopes from user object (we added this to interface)
         const userScopes = (user.scopes || []).map(s => s.toUpperCase());
 
         return allItems.filter(item => {
-            if (!item.requiredScope) return true; // Always show Dashboard
+            if (!item.requiredScope) return true;
             return userScopes.includes(item.requiredScope);
         });
 
-    }, [user, startupData]);
+    }, [user, startup]);
 
-    if (isLoading) {
+    if (isLoading || isQueryLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
     }
 
     if (isError) {
-        return <div className="flex items-center justify-center h-screen">Error: {error.message}</div>;
+        return <div className="flex items-center justify-center h-screen">Error: {error?.message}</div>;
     }
 
-    if (!startup || !startupData) {
+    if (!startup) {
         return <div className="flex items-center justify-center h-screen">Loading startup data...</div>;
     }
 
@@ -956,8 +709,8 @@ const DashboardPage: React.FC = () => {
             />
             <div className="flex-1 flex flex-col overflow-hidden">
                 <Header
-                    startupName={startupData.name}
-                    currentStage={startupData.current_stage}
+                    startupName={startup.name}
+                    currentStage={startup.current_stage}
                     user={user}
                     onCreateClick={handleOpenCreateModal}
                     onSettingsClick={() => handleNavClick(Scope.USER_SETTINGS)}
@@ -968,43 +721,85 @@ const DashboardPage: React.FC = () => {
                     {renderContent()}
                 </main>
             </div>
-            {/* All modals remain here, unchanged */}
+
+            {/* Modals */}
             {isReportModalOpen && selectedReport && <MonthlyReportDetailModal report={selectedReport} onClose={handleCloseReportModal} />}
             {isTaskModalOpen && selectedTask && <TaskDetailModal task={selectedTask} linkedEntityName={getLinkedEntityName(selectedTask.linked_to_type, selectedTask.linked_to_id)} onClose={handleCloseTaskModal} />}
             {isExperimentModalOpen && selectedExperiment && <ExperimentDetailModal experiment={selectedExperiment} linkedEntityName={getLinkedEntityName(selectedExperiment.linked_to_type, selectedExperiment.linked_to_id)} onClose={handleCloseExperimentModal} />}
             {isArtifactModalOpen && selectedArtifact && <ArtifactDetailModal artifact={selectedArtifact} linkedEntityName={getLinkedEntityName(selectedArtifact.linked_to_type, selectedArtifact.linked_to_id)} onClose={handleCloseArtifactModal} />}
+
             {isCreateModalOpen && <CreateModal onClose={handleCloseCreateModal} onSelectCreateType={handleSelectCreateType} />}
-            {isCreateTaskModalOpen && <CreateTaskModal onClose={() => { setIsCreateTaskModalOpen(false); setSelectedLinkedScope(null); setSelectedLinkedId(null); }} onCreate={handleCreateTask} linkableItems={{ [Scope.PRODUCT]: (startupData.products || []).map(p => ({ id: p.id, name: p.name })), [Scope.FUNDRAISING]: (startupData.funding_rounds || []).map(r => ({ id: r.round_id, name: `${r.round_type} Round` })), [Scope.MARKETING]: (marketingCampaigns || []).map(c => ({ id: c.campaign_id, name: c.campaign_name })), [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [] }} defaultScope={selectedLinkedScope || undefined} defaultLinkedToId={selectedLinkedId || undefined} />}
-            {isCreateExperimentModalOpen && <CreateExperimentModal onClose={() => setIsCreateExperimentModalOpen(false)} onCreate={handleCreateExperiment} linkableItems={{ [Scope.PRODUCT]: (startupData.products || []).map(p => ({ id: p.id, name: p.name })), [Scope.FUNDRAISING]: (startupData.funding_rounds || []).map(r => ({ id: r.round_id, name: `${r.round_type} Round` })), [Scope.MARKETING]: (marketingCampaigns || []).map(c => ({ id: c.campaign_id, name: c.campaign_name })), [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [] }} />}
-            {isCreateArtifactModalOpen && <CreateArtifactModal onClose={() => { setIsCreateArtifactModalOpen(false); setSelectedLinkedScope(null); setSelectedLinkedId(null); }} onCreate={handleCreateArtifact} linkableItems={{ [Scope.PRODUCT]: (startupData.products || []).map(p => ({ id: p.id, name: p.name })), [Scope.FUNDRAISING]: (startupData.funding_rounds || []).map(r => ({ id: r.round_id, name: `${r.round_type} Round` })), [Scope.MARKETING]: (marketingCampaigns || []).map(c => ({ id: c.campaign_id, name: c.campaign_name })), [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [] }} defaultScope={selectedLinkedScope || undefined} defaultLinkedToId={selectedLinkedId || undefined} />}
+
+            {isCreateTaskModalOpen && <CreateTaskModal
+                onClose={() => { setIsCreateTaskModalOpen(false); setSelectedLinkedScope(null); setSelectedLinkedId(null); }}
+                onCreate={handleCreateTask}
+                linkableItems={{
+                    [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
+                    [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
+                    [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: []
+                }}
+                defaultScope={selectedLinkedScope || undefined}
+                defaultLinkedToId={selectedLinkedId || undefined}
+            />}
+
+            {isCreateExperimentModalOpen && <CreateExperimentModal
+                onClose={() => setIsCreateExperimentModalOpen(false)}
+                onCreate={handleCreateExperiment}
+                linkableItems={{
+                    [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
+                    [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
+                    [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: []
+                }}
+            />}
+
+            {isCreateArtifactModalOpen && <CreateArtifactModal
+                onClose={() => { setIsCreateArtifactModalOpen(false); setSelectedLinkedScope(null); setSelectedLinkedId(null); }}
+                onCreate={handleCreateArtifact}
+                linkableItems={{
+                    [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
+                    [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
+                    [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: []
+                }}
+                defaultScope={selectedLinkedScope || undefined}
+                defaultLinkedToId={selectedLinkedId || undefined}
+            />}
+
             {isCreateProductModalOpen && <CreateProductModal onClose={() => setIsCreateProductModalOpen(false)} onCreate={handleCreateProduct} />}
             {isCreateFeatureModalOpen && selectedProductId && <CreateFeatureModal onClose={() => setIsCreateFeatureModalOpen(false)} onCreate={(data) => handleCreateFeature(data, selectedProductId)} />}
-            {isCreateMetricModalOpen && <CreateMetricModal onClose={() => setIsCreateMetricModalOpen(false)} onCreate={handleCreateMetric} products={startupData.products} productId={selectedProductId} />}
-            {isCreateIssueModalOpen && <CreateIssueModal onClose={() => setIsCreateIssueModalOpen(false)} onCreate={handleCreateIssue} products={startupData.products} productId={selectedProductId} />}
+            {isCreateMetricModalOpen && <CreateMetricModal onClose={() => setIsCreateMetricModalOpen(false)} onCreate={handleCreateMetric} products={startup.products || []} productId={selectedProductId} />}
+            {isCreateIssueModalOpen && <CreateIssueModal onClose={() => setIsCreateIssueModalOpen(false)} onCreate={handleCreateIssue} products={startup.products || []} productId={selectedProductId} />}
             {isCreateReportModalOpen && <CreateMonthlyReportModal onClose={() => setIsCreateReportModalOpen(false)} onCreate={handleCreateMonthlyReport} />}
-            {isCreateFundingRoundModalOpen && <CreateFundingRoundModal onClose={() => setIsCreateFundingRoundModalOpen(false)} onCreate={handleCreateFundingRound} investors={investors || []} />}
+            {isCreateFundingRoundModalOpen && <CreateFundingRoundModal onClose={() => setIsCreateFundingRoundModalOpen(false)} onCreate={handleCreateFundingRound} investors={[]} />}
             {isCreateInvestorModalOpen && <CreateInvestorModal onClose={() => setIsCreateInvestorModalOpen(false)} onCreate={handleCreateInvestor} />}
-            {isCreateCampaignModalOpen && <CreateCampaignModal onClose={() => setIsCreateCampaignModalOpen(false)} onCreate={handleCreateCampaign} products={startupData.products} />}
-            {isCreateContentItemModalOpen && <CreateContentItemModal onClose={() => setIsCreateContentItemModalOpen(false)} onCreate={handleCreateContentItem} campaigns={(marketingCampaigns || []).filter(c => c.content_mode)} defaultCampaignId={selectedCampaignForContent} />}
-            {isCreateFounderModalOpen && <CreateFounderModal onClose={() => setIsCreateFounderModalOpen(false)} onCreate={handleCreateFounder} />}
-            {isEditBusinessOverviewModalOpen && <EditBusinessOverviewModal businessOverview={startupData?.business_overview || {} as BusinessOverview} onClose={() => setIsEditBusinessOverviewModalOpen(false)} onUpdate={handleUpdateBusinessOverview} />}
-            {isEditFundraisingGoalsModalOpen && <EditFundraisingGoalsModal fundraiseDetails={startupData?.fundraise_details || {} as Fundraise} nextFundingGoal={startupData?.fundraise_details?.next_funding_goal || {} as NextFundingGoal} onClose={() => setIsEditFundraisingGoalsModalOpen(false)} onUpdate={handleUpdateFundraisingGoals} />}
-            {isEditCampaignModalOpen && selectedCampaignToEdit && startupData?.products && <EditCampaignModal campaign={selectedCampaignToEdit} onClose={() => setIsEditCampaignModalOpen(false)} onUpdate={(updatedData) => handleUpdateCampaign(selectedCampaignToEdit.campaign_id, updatedData)} products={startupData.products} />}
-            {isEditFounderModalOpen && selectedFounderToEdit && <EditFounderModal founder={selectedFounderToEdit} onClose={() => setIsEditFounderModalOpen(false)} onUpdate={(updatedData) => handleUpdateFounder(selectedFounderToEdit.id, updatedData)} />}
+            {isCreateCampaignModalOpen && <CreateCampaignModal onClose={() => setIsCreateCampaignModalOpen(false)} onCreate={handleCreateCampaign} products={startup.products || []} />}
+            {isCreateContentItemModalOpen && <CreateContentItemModal onClose={() => setIsCreateContentItemModalOpen(false)} onCreate={handleCreateContentItem} campaigns={(startup.marketing_campaigns || []).filter((c: any) => c.content_mode)} defaultCampaignId={selectedCampaignForContent} />}
+
+
+            {isEditBusinessOverviewModalOpen && <EditBusinessOverviewModal businessOverview={startup.business_overview || {} as BusinessOverview} onClose={() => setIsEditBusinessOverviewModalOpen(false)} onUpdate={handleUpdateBusinessOverview} />}
+            {isEditFundraisingGoalsModalOpen && <EditFundraisingGoalsModal fundraiseDetails={startup.fundraise_details || {} as Fundraise} nextFundingGoal={startup.fundraise_details?.next_funding_goal || {} as NextFundingGoal} onClose={() => setIsEditFundraisingGoalsModalOpen(false)} onUpdate={handleUpdateFundraisingGoals} />}
+
+            {isEditCampaignModalOpen && selectedCampaignToEdit && <EditCampaignModal campaign={selectedCampaignToEdit} onClose={() => setIsEditCampaignModalOpen(false)} onUpdate={(updatedData) => handleUpdateCampaign(selectedCampaignToEdit.campaign_id, updatedData)} products={startup.products || []} />}
+
             {isEditProductModalOpen && selectedProductToEdit && <EditProductModal product={selectedProductToEdit} onClose={() => setIsEditProductModalOpen(false)} onUpdate={(updatedData) => handleUpdateProduct(selectedProductToEdit.id, updatedData)} />}
             {isEditProductBusinessDetailsModalOpen && selectedProductBusinessDetailsToEdit && productIdForBusinessDetailsEdit && <EditProductBusinessDetailsModal productBusinessDetails={selectedProductBusinessDetailsToEdit} onClose={() => setIsEditProductBusinessDetailsModalOpen(false)} onUpdate={(updatedData) => handleUpdateProductBusinessDetails(productIdForBusinessDetailsEdit, updatedData)} />}
-            {isEditFundingRoundModalOpen && selectedFundingRoundToEdit && <EditFundingRoundModal round={selectedFundingRoundToEdit} onClose={() => setIsEditFundingRoundModalOpen(false)} onUpdate={(updatedData) => handleUpdateFundingRound(selectedFundingRoundToEdit.round_id, updatedData)} investors={investors || []} />}
+            {isEditFundingRoundModalOpen && selectedFundingRoundToEdit && <EditFundingRoundModal round={selectedFundingRoundToEdit} onClose={() => setIsEditFundingRoundModalOpen(false)} onUpdate={(updatedData) => handleUpdateFundingRound(selectedFundingRoundToEdit.round_id, updatedData)} investors={[]} />}
             {isEditMetricModalOpen && selectedMetricToEdit && productIdForMetricEdit && <EditMetricModal metric={selectedMetricToEdit} onClose={() => setIsEditMetricModalOpen(false)} onUpdate={(updatedData) => handleUpdateMetric(productIdForMetricEdit, selectedMetricToEdit.metric_id, updatedData)} />}
             {isEditFeatureModalOpen && selectedFeatureToEdit && productIdForFeatureEdit && <EditFeatureModal feature={selectedFeatureToEdit} onClose={() => setIsEditFeatureModalOpen(false)} onUpdate={(updatedData) => handleUpdateFeature(productIdForFeatureEdit, selectedFeatureToEdit.id, updatedData)} />}
 
-            {startupData && (
-                <AssetGenerationModal
-                    isOpen={isAssetGenerationModalOpen}
-                    onClose={() => setIsAssetGenerationModalOpen(false)}
-                    startupId={startupData.id}
-                    hasProduct={(startupData.products || []).length > 0}
-                    hasGtm={(startupData.marketing_campaigns || []).length > 0}
-                />
+            {startup && (
+                <>
+                    <AiAssistant startupId={startup.id} />
+                    <AssetGenerationModal
+                        isOpen={isAssetGenerationModalOpen}
+                        onClose={() => setIsAssetGenerationModalOpen(false)}
+                        startupId={startup.id}
+                        hasProduct={startup.has_product ?? (startup.products || []).length > 0}
+                        hasGtm={startup.has_gtm ?? (startup.marketing_campaigns || []).length > 0}
+                    />
+                </>
             )}
         </div>
     );

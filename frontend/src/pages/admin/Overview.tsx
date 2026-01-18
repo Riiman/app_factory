@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Startup, Submission, SubmissionStatus, ActivityLog, DashboardNotification } from '../../types/dashboard-types';
-import RecentActivityFeed from '../../components/dashboard/RecentActivityFeed';
-import NotificationCenter from '../../components/dashboard/NotificationCenter';
+import RecentActivityFeed from '@/modules/dashboard/components/RecentActivityFeed';
+import NotificationCenter from '@/modules/dashboard/components/NotificationCenter';
 import Card from '../../components/admin/Card';
 import StatCard from '../../components/admin/StatCard';
 import StartupStagePieChart from '../../components/admin/charts/StartupStagePieChart';

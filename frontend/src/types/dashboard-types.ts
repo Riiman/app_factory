@@ -46,6 +46,7 @@ export enum MarketingCampaignStatus {
 
 export enum MarketingContentStatus {
   PLANNED = 'PLANNED',
+  DRAFT = 'DRAFT',
   PUBLISHED = 'PUBLISHED',
   CANCELLED = 'CANCELLED',
 }
@@ -78,6 +79,7 @@ export enum Scope {
   WORKSPACE = 'Workspace', // UI specific Scope
   TEAM = 'Team', // UI specific Scope
   SETTINGS = 'Settings', // UI specific Scope
+  USER_SETTINGS = 'USER_SETTINGS',
 }
 
 export enum ScopeStatus {
@@ -320,10 +322,18 @@ export interface BusinessMonthlyData {
   created_at: string;
 }
 
+export interface BrandDetails {
+  tone_of_voice: string;
+  brand_archetype: string;
+  target_audience: string[];
+  key_messaging_pillars: string[];
+}
+
 export interface MarketingOverview {
   marketing_id: number;
   startup_id: number;
   positioning_statement?: string;
+  brand_details?: BrandDetails;
 }
 
 export interface Investor {
@@ -335,6 +345,15 @@ export interface Investor {
   website?: string;
   notes?: string;
   created_at?: string;
+}
+
+export interface MarketingSettings {
+  setting_id: number;
+  startup_id: number;
+  provider: string; // 'linkedin', 'twitter', 'instagram', 'facebook', 'email_sendgrid', 'email_mailgun'
+  is_active: boolean;
+  credentials?: Record<string, string>;
+  updated_at: string;
 }
 
 export interface RoundInvestor {
@@ -368,7 +387,11 @@ export interface MarketingContentItem {
   title: string;
   content_type?: string;
   content_body?: string;
+  content_brief?: string;
   channel?: string;
+  media_type?: string;
+  image_url?: string;
+  image_prompt?: string;
   publish_date: string;
   status: MarketingContentStatus;
   performance?: Record<string, any>;
@@ -504,6 +527,8 @@ export interface Startup {
   is_analyzing_submission?: boolean;
   is_generating_scope?: boolean;
   is_generating_contract?: boolean;
+  has_product?: boolean;
+  has_gtm?: boolean;
   created_at: string;
   updated_at: string;
   user: User;

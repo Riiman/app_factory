@@ -160,6 +160,60 @@ class Api {
     return (await response.json()).marketing_overview;
   }
 
+  async getDashboardOverview(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/dashboard-overview`);
+    if (!response.ok) throw new Error('Failed to fetch dashboard overview');
+    return (await response.json()).dashboard_overview;
+  }
+
+  async getProducts(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/products`);
+    if (!response.ok) throw new Error('Failed to fetch products');
+    return (await response.json()).products;
+  }
+
+  async getCampaigns(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/campaigns`);
+    if (!response.ok) throw new Error('Failed to fetch campaigns');
+    return (await response.json()).campaigns;
+  }
+
+  async getTasks(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/tasks`);
+    if (!response.ok) throw new Error('Failed to fetch tasks');
+    return (await response.json()).tasks;
+  }
+
+  async getBusinessMonthlyReports(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/monthly-reports`);
+    if (!response.ok) throw new Error('Failed to fetch monthly reports');
+    return (await response.json()).reports;
+  }
+
+  async getBusinessOverview(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/business-overview`);
+    if (!response.ok) throw new Error('Failed to fetch business overview');
+    return (await response.json()).business_overview;
+  }
+
+  async getFundingRounds(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/funding-rounds`);
+    if (!response.ok) throw new Error('Failed to fetch funding rounds');
+    return (await response.json()).rounds;
+  }
+
+  async getFundraiseDetails(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/fundraise-details`);
+    if (!response.ok) throw new Error('Failed to fetch fundraise details');
+    return await response.json();
+  }
+
+  async getInvestors(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/investors`);
+    if (!response.ok) throw new Error('Failed to fetch investors');
+    return (await response.json()).investors;
+  }
+
   // --- Admin Endpoints ---
 
   async getAllSubmissions() {
@@ -242,6 +296,18 @@ class Api {
   async createTask(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/tasks`, data);
     return response.task;
+  }
+
+  async getExperiments(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/experiments`);
+    if (!response.ok) throw new Error('Failed to fetch experiments');
+    return (await response.json()).experiments;
+  }
+
+  async getArtifacts(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/artifacts`);
+    if (!response.ok) throw new Error('Failed to fetch artifacts');
+    return (await response.json()).artifacts;
   }
 
   async createExperiment(startupId: number, data: any) {
@@ -341,6 +407,23 @@ class Api {
     return this.post(`/startups/${startupId}/campaigns/${campaignId}/content-items`, data);
   }
 
+  async updateContentItem(startupId: number, contentId: number, data: any) {
+    const response = await this.put(`/startups/${startupId}/content-items/${contentId}`, data);
+    return response.content_item;
+  }
+
+  async deleteContentItem(startupId: number, contentId: number) {
+    const response = await this.fetch(`/startups/${startupId}/content-items/${contentId}`, {
+      method: 'DELETE',
+    });
+    return response.json();
+  }
+
+  async generateContentItem(startupId: number, contentId: number) {
+    const response = await this.post(`/startups/${startupId}/content-items/${contentId}/generate`, {});
+    return response.content_item;
+  }
+
   async createFounder(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/founders`, data);
     return response.founder;
@@ -349,6 +432,17 @@ class Api {
   async updateStartupSettings(startupId: number, data: any) {
     const response = await this.put(`/startups/${startupId}/settings`, data);
     return response;
+  }
+
+  async getMarketingSettings(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/settings`);
+    if (!response.ok) throw new Error('Failed to fetch marketing settings');
+    return (await response.json()).settings;
+  }
+
+  async updateMarketingSettings(startupId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/settings`, data);
+    return response.setting;
   }
 
   async updateBusinessOverview(startupId: number, data: Partial<BusinessOverview>) {
@@ -453,6 +547,11 @@ class Api {
   async updateTeamMember(startupId: number, userId: number, data: any) {
     const response = await this.put(`/startups/${startupId}/team/${userId}`, data);
     return response;
+  }
+
+  // --- AI Assistant ---
+  async askAiAssistant(startupId: number, query: string, history: any[] = []) {
+    return this.post('/ai/chat', { startup_id: startupId, query, history });
   }
 }
 
