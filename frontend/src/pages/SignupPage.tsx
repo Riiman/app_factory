@@ -61,7 +61,7 @@ const SignupPage: FC = () => {
   // Redirect if user is already logged in and not in the middle of verification
   useEffect(() => {
     if (user && !confirmationResult && !isSigningUp && !isMockVerification) {
-      navigate('/');
+      window.location.href = '/';
     }
   }, [user, confirmationResult, navigate, isSigningUp, isMockVerification]);
 
@@ -119,7 +119,7 @@ const SignupPage: FC = () => {
 
       setShowOrgModal(false);
       setPendingOAuthToken(null);
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } catch (err: any) {
       console.error("Organization assignment error:", err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to assign organization.';

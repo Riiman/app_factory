@@ -59,9 +59,9 @@ const LoginPage: FC = () => {
           localStorage.setItem('access_token', data.access_token);
           localStorage.setItem('user', JSON.stringify(data.user));
           if (data.user.role === 'admin') {
-            navigate('/admin');
+            window.location.href = '/admin';
           } else {
-            navigate('/dashboard');
+            window.location.href = '/dashboard';
           }
         } else if (data.requires_signup) {
           console.log("Redirecting to signup (Success flow)...");
@@ -120,9 +120,9 @@ const LoginPage: FC = () => {
       setPendingOAuthToken(null);
 
       if (response.user.role === 'admin') {
-        navigate('/admin');
+        window.location.href = '/admin';
       } else {
-        navigate('/dashboard');
+        window.location.href = '/dashboard';
       }
     } catch (err: any) {
       console.error("Organization assignment error:", err);
@@ -149,9 +149,9 @@ const LoginPage: FC = () => {
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
         if (data.user.role === 'admin') {
-          navigate('/admin');
+          window.location.href = '/admin';
         } else {
-          navigate('/dashboard');
+          window.location.href = '/dashboard';
         }
       } else {
         setError(data.error || 'An unknown error occurred.');
