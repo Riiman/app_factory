@@ -51,7 +51,7 @@ def create_app(config_class=Config):
     
     from .extensions import socketio
     if not os.environ.get('FLASK_DB_CREATION'):
-        socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet', message_queue='redis://localhost:6379/0')
+        socketio.init_app(app, cors_allowed_origins="*", async_mode='gevent', message_queue='redis://localhost:6379/0')
 
     # Configure the shared Celery instance
     configure_celery(app)
