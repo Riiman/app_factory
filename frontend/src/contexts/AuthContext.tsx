@@ -97,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Prevent auto-sync on signup page to avoid race condition with organization signup
                 if (window.location.pathname === '/signup' || window.location.pathname === '/login') {
                     console.log("AUTH: Skipping auto-sync on signup/login page.");
+                    setIsLoading(false);
                     return;
                 }
                 await fetchUserData(firebaseUser);
