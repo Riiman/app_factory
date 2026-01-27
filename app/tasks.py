@@ -3,8 +3,52 @@ from app.services.analyzer_service import run_analysis
 from app.services.document_generator_service import generate_scope_document
 from app.services.contract_generator_service import generate_contract_document
 from app.services.generation_service import generate_startup_assets
-from app.models import Product, Feature, Startup, Contract, StartupStage, SubmissionStatus
+from app.models import Product, Feature, Startup, Contract, StartupStage, SubmissionStatus, Submission
 from app.services.notification_service import publish_update
+
+@celery.task(name='app.tasks.analyze_submission_task')
+def analyze_submission_task(submission_id):
+    """Celery task to trigger the submission analysis."""
+    print(f"--- [Celery Task] Starting analysis for submission ID: {submission_id} ---")
+    
+    status = "success"
+    message = "Analysis completed successfully!"
+    error_details = None
+    
+    try:
+        run_analysis(submission_id)
+    except Exception as e:
+        print(f"Error in analyze_submission_task: {e}")
+        status = "error"
+        message = "Failed to analyze submission."
+        error_details = str(e)
+        
+        # Attempt to set status to REJECTED or similar if analysis failed
+        try:
+             submission = Submission.query.get(submission_id)
+             if submission:
+                 # We don't have a FAILED status, so using PEDNING or REJECTED might be appropriate, 
+                 # or we just rely on the websocket error event.
+                 pass
+        except:
+            pass
+
+    finally:
+        # Notify user of completion or failure
+        try:
+            submission = Submission.query.get(submission_id)
+            if submission:
+                 publish_update("analysis_completed", 
+                               {
+                                   "submission_id": submission.id, 
+                                   "status": status,
+                                   "message": message,
+                                   "error": error_details,
+                                   "submission": submission.to_dict() if status == 'success' else None 
+                               }, 
+                               rooms=[f"user_{submission.user_id}", "admin"])
+        except Exception as e:
+             print(f"Error sending analysis notification: {e}")
 
 @celery.task(name='app.tasks.generate_startup_assets_task')
 def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm=True):
@@ -48,11 +92,7 @@ def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm
             print(f"Error resetting generation flags: {e}")
 
 
-@celery.task(name='app.tasks.analyze_submission_task')
-def analyze_submission_task(submission_id):
-    """Celery task to trigger the submission analysis."""
-    print(f"--- [Celery Task] Starting analysis for submission ID: {submission_id} ---")
-    run_analysis(submission_id)
+
 
 @celery.task(name='app.tasks.generate_scope_document_task')
 def generate_scope_document_task(startup_id):
@@ -202,6 +242,5 @@ def generate_daily_snapshots():
         
     except Exception as e:
         print(f"Critical Error in generate_daily_snapshots: {e}")
-
 
 
