@@ -259,7 +259,7 @@ def login():
         #     }), 403
 
         # 4. Create our internal JWT
-        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
+        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value, "organization_id": user.organization_id})
 
         # Check the user's most recent submission (existing logic)
         submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
