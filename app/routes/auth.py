@@ -236,8 +236,11 @@ def login():
         
         db.session.commit()
         
+        print(f"DEBUG_AUTH_LOGIN: User {user.email} (id={user.id}) - org_id={user.organization_id}")
+        
         # Check if user has an organization assigned
         if not user.organization_id:
+            print(f"DEBUG_AUTH_LOGIN: User {user.id} has NO organization. Returning requires_organization.")
             # Generate a temporary token for organization assignment
             temp_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
             return jsonify({
@@ -346,6 +349,7 @@ def assign_organization():
             user.organization_id = new_org.id
             user.role = UserRole.ADMIN
             db.session.commit()
+            print(f"DEBUG_AUTH_ASSIGN: Created Org {new_org.id}, Assigned to User {user.id}. Committed.")
             
             # Generate new token with organization info
             access_token = create_access_token(
@@ -376,6 +380,7 @@ def assign_organization():
             user.organization_id = org.id
             user.role = UserRole.USER
             db.session.commit()
+            print(f"DEBUG_AUTH_ASSIGN: User {user.id} Joined Org {org.id}. Committed.")
             
             # Generate new token with organization info
             access_token = create_access_token(

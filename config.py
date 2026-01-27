@@ -13,7 +13,9 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "connect_args": {"timeout": 30}
+        "connect_args": {"timeout": 30},
+        "pool_pre_ping": True,
+        "pool_recycle": 280
     }
     
     # JWT Configuration
