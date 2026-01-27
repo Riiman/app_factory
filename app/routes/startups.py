@@ -1,9 +1,10 @@
 import redis
 import json
-from flask import Blueprint, request, jsonify
+import os
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import requests
-from app.models import Startup, Task, Experiment, Artifact, Founder, User, UserRole, TeamMember, ActivityLog, Scope
+from app.models import Startup, Task, Experiment, Artifact, ArtifactType, Founder, User, UserRole, TeamMember, ActivityLog, Scope
 from app.startup_builder.manager import DockerManager
 
 from app import db
@@ -78,7 +79,20 @@ def get_tasks(startup_id):
 
     if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-    tasks = [task.to_dict() for task in startup.tasks]
+    
+    # Visibility Logic
+    is_owner = startup.user_id == user.id
+    is_admin = user.role == UserRole.ADMIN
+    
+    if is_owner or is_admin:
+        tasks = [task.to_dict() for task in startup.tasks]
+    else:
+        # Member sees tasks created by them OR assigned to them
+        tasks = [
+            task.to_dict() for task in startup.tasks 
+            if task.created_by == user.id or task.assigned_to == user.id
+        ]
+        
     return jsonify({'success': True, 'tasks': tasks}), 200
 
 @startups_bp.route('/<int:startup_id>/tasks', methods=['POST'])
@@ -110,7 +124,9 @@ def create_task(startup_id):
         status=status_str,
         scope=scope_str,
         linked_to_id=data.get('linked_to_id'),
-        linked_to_type=data.get('linked_to_type')
+        linked_to_type=data.get('linked_to_type'),
+        assigned_to=data.get('assigned_to'),
+        created_by=user_id
     )
     
     db.session.add(new_task)
@@ -156,6 +172,15 @@ def update_task(startup_id, task_id):
     if task.startup_id != startup_id:
         return jsonify({'success': False, 'error': 'Task does not belong to this startup.'}), 400
 
+    # Permission Check
+    is_owner = startup.user_id == user.id
+    is_admin = user.role == UserRole.ADMIN
+    is_creator = task.created_by == user.id
+    is_assignee = task.assigned_to == user.id
+    
+    if not (is_owner or is_admin or is_creator or is_assignee):
+        return jsonify({'success': False, 'error': 'Permission denied'}), 403
+
     data = request.get_json()
     if not data:
         return jsonify({'success': False, 'error': 'No data provided.'}), 400
@@ -175,6 +200,9 @@ def update_task(startup_id, task_id):
     if scope_str:
         task.scope = scope_str.upper()
 
+    if 'assigned_to' in data:
+        task.assigned_to = data['assigned_to']
+
     db.session.commit()
     
     publish_update("task_updated", {
@@ -183,6 +211,53 @@ def update_task(startup_id, task_id):
     }, rooms=[f"user_{startup.user_id}", "admin"])
     
     return jsonify({'success': True, 'task': task.to_dict()}), 200
+
+@startups_bp.route('/<int:startup_id>/tasks/<int:task_id>', methods=['DELETE'])
+@jwt_required()
+def delete_task(startup_id, task_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    
+    if not validate_startup_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized to delete task for this startup.'}), 403
+
+    task = Task.query.get_or_404(task_id)
+    if task.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Task does not belong to this startup.'}), 400
+
+    # Permission Check
+    is_owner = startup.user_id == user.id
+    is_admin = user.role == UserRole.ADMIN
+    is_creator = task.created_by == user.id
+    
+    if not (is_owner or is_admin or is_creator):
+        return jsonify({'success': False, 'error': 'Permission denied'}), 403
+
+    try:
+        # Soft delete or Hard delete? Usually hard delete for simple tasks unless requirements say otherwise
+        # Assuming hard delete for now based on typical task management behavior
+        db.session.delete(task)
+        
+        # Log Activity
+        activity = ActivityLog(
+            user_id=user_id,
+            startup_id=startup_id,
+            action='deleted',
+            target_type='Task',
+            target_id=task_id,
+            details=f"Deleted task '{task.name}'"
+        )
+        db.session.add(activity)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Task deleted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Failed to delete task: {str(e)}'}), 500
 
 # --- EXPERIMENTS ---
 
@@ -230,6 +305,42 @@ def create_experiment(startup_id):
     
     return jsonify({'success': True, 'experiment': new_experiment.to_dict()}), 201
 
+@startups_bp.route('/<int:startup_id>/experiments/<int:experiment_id>', methods=['DELETE'])
+@jwt_required()
+def delete_experiment(startup_id, experiment_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    
+    if not validate_startup_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized to delete experiment.'}), 403
+
+    experiment = Experiment.query.get_or_404(experiment_id)
+    if experiment.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Experiment does not belong to this startup.'}), 400
+
+    try:
+        db.session.delete(experiment)
+        
+        # Log Activity
+        activity = ActivityLog(
+            user_id=user_id,
+            startup_id=startup_id,
+            action='deleted',
+            target_type='Experiment',
+            target_id=experiment_id,
+            details=f"Deleted experiment '{experiment.name}'"
+        )
+        db.session.add(activity)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Experiment deleted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Failed to delete experiment: {str(e)}'}), 500
+
 # --- ARTIFACTS ---
 
 @startups_bp.route('/<int:startup_id>/artifacts', methods=['GET'])
@@ -241,7 +352,7 @@ def get_artifacts(startup_id):
     user = User.query.get(user_id)
     if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-    artifacts = [a.to_dict() for a in startup.artifacts]
+    artifacts = [a.to_dict() for a in startup.artifacts if not a.is_deleted]
     return jsonify({'success': True, 'artifacts': artifacts}), 200
 
 @startups_bp.route('/<int:startup_id>/artifacts', methods=['POST'])
@@ -253,9 +364,143 @@ def create_artifact(startup_id):
     user = User.query.get(user_id)
     if not validate_startup_access(startup, user):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    # Check if it's a file upload (multipart/form-data)
+    # Check if it's a file upload (multipart/form-data)
+    if 'file' in request.files:
+        from app.services.artifact_storage_service import artifact_storage_service
+        from app.models import Scope
+        
+        # Get list of files
+        files = request.files.getlist('file')
+        
+        if not files or len(files) == 0 or (len(files) == 1 and files[0].filename == ''):
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        # Get form data
+        name = request.form.get('name', 'New Artifact')
+        scope_str = request.form.get('scope', 'GENERAL').upper()
+        linked_to_type = request.form.get('linked_to_type')
+        linked_to_id = request.form.get('linked_to_id')
+        description = request.form.get('description')
+        
+        # Convert scope string to enum
+        try:
+            scope = Scope[scope_str]
+        except KeyError:
+            scope = Scope.GENERAL
+        
+        # Convert linked_to_id to int if provided
+        if linked_to_id:
+            try:
+                linked_to_id = int(linked_to_id)
+            except ValueError:
+                linked_to_id = None
+
+        try:
+            # Case 1: Single File Upload
+            if len(files) == 1:
+                file = files[0]
+                if not name or name == 'New Artifact':
+                    name = file.filename
+                    
+                artifact = artifact_storage_service.upload_file_artifact(
+                    file=file,
+                    startup_id=startup_id,
+                    user_id=user_id,
+                    name=name,
+                    scope=scope,
+                    linked_entity_type=linked_to_type,
+                    linked_entity_id=linked_to_id,
+                    description=description
+                )
+                
+                # ... (Activity log follows common path) ...
+                target_artifact = artifact
+
+            # Case 2: Multi-File Upload (Collection)
+            else:
+                # 1. Create Parent "Collection" Artifact
+                collection_name = name
+                if not collection_name:
+                    collection_name = f"Collection - {datetime.utcnow().strftime('%Y-%m-%d')}"
+                    
+                parent_artifact = Artifact(
+                    startup_id=startup_id,
+                    scope=scope,
+                    name=collection_name,
+                    description=description,
+                    type=ArtifactType.TEXT,
+                    location="COLLECTION",  # Special marker
+                    linked_to_type=linked_to_type,
+                    linked_to_id=linked_to_id,
+                    uploaded_by=user_id
+                )
+                db.session.add(parent_artifact)
+                db.session.flush() # Get ID
+                
+                # 2. Upload Children
+                child_artifacts = []
+                for file in files:
+                    # Child artifacts link to Parent Artifact
+                    child = artifact_storage_service.upload_file_artifact(
+                        file=file,
+                        startup_id=startup_id,
+                        user_id=user_id,
+                        name=file.filename,
+                        scope=scope,
+                        linked_entity_type='Artifact', # Link to parent
+                        linked_entity_id=parent_artifact.id,
+                        description=f"Part of collection: {collection_name}"
+                    )
+                    child_artifacts.append(child)
+                
+                target_artifact = parent_artifact
+
+            db.session.commit()
+            
+            publish_update("artifact_created", {
+                "startup_id": startup_id, 
+                "artifact": target_artifact.to_dict()
+            }, rooms=[f"user_{startup.user_id}", "admin"])
+            
+            # Log Activity
+            activity = ActivityLog(
+                user_id=user_id,
+                startup_id=startup_id,
+                action='uploaded',
+                target_type='Artifact',
+                target_id=target_artifact.id,
+                details=target_artifact.name
+            )
+            db.session.add(activity)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'artifact': target_artifact.to_dict()}), 201
+            
+        except ValueError as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
+        except Exception as e:
+            import traceback
+            current_app.logger.error(f"Artifact upload failed: {str(e)}")
+            current_app.logger.error(traceback.format_exc())
+            return jsonify({'success': False, 'error': f'Upload failed: {str(e)}'}), 500
+    
+    # Otherwise, handle as LINK or TEXT (existing logic)
     data = request.get_json()
     if not data or 'name' not in data or 'type' not in data:
         return jsonify({'success': False, 'error': 'Artifact name and type are required.'}), 400
+    
+    # Remove system-managed fields that should not be set manually
+    for field in ['startup_id', 'id', 'created_at', 'deleted_at', 'is_deleted']:
+        data.pop(field, None)
+    
+    # Ensure Enum fields are uppercase
+    if 'type' in data:
+        data['type'] = data['type'].upper()
+    if 'scope' in data:
+        data['scope'] = data['scope'].upper()
+    
     new_artifact = Artifact(startup_id=startup_id, **data)
     db.session.add(new_artifact)
     db.session.commit()
@@ -275,6 +520,90 @@ def create_artifact(startup_id):
     db.session.commit()
     
     return jsonify({'success': True, 'artifact': new_artifact.to_dict()}), 201
+
+@startups_bp.route('/<int:startup_id>/artifacts/<int:artifact_id>/download', methods=['GET'])
+@jwt_required()
+def download_artifact(startup_id, artifact_id):
+    """Generate presigned download URL for FILE artifacts"""
+    from app.services.artifact_storage_service import artifact_storage_service
+    
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    
+    if not validate_startup_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    artifact = Artifact.query.get_or_404(artifact_id)
+    
+    # Validate artifact belongs to this startup
+    if artifact.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Artifact does not belong to this startup'}), 403
+    
+    try:
+        download_url = artifact_storage_service.get_download_url(artifact_id)
+        
+        if download_url is None:
+            # TEXT artifact - content is in location field
+            return jsonify({
+                'success': True,
+                'type': 'text',
+                'content': artifact.location
+            }), 200
+        
+        return jsonify({
+            'success': True,
+            'download_url': download_url,
+            'filename': artifact.original_filename or artifact.name
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Failed to generate download URL: {str(e)}'}), 500
+
+@startups_bp.route('/<int:startup_id>/artifacts/<int:artifact_id>', methods=['DELETE'])
+@jwt_required()
+def delete_artifact(startup_id, artifact_id):
+    """Delete artifact (soft delete in DB, hard delete from S3)"""
+    from app.services.artifact_storage_service import artifact_storage_service
+    
+    startup = Startup.query.get_or_404(startup_id)
+    user_id_from_jwt = get_jwt_identity()
+    user_id = int(user_id_from_jwt)
+    user = User.query.get(user_id)
+    
+    if not validate_startup_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    artifact = Artifact.query.get_or_404(artifact_id)
+    
+    # Validate artifact belongs to this startup
+    if artifact.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Artifact does not belong to this startup'}), 403
+    
+    try:
+        artifact_storage_service.delete_artifact(artifact_id)
+        
+        # Log Activity
+        activity = ActivityLog(
+            user_id=user_id,
+            startup_id=startup_id,
+            action='deleted',
+            target_type='Artifact',
+            target_id=artifact_id,
+            details=artifact.name
+        )
+        db.session.add(activity)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Artifact deleted successfully'}), 200
+        
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Failed to delete artifact: {str(e)}'}), 500
 
 # --- FOUNDERS ---
 
@@ -787,3 +1116,114 @@ def update_team_member(startup_id, member_user_id):
         
     db.session.commit()
     return jsonify({'success': True, 'member': member.to_dict()}), 200
+
+# ============================================================================
+# LOGO UPLOAD ENDPOINTS
+# ============================================================================
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'svg', 'webp'}
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@startups_bp.route('/<int:startup_id>/logo', methods=['POST'])
+@jwt_required()
+def upload_logo(startup_id):
+    """Upload logo for a startup"""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    startup = Startup.query.get_or_404(startup_id)
+    
+    # Verify access using standard helper
+    if not validate_startup_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    if 'logo' not in request.files:
+        return jsonify({'success': False, 'error': 'No file provided'}), 400
+    
+    file = request.files['logo']
+    
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({'success': False, 'error': 'Invalid file type. Allowed: PNG, JPG, JPEG, SVG, WEBP'}), 400
+    
+    # Check file size
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    
+    if file_size > MAX_FILE_SIZE:
+        return jsonify({'success': False, 'error': 'File too large. Maximum size is 2MB'}), 400
+    
+    # Create uploads directory if it doesn't exist
+    upload_dir = os.path.join(current_app.static_folder, 'uploads', 'logos')
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    from datetime import datetime
+    from werkzeug.utils import secure_filename
+    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    filename = secure_filename(file.filename)
+    name, ext = os.path.splitext(filename)
+    unique_filename = f"{startup.slug}_{timestamp}{ext}"
+    
+    filepath = os.path.join(upload_dir, unique_filename)
+    print(f"DEBUG: Saving logo to {filepath}")
+    file.save(filepath)
+    
+    # Verify file exists and has size
+    if os.path.exists(filepath):
+        print(f"DEBUG: Saved file size: {os.path.getsize(filepath)} bytes")
+    else:
+        print(f"DEBUG: ERROR - File not found after save!")
+    
+    # Update startup logo_url
+    logo_url = f"/static/uploads/logos/{unique_filename}"
+    print(f"DEBUG: Set logo_url to {logo_url}")
+    startup.logo_url = logo_url
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'logo_url': logo_url
+    }), 200
+
+
+@startups_bp.route('/<int:startup_id>/logo', methods=['DELETE'])
+@jwt_required()
+def delete_logo(startup_id):
+    """Delete logo for a startup"""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    startup = Startup.query.get_or_404(startup_id)
+    
+    # Verify access using standard helper
+    if not validate_startup_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    if startup.logo_url:
+        # Delete file from filesystem
+        try:
+            # logo_url is like /static/uploads/logos/file.png
+            # We need to find the file in the filesystem. 
+            # We can strip /static/ and join with static_folder base.
+            relative_path = startup.logo_url
+            if relative_path.startswith('/static/'):
+                relative_path = relative_path[len('/static/'):]
+            elif relative_path.startswith('static/'):
+                relative_path = relative_path[len('static/'):]
+                
+            filepath = os.path.join(current_app.static_folder, relative_path)
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except Exception as e:
+            print(f"Error deleting logo file: {e}")
+        
+        # Remove from database
+        startup.logo_url = None
+        db.session.commit()
+    
+    return jsonify({'success': True}), 200

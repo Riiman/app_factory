@@ -1,135 +1,375 @@
 /**
  * @file DashboardOverview.tsx
- * @description The main dashboard overview page, serving as the landing page for the application.
- * It provides a "mission control" view of the startup with KPIs, charts, upcoming tasks,
- * and recent activity.
+ * @description Executive dashboard providing a comprehensive overview of the entire startup
+ * with cross-module KPIs, financial performance, growth metrics, and health indicators
  */
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/utils/api';
 import Card from '@/components/Card';
-import RecentActivityFeed from '@/modules/dashboard/components/RecentActivityFeed';
-import { TrendingUp, Target, ListTodo, Beaker, Activity, Users } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { formatCurrency, formatCompactCurrency, formatDate } from '@/utils/formatters';
-import { TaskStatus, ExperimentStatus } from '@/types/dashboard-types';
+import MetricCard from '@/components/charts/MetricCard';
+import TrendIndicator from '@/components/charts/TrendIndicator';
+import ModuleHealthCard from '@/components/dashboard/ModuleHealthCard';
+import AlertsPanel from '@/components/dashboard/AlertsPanel';
+import FunnelChart from '@/components/charts/FunnelChart';
+import {
+    TrendingUp,
+    DollarSign,
+    Users,
+    Target,
+    Flame,
+    Wallet,
+    TrendingDown,
+    Award
+} from 'lucide-react';
+import {
+    LineChart,
+    Line,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer
+} from 'recharts';
+import { formatCurrency, formatCompactCurrency } from '@/utils/formatters';
 
-/**
- * Props for the DashboardOverview component.
- * @interface DashboardOverviewProps
- */
 interface DashboardOverviewProps {
     startupId: number;
 }
 
-const KpiCard: React.FC<{ title: string; value: string; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
-    <Card className="flex-1">
-        <div className="flex items-start justify-between">
-            <div>
-                <p className="text-sm font-medium text-gray-500">{title}</p>
-                <p className="text-2xl font-bold text-gray-900">{value}</p>
-            </div>
-            <div className="bg-indigo-100 rounded-full p-2">
-                <Icon className="h-6 w-6 text-brand-primary" />
-            </div>
-        </div>
-    </Card>
-);
-
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({ startupId }) => {
-    const { data: dashboardData, isLoading } = useQuery({
+    // Fetch executive summary data
+    const { data: executiveSummary, isLoading, error } = useQuery({
+        queryKey: ['executiveSummary', startupId],
+        queryFn: async () => {
+            console.log('🔍 Fetching executive summary for startup:', startupId);
+            const response = await api.get(`/startups/${startupId}/analytics/executive-summary`);
+            console.log('📦 API Response:', response);
+            console.log('✅ Response data:', response.data);
+
+            // The response.data already contains the full object with success flag
+            if (response.data && response.data.success !== false) {
+                // Remove the 'success' key and return the rest of the data
+                const { success, ...data } = response.data;
+                console.log('📊 Executive Summary Data:', data);
+                return data;
+            }
+            console.warn('⚠️ API response not successful or missing data');
+            return null;
+        },
+        enabled: !!startupId,
+    });
+
+    // Fetch monthly data for charts
+    const { data: dashboardData } = useQuery({
         queryKey: ['dashboardOverview', startupId],
         queryFn: () => api.getDashboardOverview(startupId),
         enabled: !!startupId,
     });
 
-    if (isLoading) return <div>Loading dashboard...</div>;
-    if (!dashboardData) return null;
+    console.log('🎯 Current state:', {
+        isLoading,
+        error,
+        hasExecutiveSummary: !!executiveSummary,
+        executiveSummary,
+        hasDashboardData: !!dashboardData
+    });
 
-    const { monthly_data = [], tasks = [], experiments = [], next_milestone, overall_progress = 0, activity: recentActivity = [] } = dashboardData;
+    if (isLoading) return <div className="flex items-center justify-center h-96">Loading dashboard...</div>;
+    if (error) {
+        console.error('❌ Error loading dashboard:', error);
+        return <div className="flex items-center justify-center h-96 text-red-600">Error loading dashboard: {String(error)}</div>;
+    }
+    if (!executiveSummary) {
+        console.warn('⚠️ No executive summary data available');
+        return <div className="flex items-center justify-center h-96 text-gray-600">No data available</div>;
+    }
 
-    // FIX: Provide a default object shape for latestData to prevent type errors when monthly_data is empty.
-    const latestData = monthly_data[monthly_data.length - 1] || { mrr: 0, net_burn: 0, total_customers: 0 };
-    const upcomingTasks = tasks.filter(t => t.status !== TaskStatus.COMPLETED).slice(0, 5);
-    const activeExperiments = experiments.filter(e => e.status === ExperimentStatus.RUNNING).slice(0, 3);
+    const {
+        financial_health,
+        growth_metrics,
+        module_health,
+        acquisition_funnel,
+        sales_pipeline,
+        alerts,
+        recent_wins
+    } = executiveSummary;
+
+    const monthly_data = dashboardData?.monthly_data || [];
+
+    // Prepare financial performance chart data
+    const financialChartData = monthly_data.slice(-6).map((d: any) => ({
+        month: new Date(d.month_start).toLocaleDateString('en-US', { month: 'short' }),
+        revenue: d.total_revenue || 0,
+        expenses: d.total_expenses || 0,
+        cash: d.cash_in_bank || 0,
+        burn: Math.abs(d.net_burn || 0)
+    }));
+
+    // Prepare acquisition funnel data
+    const funnelData = [
+        { stage: 'Impressions', value: acquisition_funnel.impressions, label: formatCompactCurrency(acquisition_funnel.impressions) },
+        { stage: 'Clicks', value: acquisition_funnel.clicks, label: formatCompactCurrency(acquisition_funnel.clicks) },
+        { stage: 'Leads', value: acquisition_funnel.leads, label: formatCompactCurrency(acquisition_funnel.leads) },
+        { stage: 'Customers', value: acquisition_funnel.customers, label: formatCompactCurrency(acquisition_funnel.customers) }
+    ];
+
+    // Prepare sales pipeline mini funnel
+    const salesFunnelData = sales_pipeline.by_stage?.slice(0, 4).map((stage: any) => ({
+        stage: stage.stage,
+        value: stage.value,
+        label: formatCompactCurrency(stage.value)
+    })) || [];
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <KpiCard title="Monthly Recurring Revenue" value={formatCurrency(latestData.mrr)} icon={TrendingUp} />
-                <KpiCard title="Net Burn" value={latestData.net_burn < 0 ? `-${formatCurrency(Math.abs(latestData.net_burn))}` : formatCurrency(latestData.net_burn)} icon={TrendingUp} />
-                <KpiCard title="Total Customers" value={`${latestData.total_customers || 0}`} icon={Users} />
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Executive Dashboard</h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                    <Card title="Business Performance">
-                        <div style={{ height: 300 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={monthly_data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="month_start" tickFormatter={(date) => formatDate(date, { month: 'short' })} />
-                                    <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
-                                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                                    <Legend />
-                                    <Bar dataKey="mrr" fill="#4F46E5" name="MRR" />
-                                    <Bar dataKey="net_burn" fill="#EF4444" name="Net Burn" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </Card>
-                </div>
+            {/* Top-Level KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                    title="Total Revenue"
+                    value={formatCurrency(financial_health.total_revenue)}
+                    icon={<DollarSign className="h-6 w-6" />}
+                    trend={{ value: financial_health.revenue_trend, label: "vs last month" }}
+                />
+                <MetricCard
+                    title="Burn Rate"
+                    value={formatCurrency(financial_health.burn_rate)}
+                    icon={<Flame className="h-6 w-6" />}
+                    trend={{ value: -financial_health.burn_trend, label: "vs last month" }}
+                />
+                <MetricCard
+                    title="Cash Balance"
+                    value={formatCurrency(financial_health.cash_balance)}
+                    icon={<Wallet className="h-6 w-6" />}
+                    subtitle={`${financial_health.runway_months.toFixed(1)} months runway`}
+                />
+                <MetricCard
+                    title="Gross Margin"
+                    value={`${financial_health.gross_margin.toFixed(1)}%`}
+                    icon={<TrendingUp className="h-6 w-6" />}
+                    subtitle={`Target: ${financial_health.margin_target}%`}
+                />
+            </div>
 
-                <div className="space-y-6">
-                    <Card title="Next Milestone" actions={<button className="text-sm text-brand-primary font-medium">Update</button>}>
-                        <div className="flex items-center">
-                            <Target className="h-8 w-8 text-brand-secondary mr-4" />
+            {/* Second Row KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                    title="Total Customers"
+                    value={growth_metrics.customer_count.toString()}
+                    icon={<Users className="h-6 w-6" />}
+                    trend={{ value: growth_metrics.customer_growth_rate, label: "MoM growth" }}
+                />
+                <MetricCard
+                    title="MRR"
+                    value={formatCurrency(growth_metrics.mrr)}
+                    icon={<TrendingUp className="h-6 w-6" />}
+                    trend={{ value: growth_metrics.mrr_growth, label: "MoM growth" }}
+                />
+                <MetricCard
+                    title="Pipeline Value"
+                    value={formatCompactCurrency(growth_metrics.total_pipeline_value)}
+                    icon={<Target className="h-6 w-6" />}
+                    subtitle="CRM + Fundraising"
+                />
+                <MetricCard
+                    title="LTV:CAC Ratio"
+                    value={growth_metrics.ltv_cac_ratio.toFixed(1)}
+                    icon={<Award className="h-6 w-6" />}
+                    subtitle={growth_metrics.ltv_cac_ratio >= 3 ? 'Healthy' : 'Needs improvement'}
+                />
+            </div>
+
+            {/* Financial Performance Chart */}
+            <Card title="Financial Performance">
+                <div style={{ height: 300 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={financialChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="month" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                            <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} tickFormatter={(value) => formatCompactCurrency(value)} />
+                            <Tooltip
+                                formatter={(value: number) => formatCurrency(value)}
+                                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                            />
+                            <Legend />
+                            <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} name="Revenue" dot={{ r: 4 }} />
+                            <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} name="Expenses" dot={{ r: 4 }} />
+                            <Line type="monotone" dataKey="cash" stroke="#3b82f6" strokeWidth={2} name="Cash Balance" dot={{ r: 4 }} />
+                            <Line type="monotone" dataKey="burn" stroke="#f59e0b" strokeWidth={2} name="Burn Rate" dot={{ r: 4 }} strokeDasharray="5 5" />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            </Card>
+
+            {/* Growth Dashboard - 2x2 Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* Sales Pipeline */}
+                <Card title="Sales Pipeline Health">
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <p className="font-semibold text-gray-800">{next_milestone || 'Set a milestone'}</p>
-                                <p className="text-sm text-gray-500">{next_milestone ? 'Target: End of Q3 2024' : 'No deadline set'}</p>
+                                <p className="text-sm text-gray-500">Total Value</p>
+                                <p className="text-2xl font-bold text-gray-900">{formatCompactCurrency(sales_pipeline.total_value)}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Win Rate</p>
+                                <p className="text-2xl font-bold text-gray-900">{sales_pipeline.win_rate.toFixed(1)}%</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Active Deals</p>
+                                <p className="text-2xl font-bold text-gray-900">{sales_pipeline.deal_count}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Avg Deal Size</p>
+                                <p className="text-2xl font-bold text-gray-900">{formatCompactCurrency(sales_pipeline.avg_deal_size)}</p>
                             </div>
                         </div>
-                    </Card>
-                    <Card title="Overall Progress">
-                        <div className="w-full bg-gray-200 rounded-full h-4">
-                            <div className="bg-brand-primary h-4 rounded-full" style={{ width: `${overall_progress}%` }}></div>
+                        {salesFunnelData.length > 0 && (
+                            <div className="pt-4 border-t">
+                                <p className="text-xs text-gray-500 mb-2">Pipeline by Stage</p>
+                                <FunnelChart data={salesFunnelData} height={180} />
+                            </div>
+                        )}
+                    </div>
+                </Card>
+
+                {/* Product Development (Placeholder) */}
+                <Card title="Product Development">
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-sm text-gray-500">Features Completed</p>
+                                <p className="text-2xl font-bold text-gray-900">{module_health.product.features_completed}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Total Features</p>
+                                <p className="text-2xl font-bold text-gray-900">{module_health.product.total_features}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Critical Bugs</p>
+                                <p className="text-2xl font-bold text-red-600">{module_health.product.bugs}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Completion Rate</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {module_health.product.total_features > 0
+                                        ? ((module_health.product.features_completed / module_health.product.total_features) * 100).toFixed(0)
+                                        : 0}%
+                                </p>
+                            </div>
                         </div>
-                        <p className="text-right text-sm font-medium mt-2">{overall_progress}% Complete</p>
-                    </Card>
+                    </div>
+                </Card>
+
+                {/* Fundraising Status */}
+                <Card title="Fundraising Status">
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-sm text-gray-500">Active Investors</p>
+                                <p className="text-2xl font-bold text-gray-900">{module_health.fundraising.active_investors}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Cash Runway</p>
+                                <p className="text-2xl font-bold text-gray-900">{module_health.accounting.runway.toFixed(1)} mo</p>
+                            </div>
+                        </div>
+                        <div className="pt-4 border-t">
+                            <p className="text-xs text-gray-500 mb-2">Status</p>
+                            <p className="text-sm text-gray-700">{module_health.fundraising.key_metric}</p>
+                        </div>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Module Health Dashboard */}
+            <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Module Health</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <ModuleHealthCard
+                        module="business"
+                        status={module_health.business.status}
+                        keyMetric={module_health.business.key_metric}
+                    />
+                    <ModuleHealthCard
+                        module="crm"
+                        status={module_health.crm.status}
+                        keyMetric={module_health.crm.key_metric}
+                    />
+                    <ModuleHealthCard
+                        module="marketing"
+                        status={module_health.marketing.status}
+                        keyMetric={module_health.marketing.key_metric}
+                    />
+                    <ModuleHealthCard
+                        module="product"
+                        status={module_health.product.status}
+                        keyMetric={module_health.product.key_metric}
+                    />
+                    <ModuleHealthCard
+                        module="accounting"
+                        status={module_health.accounting.status}
+                        keyMetric={module_health.accounting.key_metric}
+                    />
+                    <ModuleHealthCard
+                        module="fundraising"
+                        status={module_health.fundraising.status}
+                        keyMetric={module_health.fundraising.key_metric}
+                    />
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card title="Upcoming Tasks">
-                    <ul className="space-y-3">
-                        {upcomingTasks.length > 0 ? upcomingTasks.map(task => (
-                            <li key={task.id} className="flex items-center text-sm">
-                                <ListTodo className="h-4 w-4 text-gray-400 mr-3 flex-shrink-0" />
-                                <span className="flex-1 text-gray-700">{task.name}</span>
-                                <span className={`px-2 py-0.5 text-xs rounded-full ${task.status === TaskStatus.IN_PROGRESS ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{task.status}</span>
-                            </li>
-                        )) : <p className="text-gray-500 text-sm">No upcoming tasks.</p>}
-                    </ul>
+            {/* Insights & Actions */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Alerts */}
+                <Card title="Priority Alerts">
+                    <AlertsPanel alerts={alerts} maxAlerts={5} />
                 </Card>
-                <Card title="Active Experiments">
-                    <ul className="space-y-3">
-                        {activeExperiments.length > 0 ? activeExperiments.map(exp => (
-                            <li key={exp.id} className="flex items-start text-sm">
-                                <Beaker className="h-4 w-4 text-gray-400 mr-3 flex-shrink-0 mt-0.5" />
-                                <div className="flex-1">
-                                    <p className="font-medium text-gray-800">{exp.name}</p>
-                                    <p className="text-gray-500">{exp.assumption}</p>
+
+                {/* Recent Wins */}
+                <Card title="Recent Wins">
+                    {recent_wins.length > 0 ? (
+                        <div className="space-y-3">
+                            {recent_wins.map((win: any, index: number) => (
+                                <div key={index} className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                    <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                        <Award className="h-4 w-4 text-green-600" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900">{win.title}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs text-green-700 font-medium uppercase">{win.module}</span>
+                                            <span className="text-xs text-gray-500">
+                                                {new Date(win.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </li>
-                        )) : <p className="text-gray-500 text-sm">No active experiments.</p>}
-                    </ul>
-                </Card>
-                <Card title="Recent Activity">
-                    <RecentActivityFeed activities={recentActivity} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <p className="text-sm text-gray-500">No recent wins to display</p>
+                            <p className="text-xs text-gray-400 mt-1">Keep pushing forward!</p>
+                        </div>
+                    )}
                 </Card>
             </div>
-
         </div>
     );
 };

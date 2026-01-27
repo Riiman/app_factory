@@ -78,6 +78,12 @@ const TasksPage: React.FC<TasksPageProps> = ({ startupId, onTaskClick, onAddNewT
         enabled: !!startupId,
     });
 
+    const { data: teamMembers = [] } = useQuery({
+        queryKey: ['team', startupId],
+        queryFn: () => api.getTeamMembers(startupId),
+        enabled: !!startupId,
+    });
+
     if (tasks === null) {
         return <div>Loading tasks...</div>;
     }

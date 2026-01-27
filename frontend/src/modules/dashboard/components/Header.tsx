@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PlusCircle, User as UserIcon } from 'lucide-react';
 import { User } from '@/types/dashboard-types';
+import api from '@/utils/api';
 import UserProfileMenu from './UserProfileMenu';
 
 /**
@@ -19,6 +20,8 @@ interface HeaderProps {
     startupName: string;
     /** The current stage of the startup (e.g., 'Seed'). */
     currentStage: string;
+    /** The current logo URL */
+    logoUrl?: string;
     /** The currently authenticated user object. */
     user: User;
     /** Callback function triggered when the global "Create" button is clicked. */
@@ -31,14 +34,11 @@ interface HeaderProps {
     notificationCenter?: React.ReactNode;
 }
 
-const Header: React.FC<HeaderProps> = ({ startupName, currentStage, user, onCreateClick, onSettingsClick, onLogout, notificationCenter }) => {
+const Header: React.FC<HeaderProps> = ({ startupName, currentStage, logoUrl, user, onCreateClick, onSettingsClick, onLogout, notificationCenter }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    /**
-     * Effect to handle clicks outside of the user profile menu to close it.
-     * This improves the user experience by not requiring an explicit close action.
-     */
+    // ... (rest of the component)
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -53,9 +53,18 @@ const Header: React.FC<HeaderProps> = ({ startupName, currentStage, user, onCrea
 
     return (
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
-            <div>
-                <h2 className="text-lg font-semibold text-gray-900">{startupName}</h2>
-                <p className="text-xs text-gray-500">{currentStage}</p>
+            <div className="flex items-center space-x-3">
+                {logoUrl && (
+                    <img
+                        src={api.getAssetUrl(logoUrl)}
+                        alt={`${startupName} logo`}
+                        className="w-10 h-10 rounded-full object-contain border border-gray-200"
+                    />
+                )}
+                <div>
+                    <h2 className="text-lg font-semibold text-gray-900">{startupName}</h2>
+                    <p className="text-xs text-gray-500">{currentStage}</p>
+                </div>
             </div>
             <div className="flex items-center space-x-4">
                 <button

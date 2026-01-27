@@ -1,3 +1,4 @@
+import trio
 import asyncio
 import json
 import redis.asyncio as redis

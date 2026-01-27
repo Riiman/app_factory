@@ -61,7 +61,7 @@ const EditBusinessOverviewModal: React.FC<EditBusinessOverviewModalProps> = ({ b
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div>
-                            <label htmlFor="business-model" className="block text-sm font-medium text-gray-700">Business Model</label>
+                            <label htmlFor="business-model" className="block text-sm font-medium text-gray-700">Business Strategy</label>
                             <textarea id="business-model" value={businessModel} onChange={e => setBusinessModel(e.target.value)} rows={4} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"></textarea>
                         </div>
                         <div>

@@ -92,10 +92,10 @@ def generate_scope_document_task(startup_id):
             if startup:
                 startup.is_generating_scope = False
                 
-                # Move to SCOPING stage only if generation was successful
+                # Move to ADMITTED stage only if generation was successful
                 if status == "success":
-                    startup.current_stage = StartupStage.SCOPING
-                    print(f"--- [Celery Task] Moved startup {startup.id} to SCOPING stage ---")
+                    startup.current_stage = StartupStage.ADMITTED
+                    print(f"--- [Celery Task] Moved startup {startup.id} to ADMITTED stage ---")
                     
                     # ALSO update the Submission status to APPROVED now that it's ready
                     if startup.submission:
@@ -155,13 +155,13 @@ def generate_contract_task(startup_id):
             if startup:
                 startup.is_generating_contract = False
                 
-                # Move to CONTRACT stage only if generation was successful
+                # Move to ADMITTED stage only if generation was successful
                 if status == "success":
-                    startup.current_stage = StartupStage.CONTRACT
-                    print(f"--- [Celery Task] Moved startup {startup.id} to CONTRACT stage ---")
+                    startup.current_stage = StartupStage.ADMITTED
+                    print(f"--- [Celery Task] Moved startup {startup.id} to ADMITTED stage ---")
 
                 db.session.commit()
-                # Assuming contract is linked to startup, fetch it to send in update
+                # Assuming contract is linkied to startup, fetch it to send in update
                 contract = Contract.query.filter_by(startup_id=startup.id).first()
                 publish_update("contract_generation_completed", 
                                {
@@ -175,5 +175,33 @@ def generate_contract_task(startup_id):
                                rooms=[f"user_{startup.user_id}", "admin"])
         except Exception as e:
             print(f"Error resetting contract generation flag: {e}")
+
+from app.services.insights_service import InsightsService
+
+@celery.task(name='app.tasks.generate_daily_snapshots')
+def generate_daily_snapshots():
+    """
+    Daily task to generate business insight snapshots for all active startups.
+    Scheduled to run every 24 hours.
+    """
+    print("--- [Celery Task] Starting Daily Business Insights Snapshot Generation ---")
+    try:
+        # Get all active startups
+        active_startups = Startup.query.filter(Startup.status != StartupStatus.ARCHIVED).all()
+        print(f"Found {len(active_startups)} active startups.")
+        
+        success_count = 0
+        for startup in active_startups:
+            try:
+                InsightsService.generate_snapshot(startup.id)
+                success_count += 1
+            except Exception as e:
+                print(f"Error generating snapshot for startup {startup.id}: {e}")
+        
+        print(f"--- [Celery Task] Completed. Generated {success_count}/{len(active_startups)} snapshots. ---")
+        
+    except Exception as e:
+        print(f"Critical Error in generate_daily_snapshots: {e}")
+
 
 

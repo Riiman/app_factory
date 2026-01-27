@@ -35,26 +35,20 @@ interface SidebarProps {
     activeSubPage: string;
     /** Callback function triggered when a navigation link is clicked. */
     onNavClick: (scope: string, subPage?: string) => void;
+    /** Optional list of items to display pinned to the bottom. */
+    bottomItems?: MenuItem[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage, onNavClick }) => {
-    /** Internal state to manage which collapsible sections are currently open. */
-    const [openScopes, setOpenScopes] = useState<Set<string>>(new Set(activeScope ? [activeScope.toString(), Scope.WORKSPACE.toString()] : [Scope.WORKSPACE.toString()]));
+const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage, onNavClick, bottomItems }) => {
+    /** Internal state to manage which collapsible section is currently open. */
+    const [openScope, setOpenScope] = useState<string | null>(activeScope ? activeScope.toString() : Scope.WORKSPACE.toString());
 
     /**
      * Toggles the open/closed state of a collapsible menu section.
      * @param {string} scopeName - The name of the scope to toggle.
      */
     const toggleScope = (scopeName: string) => {
-        setOpenScopes(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(scopeName)) {
-                newSet.delete(scopeName);
-            } else {
-                newSet.add(scopeName);
-            }
-            return newSet;
-        });
+        setOpenScope(prev => prev === scopeName ? null : scopeName);
     };
 
     /**
@@ -75,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
             <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
                 {menuItems.map((item) => {
                     const isActive = isScopeActive(item.name);
-                    const isOpen = openScopes.has(item.name);
+                    const isOpen = openScope === item.name;
                     const Icon = item.icon;
 
                     if (item.subItems.length === 0) {
@@ -130,6 +124,27 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
                     );
                 })}
             </nav>
+            {/* Bottom Pinned Items */}
+            {bottomItems && bottomItems.length > 0 && (
+                <div className="border-t border-gray-200 px-2 py-4 space-y-1">
+                    {bottomItems.map((item) => {
+                        const isActive = isScopeActive(item.name);
+                        const Icon = item.icon;
+                        return (
+                            <a
+                                key={item.name}
+                                href="#"
+                                onClick={(e) => { e.preventDefault(); onNavClick(item.name); }}
+                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors duration-150 ${isActive ? 'bg-indigo-50 text-brand-primary' : 'text-gray-700 hover:bg-gray-100'
+                                    }`}
+                            >
+                                <Icon className="mr-3 h-5 w-5" />
+                                <span>{item.name}</span>
+                            </a>
+                        );
+                    })}
+                </div>
+            )}
         </aside>
     );
 };

@@ -38,6 +38,17 @@ class Config:
     # OpenAI Configuration
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     
+    # GetLate Configuration
+    GETLATE_API_KEY = os.getenv('GETLATE_API_KEY')
+    
+    # AWS S3 Configuration
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_S3_BUCKET = os.getenv('AWS_S3_BUCKET')
+    AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
+    S3_URL_EXPIRATION = int(os.getenv('S3_URL_EXPIRATION', '3600'))  # 1 hour default
+    MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', str(16 * 1024 * 1024)))  # 16MB default
+    
     # CORS Configuration
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000').split(',')
 
@@ -45,6 +56,10 @@ class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'instance', 'turningidea.db')
+    
+    # Celery Configuration
+    CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+    CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
 
 class ProductionConfig(Config):
     """Production configuration"""

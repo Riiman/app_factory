@@ -1,12 +1,9 @@
-/**
- * @file TaskDetailModal.tsx
- * @description A modal component to display the detailed information of a single task.
- * It shows the task's description, due date, status, and what it's linked to.
- */
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Task, TaskStatus } from '@/types/dashboard-types';
-import { X, Calendar, Tag, Link as LinkIcon, FileText } from 'lucide-react';
+import { X, Calendar, Tag, Link as LinkIcon, FileText, Users } from 'lucide-react';
+import api from '@/utils/api';
+import ConfirmationModal from '@/components/ConfirmationModal';
+import { useQueryClient } from '@tanstack/react-query';
 
 /**
  * Props for the TaskDetailModal component.
@@ -42,13 +39,31 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; children: R
 
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, linkedEntityName, onClose }) => {
     const statusClasses = getStatusClasses(task.status);
-    
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const queryClient = useQueryClient();
+
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        try {
+            await api.deleteTask(task.startup_id, task.id);
+            await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            await queryClient.invalidateQueries({ queryKey: ['tasks', task.startup_id] });
+            onClose();
+        } catch (error) {
+            console.error('Failed to delete task:', error);
+            alert('Failed to delete task');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
-        <div 
+        <div
             className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 animate-fade-in"
             onClick={onClose}
         >
-            <div 
+            <div
                 className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
@@ -77,6 +92,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, linkedEntityNam
                                 </div>
                             </DetailItem>
                         )}
+                        <DetailItem icon={Users} label="Assigned To">
+                            <span className="font-semibold">{task.assignee ? task.assignee.name : 'Unassigned'}</span>
+                        </DetailItem>
                     </div>
 
                     <div className="border-t border-gray-200 pt-6">
@@ -85,15 +103,33 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, linkedEntityNam
                         </DetailItem>
                     </div>
                 </div>
-                 <div className="flex-shrink-0 border-t border-gray-200 p-4 bg-gray-50 rounded-b-xl flex justify-end space-x-3">
+                <div className="flex-shrink-0 border-t border-gray-200 p-4 bg-gray-50 rounded-b-xl flex justify-between space-x-3">
+                    <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="px-4 py-2 bg-white border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm font-medium"
+                    >
+                        Delete
+                    </button>
                     <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 text-sm font-medium">
                         Edit Task
                     </button>
-                    <button className="px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 text-sm font-medium">
-                        Mark as Complete
+                    <button onClick={onClose} className="px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 text-sm font-medium">
+                        Close
                     </button>
                 </div>
             </div>
+
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onClose={() => setShowDeleteConfirm(false)}
+                onConfirm={handleDelete}
+                title="Delete Task"
+                message="Are you sure you want to delete this task? This action cannot be undone."
+                confirmText="Delete"
+                variant="danger"
+                isProcessing={isDeleting}
+            />
+
             <style>{`
                 @keyframes fade-in {
                     from { opacity: 0; transform: scale(0.95); }

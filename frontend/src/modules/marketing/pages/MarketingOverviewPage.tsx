@@ -1,293 +1,263 @@
 /**
  * @file MarketingOverviewPage.tsx
- * @description This page serves as a high-level dashboard for the startup's marketing efforts.
- * It displays aggregated KPIs from all campaigns and the main positioning statement.
+ * @description Enhanced marketing dashboard with channel analytics, CAC, ROI, and funnel
  */
 
-import React, { useState } from 'react';
-import { MarketingOverview, MarketingCampaign } from '@/types/dashboard-types';
-import Card from '@/components/Card';
-import { Edit, Target, DollarSign, Eye, Pointer, Goal, Sparkles, Heart, Users, Shield, Zap } from 'lucide-react';
-import EditPositioningModal from '@/modules/marketing/components/EditPositioningModal';
-import QuickCreateModal from '@/modules/marketing/components/QuickCreateModal';
-import PromptModal from '@/components/ui/PromptModal';
-import api from '@/utils/api';
-
-/**
- * Props for the MarketingOverviewPage component.
- * @interface MarketingOverviewPageProps
- */
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import api from '@/utils/api';
+import Card from '@/components/Card';
+import { TrendingUp, DollarSign, Target, BarChart2, PieChart as PieChartIcon } from 'lucide-react';
+import { formatCurrency, formatCompactCurrency } from '@/utils/formatters';
+import { MetricCard, FunnelChart } from '@/components/charts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
 interface MarketingOverviewPageProps {
-    /** The ID of the current startup. */
     startupId: number;
-    /** Callback function to update the positioning statement in the parent component (optional, or remove if handling locally). */
-    onPositioningStatementUpdate?: (newStatement: string) => void;
-    /** Flag indicating if GTM generation is in progress */
     isGeneratingGtm?: boolean;
 }
 
-const KpiCard: React.FC<{ title: string; value: string; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
-    <Card className="flex-1">
-        <div className="flex items-start justify-between">
-            <div>
-                <p className="text-sm font-medium text-gray-500">{title}</p>
-                <p className="text-2xl font-bold text-gray-900">{value}</p>
+const MarketingOverviewPage: React.FC<MarketingOverviewPageProps> = ({ startupId, isGeneratingGtm }) => {
+    if (isGeneratingGtm) {
+        return (
+            <div className="flex flex-col items-center justify-center h-96 space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+                <p className="text-gray-600 font-medium">Generating your Marketing Strategy...</p>
             </div>
-            <div className="bg-indigo-100 rounded-full p-2">
-                <Icon className="h-6 w-6 text-brand-primary" />
-            </div>
-        </div>
-    </Card>
-);
-
-const MarketingOverviewPage: React.FC<MarketingOverviewPageProps> = ({ startupId, onPositioningStatementUpdate, isGeneratingGtm }) => {
-    const { data: marketingOverview } = useQuery({
-        queryKey: ['marketingOverview', startupId],
-        queryFn: () => api.getMarketingOverview(startupId),
-        enabled: !!startupId,
-    });
-
-    const { data: campaigns } = useQuery({
-        queryKey: ['campaigns', startupId],
-        queryFn: () => api.getCampaigns(startupId),
-        enabled: !!startupId,
-    });
-
-    const { positioning_statement } = marketingOverview || {};
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
-    const [currentPositioning, setCurrentPositioning] = useState(positioning_statement);
-
-    const [promptState, setPromptState] = React.useState<{
-        isOpen: boolean;
-        title: string;
-        message: string;
-        type: 'info' | 'confirm' | 'error' | 'success';
-        onConfirm?: () => void;
-    }>({
-        isOpen: false,
-        title: '',
-        message: '',
-        type: 'info',
-    });
-
-    const closePrompt = () => {
-        setPromptState(prev => ({ ...prev, isOpen: false }));
-    };
-
-    const showPrompt = (title: string, message: string, type: 'info' | 'confirm' | 'error' | 'success', onConfirm?: () => void) => {
-        setPromptState({
-            isOpen: true,
-            title,
-            message,
-            type,
-            onConfirm,
-        });
-    };
-
-    const handleGenerateGtm = async () => {
-        showPrompt(
-            'Generate GTM Strategy',
-            'Are you sure you want to generate a GTM strategy based on your scope document?',
-            'confirm',
-            async () => {
-                closePrompt(); // Close confirmation modal
-                try {
-                    await api.generateAssets(startupId, false, true);
-                    showPrompt('Success', 'GTM strategy generation triggered! This may take a few minutes.', 'success');
-                } catch (error) {
-                    console.error("Failed to trigger generation:", error);
-                    showPrompt('Error', 'Failed to trigger generation.', 'error');
-                }
-            }
         );
-    };
+    }
+    // Fetch analytics data
+    const { data: channelPerformance = [] } = useQuery({
+        queryKey: ['channelPerformance', startupId],
+        queryFn: async () => {
+            const res = await api.get(`/startups/${startupId}/analytics/marketing/channel-performance`);
+            return res.data;
+        },
+        enabled: !!startupId
+    });
 
-    const totalSpend = (campaigns || []).reduce((sum, campaign) => sum + (campaign.spend || 0), 0);
-    const totalImpressions = (campaigns || []).reduce((sum, campaign) => sum + (campaign.impressions || 0), 0);
-    const totalClicks = (campaigns || []).reduce((sum, campaign) => sum + (campaign.clicks || 0), 0);
-    const totalConversions = (campaigns || []).reduce((sum, campaign) => sum + (campaign.conversions || 0), 0);
+    const { data: cacByChannel = [] } = useQuery({
+        queryKey: ['cacByChannel', startupId],
+        queryFn: async () => {
+            const res = await api.get(`/startups/${startupId}/analytics/marketing/cac-by-channel`);
+            return res.data;
+        },
+        enabled: !!startupId
+    });
 
-    const formatCompactNumber = (num: number) => {
-        if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
-        if (num >= 1_000) return `${(num / 1_000).toFixed(1)}k`;
-        return num.toLocaleString();
-    };
+    const { data: marketingFunnel = [] } = useQuery({
+        queryKey: ['marketingFunnel', startupId],
+        queryFn: async () => {
+            const res = await api.get(`/startups/${startupId}/analytics/marketing/funnel`);
+            return res.data;
+        },
+        enabled: !!startupId
+    });
 
-    const formatCurrency = (num: number) => `$${formatCompactNumber(num)}`;
+    const { data: campaignROI = [] } = useQuery({
+        queryKey: ['campaignROI', startupId],
+        queryFn: async () => {
+            const res = await api.get(`/startups/${startupId}/analytics/marketing/campaign-roi`);
+            return res.data;
+        },
+        enabled: !!startupId
+    });
 
-    const handleSavePositioning = async (newStatement: string) => {
-        try {
-            const response = await fetch(`/api/startups/${startupId}/marketing-overview`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ positioning_statement: newStatement }),
-            });
+    const { data: spendAllocation = [] } = useQuery({
+        queryKey: ['spendAllocation', startupId],
+        queryFn: async () => {
+            const res = await api.get(`/startups/${startupId}/analytics/marketing/spend-allocation`);
+            return res.data;
+        },
+        enabled: !!startupId
+    });
 
-            if (!response.ok) {
-                throw new Error('Failed to update positioning statement');
-            }
+    // Calculate aggregate metrics
+    const totalSpend = channelPerformance.reduce((sum: number, ch: any) => sum + (ch.spend || 0), 0);
+    const totalConversions = channelPerformance.reduce((sum: number, ch: any) => sum + (ch.conversions || 0), 0);
+    const avgCAC = totalConversions > 0 ? totalSpend / totalConversions : 0;
+    const totalImpressions = channelPerformance.reduce((sum: number, ch: any) => sum + (ch.impressions || 0), 0);
 
-            const data = await response.json();
-            if (data.success) {
-                setCurrentPositioning(data.marketing_overview.positioning_statement);
-                onPositioningStatementUpdate(data.marketing_overview.positioning_statement);
-            } else {
-                console.error('Failed to save:', data.error);
-                // Optionally, show an error message to the user
-            }
-        } catch (error) {
-            console.error('Error saving positioning statement:', error);
-            // Optionally, show an error message to the user
-        }
-    };
+    const COLORS = ['#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef'];
+
+    // Prepare radar chart data for channel comparison
+    const radarData = channelPerformance.map((ch: any) => ({
+        channel: ch.channel,
+        ctr: ch.ctr || 0,
+        conversionRate: ch.conversion_rate || 0,
+        efficiency: ch.conversions > 0 ? (ch.conversions / (ch.spend / 1000)) : 0
+    }));
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Marketing Overview</h1>
-                <div className="flex space-x-2">
-                    {/* Quick Create Button */}
-                    <button
-                        onClick={() => setIsQuickCreateOpen(true)}
-                        className="flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-md hover:from-orange-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors shadow-sm"
-                    >
-                        <Zap className="h-5 w-5 mr-2" />
-                        <span className="text-sm font-medium">Quick Create</span>
-                    </button>
+            <h1 className="text-2xl font-bold text-gray-900">Marketing Intelligence</h1>
 
-                    {/* Generate Strategy Button */}
-                    <button
-                        onClick={handleGenerateGtm}
-                        disabled={isGeneratingGtm}
-                        className={`flex items-center px-4 py-2 text-white rounded-md transition-colors ${isGeneratingGtm ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'}`}
-                    >
-                        {isGeneratingGtm ? (
-                            <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                <span className="text-sm font-medium">Generating...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles className="h-5 w-5 mr-2" />
-                                <span className="text-sm font-medium">Generate Strategy</span>
-                            </>
-                        )}
-                    </button>
-
-                    <button
-                        onClick={() => setIsEditModalOpen(true)}
-                        className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors"
-                    >
-                        <Edit className="h-4 w-4 mr-2" />
-                        <span className="text-sm font-medium">Edit Positioning</span>
-                    </button>
-                </div>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <MetricCard
+                    title="Total Spend"
+                    value={totalSpend}
+                    format="currency"
+                    icon={<DollarSign className="w-6 h-6" />}
+                    iconBgColor="bg-purple-50"
+                    iconColor="text-purple-600"
+                />
+                <MetricCard
+                    title="Total Conversions"
+                    value={totalConversions}
+                    icon={<Target className="w-6 h-6" />}
+                    iconBgColor="bg-green-50"
+                    iconColor="text-green-600"
+                />
+                <MetricCard
+                    title="Avg CAC"
+                    value={avgCAC}
+                    format="currency"
+                    icon={<TrendingUp className="w-6 h-6" />}
+                    iconBgColor="bg-blue-50"
+                    iconColor="text-blue-600"
+                />
+                <MetricCard
+                    title="Total Impressions"
+                    value={totalImpressions}
+                    subtitle={`${channelPerformance.length} channels`}
+                    icon={<BarChart2 className="w-6 h-6" />}
+                    iconBgColor="bg-amber-50"
+                    iconColor="text-amber-600"
+                />
             </div>
 
-            <PromptModal
-                isOpen={promptState.isOpen}
-                onClose={closePrompt}
-                title={promptState.title}
-                message={promptState.message}
-                type={promptState.type}
-                onConfirm={promptState.onConfirm}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <KpiCard title="Total Spend" value={formatCurrency(totalSpend)} icon={DollarSign} />
-                <KpiCard title="Total Impressions" value={formatCompactNumber(totalImpressions)} icon={Eye} />
-                <KpiCard title="Total Clicks" value={formatCompactNumber(totalClicks)} icon={Pointer} />
-                <KpiCard title="Total Conversions" value={formatCompactNumber(totalConversions)} icon={Goal} />
-            </div>
-
+            {/* Marketing Funnel & CAC by Channel */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="h-full">
-                    <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                            <Target className="h-10 w-10 text-brand-primary bg-indigo-100 p-2 rounded-lg" />
-                        </div>
-                        <div className="ml-4">
-                            <h2 className="text-lg font-semibold text-gray-800">Positioning Statement</h2>
-                            <p className="mt-1 text-gray-600 text-xl italic">
-                                "{currentPositioning}"
-                            </p>
-                        </div>
-                    </div>
-                </Card>
+                {marketingFunnel.length > 0 && (
+                    <Card title="Marketing Funnel">
+                        <FunnelChart
+                            data={marketingFunnel}
+                            height={280}
+                            formatValue={(value) => value.toLocaleString()}
+                        />
+                    </Card>
+                )}
 
-                <Card className="h-full">
-                    <div className="flex items-start mb-4">
-                        <div className="flex-shrink-0">
-                            <Heart className="h-10 w-10 text-pink-600 bg-pink-100 p-2 rounded-lg" />
+                {cacByChannel.length > 0 && (
+                    <Card title="CAC by Channel">
+                        <div style={{ height: 350 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={cacByChannel} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis
+                                        dataKey="channel"
+                                        angle={-45}
+                                        textAnchor="end"
+                                        height={70}
+                                        tick={{ fontSize: 11 }}
+                                    />
+                                    <YAxis
+                                        tickFormatter={(value) => `$${value}`}
+                                        tick={{ fontSize: 12 }}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: number) => formatCurrency(value)}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                    />
+                                    <Bar dataKey="cac" radius={[4, 4, 0, 0]}>
+                                        {cacByChannel.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
-                        <div className="ml-4">
-                            <h2 className="text-lg font-semibold text-gray-800">Brand Identity</h2>
-                        </div>
-                    </div>
-
-                    {marketingOverview?.brand_details ? (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tone of Voice</h3>
-                                    <p className="text-gray-900 font-medium">{marketingOverview.brand_details.tone_of_voice}</p>
-                                </div>
-                                <div>
-                                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Archetype</h3>
-                                    <p className="text-gray-900 font-medium">{marketingOverview.brand_details.brand_archetype}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Target Audience</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {(marketingOverview.brand_details.target_audience || []).map((aud, idx) => (
-                                        <span key={idx} className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full flex items-center">
-                                            <Users className="w-3 h-3 mr-1" />
-                                            {aud}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Key Messaging</h3>
-                                <div className="space-y-1">
-                                    {(marketingOverview.brand_details.key_messaging_pillars || []).map((pillar, idx) => (
-                                        <div key={idx} className="flex items-center text-sm text-gray-600">
-                                            <Shield className="w-3 h-3 mr-2 text-green-500" />
-                                            {pillar}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-gray-500 italic text-center py-4">
-                            Brand identity not yet generated.
-                            <br />
-                            Run "Generate Strategy" to populate.
-                        </div>
-                    )}
-                </Card>
+                    </Card>
+                )}
             </div>
-            <EditPositioningModal
-                isOpen={isEditModalOpen}
-                onClose={() => setIsEditModalOpen(false)}
-                onSave={handleSavePositioning}
-                initialValue={currentPositioning}
-            />
-            <QuickCreateModal
-                isOpen={isQuickCreateOpen}
-                onClose={() => setIsQuickCreateOpen(false)}
-                startupId={startupId}
-                onSuccess={() => {
-                    showPrompt('Success', 'Content item created! Check your Content Calendar.', 'success');
-                }}
-            />
+
+            {/* Channel Performance Table & Spend Allocation */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {channelPerformance.length > 0 && (
+                    <Card title="Channel Performance">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Channel</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Spend</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Conv.</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CTR</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CAC</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {channelPerformance.map((ch: any, idx: number) => (
+                                        <tr key={idx} className="hover:bg-gray-50">
+                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{ch.channel}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{formatCompactCurrency(ch.spend || 0)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{ch.conversions || 0}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{(ch.ctr || 0).toFixed(1)}%</td>
+                                            <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">${(ch.cac || 0).toFixed(0)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                )}
+
+                {spendAllocation.length > 0 && (
+                    <Card title="Spend Allocation">
+                        <div style={{ height: 350 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={spendAllocation}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={(entry: any) => `${entry.channel}: ${(entry.percentage || 0).toFixed(1)}%`}
+                                        outerRadius={80}
+                                        dataKey="spend"
+                                    >
+                                        {spendAllocation.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        formatter={(value: number) => formatCurrency(value)}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
+                )}
+            </div>
+
+            {/* Campaign ROI */}
+            {campaignROI.length > 0 && (
+                <Card title="Top Campaigns by ROI">
+                    <div className="space-y-3">
+                        {campaignROI.slice(0, 5).map((campaign: any) => (
+                            <div key={campaign.campaign_id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{campaign.campaign_name}</p>
+                                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{campaign.channel}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">
+                                        Spend: {formatCurrency(campaign.spend)} • Conversions: {campaign.conversions}
+                                    </p>
+                                </div>
+                                <div className="text-right ml-4">
+                                    <p className={`text-sm font-bold ${(campaign.roi || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {(campaign.roi || 0) >= 0 ? '+' : ''}{(campaign.roi || 0).toFixed(1)}% ROI
+                                    </p>
+                                    <p className="text-xs text-gray-500">{formatCompactCurrency(campaign.estimated_revenue || 0)}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };

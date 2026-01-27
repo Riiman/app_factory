@@ -103,3 +103,4 @@ langchain-community
 chromadb>=0.4.22
 tree-sitter>=0.20.4
 tree-sitter-languages>=1.8.0
+boto3>=1.34.0

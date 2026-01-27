@@ -19,17 +19,27 @@ export const getWebSocketUrl = (endpoint: string) => {
 };
 
 class Api {
+  private baseURL: string;
+
+  constructor() {
+    this.baseURL = API_BASE_URL;
+  }
 
   private async fetch(url: string, options: RequestInit = {}) {
     const token = localStorage.getItem('access_token');
 
-    const headers = {
+    const headers: any = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // If body is FormData, don't set Content-Type (browser will do it)
+    if (options.body instanceof FormData) {
+      delete headers['Content-Type'];
     }
 
     const fullUrl = `${API_BASE_URL}${url}`;
@@ -52,6 +62,7 @@ class Api {
           const errorMessage = errorData.error || errorData.msg || 'An API error occurred';
           const error: any = new Error(errorMessage);
           error.status = response.status;
+          error.response = { data: errorData }; // Attach response data for error handling
           throw error;
         } else {
           const errorText = await response.text();
@@ -68,12 +79,12 @@ class Api {
     }
   }
 
-  async get(url: string, options: RequestInit = {}) {
+  async get<T = any>(url: string, options: RequestInit = {}): Promise<T> {
     const response = await this.fetch(url, options);
     return response.json();
   }
 
-  async post(url: string, body: any, options: RequestInit = {}) {
+  async post<T = any>(url: string, body: any, options: RequestInit = {}): Promise<T> {
     const response = await this.fetch(url, {
       method: 'POST',
       body: JSON.stringify(body),
@@ -82,12 +93,33 @@ class Api {
     return response.json();
   }
 
-  async put(url: string, body: any, options: RequestInit = {}) {
+
+  async put<T = any>(url: string, body: any, options: RequestInit = {}): Promise<T> {
     const response = await this.fetch(url, {
       method: 'PUT',
       body: JSON.stringify(body),
       ...options,
     });
+    return response.json();
+  }
+
+  async delete<T = any>(url: string, options: RequestInit = {}): Promise<T> {
+    const response = await this.fetch(url, {
+      method: 'DELETE',
+      ...options,
+    });
+    return response.json();
+  }
+
+  async request(method: string, url: string, body?: any, options: RequestInit = {}) {
+    const fetchOptions: RequestInit = {
+      method,
+      ...options,
+    };
+    if (body) {
+      fetchOptions.body = JSON.stringify(body);
+    }
+    const response = await this.fetch(url, fetchOptions);
     return response.json();
   }
 
@@ -128,6 +160,30 @@ class Api {
     }
     const data = await response.json();
     return data.startup;
+  }
+
+  getAssetUrl(path: string | null | undefined): string | undefined {
+    if (!path) return undefined;
+    if (path.startsWith('http')) return path;
+
+    // Use explicit backend origin for assets to avoid proxy issues with images
+    const backendOrigin = 'http://localhost:5000';
+    return `${backendOrigin}${path}`;
+  }
+
+  async uploadLogo(startupId: number, formData: FormData) {
+    const response = await this.fetch(`/startups/${startupId}/logo`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        // Let the browser set the Content-Type with boundary for FormData
+      },
+    });
+    return response.json();
+  }
+
+  async deleteLogo(startupId: number) {
+    return this.delete(`/startups/${startupId}/logo`);
   }
 
   // --- Pre-Admission Stage Endpoints ---
@@ -178,6 +234,11 @@ class Api {
     return (await response.json()).campaigns;
   }
 
+  async recalculateCampaignMetrics(startupId: number) {
+    const response = await this.post(`/startups/${startupId}/marketing/recalculate-metrics`, {});
+    return response;
+  }
+
   async getTasks(startupId: number) {
     const response = await this.fetch(`/startups/${startupId}/tasks`);
     if (!response.ok) throw new Error('Failed to fetch tasks');
@@ -212,6 +273,63 @@ class Api {
     const response = await this.fetch(`/startups/${startupId}/investors`);
     if (!response.ok) throw new Error('Failed to fetch investors');
     return (await response.json()).investors;
+  }
+
+  async getGlobalInvestors(
+    startupId: number,
+    options: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      bioKeywords?: string;
+      investmentKeywords?: string;
+      types?: string;
+      sectors?: string;
+      stages?: string;
+      locations?: string;
+      minCheck?: number;
+      maxCheck?: number;
+      sortBy?: string;
+      order?: 'asc' | 'desc';
+    } = {}
+  ) {
+    const params = new URLSearchParams();
+
+    // Pagination
+    if (options.page) params.append('page', options.page.toString());
+    if (options.limit) params.append('limit', options.limit.toString());
+
+    // Search
+    if (options.search) params.append('search', options.search);
+    if (options.bioKeywords) params.append('bio_keywords', options.bioKeywords);
+    if (options.investmentKeywords) params.append('investment_keywords', options.investmentKeywords);
+
+    // Filters
+    if (options.types) params.append('types', options.types);
+    if (options.sectors) params.append('sectors', options.sectors);
+    if (options.stages) params.append('stages', options.stages);
+    if (options.locations) params.append('locations', options.locations);
+    if (options.minCheck) params.append('min_check', options.minCheck.toString());
+    if (options.maxCheck) params.append('max_check', options.maxCheck.toString());
+
+    // Sorting
+    if (options.sortBy) params.append('sort_by', options.sortBy);
+    if (options.order) params.append('order', options.order);
+
+    const response = await this.fetch(`/startups/${startupId}/global-investors?${params.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch global investors');
+    const data = await response.json();
+    return {
+      investors: data.investors,
+      pagination: data.pagination
+    };
+  }
+
+  async getRecommendedInvestors(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/global-investors/recommended`);
+    if (!response.ok) throw new Error('Failed to fetch recommended investors');
+    const data = await response.json();
+    return data;
   }
 
   // --- Admin Endpoints ---
@@ -315,9 +433,92 @@ class Api {
     return response.experiment;
   }
 
-  async createArtifact(startupId: number, data: any) {
+  async createArtifact(startupId: number, data: {
+    name: string;
+    type: string;
+    location: string;
+    scope?: string;
+    description?: string;
+    linked_to_type?: string;
+    linked_to_id?: number;
+  }) {
     const response = await this.post(`/startups/${startupId}/artifacts`, data);
     return response.artifact;
+  }
+
+  // --- DELETE Methods ---
+
+  async deleteTask(startupId: number, taskId: number) {
+    return this.delete(`/startups/${startupId}/tasks/${taskId}`);
+  }
+
+  async deleteExperiment(startupId: number, experimentId: number) {
+    return this.delete(`/startups/${startupId}/experiments/${experimentId}`);
+  }
+
+  async deleteFeature(startupId: number, productId: number, featureId: number) {
+    return this.delete(`/startups/${startupId}/products/${productId}/features/${featureId}`);
+  }
+
+  async deleteMetric(startupId: number, productId: number, metricId: number) {
+    return this.delete(`/startups/${startupId}/products/${productId}/metrics/${metricId}`);
+  }
+
+  async deleteIssue(startupId: number, productId: number, issueId: number) {
+    return this.delete(`/startups/${startupId}/products/${productId}/issues/${issueId}`);
+  }
+
+  // NEW: For FILE uploads with FormData
+  async createArtifactWithFile(
+    startupId: number,
+    formData: FormData,
+    onProgress?: (progress: number) => void
+  ) {
+    const token = localStorage.getItem('access_token');
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      if (onProgress) {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            onProgress(percentComplete);
+          }
+        });
+      }
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response.artifact);
+        } else {
+          reject(new Error(`Upload failed: ${xhr.statusText}`));
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Upload failed'));
+      });
+
+      xhr.open('POST', `${this.baseURL}/startups/${startupId}/artifacts`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    });
+  }
+
+  // NEW: Get download URL for FILE artifacts
+  async getArtifactDownloadUrl(startupId: number, artifactId: number) {
+    const response = await this.fetch(`/startups/${startupId}/artifacts/${artifactId}/download`);
+    if (!response.ok) throw new Error('Failed to get download URL');
+    return await response.json();
+  }
+
+  // NEW: Delete artifact (soft delete + S3 cleanup)
+  async deleteArtifact(startupId: number, artifactId: number) {
+    const response = await this.delete(`/startups/${startupId}/artifacts/${artifactId}`);
+    return response;
   }
 
   async createProduct(startupId: number, data: any) {
@@ -353,6 +554,22 @@ class Api {
   async createInvestor(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/investors`, data);
     return response.investor;
+  }
+
+  async updateInvestor(startupId: number, investorId: number, data: any) {
+    const response = await this.put(`/startups/${startupId}/investors/${investorId}`, data);
+    return response.investor;
+  }
+
+  async getInvestorInteractions(startupId: number, investorId: number) {
+    const response = await this.fetch(`/startups/${startupId}/investors/${investorId}/interactions`);
+    if (!response.ok) throw new Error('Failed to fetch interactions');
+    return (await response.json()).interactions;
+  }
+
+  async logInteraction(startupId: number, investorId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/investors/${investorId}/interactions`, data);
+    return response.interaction;
   }
 
   async createCampaign(startupId: number, data: any) {
@@ -445,6 +662,38 @@ class Api {
     return response.setting;
   }
 
+  async initiateGetLateAuth(startupId: number, provider: string) {
+    const response = await this.get(`/startups/${startupId}/marketing/${provider}/connect`);
+    return response.auth_url;
+  }
+
+  async listEntities(startupId: number, provider: string, connectToken: string, orgIds?: string, organizations?: string) {
+    const response = await this.post(`/startups/${startupId}/marketing/${provider}/list-entities`, {
+      connect_token: connectToken,
+      orgIds: orgIds,
+      organizations: organizations
+    });
+    return response.data;
+  }
+
+  async finalizeConnection(startupId: number, provider: string, connectToken: string, selectedId: string, selectedName?: string, userProfile?: any, profileId?: string, refreshToken?: string) {
+    const response = await this.post(`/startups/${startupId}/marketing/${provider}/finalize`, {
+      connect_token: connectToken,
+      selected_id: selectedId,
+      selected_name: selectedName,
+      userProfile: userProfile,
+      profileId: profileId,
+      refreshToken: refreshToken
+    });
+    return response;
+  }
+
+  async initiateLinkedInAuth(startupId: number) {
+    // Legacy method - kept for reference or backwards compatibility until fully migrated
+    const response = await this.post(`/startups/${startupId}/marketing/linkedin/authorize`, {});
+    return response.auth_url;
+  }
+
   async updateBusinessOverview(startupId: number, data: Partial<BusinessOverview>) {
     const response = await this.put(`/startups/${startupId}/business-overview`, data);
     return response.business_overview; // Assuming backend returns updated business_overview directly
@@ -520,10 +769,11 @@ class Api {
     return this.post(`/startups/${startupId}/assets/generate`, { generate_product: generateProduct, generate_gtm: generateGtm });
   }
 
-  async createInvestment(startupId: number, roundId: number, investorId: number, amountInvested: number) {
+  async createInvestment(startupId: number, roundId: number, investorId: number, amountInvested: number, shares?: number) {
     return this.post(`/startups/${startupId}/funding-rounds/${roundId}/investments`, {
       investor_id: investorId,
-      amount_invested: amountInvested
+      amount_invested: amountInvested,
+      shares: shares
     });
   }
   async addTeamMember(startupId: number, data: any) {
@@ -552,6 +802,32 @@ class Api {
   // --- AI Assistant ---
   async askAiAssistant(startupId: number, query: string, history: any[] = []) {
     return this.post('/ai/chat', { startup_id: startupId, query, history });
+  }
+
+  // --- Cap Table & Scenarios ---
+  async getCapTable(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/cap-table`);
+    if (!response.ok) throw new Error('Failed to fetch cap table');
+    return (await response.json()).cap_table;
+  }
+
+  async addCapTableEntry(startupId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/cap-table`, data);
+    return response.entry;
+  }
+
+  async deleteCapTableEntry(startupId: number, entryId: number) {
+    return this.fetch(`/startups/${startupId}/cap-table/${entryId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async calculateDilution(startupId: number, newInvestment: number, preMoneyValuation: number) {
+    const response = await this.post(`/startups/${startupId}/scenarios/calculate-dilution`, {
+      new_investment: newInvestment,
+      pre_money_valuation: preMoneyValuation
+    });
+    return response.scenario;
   }
 }
 

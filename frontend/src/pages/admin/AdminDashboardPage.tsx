@@ -17,7 +17,7 @@ import { Building2, LayoutDashboard, Inbox, FileClock, FileSignature, FileText, 
 
 import { useAuth } from '../../contexts/AuthContext';
 
-type ActiveView = 'overview' | 'submissions' | 'in-review' | 'scoping' | 'contract' | 'startups';
+type ActiveView = 'overview' | 'submissions' | 'in-review' | 'startups';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -497,10 +497,8 @@ const AdminDashboardPage: React.FC = () => {
 
   const pendingSubmissionsCount = submissions.filter(s => s.status?.toUpperCase() === SubmissionStatus.PENDING).length;
   const inReviewSubmissionsCount = submissions.filter(s => s.status?.toUpperCase() === SubmissionStatus.IN_REVIEW).length;
-  const scopingStartupsCount = startups.filter(s => ['SCOPING', 'CONTRACT'].includes(s.current_stage?.toUpperCase())).length;
-  const contractStartupsCount = startups.filter(s => s.current_stage?.toUpperCase() === StartupStage.CONTRACT).length;
   const activeStartups = startups.filter(s =>
-    !['EVALUATION', 'SCOPING', 'CONTRACT'].includes(s.current_stage?.toUpperCase()) &&
+    !['EVALUATION'].includes(s.current_stage?.toUpperCase()) &&
     s.submission && s.submission.status?.toUpperCase() === SubmissionStatus.APPROVED
   );
 
@@ -528,10 +526,6 @@ const AdminDashboardPage: React.FC = () => {
         return <SubmissionsView submissions={submissions} onUpdateStatus={handleUpdateSubmissionStatus} analyzingSubmissionIds={analyzingSubmissionIds} />;
       case 'in-review':
         return <InReviewView submissions={submissions} users={users} startups={startups} onUpdateStatus={handleUpdateSubmissionStatus} onOpenCreateTaskModal={(id) => { setSelectedStartupId(id); setIsCreateTaskModalOpen(true); }} />;
-      case 'scoping':
-        return <ScopingView startupsInScoping={startups.filter(s => s.current_stage === StartupStage.SCOPING || s.current_stage === StartupStage.CONTRACT)} onUpdateScope={handleUpdateScope} onAddComment={handleAddScopeComment} onUpdateStatus={handleUpdateScopeStatus} />;
-      case 'contract':
-        return <ContractView startupsInContract={startups.filter(s => s.current_stage === StartupStage.CONTRACT)} fetchData={() => queryClient.invalidateQueries({ queryKey: ['adminData'] })} />;
       case 'startups':
         if (selectedStartup) {
           return <StartupDetailView
@@ -585,8 +579,6 @@ const AdminDashboardPage: React.FC = () => {
             <ul className="space-y-1">
               <NavItem count={pendingSubmissionsCount} icon={<Inbox className="mr-3 h-4 w-4" />} label="Submissions" view="submissions" activeView={activeView} onClick={handleViewChange} />
               <NavItem count={inReviewSubmissionsCount} icon={<FileClock className="mr-3 h-4 w-4" />} label="In Review" view="in-review" activeView={activeView} onClick={handleViewChange} />
-              <NavItem count={scopingStartupsCount} icon={<FileSignature className="mr-3 h-4 w-4" />} label="Scoping" view="scoping" activeView={activeView} onClick={handleViewChange} />
-              <NavItem count={contractStartupsCount} icon={<FileText className="mr-3 h-4 w-4" />} label="Contract" view="contract" activeView={activeView} onClick={handleViewChange} />
             </ul>
           </div>
           <div>

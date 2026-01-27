@@ -14,12 +14,17 @@ import ProductListPage from '@/modules/product/pages/ProductListPage';
 import ProductDetailPage from '@/modules/product/pages/ProductDetailPage';
 import ProductMetricsPage from '@/modules/product/pages/ProductMetricsPage';
 import ProductIssuesPage from '@/modules/product/pages/ProductIssuesPage';
+
 import BusinessOverviewPage from '@/modules/business/pages/BusinessOverviewPage';
+import BusinessModelsPage from '@/modules/business/pages/BusinessModelsPage';
 import BusinessMonthlyReportingPage from '@/modules/business/pages/BusinessMonthlyReportingPage';
 import MonthlyReportDetailModal from '@/modules/business/components/MonthlyReportDetailModal';
 import FundraisingOverviewPage from '@/modules/fundraising/pages/FundraisingOverviewPage';
 import FundingRoundsPage from '@/modules/fundraising/pages/FundingRoundsPage';
 import InvestorCrmPage from '@/modules/fundraising/pages/InvestorCrmPage';
+import InvestorDatabasePage from '@/modules/fundraising/pages/InvestorDatabasePage';
+import CapTablePage from '@/modules/fundraising/pages/CapTablePage';
+import ScenarioCalculatorPage from '@/modules/fundraising/pages/ScenarioCalculatorPage';
 import FundingRoundDetailPage from '@/modules/fundraising/pages/FundingRoundDetailPage';
 import MarketingOverviewPage from '@/modules/marketing/pages/MarketingOverviewPage';
 import MarketingCampaignsPage from '@/modules/marketing/pages/MarketingCampaignsPage';
@@ -33,7 +38,14 @@ import ArtifactsPage from '@/modules/dashboard/pages/ArtifactsPage';
 import ArtifactDetailModal from '@/modules/dashboard/components/ArtifactDetailModal';
 import TeamPage from '@/modules/team/pages/TeamPage';
 import SettingsPage from '@/modules/settings/pages/SettingsPage';
-import { Home, Package, Briefcase, DollarSign, Megaphone, BookOpen, Users, Settings } from 'lucide-react';
+import EmailDashboard from '@/modules/email/pages/EmailDashboard';
+import CustomerListPage from '@/modules/crm/pages/CustomerListPage';
+import CrmDashboard from '@/modules/crm/pages/CrmDashboard';
+import ContactDetailPage from '@/modules/crm/pages/ContactDetailPage';
+import CrmListsPage from '@/modules/crm/pages/CrmListsPage';
+import CrmSettingsPage from '@/modules/crm/pages/CrmSettingsPage';
+import SalesOverviewPage from '@/modules/crm/pages/SalesOverviewPage';
+import { Home, Package, Briefcase, DollarSign, Megaphone, BookOpen, Users, Settings, Mail, MessageSquare } from 'lucide-react';
 import CreateModal from '@/modules/dashboard/components/CreateModal';
 import CreateTaskModal from '@/modules/dashboard/components/CreateTaskModal';
 import CreateExperimentModal from '@/modules/dashboard/components/CreateExperimentModal';
@@ -46,7 +58,7 @@ import CreateMonthlyReportModal from '@/modules/business/components/CreateMonthl
 import CreateFundingRoundModal from '@/modules/fundraising/components/CreateFundingRoundModal';
 import CreateInvestorModal from '@/modules/fundraising/components/CreateInvestorModal';
 import CreateCampaignModal from '@/modules/marketing/components/CreateCampaignModal';
-import CreateContentItemModal from '@/modules/marketing/components/CreateContentItemModal';
+
 
 import EditBusinessOverviewModal from '@/modules/business/components/EditBusinessOverviewModal';
 import EditFundraisingGoalsModal from '@/modules/fundraising/components/EditFundraisingGoalsModal';
@@ -61,6 +73,11 @@ import EditMetricModal from '@/modules/product/components/EditMetricModal';
 import EditFeatureModal from '@/modules/product/components/EditFeatureModal';
 import UserSettingsPage from '@/modules/settings/pages/UserSettingsPage';
 
+import AccountingSetupPage from '@/modules/accounting/pages/AccountingSetupPage';
+import AccountingOverviewPage from '@/modules/accounting/pages/AccountingOverviewPage';
+import JournalPage from '@/modules/accounting/pages/JournalPage';
+import TransactionsPage from '@/modules/accounting/pages/TransactionsPage';
+import IntegrationSettingsPage from '@/modules/accounting/pages/IntegrationSettingsPage';
 import { useAuth } from '@/contexts/AuthContext';
 import { BusinessOverview, StartupStage } from '@/types/dashboard-types';
 import AssetGenerationModal from '@/modules/dashboard/components/AssetGenerationModal';
@@ -89,8 +106,39 @@ const DashboardPage: React.FC = () => {
         enabled: !!user?.startup_id,
     });
 
+    const { data: teamMembers = [] } = useQuery({
+        queryKey: ['team', user?.startup_id],
+        queryFn: async () => {
+            if (!user?.startup_id) return [];
+            return api.getTeamMembers(user.startup_id);
+        },
+        enabled: !!user?.startup_id
+    });
+
     const isLoading = authLoading || (!!user?.startup_id && isQueryLoading);
     const queryClient = useQueryClient();
+    const location = useLocation();
+
+    // --- Deep Linking Support ---
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const scopeParam = params.get('scope');
+        const tabParam = params.get('tab');
+
+        if (scopeParam) {
+            // Find scope enum from string (case insensitive logic)
+            // Scope values are 'marketing', 'product' etc.
+            const scopeKey = Object.values(Scope).find(s => s.toLowerCase() === scopeParam.toLowerCase());
+            if (scopeKey) {
+                setActiveScope(scopeKey);
+            }
+        }
+
+        if (tabParam) {
+            // Mapping simplistic tab names if needed, or direct
+            setActiveSubPage(tabParam);
+        }
+    }, [location.search]);
 
     // --- Socket.IO Listener for Real-time Updates ---
     useEffect(() => {
@@ -190,8 +238,7 @@ const DashboardPage: React.FC = () => {
     const [isCreateFundingRoundModalOpen, setIsCreateFundingRoundModalOpen] = useState(false);
     const [isCreateInvestorModalOpen, setIsCreateInvestorModalOpen] = useState(false);
     const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
-    const [isCreateContentItemModalOpen, setIsCreateContentItemModalOpen] = useState(false);
-    const [selectedCampaignForContent, setSelectedCampaignForContent] = useState<number | null>(null);
+
 
     const [isEditBusinessOverviewModalOpen, setIsEditBusinessOverviewModalOpen] = useState(false);
     const [isEditFundraisingGoalsModalOpen, setIsEditFundraisingGoalsModalOpen] = useState(false);
@@ -216,6 +263,7 @@ const DashboardPage: React.FC = () => {
     const [productIdForFeatureEdit, setProductIdForFeatureEdit] = useState<number | null>(null);
     const [isAddInvestmentModalOpen, setIsAddInvestmentModalOpen] = useState(false);
     const [selectedRoundIdForInvestment, setSelectedRoundIdForInvestment] = useState<number | null>(null);
+    const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
 
     // --- Handlers and Component Logic (remains largely the same) ---
     // NOTE: The create/update/delete handlers still use manual state updates.
@@ -226,9 +274,16 @@ const DashboardPage: React.FC = () => {
         setActiveSubPage(subPage);
         setSelectedProductId(null);
         setSelectedFundingRoundId(null);
+        setSelectedProductId(null);
+        setSelectedFundingRoundId(null);
         setSelectedCampaignId(null);
+        setSelectedContactId(null);
     };
     const handleSelectCampaign = (campaignId: number) => setSelectedCampaignId(campaignId);
+    const handleSelectContact = (contactId: number) => {
+        setSelectedContactId(contactId);
+        // Ensure we stay on CRM scope but maybe don't need to change subPage explicitly if we handle it in render
+    };
     const handleSelectProduct = (productId: number) => {
         setSelectedProductId(productId);
         setActiveScope(Scope.PRODUCT);
@@ -251,10 +306,7 @@ const DashboardPage: React.FC = () => {
         if (type === 'experiment') setIsCreateExperimentModalOpen(true);
         if (type === 'artifact') setIsCreateArtifactModalOpen(true);
     };
-    const handleOpenCreateContentItemModal = (campaignId: number | null = null) => {
-        setSelectedCampaignForContent(campaignId);
-        setIsCreateContentItemModalOpen(true);
-    };
+
 
     // --- Create/Update/Delete Handlers (Unchanged for now) ---
     // --- Create/Update/Delete Handlers (Refactored to Invalidate Queries) ---
@@ -349,14 +401,7 @@ const DashboardPage: React.FC = () => {
             setIsCreateCampaignModalOpen(false);
         } catch (error) { console.error("Failed to create campaign:", error); }
     };
-    const handleCreateContentItem = async (newContentData: Omit<any, 'content_id' | 'calendar_id' | 'created_by' | 'created_at'>, campaignId: number) => {
-        if (!startup) return;
-        try {
-            await api.createContentItem(startup.id, campaignId, newContentData);
-            queryClient.invalidateQueries({ queryKey: ['campaigns', startup.id] });
-            setIsCreateContentItemModalOpen(false);
-        } catch (error) { console.error("Failed to create content item:", error); }
-    };
+
     const handleUpdateStartupSettings = async (updatedSettings: { name: string; slug: string; next_milestone: string }) => {
         if (!startup) return;
         try {
@@ -432,10 +477,10 @@ const DashboardPage: React.FC = () => {
         } catch (error) { console.error("Failed to update feature:", error); }
     };
 
-    const handleCreateInvestment = async (investorId: number, amount: number) => {
+    const handleCreateInvestment = async (investorId: number, amount: number, shares?: number) => {
         if (!startup || selectedRoundIdForInvestment === null) return;
         try {
-            await api.createInvestment(startup.id, selectedRoundIdForInvestment, investorId, amount);
+            await api.createInvestment(startup.id, selectedRoundIdForInvestment, investorId, amount, shares);
             queryClient.invalidateQueries({ queryKey: ['fundingRounds', startup.id] });
             setIsAddInvestmentModalOpen(false);
         } catch (error) { console.error("Failed to create investment:", error); }
@@ -514,9 +559,14 @@ const DashboardPage: React.FC = () => {
                 }
                 return <ProductListPage startupId={startup.id} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} isGeneratingProduct={startup.is_generating_product} />;
 
+
+
             case Scope.BUSINESS:
                 if (activeSubPage === 'Overview & Model') {
-                    return <BusinessOverviewPage startupId={startup.id} />;
+                    return <BusinessOverviewPage startupId={startup.id} onNavigate={(page) => handleNavClick(Scope.BUSINESS, page)} />;
+                }
+                if (activeSubPage === 'Business Models') {
+                    return <BusinessModelsPage />;
                 }
                 if (activeSubPage === 'Monthly Reporting') {
                     return <BusinessMonthlyReportingPage
@@ -525,7 +575,7 @@ const DashboardPage: React.FC = () => {
                         onAddNewReport={() => setIsCreateReportModalOpen(true)}
                     />;
                 }
-                return <BusinessOverviewPage startupId={startup.id} />;
+                return <BusinessOverviewPage startupId={startup.id} onNavigate={(page) => handleNavClick(Scope.BUSINESS, page)} />;
 
             case Scope.FUNDRAISING:
                 if (activeSubPage === 'Overview') {
@@ -569,18 +619,27 @@ const DashboardPage: React.FC = () => {
                 if (activeSubPage === 'Investor CRM') {
                     return <InvestorCrmPage startupId={startup.id} onAddNewInvestor={() => setIsCreateInvestorModalOpen(true)} />;
                 }
+                if (activeSubPage === 'Investor Database') {
+                    return <InvestorDatabasePage startupId={startup.id} />;
+                }
+                if (activeSubPage === 'Cap Table') {
+                    return <CapTablePage startupId={startup.id} />;
+                }
+                if (activeSubPage === 'Scenario Calculator') {
+                    return <ScenarioCalculatorPage startupId={startup.id} />;
+                }
                 return <FundraisingOverviewPage startupId={startup.id} />;
 
             case Scope.MARKETING:
                 if (activeSubPage === 'Overview') {
-                    return <MarketingOverviewPage startupId={startup.id} onPositioningStatementUpdate={handlePositioningStatementUpdate} isGeneratingGtm={startup.is_generating_gtm} />;
+                    return <MarketingOverviewPage startupId={startup.id} isGeneratingGtm={startup.is_generating_gtm} />;
                 }
                 if (activeSubPage === 'Campaigns') {
                     if (selectedCampaignId) {
                         return <MarketingCampaignDetailPage
                             campaignId={selectedCampaignId}
                             onBack={handleBackToCampaignsList}
-                            onAddContentItem={() => handleOpenCreateContentItemModal(selectedCampaignId)}
+
                             onEditCampaign={(campaign) => { setSelectedCampaignToEdit(campaign); setIsEditCampaignModalOpen(true); }}
                             onAddTask={(campaignId) => {
                                 setSelectedLinkedScope(Scope.MARKETING);
@@ -596,22 +655,17 @@ const DashboardPage: React.FC = () => {
                     }
                     return <MarketingCampaignsPage startupId={startup.id} onSelectCampaign={handleSelectCampaign} onAddNewCampaign={() => setIsCreateCampaignModalOpen(true)} isGeneratingGtm={startup.is_generating_gtm} />;
                 }
+
                 if (activeSubPage === 'Content Calendar') {
                     return <MarketingContentCalendarPage
                         startupId={startup.id}
-                        onAddNewContentItem={() => handleOpenCreateContentItemModal()}
-                    />;
-                }
-                if (activeSubPage === 'Content Calendar') {
-                    return <MarketingContentCalendarPage
-                        startupId={startup.id}
-                        onAddNewContentItem={() => handleOpenCreateContentItemModal()}
+
                     />;
                 }
                 if (activeSubPage === 'Settings') {
                     return <MarketingSettingsPage startupId={startup.id} />;
                 }
-                return <MarketingOverviewPage startupId={startup.id} onPositioningStatementUpdate={handlePositioningStatementUpdate} isGeneratingGtm={startup.is_generating_gtm} />;
+                return <MarketingOverviewPage startupId={startup.id} isGeneratingGtm={startup.is_generating_gtm} />;
 
             case Scope.WORKSPACE:
                 return (
@@ -632,15 +686,52 @@ const DashboardPage: React.FC = () => {
                 return (
                     <RequireScope scope="SETTINGS" showError>
                         <SettingsPage
+                            startupId={startup.id}
                             startupName={startup.name}
                             startupSlug={startup.slug}
                             nextMilestone={startup.next_milestone}
+                            logoUrl={startup.logo_url}
                             onSave={handleUpdateStartupSettings}
                         />
                     </RequireScope>
                 );
             case Scope.USER_SETTINGS:
                 return <UserSettingsPage />;
+            case Scope.EMAIL:
+                return <EmailDashboard />;
+            case Scope.CHAT:
+                return <AiAssistant startupId={startup.id} variant="embedded" />;
+            case Scope.ACCOUNTING:
+                if (!startup.accounting_initialized) {
+                    return <AccountingSetupPage />;
+                }
+                if (activeSubPage === 'Journal') {
+                    return <JournalPage />;
+                }
+                if (activeSubPage === 'Transactions') {
+                    return <TransactionsPage />;
+                }
+                if (activeSubPage === 'Integrations') {
+                    return <IntegrationSettingsPage />;
+                }
+                return <AccountingOverviewPage startupId={startup.id} />;
+            case Scope.CRM:
+                if (activeSubPage === 'Overview') {
+                    return <SalesOverviewPage startupId={startup.id} />;
+                }
+                if (activeSubPage === 'Deals') {
+                    return <CrmDashboard />;
+                }
+                if (activeSubPage === 'Lists') {
+                    return <CrmListsPage />;
+                }
+                if (activeSubPage === 'Settings') {
+                    return <CrmSettingsPage />;
+                }
+                if (selectedContactId) {
+                    return <ContactDetailPage contactId={selectedContactId} onBack={() => setSelectedContactId(null)} />;
+                }
+                return <CustomerListPage onSelectContact={handleSelectContact} />;
             default:
                 return <DashboardOverview startupId={startup.id} />;
         }
@@ -654,19 +745,27 @@ const DashboardPage: React.FC = () => {
         'Marketing': Scope.MARKETING,
         'Workspace': Scope.WORKSPACE,
         'Team': Scope.TEAM,
-        'Settings': Scope.SETTINGS
+        'Settings': Scope.SETTINGS,
+        'Email': Scope.EMAIL,
+        'AI Assistant': Scope.CHAT,
+        'Accounting': Scope.ACCOUNTING,
+        'CRM': Scope.CRM
     };
+
 
     const menuItems = React.useMemo(() => {
         const allItems = [
             { name: 'Dashboard', icon: Home, subItems: [], requiredScope: null },
+            { name: 'AI Assistant', icon: MessageSquare, subItems: [], requiredScope: null },
+            { name: 'Email', icon: Mail, subItems: [], requiredScope: null },
+            { name: 'CRM', icon: Users, subItems: ['Overview', 'Contacts', 'Deals', 'Lists', 'Settings'], requiredScope: null },
             { name: 'Product', icon: Package, subItems: ['Products List', 'Product Metrics', 'Issues & Feedback'], requiredScope: 'PRODUCT' },
-            { name: 'Business', icon: Briefcase, subItems: ['Overview & Model', 'Monthly Reporting'], requiredScope: 'BUSINESS' },
-            { name: 'Fundraising', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor CRM'], requiredScope: 'FUNDRAISE' },
+            { name: 'Business', icon: Briefcase, subItems: ['Overview & Model', 'Business Models', 'Monthly Reporting'], requiredScope: 'BUSINESS' },
+            { name: 'Fundraising', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor Database', 'Investor CRM', 'Cap Table', 'Scenario Calculator'], requiredScope: 'FUNDRAISE' },
             { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar', 'Settings'], requiredScope: 'MARKETING' },
-            { name: 'Workspace', icon: BookOpen, subItems: ['Tasks', 'Experiments', 'Artifacts'], requiredScope: 'WORKSPACE' },
+            { name: 'Accounting', icon: DollarSign, subItems: ['Overview', 'Transactions', 'Journal', 'Integrations'], requiredScope: 'ACCOUNTING' },
             { name: 'Team', icon: Users, subItems: [], requiredScope: 'TEAM' },
-            { name: 'Settings', icon: Settings, subItems: [], requiredScope: 'SETTINGS' }
+            { name: 'Workspace', icon: BookOpen, subItems: ['Tasks', 'Experiments', 'Artifacts'], requiredScope: 'WORKSPACE' }
         ];
 
         if (!user) return [];
@@ -687,6 +786,12 @@ const DashboardPage: React.FC = () => {
 
     }, [user, startup]);
 
+    const bottomItems = React.useMemo(() => {
+        return [
+            { name: 'Settings', icon: Settings, subItems: [], requiredScope: 'SETTINGS' }
+        ];
+    }, []);
+
     if (isLoading || isQueryLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
     }
@@ -706,11 +811,13 @@ const DashboardPage: React.FC = () => {
                 activeScope={activeScope}
                 activeSubPage={activeSubPage}
                 onNavClick={(scopeName, subPage) => handleNavClick(scopeMapping[scopeName], subPage)}
+                bottomItems={bottomItems}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
                 <Header
                     startupName={startup.name}
                     currentStage={startup.current_stage}
+                    logoUrl={startup.logo_url}
                     user={user}
                     onCreateClick={handleOpenCreateModal}
                     onSettingsClick={() => handleNavClick(Scope.USER_SETTINGS)}
@@ -737,10 +844,11 @@ const DashboardPage: React.FC = () => {
                     [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
                     [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
                     [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
-                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: []
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: []
                 }}
                 defaultScope={selectedLinkedScope || undefined}
                 defaultLinkedToId={selectedLinkedId || undefined}
+                teamMembers={teamMembers}
             />}
 
             {isCreateExperimentModalOpen && <CreateExperimentModal
@@ -750,18 +858,19 @@ const DashboardPage: React.FC = () => {
                     [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
                     [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
                     [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
-                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: []
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: []
                 }}
             />}
 
             {isCreateArtifactModalOpen && <CreateArtifactModal
+                startupId={startup.id}
                 onClose={() => { setIsCreateArtifactModalOpen(false); setSelectedLinkedScope(null); setSelectedLinkedId(null); }}
                 onCreate={handleCreateArtifact}
                 linkableItems={{
                     [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
                     [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
                     [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
-                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: []
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: []
                 }}
                 defaultScope={selectedLinkedScope || undefined}
                 defaultLinkedToId={selectedLinkedId || undefined}
@@ -775,7 +884,7 @@ const DashboardPage: React.FC = () => {
             {isCreateFundingRoundModalOpen && <CreateFundingRoundModal onClose={() => setIsCreateFundingRoundModalOpen(false)} onCreate={handleCreateFundingRound} investors={[]} />}
             {isCreateInvestorModalOpen && <CreateInvestorModal onClose={() => setIsCreateInvestorModalOpen(false)} onCreate={handleCreateInvestor} />}
             {isCreateCampaignModalOpen && <CreateCampaignModal onClose={() => setIsCreateCampaignModalOpen(false)} onCreate={handleCreateCampaign} products={startup.products || []} />}
-            {isCreateContentItemModalOpen && <CreateContentItemModal onClose={() => setIsCreateContentItemModalOpen(false)} onCreate={handleCreateContentItem} campaigns={(startup.marketing_campaigns || []).filter((c: any) => c.content_mode)} defaultCampaignId={selectedCampaignForContent} />}
+
 
 
             {isEditBusinessOverviewModalOpen && <EditBusinessOverviewModal businessOverview={startup.business_overview || {} as BusinessOverview} onClose={() => setIsEditBusinessOverviewModalOpen(false)} onUpdate={handleUpdateBusinessOverview} />}
@@ -789,7 +898,7 @@ const DashboardPage: React.FC = () => {
             {isEditMetricModalOpen && selectedMetricToEdit && productIdForMetricEdit && <EditMetricModal metric={selectedMetricToEdit} onClose={() => setIsEditMetricModalOpen(false)} onUpdate={(updatedData) => handleUpdateMetric(productIdForMetricEdit, selectedMetricToEdit.metric_id, updatedData)} />}
             {isEditFeatureModalOpen && selectedFeatureToEdit && productIdForFeatureEdit && <EditFeatureModal feature={selectedFeatureToEdit} onClose={() => setIsEditFeatureModalOpen(false)} onUpdate={(updatedData) => handleUpdateFeature(productIdForFeatureEdit, selectedFeatureToEdit.id, updatedData)} />}
 
-            {startup && (
+            {startup && activeScope !== Scope.CHAT && (
                 <>
                     <AiAssistant startupId={startup.id} />
                     <AssetGenerationModal

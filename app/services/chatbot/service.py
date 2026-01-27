@@ -6,9 +6,16 @@ from langchain.tools import tool
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from app.models import BusinessMonthlyData, Product, ProductMetric, MarketingCampaign, Startup
+from app.models import (
+    BusinessMonthlyData, Product, ProductMetric, MarketingCampaign, Startup,
+    TeamMember, Founder, FundingRound, Investor, CapTableEntry, Artifact,
+    ScopeDocument, Contract, Task, BusinessOverview, Submission,
+    ScopeDocument, Contract, Task, BusinessOverview, Submission,
+    JournalEntry, JournalLine, Account, AccountType, BusinessModel, ProductMetric
+)
 from app import db
 from sqlalchemy import func
+from app.services import business_analytics_service
 import os
 import json
 from dotenv import load_dotenv
@@ -33,11 +40,17 @@ class AIAssistantService:
         tools = [
             self.create_financial_tool(startup_id),
             self.create_product_tool(startup_id),
-            self.create_marketing_tool(startup_id)
+            self.create_marketing_tool(startup_id),
+            self.create_team_tool(startup_id),
+            self.create_fundraising_tool(startup_id),
+            self.create_documents_tool(startup_id),
+            self.create_tasks_tool(startup_id),
+            self.create_business_overview_tool(startup_id)
         ]
 
+        current_date_str = datetime.now().strftime("%Y-%m-%d")
         system_prompt = (
-            "You are a helpful data assistant for a startup founder. "
+            f"You are a helpful data assistant for a startup founder. Today is {current_date_str}. "
             "You have access to the startup's financial, product, and marketing data. "
             "Use the provided tools to answer the user's questions based on real data. "
             "If you cannot find the answer in the data, state that clearly. "
@@ -80,10 +93,34 @@ class AIAssistantService:
             if not data:
                 return "No financial data found."
 
+            # Calculate current month-to-date revenue from Journal Entries
+            current_month_start = datetime.now().replace(day=1)
+            mtd_revenue = 0.0
+            
+            # Find all income accounts
+            income_accounts = Account.query.filter_by(startup_id=startup_id, type=AccountType.INCOME).all()
+            income_account_ids = [a.id for a in income_accounts]
+            
+            if income_account_ids:
+                # Query journal lines for these accounts in the current month
+                revenue_lines = db.session.query(func.sum(JournalLine.credit - JournalLine.debit)).join(JournalEntry).filter(
+                    JournalEntry.startup_id == startup_id,
+                    JournalEntry.date >= current_month_start,
+                    JournalLine.account_id.in_(income_account_ids)
+                ).scalar()
+                
+                if revenue_lines:
+                    mtd_revenue = float(revenue_lines)
+
             # Simple filtering logic (in production this would be more robust dates)
-            results = []
+            results = {
+                "current_mtd_revenue": mtd_revenue,
+                "current_month": current_month_start.strftime("%B %Y"),
+                "historical_monthly_data": []
+            }
+
             for record in data[:6]: # Just return last 6 months for context
-                results.append({
+                results["historical_monthly_data"].append({
                     "month": record.month_start.isoformat(),
                     "revenue": float(record.total_revenue) if record.total_revenue else 0,
                     "expenses": float(record.total_expenses) if record.total_expenses else 0,
@@ -143,3 +180,208 @@ class AIAssistantService:
             
             return json.dumps(results, indent=2)
         return get_marketing_campaigns
+
+    def create_team_tool(self, startup_id: int):
+        @tool
+        def get_team_info() -> str:
+            """
+            Fetches information about the startup's team and founders.
+            Returns names, roles, bios, and specific responsibilities.
+            """
+            founders = Founder.query.filter_by(startup_id=startup_id).all()
+            team_members = TeamMember.query.filter_by(startup_id=startup_id).all()
+            
+            results = {
+                "founders": [],
+                "team_members": []
+            }
+            
+            for f in founders:
+                results["founders"].append({
+                    "name": f.name,
+                    "role": f.role,
+                    "bio": f.bio,
+                    "linkedin": f.linkedin_profile
+                })
+                
+            for m in team_members:
+                # Need to fetch the User object to get the name for team members
+                from app.models import User # delayed import to avoid circular dependency if any
+                user = User.query.get(m.user_id)
+                if user:
+                    results["team_members"].append({
+                        "name": user.name,
+                        "role": m.role,
+                        "scope": m.scope
+                    })
+            
+            if not results["founders"] and not results["team_members"]:
+                return "No team information found."
+                
+            return json.dumps(results, indent=2)
+        return get_team_info
+
+    def create_fundraising_tool(self, startup_id: int):
+        @tool
+        def get_fundraising_info() -> str:
+            """
+            Fetches fundraising data including funding rounds, investors, and cap table summary.
+            Returns details on raised amounts, valuations, and investor lists.
+            """
+            rounds = FundingRound.query.filter_by(startup_id=startup_id).all()
+            investors = Investor.query.filter_by(startup_id=startup_id).all()
+            cap_table_entries = CapTableEntry.query.filter_by(startup_id=startup_id).all()
+            
+            results = {
+                "funding_rounds": [],
+                "investors": [],
+                "cap_table_summary": []
+            }
+            
+            for r in rounds:
+                results["funding_rounds"].append({
+                    "name": r.round_type,
+                    "date": r.date_closed.isoformat() if r.date_closed else None,
+                    "amount_raised": float(r.amount_raised) if r.amount_raised else 0,
+                    "pre_money_valuation": float(r.valuation_pre) if r.valuation_pre else 0
+                })
+                
+            for i in investors:
+                results["investors"].append({
+                    "name": i.name,
+                    "type": i.type,
+                    "stage": str(i.stage) if i.stage else None,
+                    "check_size_interest": i.check_size_interest
+                })
+                
+            for c in cap_table_entries:
+                 results["cap_table_summary"].append({
+                     "shareholder": c.stakeholder_name,
+                     "shares": c.shares,
+                     "stakeholder_type": str(c.stakeholder_type) if c.stakeholder_type else None
+                 })
+                 
+            return json.dumps(results, indent=2)
+        return get_fundraising_info
+
+    def create_documents_tool(self, startup_id: int):
+        @tool
+        def get_documents_status() -> str:
+            """
+            Fetches the status of key documents like Scope and Contract, and lists other artifacts.
+            """
+            scope_doc = ScopeDocument.query.filter_by(startup_id=startup_id).first()
+            contract = Contract.query.filter_by(startup_id=startup_id).first()
+            artifacts = Artifact.query.filter_by(startup_id=startup_id).all()
+            
+            results = {
+                "scope_document": {
+                    "status": scope_doc.status if scope_doc else "Not Started",
+                    "admin_accepted": scope_doc.admin_accepted if scope_doc else False,
+                    "founder_accepted": scope_doc.founder_accepted if scope_doc else False
+                },
+                "contract": {
+                    "status": contract.status.value if contract and contract.status else "Not Started",
+                    "admin_accepted": contract.admin_accepted if contract else False,
+                    "founder_accepted": contract.founder_accepted if contract else False
+                },
+                "artifacts": []
+            }
+            
+            for a in artifacts:
+                results["artifacts"].append({
+                    "name": a.name,
+                    "type": a.type.value if a.type else "Unknown",
+                    "description": a.description
+                })
+                
+            return json.dumps(results, indent=2)
+        return get_documents_status
+
+    def create_tasks_tool(self, startup_id: int):
+        @tool
+        def get_tasks_list() -> str:
+            """
+            Fetches the list of tasks for the startup.
+            Returns task titles, statuses, due dates, and assignees.
+            """
+            tasks = Task.query.filter_by(startup_id=startup_id).all()
+            
+            if not tasks:
+                return "No tasks found."
+                
+            results = []
+            for t in tasks:
+                assignee_name = "Unassigned"
+                if t.assignee_id:
+                    from app.models import User
+                    user = User.query.get(t.assignee_id)
+                    if user:
+                        assignee_name = user.name
+
+                results.append({
+                    "title": t.title,
+                    "status": t.status.value if t.status else "Unknown",
+                    "priority": t.priority,
+                    "due_date": t.due_date.isoformat() if t.due_date else None,
+                    "assignee": assignee_name
+                })
+            
+            return json.dumps(results, indent=2)
+        return get_tasks_list
+
+    def create_business_overview_tool(self, startup_id: int):
+        @tool
+        def get_business_context() -> str:
+            """
+            Fetches the high-level business overview and core submission details.
+            Returns problem statement, solution, market size, and business model type.
+            """
+            overview = BusinessOverview.query.filter_by(startup_id=startup_id).first()
+            # Assuming submission is linked to user who owns the startup, but we have startup_id.
+            # We can find submission by startup_id roughly if we assume 1:1 or use startup.user_id
+            
+            startup = Startup.query.get(startup_id)
+            submission = Submission.query.filter_by(user_id=startup.user_id).first()
+            
+            results = {
+                "overview": {
+                    "business_model": overview.business_model if overview else None,
+                    "key_partners": overview.key_partners if overview else None,
+                    "notes": overview.notes if overview else None
+                },
+                "business_models": [],
+                "core_details": {}
+            }
+            
+            # Fetch detailed business models with enriched metrics from analytics service
+            enriched_models = business_analytics_service.get_enriched_business_models(startup_id)
+            for bm in enriched_models:
+                # model_type might be an Enum or string depending on service return
+                m_type = bm.get('model_type')
+                
+                results["business_models"].append({
+                    "name": bm.get('name'),
+                    "type": str(m_type) if m_type else "Unknown",
+                    "description": bm.get('description'),
+                    # Target Metrics
+                    "target_arpu": bm.get('target_arpu'),
+                    "target_cac": bm.get('target_cac'),
+                    "target_margin": bm.get('target_margin'),
+                    # Actual Performance Metrics (from business_analytics_service)
+                    "actual_arpu": bm.get('actual_arpu'),
+                    "actual_revenue": bm.get('actual_revenue'),
+                    "actual_margin": bm.get('actual_margin'),
+                    "transaction_count": bm.get('transaction_count'),
+                    "actual_quantity": bm.get('actual_quantity')
+                })
+            
+            if submission:
+                results["core_details"] = {
+                    "problem": getattr(submission, 'problem_statement', "N/A"),
+                    "solution": getattr(submission, 'product_service_idea', "N/A"),
+                    "target_market": getattr(submission, 'intended_users_customers', "N/A")
+                }
+                
+            return json.dumps(results, indent=2)
+        return get_business_context

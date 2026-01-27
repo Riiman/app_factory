@@ -36,8 +36,8 @@ def create_app(config_class=Config):
             raise RuntimeError("Firebase Admin SDK not initialized. Check FIREBASE_SERVICE_ACCOUNT_PATH in your .env file.")
 
     # Configure server-side sessions to use our db instance
-    app.config['SESSION_TYPE'] = 'sqlalchemy'
-    app.config['SESSION_SQLALCHEMY'] = db
+    # app.config['SESSION_TYPE'] = 'sqlalchemy'
+    # app.config['SESSION_SQLALCHEMY'] = db
 
     # Initialize extensions
     db.init_app(app)
@@ -45,12 +45,13 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     mail.init_app(app)
     oauth.init_app(app)
-    sess.init_app(app)
+    # sess.init_app(app)
     cors_origins = app.config.get('CORS_ORIGINS', ['http://localhost:3000', 'http://127.0.0.1:3000'])
     CORS(app, supports_credentials=True, origins=cors_origins)
     
     from .extensions import socketio
-    socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet', message_queue='redis://localhost:6379/0')
+    if not os.environ.get('FLASK_DB_CREATION'):
+        socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet', message_queue='redis://localhost:6379/0')
 
     # Configure the shared Celery instance
     configure_celery(app)
@@ -79,13 +80,16 @@ def create_app(config_class=Config):
         # Register separated services
         from .modules.marketing.routes import marketing_bp
         from .modules.product.routes import product_bp
+
         from .modules.business.routes import business_bp
+        from .modules.business.models_routes import business_models_bp
         from .modules.fundraising.routes import fundraising_bp
         from .modules.dashboard.routes import dashboard_bp
         
         app.register_blueprint(marketing_bp)
         app.register_blueprint(product_bp)
         app.register_blueprint(business_bp)
+        app.register_blueprint(business_models_bp)
         app.register_blueprint(fundraising_bp)
         app.register_blueprint(dashboard_bp)
         app.register_blueprint(stages_bp)
@@ -98,6 +102,41 @@ def create_app(config_class=Config):
         from .routes.contact import contact_bp
         app.register_blueprint(contact_bp)
 
+        # Email Module
+        from .modules.email.routes import email_bp
+        app.register_blueprint(email_bp)
+
+        # Accounting Module
+        from .routes.accounting import accounting_bp
+        app.register_blueprint(accounting_bp)
+
+        # CRM Module
+        from .modules.crm.routes import crm_bp
+        app.register_blueprint(crm_bp)
+        
+        # Analytics Module
+        from .routes.analytics import analytics_bp
+        app.register_blueprint(analytics_bp)
+
+        # OAuth Providers
+        oauth.register(
+            name='google',
+            client_id=os.getenv('GOOGLE_CLIENT_ID'),
+            client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+            server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+            client_kwargs={'scope': 'openid email profile https://mail.google.com/'},
+        )
+        
+        oauth.register(
+            name='microsoft',
+            client_id=os.getenv('MICROSOFT_CLIENT_ID'),
+            client_secret=os.getenv('MICROSOFT_CLIENT_SECRET'),
+            access_token_url='https://login.microsoftonline.com/common/oauth2/v2.0/token',
+            authorize_url='https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+            api_base_url='https://graph.microsoft.com/v1.0/',
+            client_kwargs={'scope': 'User.Read Mail.ReadWrite Mail.Send offline_access'},
+        )
+
         from .startup_builder import builder_bp
         from .startup_builder import builder_bp
         app.register_blueprint(builder_bp)
@@ -105,6 +144,8 @@ def create_app(config_class=Config):
         # Register V4 routes
         from .routes.v4_builder import v4_builder
         app.register_blueprint(v4_builder)
+
+
 
         from .services.chatbot.routes import ai_bp
         app.register_blueprint(ai_bp)

@@ -72,16 +72,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         console.error("Failed to fetch startup stage:", err);
                     }
                 }
+            } else if (data.requires_signup || data.requires_organization) {
+                console.log("AUTH: Login/Signup flow in progress (requires_signup/org), skipping auto-logout.");
             } else {
                 handleLogout();
             }
         } catch (error: any) {
             console.error("AUTH: Error syncing with Flask backend:", error);
-            if (window.location.pathname === '/signup' && error.status === 403) {
-                console.log("AUTH: Ignoring 403 on signup page to allow verification.");
-            } else {
-                handleLogout();
-            }
+            handleLogout();
         } finally {
             setIsLoading(false);
         }

@@ -1,0 +1,41 @@
+{
+    "startup": {
+        "name": "TaskMaster",
+        "slug": "taskmaster",
+        "startup_type": "B2B_SaaS",
+        "industry": "Software",
+        "status": "StartupStatus.ACTIVE",
+        "mission": "Jira is too complex."
+    },
+    "business_model": {
+        "name": "Core Operations",
+        "model_type": "Subscription",
+        "pricing": "To Be Determined",
+        "target_margin": null,
+        "revenue_streams": [
+            "Monthly Recurring Revenue (MRR)"
+        ]
+    },
+    "products": [],
+    "tasks": [],
+    "fundraise": {
+        "goal_amount": 1.0,
+        "valuation_target": null,
+        "runway_months": null,
+        "status": "Seed Planning"
+    },
+    "messages": [
+        {
+            "role": "system",
+            "content": "Archetype Detected: B2B_SaaS"
+        },
+        {
+            "role": "ai",
+            "content": "How are you funding this? Bootstrapping or Raising?"
+        },
+        {
+            "role": "user",
+            "content": "Raising a seed round of $1M."
+        }
+    ]
+}

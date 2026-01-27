@@ -139,8 +139,6 @@ const AssetGenerationModal: React.FC<AssetGenerationModalProps> = ({ isOpen, onC
                                 <div className="mt-6 flex flex-col space-y-3">
                                     <button
                                         type="button"
-                                        className="inline-flex justify-center rounded-md border border-transparent bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:bg-purple-300"
-                                        onClick={handleGenerate}
                                         className="inline-flex justify-center rounded-md border border-transparent bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:bg-purple-300 disabled:cursor-not-allowed"
                                         onClick={handleGenerate}
                                         disabled={isGenerating || (!generateProduct && !generateGtm)}

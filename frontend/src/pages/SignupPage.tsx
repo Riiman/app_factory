@@ -1,5 +1,5 @@
 import React, { FC, useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Footer from '../components/layout/Footer';
 import AuthFormWrapper from '../components/AuthFormWrapper';
 import Button from '../components/ui/Button';
@@ -13,6 +13,7 @@ import OrganizationSelectionModal from '../components/auth/OrganizationSelection
 
 const SignupPage: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -45,6 +46,18 @@ const SignupPage: FC = () => {
     }
   }, []);
 
+  // Check if user was redirected from login with Firebase token
+  useEffect(() => {
+    const state = location.state as { firebaseToken?: string; email?: string } | null;
+    if (state?.firebaseToken) {
+      // User came from Google sign-in on login page
+      // Show organization modal immediately
+      setPendingOAuthToken(state.firebaseToken);
+      setShowOrgModal(true);
+      setEmail(state.email || '');
+    }
+  }, [location]);
+
   // Redirect if user is already logged in and not in the middle of verification
   useEffect(() => {
     if (user && !confirmationResult && !isSigningUp && !isMockVerification) {
@@ -61,20 +74,10 @@ const SignupPage: FC = () => {
       const firebaseUser = result.user;
       const idToken = await firebaseUser.getIdToken();
 
-      // Try to login/create user
-      const response = await api.post('/auth/login', { firebase_id_token: idToken });
-
-      // Check if user has an organization
-      if (!response.user.organization_id) {
-        // User doesn't have an organization, show modal
-        setPendingOAuthToken(response.access_token);
-        setShowOrgModal(true);
-      } else {
-        // User has organization, proceed normally
-        localStorage.setItem('access_token', response.access_token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        navigate('/dashboard');
-      }
+      // For new users signing up via Google, show organization modal immediately
+      setPendingOAuthToken(idToken);
+      setShowOrgModal(true);
+      setEmail(firebaseUser.email || '');
     } catch (err: any) {
       console.error("Google Sign-In Error:", err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to sign in with Google.';
@@ -93,19 +96,26 @@ const SignupPage: FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const payload = mode === 'create'
-        ? { mode: 'create', organization_name: value }
-        : { mode: 'join', invite_code: value };
+      // For new Google users, use the appropriate signup endpoint
+      if (mode === 'create') {
+        const response = await api.post('/auth/organization/signup', {
+          firebase_id_token: pendingOAuthToken,
+          organization_name: value,
+          email: email
+        });
 
-      // Set the token temporarily for this request
-      const originalToken = localStorage.getItem('access_token');
-      localStorage.setItem('access_token', pendingOAuthToken);
+        localStorage.setItem('access_token', response.access_token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+      } else {
+        const response = await api.post('/auth/signup', {
+          firebase_id_token: pendingOAuthToken,
+          organization_id: value, // This is the invite code
+          email: email
+        });
 
-      const response = await api.post('/auth/assign-organization', payload);
-
-      // Update with new token that includes organization info
-      localStorage.setItem('access_token', response.access_token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+        localStorage.setItem('access_token', response.access_token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+      }
 
       setShowOrgModal(false);
       setPendingOAuthToken(null);

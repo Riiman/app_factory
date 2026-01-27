@@ -11,6 +11,12 @@ import { Task, TaskStatus, Scope, LinkedEntityType } from '@/types/dashboard-typ
 
 type LinkableItem = { id: number; name: string };
 
+type TeamMemberOption = {
+    user_id: number;
+    user_name: string;
+    role: string;
+};
+
 /**
  * Props for the CreateTaskModal component.
  * @interface CreateTaskModalProps
@@ -30,9 +36,11 @@ interface CreateTaskModalProps {
     defaultScope?: Scope;
     /** Optional default linked entity ID to pre-select. */
     defaultLinkedToId?: number;
+    /** List of team members for assignment. */
+    teamMembers?: TeamMemberOption[];
 }
 
-const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, linkableItems, defaultScope, defaultLinkedToId }) => {
+const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, linkableItems, defaultScope, defaultLinkedToId, teamMembers = [] }) => {
     // Form state
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -40,6 +48,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, li
     const [status, setStatus] = useState<TaskStatus>(TaskStatus.PENDING);
     const [scope, setScope] = useState<Scope>(defaultScope || Scope.GENERAL);
     const [linkedToId, setLinkedToId] = useState<string>(defaultLinkedToId?.toString() || ''); // Use string to handle select value
+    const [assignedTo, setAssignedTo] = useState<string>(''); // User ID as string
     const [availableLinks, setAvailableLinks] = useState<LinkableItem[]>([]);
 
     /** Effect to update the available linkable items when the scope changes or defaults are provided. */
@@ -88,6 +97,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, li
             scope,
             linked_to_id: linkedToId ? parseInt(linkedToId, 10) : undefined,
             linked_to_type,
+            assigned_to: assignedTo ? parseInt(assignedTo, 10) : undefined,
         });
     };
 
@@ -136,6 +146,17 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreate, li
                                     {availableLinks.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                                 </select>
                             </div>
+                        </div>
+                        <div>
+                            <label htmlFor="task-assignee" className="block text-sm font-medium text-gray-700">Assign To</label>
+                            <select id="task-assignee" value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm">
+                                <option value="">Unassigned</option>
+                                {teamMembers.map(member => (
+                                    <option key={member.user_id} value={member.user_id}>
+                                        {member.user_name} ({member.role})
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                     <div className="border-t p-4 bg-gray-50 flex justify-end space-x-2">

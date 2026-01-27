@@ -443,3 +443,187 @@ def generate_final_content(startup_id, content_id):
     db.session.commit()
 
     return content_item.to_dict()
+def generate_campaign_content_calendar(startup_id, campaign_id):
+    """
+    Generates a smart content calendar for a campaign based on brand context,
+    channel best practices, and campaign objectives.
+    """
+    startup = Startup.query.get(startup_id)
+    campaign = MarketingCampaign.query.get(campaign_id)
+    
+    if not startup or not campaign:
+        print(f"--- [Generation Task] Error: Startup {startup_id} or Campaign {campaign_id} not found. ---")
+        return
+
+    # 1. Gather Context
+    marketing_overview = MarketingOverview.query.filter_by(startup_id=startup.id).first()
+    brand_context = ""
+    if marketing_overview and marketing_overview.brand_details:
+        details = marketing_overview.brand_details
+        brand_context = (
+            f"Tone: {details.get('tone_of_voice', 'Professional')}.\n"
+            f"Target Audience: {', '.join(details.get('target_audience', []))}.\n"
+            f"Brand Archetype: {details.get('brand_archetype', 'N/A')}."
+        )
+
+    product_context = ""
+    if campaign.product_id:
+        product = Product.query.get(campaign.product_id)
+        if product:
+             product_context = f"Product Name: {product.name}\nDescription: {product.description}"
+    
+    # Startup Context (fallback or addition)
+    startup_context = ""
+    if startup.scope_document:
+         # Using a truncated version of scope if needed, or just relying on brand/product
+         # Let's use the startup description if available, otherwise rely on scope content snippet
+         pass
+
+
+    # 2. Prepare Prompt
+    # Strict channel enforcement
+    channels = campaign.channel # "LinkedIn, Facebook" string
+    start_date = campaign.start_date.strftime('%Y-%m-%d') if campaign.start_date else datetime.utcnow().strftime('%Y-%m-%d')
+
+    llm = AzureChatOpenAI(
+        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
+        api_version=os.environ.get("AZURE_OPENAI_API_VERSION"),
+        openai_api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+        azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
+        temperature=0.7,
+        max_tokens=4000,
+        model_kwargs={"response_format": {"type": "json_object"}}
+    )
+
+    prompt = PromptTemplate.from_template(
+        "You are an expert Social Media Manager. Create a content calendar for a marketing campaign.\n\n"
+        "--- Context ---\n"
+        "Campaign Name: {campaign_name}\n"
+        "Objective: {objective}\n"
+        "Start Date: {start_date}\n"
+        "Brand Identity: {brand_context}\n"
+        "Product/Service Context: {product_context}\n\n"
+        "--- Constraints ---\n"
+        "1. **Strictly** generate content ONLY for these channels: {channels}.\n"
+        "2. **Smart Scheduling**: Schedule posts based on best practices (e.g., LinkedIn 3x/week, verify gaps). "
+        "Calculate 'publish_date' for each item starting from {start_date}.\n"
+        "3. **Content Mix**: ongoing engagement + promotional.\n\n"
+        "--- Output ---\n"
+        "Return a JSON object with a key 'content_calendar' containing a list of items.\n"
+        "Each item must have:\n"
+        "- 'title': Catchy headline.\n"
+        "- 'content_brief': Description of the post content.\n"
+        "- 'channel': One of the allowed channels.\n"
+        "- 'media_type': 'image', 'video', or 'text_only'.\n"
+        "- 'image_idea': (Optional) detailed prompt for image generation if media_type is image.\n"
+        "- 'publish_date': YYYY-MM-DD string.\n"
+    )
+
+    chain = prompt | llm
+    
+    try:
+        print(f"--- [Generation Task] Generating calendar for Campaign {campaign.campaign_name}... ---")
+        result_json = chain.invoke({
+            "campaign_name": campaign.campaign_name,
+            "objective": campaign.objective,
+            "start_date": start_date,
+            "brand_context": brand_context,
+            "product_context": product_context,
+            "channels": channels
+        }).content
+        
+        data = json.loads(result_json)
+        items = data.get('content_calendar', [])
+
+        if not items:
+            print("--- [Generation Task] Warning: No items generated. ---")
+            return
+
+        # 3. Save to DB
+        # Ensure Calendar Exists
+        calendar = MarketingContentCalendar.query.filter_by(campaign_id=campaign.campaign_id).first()
+        if not calendar:
+            calendar = MarketingContentCalendar(
+                campaign_id=campaign.campaign_id,
+                title=f"Content Calendar: {campaign.campaign_name}",
+                owner_id=startup.user_id,
+                start_date=campaign.start_date
+            )
+            db.session.add(calendar)
+            db.session.flush()
+
+        for item in items:
+            p_date = datetime.strptime(item.get('publish_date'), '%Y-%m-%d').date()
+            
+            content_item = MarketingContentItem(
+                calendar_id=calendar.calendar_id,
+                title=item.get('title'),
+                content_brief=item.get('content_brief'),
+                channel=item.get('channel'),
+                media_type=item.get('media_type', 'text_only'),
+                image_prompt=item.get('image_idea'),
+                publish_date=p_date,
+                status='DRAFT',
+                created_by=startup.user_id
+            )
+
+            # Generate image if needed
+            if content_item.image_prompt and content_item.media_type == 'image':
+                 try:
+                     image_url = generate_marketing_image(content_item.image_prompt)
+                     content_item.image_url = image_url
+                 except Exception as img_err:
+                     print(f"Failed to generate image: {img_err}")
+
+            db.session.add(content_item)
+
+        db.session.commit()
+        
+        # Publish update
+        publish_update("calendar_generated", {"startup_id": startup.id, "campaign_id": campaign.campaign_id}, rooms=[f"user_{startup.user_id}", "admin"])
+        print(f"--- [Generation Task] Success: Generated {len(items)} items. ---")
+
+    except Exception as e:
+        print(f"--- [Generation Task] Error: {e} ---")
+        import traceback
+        traceback.print_exc()
+
+def classify_email_content(sender, subject, snippet):
+    """
+    Classifies an email to determine if it's relevant for the CRM.
+    Returns a dict with 'category' and 'relevance_score'.
+    """
+    llm = AzureChatOpenAI(
+        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
+        api_version=os.environ.get("AZURE_OPENAI_API_VERSION"),
+        openai_api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+        azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
+        temperature=0.0, # Deterministic
+        max_tokens=200,
+        model_kwargs={"response_format": {"type": "json_object"}}
+    )
+
+    prompt = PromptTemplate.from_template(
+        "Analyze this email metadata to see if it is relevant business communication for a CRM.\n\n"
+        "Sender: {sender}\n"
+        "Subject: {subject}\n"
+        "Snippet: {snippet}\n\n"
+        "Categories: 'Opportunity' (Sales/Lead), 'Meeting' (Scheduling), 'Support' (Help), 'Internal' (Team), 'Newsletter' (Marketing), 'Spam', 'Recruitment', 'Partnership' (BizDev/Vendor), 'Legal' (Contracts/Admin), 'Other'.\n"
+        "Score: 0-10 (10 = Critical Business Value, 5 = Neutral/Routine, 0 = Spam/Noise).\n"
+        "Criteria for High Score (>5): Sales leads, important partnerships, legal/contracts, urgent support, investor relations.\n\n"
+        "Output JSON with keys: 'category' (string), 'relevance_score' (integer)."
+    )
+    
+    chain = prompt | llm
+    
+    try:
+        result_json = chain.invoke({
+            "sender": sender,
+            "subject": subject,
+            "snippet": snippet
+        }).content
+        return json.loads(result_json)
+    except Exception as e:
+        print(f"Classification Error: {e}")
+        # Default fallback
+        return {"category": "Other", "relevance_score": 5}

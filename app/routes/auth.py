@@ -214,29 +214,39 @@ def login():
         # 2. Get Firebase user record to check verification status
         firebase_user = auth.get_user(firebase_uid)
 
-        # 3. Find or create user in our local database
+        # 3. Find user in our local database
         user = User.query.filter_by(firebase_uid=firebase_uid).first()
 
         if not user:
-            # If user doesn't exist locally, create a new record
-            user = User(
-                firebase_uid=firebase_uid,
-                email=email,
-                full_name=firebase_user.display_name or email,
-                phone_number=phone_number,
-                email_verified=firebase_user.email_verified,
-                phone_verified=firebase_user.phone_number is not None # Check if phone number exists
-            )
-            db.session.add(user)
-        else:
-            # Update existing user's details and verification status
-            user.email = email
-            user.full_name = firebase_user.display_name or email
-            user.phone_number = phone_number
-            user.email_verified = firebase_user.email_verified # Removed trailing comma
-            user.phone_verified = firebase_user.phone_number is not None # Removed trailing comma
-            
+            # User doesn't exist - they need to sign up first
+            return jsonify({
+                'success': False,
+                'error': 'User not found. Please sign up first.',
+                'requires_signup': True,
+                'firebase_uid': firebase_uid,
+                'email': email
+            }), 200 # Using 200 to handle as a valid flow, not an error
+        
+        # Update existing user's details and verification status
+        user.email = email
+        user.full_name = firebase_user.display_name or email
+        user.phone_number = phone_number
+        user.email_verified = firebase_user.email_verified
+        user.phone_verified = firebase_user.phone_number is not None
+        
         db.session.commit()
+        
+        # Check if user has an organization assigned
+        if not user.organization_id:
+            # Generate a temporary token for organization assignment
+            temp_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
+            return jsonify({
+                'success': False,
+                'error': 'Organization assignment required.',
+                'requires_organization': True,
+                'user': user.to_dict(),
+                'access_token': temp_token
+            }), 200 # Using 200 to handle as a valid flow, not an error
 
         # Enforce verification (Disabled for now)
         # if not user.phone_verified:

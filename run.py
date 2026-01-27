@@ -1,14 +1,20 @@
-
+import trio
 import eventlet
 eventlet.monkey_patch()
 
 from app import create_app
 from app.extensions import db
 from app.models import User, Submission, Startup, Evaluation
-from app.config import Config # Import the Config class
+from config import get_config  # Import get_config function instead
 import os
 
-app = create_app(Config) # Pass the Config class directly
+# Get the appropriate config class based on environment
+config_class = get_config()
+app = create_app(config_class)
+
+# Debug: Print S3 bucket configuration
+print(f"DEBUG: AWS_S3_BUCKET from os.getenv = {os.getenv('AWS_S3_BUCKET')}")
+print(f"DEBUG: AWS_S3_BUCKET from app.config = {app.config.get('AWS_S3_BUCKET')}")
 
 @app.shell_context_processor
 def make_shell_context():

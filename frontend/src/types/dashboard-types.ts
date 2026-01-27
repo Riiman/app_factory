@@ -22,12 +22,21 @@ export enum StartupStatus {
 
 export enum StartupStage {
   EVALUATION = 'EVALUATION',
-  SCOPING = 'SCOPING',
-  CONTRACT = 'CONTRACT',
   ADMITTED = 'ADMITTED',
   IDEA = 'IDEA',
   MVP = 'MVP',
   GROWTH = 'GROWTH',
+}
+
+export enum InvestorStage {
+  PROSPECT = 'PROSPECT',
+  CONTACTED = 'CONTACTED',
+  MEETING = 'MEETING',
+  DUE_DILIGENCE = 'DUE_DILIGENCE',
+  TERM_SHEET = 'TERM_SHEET',
+  COMMITTED = 'COMMITTED',
+  PASSED = 'PASSED',
+  PORTFOLIO = 'PORTFOLIO',
 }
 
 export enum ProductStage {
@@ -74,12 +83,16 @@ export enum Scope {
   PRODUCT = 'product',
   FUNDRAISING = 'fundraise',
   MARKETING = 'marketing',
+  ACCOUNTING = 'accounting',
   BUSINESS = 'business',
   DASHBOARD = 'Dashboard', // UI specific Scope
   WORKSPACE = 'Workspace', // UI specific Scope
   TEAM = 'Team', // UI specific Scope
   SETTINGS = 'Settings', // UI specific Scope
   USER_SETTINGS = 'USER_SETTINGS',
+  EMAIL = 'EMAIL',
+  CHAT = 'Chat',
+  CRM = 'crm',
 }
 
 export enum ScopeStatus {
@@ -262,9 +275,18 @@ export interface Feature {
   status: FeatureStatus;
 }
 
+
+export type BusinessModelType = 'SUBSCRIPTION' | 'TRANSACTIONAL' | 'SERVICE' | 'MARKETPLACE' | 'ADVERTISING' | 'HYBRID';
+
 export interface ProductBusinessDetails {
   product_business_id: number;
   product_id: number;
+  model_type: BusinessModelType;
+  model_config?: any; // JSON structure for model-specifics
+  revenue_account_id?: number;
+  revenue_account_name?: string;
+  cost_account_id?: number;
+  cost_account_name?: string;
   pricing_model?: string;
   target_customer?: string;
   revenue_streams?: string;
@@ -272,6 +294,44 @@ export interface ProductBusinessDetails {
   cost_structure?: string;
   created_at: string;
   updated_at: string;
+}
+
+
+export enum BusinessModelStatus {
+  DRAFT = "DRAFT",
+  ACTIVE = "ACTIVE",
+  ARCHIVED = "ARCHIVED",
+}
+
+export interface BusinessModel {
+  id: number;
+  startup_id: number;
+  name: string;
+  description?: string;
+  model_type: BusinessModelType;
+  model_config?: any;
+  revenue_account_id?: number;
+  revenue_account_name?: string;
+  cost_account_id?: number;
+
+  cost_account_name?: string;
+  status: BusinessModelStatus;
+
+  // Proforma
+  target_arpu?: number;
+  target_cac?: number;
+  target_margin?: number;
+
+  created_at: string;
+  updated_at: string;
+
+  // Analytics fields (calculated from transactions)
+  actual_revenue?: number;
+  actual_cost?: number;
+  actual_quantity?: number;
+  actual_arpu?: number;
+  actual_margin?: number;
+  transaction_count?: number;
 }
 
 export interface Product {
@@ -336,15 +396,50 @@ export interface MarketingOverview {
   brand_details?: BrandDetails;
 }
 
-export interface Investor {
-  investor_id: number;
+export interface GlobalInvestor {
+  id: number;
   name: string;
   firm_name?: string;
-  type: 'Angel' | 'VC' | 'Fund' | 'Accelerator';
+  title?: string;
+  types?: string[];
+  focus_sectors?: string[];
+  focus_stages?: string[];
+  min_check_size?: number;
+  max_check_size?: number;
+  sweet_spot?: number;
+  locations?: string[];
+  website?: string;
+  logo_url?: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
+  bio?: string;
+  recent_investments?: string;
+  meta_data?: {
+    profile_sweet_spot?: string;
+    profile_range?: string;
+    [key: string]: any;
+  };
+  created_at?: string;
+}
+
+export interface Investor {
+  investor_id: number;
+  startup_id?: number;
+  global_investor_id?: number;
+  name: string;
+  firm_name?: string;
+  type: 'Angel' | 'VC' | 'Fund' | 'Accelerator' | string;
   email?: string;
   website?: string;
   notes?: string;
+  stage?: InvestorStage;
+  check_size_interest?: number;
+  total_invested?: number;
+  next_action_date?: string;
+  next_action_type?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface MarketingSettings {
@@ -443,6 +538,12 @@ export interface Task {
   status: TaskStatus;
   linked_to_id?: number;
   linked_to_type?: string;
+  assigned_to?: number;
+  assignee?: {
+    id: number;
+    name: string;
+    email: string;
+  };
   created_at: string;
 }
 
@@ -461,6 +562,13 @@ export interface Experiment {
   created_at: string;
 }
 
+export enum StorageBackend {
+  LOCAL = 'local',
+  S3 = 's3',
+  EXTERNAL = 'external',
+  INLINE = 'inline',
+}
+
 export interface Artifact {
   id: number;
   startup_id: number;
@@ -472,6 +580,18 @@ export interface Artifact {
   linked_to_id?: number;
   linked_to_type?: string;
   created_at: string;
+
+  // S3 and file-specific fields (only populated for FILE type)
+  storage_backend?: StorageBackend;
+  file_size?: number;
+  mime_type?: string;
+  original_filename?: string;
+  s3_bucket?: string;
+  s3_key?: string;
+  s3_region?: string;
+  uploaded_by?: number;
+  is_deleted?: boolean;
+  file_metadata?: Record<string, any>;
 }
 
 export interface Founder {
@@ -527,8 +647,10 @@ export interface Startup {
   is_analyzing_submission?: boolean;
   is_generating_scope?: boolean;
   is_generating_contract?: boolean;
+  accounting_initialized?: boolean;
   has_product?: boolean;
   has_gtm?: boolean;
+  logo_url?: string;
   created_at: string;
   updated_at: string;
   user: User;
@@ -574,4 +696,103 @@ export interface DashboardNotification {
   type: 'info' | 'success' | 'warning' | 'error';
   read: boolean;
   created_at: string;
+}
+
+export enum AccountType {
+  ASSET = 'ASSET',
+  LIABILITY = 'LIABILITY',
+  EQUITY = 'EQUITY',
+  INCOME = 'INCOME',
+  EXPENSE = 'EXPENSE',
+}
+
+export interface Account {
+  id: number;
+  startup_id: number;
+  name: string;
+  type: AccountType;
+  subtype?: string;
+  balance: number;
+  created_at: string;
+}
+
+
+export interface JournalLine {
+  id: number;
+  journal_entry_id: number;
+  account_id: number;
+  account_name: string;
+  debit: number;
+  credit: number;
+  description?: string;
+  business_model_id?: number;
+  business_model_name?: string;
+}
+
+export interface JournalEntry {
+  id: number;
+  startup_id: number;
+  date: string;
+  description?: string;
+  reference?: string;
+  lines: JournalLine[];
+  created_at: string;
+}
+
+export interface CapTableEntry {
+  id: number;
+  stakeholder_name: string;
+  stakeholder_type: string;
+  shares: number;
+  investment_amount: number;
+  ownership_percentage?: number;
+}
+
+// ============================================================================
+// ADMIN ANALYTICS TYPES
+// New types for admin dashboard analytics
+// ============================================================================
+
+export interface PortfolioMetrics {
+  total_revenue: number;
+  total_burn: number;
+  total_cash: number;
+  average_runway: number;
+  total_customers: number;
+  total_mrr: number;
+  total_pipeline_value: number;
+  total_startups: number;
+  healthy_startups: number;
+  warning_startups: number;
+  critical_startups: number;
+  startup_summaries: StartupSummary[];
+}
+
+export interface StartupSummary {
+  startup_id: number;
+  startup_name: string;
+  health_status: 'healthy' | 'warning' | 'critical';
+  revenue: number;
+  burn_rate: number;
+  runway_months: number;
+  customer_count: number;
+  mrr: number;
+  alerts: Alert[];
+}
+
+export interface StartupRanking {
+  rank: number;
+  startup_id: number;
+  startup_name: string;
+  metric_value: number;
+  health_status: 'healthy' | 'warning' | 'critical';
+}
+
+export interface Alert {
+  type: 'critical' | 'warning' | 'info';
+  module: string;
+  message: string;
+  priority: number;
+  startup_id?: number;
+  startup_name?: string;
 }

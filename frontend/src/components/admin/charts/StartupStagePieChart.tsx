@@ -12,29 +12,28 @@ const COLORS = {
   [StartupStage.MVP]: '#8b5cf6',
   [StartupStage.GROWTH]: '#10b981',
   [StartupStage.EVALUATION]: '#f59e0b',
-  [StartupStage.SCOPING]: '#6366f1',
-  [StartupStage.CONTRACT]: '#ec4899',
+  [StartupStage.ADMITTED]: '#22c55e',
 };
 
 const STAGE_NAMES: { [key in StartupStage]: string } = {
-    [StartupStage.EVALUATION]: 'Evaluation',
-    [StartupStage.SCOPING]: 'Scoping',
-    [StartupStage.CONTRACT]: 'Contract',
-    [StartupStage.IDEA]: 'Idea',
-    [StartupStage.MVP]: 'MVP',
-    [StartupStage.GROWTH]: 'Growth',
+  [StartupStage.EVALUATION]: 'Evaluation',
+  [StartupStage.ADMITTED]: 'Admitted',
+  [StartupStage.IDEA]: 'Idea',
+  [StartupStage.MVP]: 'MVP',
+  [StartupStage.GROWTH]: 'Growth',
 };
 
 
 const StartupStagePieChart: React.FC<StartupStagePieChartProps> = ({ startups }) => {
-  const activeStartups = startups.filter(s => 
-    s.currentStage === StartupStage.IDEA ||
-    s.currentStage === StartupStage.MVP ||
-    s.currentStage === StartupStage.GROWTH
+  const activeStartups = startups.filter(s =>
+    s.current_stage === StartupStage.ADMITTED ||
+    s.current_stage === StartupStage.IDEA ||
+    s.current_stage === StartupStage.MVP ||
+    s.current_stage === StartupStage.GROWTH
   );
 
   const stageCounts = activeStartups.reduce((acc, startup) => {
-    acc[startup.currentStage] = (acc[startup.currentStage] || 0) + 1;
+    acc[startup.current_stage] = (acc[startup.current_stage] || 0) + 1;
     return acc;
   }, {} as Record<StartupStage, number>);
 
@@ -42,12 +41,12 @@ const StartupStagePieChart: React.FC<StartupStagePieChartProps> = ({ startups })
     name: STAGE_NAMES[name as StartupStage],
     value,
   }));
-  
+
   if (data.length === 0) {
     return (
-        <div className="flex items-center justify-center h-full text-center text-sm text-slate-500">
-            <p>No active startups to display in chart.</p>
-        </div>
+      <div className="flex items-center justify-center h-full text-center text-sm text-slate-500">
+        <p>No active startups to display in chart.</p>
+      </div>
     );
   }
 

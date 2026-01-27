@@ -1,10 +1,5 @@
-/**
- * @file MarketingContentCalendarPage.tsx
- * @description This page provides a global, centralized view of the entire content strategy.
- * It aggregates all content items from every content-driven campaign into a single, sortable table.
- */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MarketingCampaign, MarketingContentItem, MarketingContentStatus } from '@/types/dashboard-types';
 import Card from '@/components/Card';
@@ -12,7 +7,8 @@ import { Plus, Calendar, Image as ImageIcon, Send, RefreshCw, BarChart2, Eye, Ed
 import toast from 'react-hot-toast';
 import api from '@/utils/api';
 import ContentPreviewModal from '../components/ContentPreviewModal';
-import EditContentItemModal from '../components/EditContentItemModal';
+import ContentItemModal from '../components/ContentItemModal';
+import ContentStatsModal from '../components/ContentStatsModal';
 
 /**
  * Props for the MarketingContentCalendarPage component.
@@ -20,8 +16,6 @@ import EditContentItemModal from '../components/EditContentItemModal';
  */
 interface MarketingContentCalendarPageProps {
     startupId: number;
-    /** Callback function triggered when the "Add Content Item" button is clicked. */
-    onAddNewContentItem: () => void;
 }
 
 const getContentStatusColor = (status: MarketingContentStatus) => {
@@ -34,11 +28,14 @@ const getContentStatusColor = (status: MarketingContentStatus) => {
 
 interface EnrichedContentItem extends MarketingContentItem {
     campaignName: string;
+    campaignId: number;
 }
 
-const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> = ({ startupId, onAddNewContentItem }) => {
-    const [previewItem, setPreviewItem] = React.useState<MarketingContentItem | null>(null);
-    const [editingItem, setEditingItem] = React.useState<MarketingContentItem | null>(null);
+const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> = ({ startupId }) => {
+    const [previewItem, setPreviewItem] = useState<MarketingContentItem | null>(null);
+    const [statsItem, setStatsItem] = useState<MarketingContentItem | null>(null);
+    const [editingItem, setEditingItem] = useState<EnrichedContentItem | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
 
     const { data: campaigns = [], refetch } = useQuery<MarketingCampaign[]>({
         queryKey: ['campaigns', startupId],
@@ -52,7 +49,8 @@ const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> 
             campaign.content_calendars!.flatMap(calendar =>
                 (calendar.content_items || []).map((item: any) => ({
                     ...item,
-                    campaignName: campaign.campaign_name
+                    campaignName: campaign.campaign_name,
+                    campaignId: campaign.campaign_id
                 }))
             )
         )
@@ -90,9 +88,10 @@ const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> 
         }
     };
 
-    const handleUpdate = async (contentId: number, data: Partial<MarketingContentItem>) => {
+    const handleUpdate = async (data: Partial<MarketingContentItem>) => {
+        if (!editingItem) return;
         try {
-            await api.updateContentItem(startupId, contentId, data);
+            await api.updateContentItem(startupId, editingItem.content_id, data);
             toast.success('Content item updated');
             setEditingItem(null);
             refetch();
@@ -102,12 +101,39 @@ const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> 
         }
     };
 
+    const handleCreate = async (data: Partial<MarketingContentItem>, campaignId?: number) => {
+        if (!campaignId) {
+            toast.error("Campaign must be selected");
+            return;
+        }
+        try {
+            // Need to cast data to any or Omit to resolve strict typing if createContentItem expects specific type
+            await api.createContentItem(startupId, campaignId, data as any);
+            toast.success('Content item created');
+            setIsCreating(false);
+            refetch();
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to create content item');
+        }
+    };
+
+    // Calculate available channels for editing item
+    const getEditingItemChannels = () => {
+        if (!editingItem) return [];
+        const campaign = campaigns.find(c => c.campaign_id === editingItem.campaignId);
+        if (campaign && campaign.channel) {
+            return campaign.channel.split(',').map(c => c.trim());
+        }
+        return [];
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Content Calendar</h1>
                 <button
-                    onClick={onAddNewContentItem}
+                    onClick={() => setIsCreating(true)}
                     className="flex items-center px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
                     <Plus className="h-5 w-5 mr-2" />
                     <span className="text-sm font-medium">Add Content Item</span>
@@ -134,8 +160,8 @@ const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> 
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.title}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {item.image_url ? (
-                                                <a href={item.image_url} target="_blank" rel="noopener noreferrer" className="group relative block w-12 h-12 rounded-lg overflow-hidden border border-gray-200">
-                                                    <img src={item.image_url} alt="Generated asset" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" />
+                                                <a href={api.getAssetUrl(item.image_url)} target="_blank" rel="noopener noreferrer" className="group relative block w-12 h-12 rounded-lg overflow-hidden border border-gray-200">
+                                                    <img src={api.getAssetUrl(item.image_url)} alt="Generated asset" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" />
                                                 </a>
                                             ) : (
                                                 <span className="text-xs text-gray-400">text only</span>
@@ -158,35 +184,43 @@ const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> 
                                                 >
                                                     <Eye size={16} />
                                                 </button>
-                                                <button
-                                                    onClick={() => setEditingItem(item)}
-                                                    className="text-gray-400 hover:text-blue-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                                                    title="Edit"
-                                                >
-                                                    <Edit size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(item.content_id)}
-                                                    className="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                {item.status !== MarketingContentStatus.PUBLISHED && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setEditingItem(item)}
+                                                            className="text-gray-400 hover:text-blue-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <Edit size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(item.content_id)}
+                                                            className="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </>
+                                                )}
 
                                                 {item.status === MarketingContentStatus.PUBLISHED ? (
                                                     <>
                                                         <button
-                                                            onClick={() => handleRefreshMetrics(item.content_id)}
+                                                            onClick={() => setStatsItem(item)}
                                                             className="text-indigo-600 hover:text-indigo-900 ml-2"
-                                                            title="Refresh Metrics"
+                                                            title="View Stats"
                                                         >
-                                                            <RefreshCw className="h-4 w-4" />
+                                                            <BarChart2 className="h-4 w-4" />
                                                         </button>
                                                         {item.performance && (
-                                                            <span className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center ml-1" title={JSON.stringify(item.performance)}>
+                                                            <button
+                                                                onClick={() => setStatsItem(item)}
+                                                                className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded flex items-center ml-1 border border-gray-200 transition-colors"
+                                                                title="View Stats"
+                                                            >
                                                                 <BarChart2 className="h-3 w-3 mr-1" />
                                                                 Stats
-                                                            </span>
+                                                            </button>
                                                         )}
                                                     </>
                                                 ) : (
@@ -224,13 +258,42 @@ const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> 
                 />
             )}
 
+            {/* Stats Modal */}
+            {statsItem && (
+                <ContentStatsModal
+                    item={statsItem}
+                    startupId={startupId}
+                    onClose={() => setStatsItem(null)}
+                    onRefresh={() => {
+                        refetch();
+                        // Keep modal open or close? Typically keep open to see new stats.
+                    }}
+                />
+            )}
+
+            {/* Edit Modal */}
+
             {/* Edit Modal */}
             {editingItem && (
-                <EditContentItemModal
+                <ContentItemModal
                     item={editingItem}
-                    onClose={() => setEditingItem(null)}
-                    onUpdate={handleUpdate}
                     startupId={startupId}
+                    availableChannels={getEditingItemChannels()}
+                    onClose={() => setEditingItem(null)}
+                    onSave={handleUpdate}
+                    campaigns={campaigns} // Optional, but helps context if needed
+                />
+            )}
+
+            {/* Create Modal */}
+            {isCreating && (
+                <ContentItemModal
+                    item={null} // Create Mode
+                    startupId={startupId}
+                    // availableChannels not needed as campaigns are provided
+                    campaigns={campaigns}
+                    onClose={() => setIsCreating(false)}
+                    onSave={handleCreate}
                 />
             )}
         </div>

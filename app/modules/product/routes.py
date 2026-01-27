@@ -104,6 +104,18 @@ def update_product(startup_id, product_id):
     
     publish_update("product_updated", {"startup_id": startup_id, "product": product.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
     
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='updated',
+        target_type='Product',
+        target_id=product.id,
+        details=f"Updated product details"
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
     return jsonify({'success': True, 'product': product.to_dict()}), 200
 
 @product_bp.route('/<int:startup_id>/products/<int:product_id>/features', methods=['POST'])
@@ -166,7 +178,56 @@ def update_feature(startup_id, product_id, feature_id):
     
     publish_update("feature_updated", {"startup_id": startup_id, "product_id": product_id, "feature": feature.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
     
+    # Log Activity
+    status_change = ""
+    if 'status' in data:
+        status_change = f" to {data['status']}"
+        
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='updated',
+        target_type='Feature',
+        target_id=feature.id,
+        details=f"Updated feature '{feature.name}'{status_change}"
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
     return jsonify({'success': True, 'feature': feature.to_dict()}), 200
+
+@product_bp.route('/<int:startup_id>/products/<int:product_id>/features/<int:feature_id>', methods=['DELETE'])
+@jwt_required()
+def delete_feature(startup_id, product_id, feature_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if not validate_startup_access(startup, user, required_scope='PRODUCT'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    product = Product.query.get_or_404(product_id)
+    if product.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Product does not belong to this startup.'}), 400
+
+    feature = Feature.query.get_or_404(feature_id)
+    if feature.product_id != product_id:
+        return jsonify({'success': False, 'error': 'Feature does not belong to this product.'}), 400
+
+    db.session.delete(feature)
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='deleted',
+        target_type='Feature',
+        target_id=feature_id,
+        details=f"Deleted feature '{feature.name}'"
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Feature deleted successfully'}), 200
 
 @product_bp.route('/<int:startup_id>/products/<int:product_id>/metrics', methods=['POST'])
 @jwt_required()
@@ -246,7 +307,52 @@ def update_metric(startup_id, product_id, metric_id):
         "timestamp": datetime.now().isoformat()
     }, rooms=[f"user_{startup.user_id}", "admin"])
 
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='updated',
+        target_type='Metric',
+        target_id=metric.metric_id, # Using metric_id as PK
+        details=f"Updated metric '{metric.metric_name}' value: {metric.value}"
+    )
+    db.session.add(activity)
+    db.session.commit()
+
     return jsonify({'success': True, 'metric': metric.to_dict()}), 200
+
+@product_bp.route('/<int:startup_id>/products/<int:product_id>/metrics/<int:metric_id>', methods=['DELETE'])
+@jwt_required()
+def delete_metric(startup_id, product_id, metric_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if not validate_startup_access(startup, user, required_scope='PRODUCT'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    product = Product.query.get_or_404(product_id)
+    if product.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Product does not belong to this startup.'}), 400
+
+    metric = ProductMetric.query.get_or_404(metric_id)
+    if metric.product_id != product_id:
+        return jsonify({'success': False, 'error': 'Metric does not belong to this product.'}), 400
+
+    db.session.delete(metric)
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='deleted',
+        target_type='Metric',
+        target_id=metric_id,
+        details=f"Deleted metric '{metric.metric_name}'"
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Metric deleted successfully'}), 200
 
 @product_bp.route('/<int:startup_id>/products/<int:product_id>/issues', methods=['POST'])
 @jwt_required()
@@ -278,6 +384,39 @@ def create_issue(startup_id, product_id):
     
     return jsonify({'success': True, 'issue': new_issue.to_dict()}), 201
 
+@product_bp.route('/<int:startup_id>/products/<int:product_id>/issues/<int:issue_id>', methods=['DELETE'])
+@jwt_required()
+def delete_issue(startup_id, product_id, issue_id):
+    startup = Startup.query.get_or_404(startup_id)
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if not validate_startup_access(startup, user, required_scope='PRODUCT'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    product = Product.query.get_or_404(product_id)
+    if product.startup_id != startup_id:
+        return jsonify({'success': False, 'error': 'Product does not belong to this startup.'}), 400
+
+    issue = ProductIssue.query.get_or_404(issue_id)
+    if issue.product_id != product_id:
+        return jsonify({'success': False, 'error': 'Issue does not belong to this product.'}), 400
+
+    db.session.delete(issue)
+    
+    # Log Activity
+    activity = ActivityLog(
+        user_id=user_id,
+        startup_id=startup_id,
+        action='deleted',
+        target_type='Issue',
+        target_id=issue_id,
+        details=f"Deleted issue '{issue.title}'"
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Issue deleted successfully'}), 200
+
 @product_bp.route('/<int:startup_id>/products/<int:product_id>/business-details', methods=['PUT'])
 @jwt_required()
 def update_product_business_details(startup_id, product_id):
@@ -295,9 +434,24 @@ def update_product_business_details(startup_id, product_id):
     if not data:
         return jsonify({'success': False, 'error': 'No data provided.'}), 400
 
+
     business_details = product.business_details or ProductBusinessDetails(product_id=product.id)
+    
+    # Update Standard Fields
     for key, value in data.items():
-        setattr(business_details, key, value)
+        if key not in ['model_type', 'model_config', 'revenue_account_id', 'cost_account_id']:
+            setattr(business_details, key, value)
+            
+    # Update Typed Business Model Fields
+    if 'model_type' in data:
+        business_details.model_type = data['model_type']
+    if 'model_config' in data:
+        business_details.model_config = data['model_config']
+    if 'revenue_account_id' in data:
+        business_details.revenue_account_id = data['revenue_account_id']
+    if 'cost_account_id' in data:
+        business_details.cost_account_id = data['cost_account_id']
+
     db.session.add(business_details)
     db.session.commit()
     

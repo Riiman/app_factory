@@ -3,20 +3,31 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { X } from 'lucide-react';
-import { Investor } from '@/types/dashboard-types';
+import { Investor, FundingRound } from '@/types/dashboard-types';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/utils/api';
 
 interface AddInvestmentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (investorId: number, amount: number) => void;
+    onAdd: (investorId: number, amount: number, shares?: number, roundId?: number) => void;
     startupId: number;
+    initialInvestorId?: number;
+    showRoundSelection?: boolean;
 }
 
-const AddInvestmentModal: React.FC<AddInvestmentModalProps> = ({ isOpen, onClose, onAdd, startupId }) => {
+const AddInvestmentModal: React.FC<AddInvestmentModalProps> = ({
+    isOpen,
+    onClose,
+    onAdd,
+    startupId,
+    initialInvestorId,
+    showRoundSelection = false
+}) => {
     const [selectedInvestorId, setSelectedInvestorId] = useState<number | ''>('');
     const [amount, setAmount] = useState<string>('');
+    const [shares, setShares] = useState<string>('');
+    const [selectedRoundId, setSelectedRoundId] = useState<number | ''>('');
 
     const { data: investors = [] } = useQuery<Investor[]>({
         queryKey: ['investors', startupId],
@@ -24,18 +35,34 @@ const AddInvestmentModal: React.FC<AddInvestmentModalProps> = ({ isOpen, onClose
         enabled: !!startupId && isOpen,
     });
 
+    const { data: rounds = [] } = useQuery<FundingRound[]>({
+        queryKey: ['funding-rounds', startupId],
+        queryFn: () => api.getFundingRounds(startupId),
+        enabled: !!startupId && isOpen && showRoundSelection,
+    });
+
     // Reset form when modal opens
     useEffect(() => {
         if (isOpen) {
-            setSelectedInvestorId('');
+            setSelectedInvestorId(initialInvestorId || '');
             setAmount('');
+            setShares('');
+            setSelectedRoundId('');
         }
-    }, [isOpen]);
+    }, [isOpen, initialInvestorId]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedInvestorId && amount) {
-            onAdd(Number(selectedInvestorId), Number(amount));
+            if (showRoundSelection && !selectedRoundId) return; // Validation
+
+            // Updated to pass shares and roundId
+            onAdd(
+                Number(selectedInvestorId),
+                Number(amount),
+                shares ? Number(shares) : undefined,
+                selectedRoundId ? Number(selectedRoundId) : undefined
+            );
             onClose();
         }
     };
@@ -69,7 +96,7 @@ const AddInvestmentModal: React.FC<AddInvestmentModalProps> = ({ isOpen, onClose
                             <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                                 <div className="flex justify-between items-center mb-4">
                                     <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
-                                        Add Investment
+                                        {showRoundSelection ? 'Record Investment' : 'Add Investment'}
                                     </Dialog.Title>
                                     <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
                                         <X className="h-5 w-5" />
@@ -77,6 +104,31 @@ const AddInvestmentModal: React.FC<AddInvestmentModalProps> = ({ isOpen, onClose
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="space-y-4">
+
+                                    {/* Round Selection (Optional) */}
+                                    {showRoundSelection && (
+                                        <div>
+                                            <label htmlFor="round" className="block text-sm font-medium text-gray-700">
+                                                Funding Round
+                                            </label>
+                                            <select
+                                                id="round"
+                                                required
+                                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md"
+                                                value={selectedRoundId}
+                                                onChange={(e) => setSelectedRoundId(Number(e.target.value))}
+                                            >
+                                                <option value="" disabled>Select a round</option>
+                                                {rounds.map((round) => (
+                                                    <option key={round.round_id} value={round.round_id}>
+                                                        {round.round_type} ({round.status})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {rounds.length === 0 && <p className="text-xs text-red-500 mt-1">No funding rounds found. Create one first.</p>}
+                                        </div>
+                                    )}
+
                                     <div>
                                         <label htmlFor="investor" className="block text-sm font-medium text-gray-700">
                                             Investor
@@ -87,6 +139,7 @@ const AddInvestmentModal: React.FC<AddInvestmentModalProps> = ({ isOpen, onClose
                                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md"
                                             value={selectedInvestorId}
                                             onChange={(e) => setSelectedInvestorId(Number(e.target.value))}
+                                            disabled={!!initialInvestorId} // Disable if pre-selected
                                         >
                                             <option value="" disabled>Select an investor</option>
                                             {investors.map((investor) => (
@@ -113,6 +166,22 @@ const AddInvestmentModal: React.FC<AddInvestmentModalProps> = ({ isOpen, onClose
                                         />
                                     </div>
 
+                                    <div>
+                                        <label htmlFor="shares" className="block text-sm font-medium text-gray-700">
+                                            Shares Issued (Optional)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            id="shares"
+                                            min="0"
+                                            step="1"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                            value={shares}
+                                            onChange={(e) => setShares(e.target.value)}
+                                            placeholder="Auto-calculated if left blank"
+                                        />
+                                    </div>
+
                                     <div className="mt-4 flex justify-end space-x-3">
                                         <button
                                             type="button"
@@ -124,7 +193,7 @@ const AddInvestmentModal: React.FC<AddInvestmentModalProps> = ({ isOpen, onClose
                                         <button
                                             type="submit"
                                             className="inline-flex justify-center rounded-md border border-transparent bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary"
-                                            disabled={!selectedInvestorId || !amount}
+                                            disabled={!selectedInvestorId || !amount || (showRoundSelection && !selectedRoundId)}
                                         >
                                             Add Investment
                                         </button>

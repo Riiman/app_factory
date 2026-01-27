@@ -1,17 +1,11 @@
-/**
- * @file ProductDetailPage.tsx
- * @description A detailed view for a single product. It uses a tabbed interface
- * to display different aspects of the product, such as its features, metrics, issues,
- * business details, and other linked operational items (tasks, experiments, artifacts).
- */
-
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Product, Task, Experiment, Artifact, Feature, ProductMetric, ProductBusinessDetails } from '@/types/dashboard-types';
 import Card from '@/components/Card';
 import { ArrowLeft, Plus, Edit } from 'lucide-react';
 import api from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 /**
  * Props for the ProductDetailPage component.
@@ -37,7 +31,8 @@ interface ProductDetailPageProps {
     onEditFeature: (productId: number, feature: Feature) => void;
 }
 
-type Tab = 'Features' | 'Metrics' | 'Issues' | 'Business Details' | 'Linked Items';
+
+type Tab = 'Features' | 'Metrics' | 'Issues' | 'Linked Items';
 
 const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     productId,
@@ -52,7 +47,17 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 }) => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('Features');
-    const tabs: Tab[] = ['Features', 'Metrics', 'Issues', 'Business Details', 'Linked Items'];
+    const tabs: Tab[] = ['Features', 'Metrics', 'Issues', 'Linked Items'];
+
+    // Delete Confirmation State
+    const [deleteConfirmState, setDeleteConfirmState] = useState<{
+        isOpen: boolean;
+        type: 'feature' | 'metric' | 'issue' | null;
+        id: number | null;
+        name: string;
+    }>({ isOpen: false, type: null, id: null, name: '' });
+    const [isDeleting, setIsDeleting] = useState(false);
+    const queryClient = useQueryClient();
 
     // Fetch Product Data
     const { data: products = [] } = useQuery({
@@ -90,6 +95,36 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     const linkedExperiments = experiments.filter((e: Experiment) => e.linked_to_type === 'Product' && e.linked_to_id === productId);
     const linkedArtifacts = artifacts.filter((a: Artifact) => a.linked_to_type === 'Product' && a.linked_to_id === productId);
 
+    const handleDeleteClick = (type: 'feature' | 'metric' | 'issue', id: number, name: string) => {
+        setDeleteConfirmState({ isOpen: true, type, id, name });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!user?.startup_id || !deleteConfirmState.id || !deleteConfirmState.type) return;
+
+        setIsDeleting(true);
+        try {
+            if (deleteConfirmState.type === 'feature') {
+                await api.deleteFeature(user.startup_id, productId, deleteConfirmState.id);
+            } else if (deleteConfirmState.type === 'metric') {
+                await api.deleteMetric(user.startup_id, productId, deleteConfirmState.id);
+            } else if (deleteConfirmState.type === 'issue') {
+                await api.deleteIssue(user.startup_id, productId, deleteConfirmState.id);
+            }
+            // Invalidate products query to refresh the list
+            await queryClient.invalidateQueries({ queryKey: ['products'] });
+            if (user?.startup_id) {
+                await queryClient.invalidateQueries({ queryKey: ['products', user.startup_id] });
+            }
+            setDeleteConfirmState({ isOpen: false, type: null, id: null, name: '' });
+        } catch (error) {
+            console.error(`Failed to delete ${deleteConfirmState.type}:`, error);
+            alert(`Failed to delete ${deleteConfirmState.type}`);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     if (!product) {
         return <div className="p-4">Loading product or product not found...</div>;
     }
@@ -114,14 +149,23 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                                         </div>
                                         <p className="text-sm text-gray-600 mt-1">{feature.description}</p>
                                     </div>
-                                    <button
-                                        onClick={() => onEditFeature(product.id, feature)}
-                                        disabled={feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED'}
-                                        className={`p-1 transition-opacity ${feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100'}`}
-                                        title={feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED' ? "Cannot edit in-progress or completed features" : "Edit Feature"}
-                                    >
-                                        <Edit size={16} />
-                                    </button>
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={() => onEditFeature(product.id, feature)}
+                                            disabled={feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED'}
+                                            className={`p-1 transition-opacity ${feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100'}`}
+                                            title={feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED' ? "Cannot edit in-progress or completed features" : "Edit Feature"}
+                                        >
+                                            <Edit size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteClick('feature', feature.id, feature.name)}
+                                            className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Delete Feature"
+                                        >
+                                            <Plus size={16} className="rotate-45" />
+                                        </button>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
@@ -133,12 +177,21 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {(product.product_metrics || []).map((metric: ProductMetric) => (
                                 metric && (
-                                    <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg relative">
+                                    <div key={metric.metric_id} className="p-4 bg-gray-50 rounded-lg relative group">
                                         <p className="text-sm text-gray-500">{metric.metric_name}</p>
                                         <p className="text-2xl font-bold text-gray-900">{metric.value?.toLocaleString() ?? 'N/A'} <span className="text-base font-normal text-gray-600">{metric.unit}</span></p>
-                                        <button onClick={() => onEditMetric(product.id, metric)} className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 rounded-md">
-                                            <Edit size={16} />
-                                        </button>
+                                        <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => onEditMetric(product.id, metric)} className="p-1 text-gray-400 hover:text-gray-600 rounded-md">
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteClick('metric', metric.metric_id, metric.metric_name)}
+                                                className="p-1 text-gray-400 hover:text-red-500 rounded-md"
+                                                title="Delete Metric"
+                                            >
+                                                <Plus size={16} className="rotate-45" />
+                                            </button>
+                                        </div>
                                     </div>
                                 )
                             ))}
@@ -150,34 +203,26 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     <Card title="Issues & Feedback" actions={<button onClick={onAddIssue} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Report Issue</button>}>
                         <ul className="divide-y divide-gray-200">
                             {(product.product_issues || []).map((issue: any) => (
-                                <li key={issue.issue_id} className="py-4">
+                                <li key={issue.issue_id} className="py-4 group">
                                     <div className="flex justify-between items-center">
-                                        <h4 className="font-semibold text-gray-800">{issue.title}</h4>
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${issue.severity === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{issue.status}</span>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-semibold text-gray-800">{issue.title}</h4>
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${issue.severity === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{issue.status}</span>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mt-1">{issue.description}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleDeleteClick('issue', issue.issue_id, issue.title)}
+                                            className="ml-4 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Delete Issue"
+                                        >
+                                            <Plus size={16} className="rotate-45" />
+                                        </button>
                                     </div>
-                                    <p className="text-sm text-gray-600 mt-1">{issue.description}</p>
                                 </li>
                             ))}
                         </ul>
-                    </Card>
-                );
-            case 'Business Details':
-                return (
-                    <Card title="Business Details" actions={<button onClick={() => product.business_details && onEditProductBusinessDetails(product.id, product.business_details)} className="text-sm font-medium text-brand-primary flex items-center"><Edit size={16} className="mr-1" /> Edit</button>}>
-                        <div className="space-y-4">
-                            <div>
-                                <h4 className="font-medium text-sm text-gray-500">Pricing Model</h4>
-                                <p className="text-gray-800">{product.business_details?.pricing_model || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <h4 className="font-medium text-sm text-gray-500">Target Customer</h4>
-                                <p className="text-gray-800">{product.business_details?.target_customer || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <h4 className="font-medium text-sm text-gray-500">Distribution Channels</h4>
-                                <p className="text-gray-800">{product.business_details?.distribution_channels || 'N/A'}</p>
-                            </div>
-                        </div>
                     </Card>
                 );
             case 'Linked Items':
@@ -230,6 +275,17 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             </div>
 
             <div>{renderTabContent()}</div>
+
+            <ConfirmationModal
+                isOpen={deleteConfirmState.isOpen}
+                onClose={() => setDeleteConfirmState({ ...deleteConfirmState, isOpen: false })}
+                onConfirm={handleConfirmDelete}
+                title={`Delete ${deleteConfirmState.type ? deleteConfirmState.type.charAt(0).toUpperCase() + deleteConfirmState.type.slice(1) : 'Item'}`}
+                message={`Are you sure you want to delete "${deleteConfirmState.name}"? This action cannot be undone.`}
+                confirmText="Delete"
+                variant="danger"
+                isProcessing={isDeleting}
+            />
         </div>
     );
 };

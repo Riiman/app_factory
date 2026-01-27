@@ -30,8 +30,6 @@ class StartupStatus(Enum):
 class StartupStage(Enum):
     """Represents the current stage of a startup in its lifecycle within the program."""
     EVALUATION = "EVALUATION"
-    SCOPING = "SCOPING"
-    CONTRACT = "CONTRACT"
     ADMITTED = "ADMITTED"
     IDEA = "IDEA"
     MVP = "MVP"
@@ -64,6 +62,16 @@ class ArtifactType(Enum):
     FILE = "file"
     LINK = "link"
     TEXT = "text"
+
+    def __str__(self):
+        return self.value
+
+class StorageBackend(str, Enum):
+    """Indicates where a FILE artifact is stored"""
+    LOCAL = "local"      # Local file system (legacy)
+    S3 = "s3"           # AWS S3 (new)
+    EXTERNAL = "external"  # External URL (for LINK type)
+    INLINE = "inline"   # Inline content (for TEXT type)
 
     def __str__(self):
         return self.value
@@ -111,6 +119,7 @@ class Scope(Enum):
     BUSINESS = "business"
     FUNDRAISE = "fundraise"
     MARKETING = "marketing"
+    ACCOUNTING = "accounting"
     GENERAL = "general"
 
     def __str__(self):
@@ -128,9 +137,13 @@ class Task(db.Model):
     status = db.Column(db.Enum(TaskStatus), default=TaskStatus.PENDING, nullable=False)
     linked_to_id = db.Column(db.Integer) # ID of the linked entity (e.g., Product, Experiment)
     linked_to_type = db.Column(db.String(50)) # Type of the linked entity (e.g., 'product', 'experiment')
+    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # ID of the user assigned to this task
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # ID of the user who created this task
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     startup = db.relationship('Startup', back_populates='tasks')
+    assignee = db.relationship('User', foreign_keys=[assigned_to])
+    creator = db.relationship('User', foreign_keys=[created_by])
 
     def to_dict(self):
         return {
@@ -143,6 +156,17 @@ class Task(db.Model):
             'status': str(self.status),
             'linked_to_id': self.linked_to_id,
             'linked_to_type': self.linked_to_type,
+            'assigned_to': self.assigned_to,
+            'assignee': {
+                'id': self.assignee.id,
+                'name': self.assignee.full_name,
+                'email': self.assignee.email
+            } if self.assignee else None,
+            'created_by': self.created_by,
+            'creator': {
+                'id': self.creator.id,
+                'name': self.creator.full_name,
+            } if self.creator else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -181,23 +205,55 @@ class Experiment(db.Model):
         }
 
 class Artifact(db.Model):
-    """Represents a digital artifact (file, link, text) associated with a startup or other entities."""
+    """
+    Unified model for all external information attached to startup entities.
+    Supports FILE (with S3 storage), LINK (external URLs), and TEXT (inline content).
+    Multiple artifacts per entity supported via linked_to_type and linked_to_id.
+    """
     __tablename__ = 'artifacts'
+    
+    # EXISTING FIELDS
     id = db.Column(db.Integer, primary_key=True)
     startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
     scope = db.Column(db.Enum(Scope), default=Scope.GENERAL, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
     type = db.Column(db.Enum(ArtifactType), nullable=False)
-    location = db.Column(db.Text, nullable=False) # URL for links, file path for files, or content for text
-    linked_to_id = db.Column(db.Integer) # ID of the linked entity (e.g., Task, Experiment, FundingRound)
-    linked_to_type = db.Column(db.String(50)) # Type of the linked entity (e.g., 'task', 'experiment', 'funding_round')
+    location = db.Column(db.Text, nullable=False) # S3 key for files, URL for links, content for text
+    linked_to_id = db.Column(db.Integer)
+    linked_to_type = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    
+    # NEW: Storage backend (only relevant for FILE type)
+    storage_backend = db.Column(db.Enum(StorageBackend), nullable=True)
+    
+    # NEW: File metadata (only populated when type='FILE')
+    file_size = db.Column(db.Integer)  # Size in bytes
+    mime_type = db.Column(db.String(100))
+    original_filename = db.Column(db.String(255))  # User's original filename
+    
+    # NEW: S3-specific fields (only populated when type='FILE' and storage_backend='S3')
+    s3_bucket = db.Column(db.String(255))
+    s3_key = db.Column(db.String(500))  # Full S3 path
+    s3_region = db.Column(db.String(50))
+    
+    # NEW: User tracking
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    
+    # NEW: Soft delete
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime)
+    
+    # NEW: Flexible metadata (renamed from 'metadata' to avoid SQLAlchemy conflict)
+    file_metadata = db.Column(db.JSON)
+    
+    # RELATIONSHIPS
     startup = db.relationship('Startup', back_populates='artifacts')
+    uploader = db.relationship('User', foreign_keys=[uploaded_by])
 
     def to_dict(self):
-        return {
+        """Enhanced to_dict with conditional file-specific fields"""
+        base_dict = {
             'id': self.id,
             'startup_id': self.startup_id,
             'scope': str(self.scope),
@@ -208,8 +264,24 @@ class Artifact(db.Model):
             'linked_to_id': self.linked_to_id,
             'linked_to_type': self.linked_to_type,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+        
+        # Add file-specific fields only if type is FILE
+        if self.type == ArtifactType.FILE:
+            base_dict.update({
+                'storage_backend': str(self.storage_backend) if self.storage_backend else None,
+                'file_size': self.file_size,
+                'mime_type': self.mime_type,
+                'original_filename': self.original_filename,
+                's3_bucket': self.s3_bucket,
+                's3_key': self.s3_key,
+                's3_region': self.s3_region,
+                'uploaded_by': self.uploaded_by,
+                'is_deleted': self.is_deleted,
+                'file_metadata': self.file_metadata,
+            })
+        
+        return base_dict
 
 import secrets
 
@@ -308,6 +380,7 @@ class Startup(db.Model):
     next_milestone = db.Column(db.String(255), nullable=True)
     recent_activity = db.Column(db.JSON, nullable=True) # Store as JSON array of strings
     container_name = db.Column(db.String(100), nullable=True, unique=True) # Docker container name
+    logo_url = db.Column(db.String(500), nullable=True) # Startup logo URL
     
     # Status flags for async asset generation
     is_generating_product = db.Column(db.Boolean, default=False)
@@ -315,6 +388,13 @@ class Startup(db.Model):
     is_analyzing_submission = db.Column(db.Boolean, default=False)
     is_generating_scope = db.Column(db.Boolean, default=False)
     is_generating_contract = db.Column(db.Boolean, default=False)
+    accounting_initialized = db.Column(db.Boolean, default=False)
+    
+    # Fundraising profile for investor recommendations
+    focus_sectors = db.Column(db.JSON, nullable=True)  # Array: ['FinTech', 'AI', 'SaaS']
+    fundraising_stage = db.Column(db.String(50), nullable=True)  # 'Pre-Seed', 'Seed', 'Series A', etc.
+    target_raise = db.Column(db.Float, nullable=True)  # Target fundraising amount
+    primary_location = db.Column(db.String(255), nullable=True)  # Primary location
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -338,7 +418,7 @@ class Startup(db.Model):
     # New relationships for pre-admission stages
     scope_document = db.relationship('ScopeDocument', back_populates='startup', uselist=False, cascade='all, delete-orphan')
     contract = db.relationship('Contract', back_populates='startup', uselist=False, cascade='all, delete-orphan')
-    contract = db.relationship('Contract', back_populates='startup', uselist=False, cascade='all, delete-orphan')
+    investors = db.relationship('Investor', back_populates='startup', lazy=True, cascade='all, delete-orphan')
     organization = db.relationship('Organization', back_populates='startups')
     team_members = db.relationship('TeamMember', back_populates='startup', lazy=True, cascade='all, delete-orphan')
 
@@ -359,11 +439,13 @@ class Startup(db.Model):
             'overall_progress': self.overall_progress,
             'current_stage': self.current_stage.value if self.current_stage else None,
             'next_milestone': self.next_milestone,
+            'logo_url': self.logo_url,
             'is_generating_product': self.is_generating_product,
             'is_generating_gtm': self.is_generating_gtm,
             'is_analyzing_submission': self.is_analyzing_submission,
             'is_generating_scope': self.is_generating_scope,
             'is_generating_contract': self.is_generating_contract,
+            'accounting_initialized': self.accounting_initialized,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'user': self.user.to_dict() if self.user else None,
@@ -577,12 +659,98 @@ class BusinessOverview(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
 
+
+class BusinessModelType(Enum):
+    SUBSCRIPTION = "SUBSCRIPTION"
+    TRANSACTIONAL = "TRANSACTIONAL"
+    SERVICE = "SERVICE"
+    MARKETPLACE = "MARKETPLACE"
+    ADVERTISING = "ADVERTISING"
+    HYBRID = "HYBRID"
+
+    def __str__(self):
+        return self.value
+
+
+class BusinessModelStatus(Enum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
+
+class BusinessModel(db.Model):
+    """Represents a distinct way the startup generates value/revenue. Independent of specific products."""
+    __tablename__ = 'business_models'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False) # e.g. "SaaS Pro Tier"
+    description = db.Column(db.Text, nullable=True)
+    
+    model_type = db.Column(db.Enum(BusinessModelType), default=BusinessModelType.TRANSACTIONAL)
+    model_config = db.Column(db.JSON, nullable=True) # Pricing tiers, recurrence, etc.
+    
+
+    # Financial Linkage
+    revenue_account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    cost_account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    
+    status = db.Column(db.Enum(BusinessModelStatus), default=BusinessModelStatus.DRAFT)
+
+    # Proforma / Unit Economics Fields (for modeling without accounting)
+    target_arpu = db.Column(db.Float, nullable=True) # Average Revenue Per User
+    target_cac = db.Column(db.Float, nullable=True) # Customer Acquisition Cost
+    target_margin = db.Column(db.Float, nullable=True) # Gross Margin % (0-100)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    revenue_account = db.relationship('Account', foreign_keys=[revenue_account_id])
+    cost_account = db.relationship('Account', foreign_keys=[cost_account_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'name': self.name,
+            'description': self.description,
+            'model_type': self.model_type.value if self.model_type else None,
+            'model_config': self.model_config,
+            'revenue_account_id': self.revenue_account_id,
+            'revenue_account_name': self.revenue_account.name if self.revenue_account else None,
+            'cost_account_id': self.cost_account_id,
+            'cost_account_name': self.cost_account.name if self.cost_account else None,
+            'status': self.status.value,
+            'target_arpu': self.target_arpu,
+            'target_cac': self.target_cac,
+            'target_margin': self.target_margin,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
+
+    status = db.Column(db.Enum(BusinessModelStatus), default=BusinessModelStatus.DRAFT)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('business_models', lazy=True))
+    revenue_account = db.relationship('Account', foreign_keys=[revenue_account_id])
+    cost_account = db.relationship('Account', foreign_keys=[cost_account_id])
+
+
+
 class ProductBusinessDetails(db.Model):
     """Details the business aspects specific to a product, such as pricing and target customers."""
     __tablename__ = 'product_business_details'
     product_business_id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), unique=True, nullable=False)
-    pricing_model = db.Column(db.String(255), nullable=True)
+    
+    # New Fields for Structured Business Modeling
+    model_type = db.Column(db.Enum(BusinessModelType), default=BusinessModelType.TRANSACTIONAL)
+    model_config = db.Column(db.JSON, nullable=True) # Store model-specific details (e.g. tiers, take-rate)
+    
+    # Accounting Linkage
+    revenue_account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    cost_account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+
+    pricing_model = db.Column(db.String(255), nullable=True) # Legacy/Generic field
     target_customer = db.Column(db.Text, nullable=True)
     revenue_streams = db.Column(db.Text, nullable=True)
     distribution_channels = db.Column(db.Text, nullable=True)
@@ -591,11 +759,19 @@ class ProductBusinessDetails(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     product = db.relationship('Product', back_populates='business_details')
+    revenue_account = db.relationship('Account', foreign_keys=[revenue_account_id])
+    cost_account = db.relationship('Account', foreign_keys=[cost_account_id])
 
     def to_dict(self):
         return {
             'product_business_id': self.product_business_id,
             'product_id': self.product_id,
+            'model_type': str(self.model_type) if self.model_type else 'TRANSACTIONAL',
+            'model_config': self.model_config,
+            'revenue_account_id': self.revenue_account_id,
+            'revenue_account_name': self.revenue_account.name if self.revenue_account else None,
+            'cost_account_id': self.cost_account_id,
+            'cost_account_name': self.cost_account.name if self.cost_account else None,
             'pricing_model': self.pricing_model,
             'target_customer': self.target_customer,
             'revenue_streams': self.revenue_streams,
@@ -619,6 +795,15 @@ class BusinessMonthlyData(db.Model):
     churn_rate = db.Column(db.Numeric(5,2), nullable=True)
     new_customers = db.Column(db.Integer, nullable=True)
     total_customers = db.Column(db.Integer, nullable=True)
+    
+    # --- Expanded Metrics (CRM, Marketing, Fundraising) ---
+    crm_pipeline_value = db.Column(db.Numeric(15,2), nullable=True)
+    crm_win_rate = db.Column(db.Numeric(5,2), nullable=True)
+    marketing_total_spend = db.Column(db.Numeric(15,2), nullable=True)
+    marketing_impressions = db.Column(db.Integer, nullable=True)
+    active_investors = db.Column(db.Integer, nullable=True)
+    fundraising_amount = db.Column(db.Numeric(15,2), nullable=True)
+    
     key_highlights = db.Column(db.Text, nullable=True)
     key_challenges = db.Column(db.Text, nullable=True)
     next_focus = db.Column(db.Text, nullable=True)
@@ -641,6 +826,12 @@ class BusinessMonthlyData(db.Model):
             'churn_rate': float(self.churn_rate) if self.churn_rate is not None else None,
             'new_customers': self.new_customers,
             'total_customers': self.total_customers,
+            'crm_pipeline_value': float(self.crm_pipeline_value) if self.crm_pipeline_value is not None else None,
+            'crm_win_rate': float(self.crm_win_rate) if self.crm_win_rate is not None else None,
+            'marketing_total_spend': float(self.marketing_total_spend) if self.marketing_total_spend is not None else None,
+            'marketing_impressions': self.marketing_impressions,
+            'active_investors': self.active_investors,
+            'fundraising_amount': float(self.fundraising_amount) if self.fundraising_amount is not None else None,
             'key_highlights': self.key_highlights,
             'key_challenges': self.key_challenges,
             'next_focus': self.next_focus,
@@ -914,37 +1105,148 @@ class FundingRound(db.Model):
 
 
 
+class GlobalInvestor(db.Model):
+    """Represents a global, shared database of investors available to all startups."""
+    __tablename__ = 'global_investors'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    firm_name = db.Column(db.String(255), nullable=True)
+    title = db.Column(db.String(255), nullable=True)  # Role: Partner, GP, etc.
+    types = db.Column(db.JSON, nullable=True) # Array: ['VC', 'Angel', 'Family Office']
+    focus_sectors = db.Column(db.JSON, nullable=True) # Array: ['SaaS', 'Fintech', 'AI']
+    focus_stages = db.Column(db.JSON, nullable=True) # Array: ['Pre-Seed', 'Seed', 'Series A']
+    min_check_size = db.Column(db.Float, nullable=True)
+    max_check_size = db.Column(db.Float, nullable=True)
+    locations = db.Column(db.JSON, nullable=True) # Array of strings
+    website = db.Column(db.Text, nullable=True)
+    logo_url = db.Column(db.Text, nullable=True)
+    sweet_spot = db.Column(db.Float, nullable=True) # Ideal check size
+    bio = db.Column(db.Text, nullable=True)  # Investor biography
+    recent_investments = db.Column(db.Text, nullable=True)  # Recent portfolio companies
+    meta_data = db.Column(db.JSON, nullable=True) # Catch-all for extra details
+    email = db.Column(db.String(255), nullable=True)
+    phone = db.Column(db.String(50), nullable=True)
+    linkedin = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Startups that have imported this investor to their CRM
+    crm_instances = db.relationship('Investor', back_populates='global_investor')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'firm_name': self.firm_name,
+            'title': self.title,
+            'types': self.types,
+            'focus_sectors': self.focus_sectors,
+            'focus_stages': self.focus_stages,
+            'min_check_size': self.min_check_size,
+            'max_check_size': self.max_check_size,
+            'sweet_spot': self.sweet_spot,
+            'locations': self.locations,
+            'website': self.website,
+            'logo_url': self.logo_url,
+            'bio': self.bio,
+            'recent_investments': self.recent_investments,
+            'email': self.email,
+            'phone': self.phone,
+            'linkedin': self.linkedin,
+            'meta_data': self.meta_data,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class InvestorStage(Enum):
+    PROSPECT = "PROSPECT"
+    CONTACTED = "CONTACTED"
+    MEETING = "MEETING"
+    DUE_DILIGENCE = "DUE_DILIGENCE"
+    TERM_SHEET = "TERM_SHEET"
+    COMMITTED = "COMMITTED"
+    PASSED = "PASSED"
+    PORTFOLIO = "PORTFOLIO"
+    
+    def __str__(self):
+        return self.value
+
 class Investor(db.Model):
-    """Represents an investor who has participated in funding rounds."""
+    """Represents an investor in a specific startup's CRM (potentially linked to GlobalInvestor)."""
     __tablename__ = 'investors'
     investor_id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=True) # If null, generic? No, should be startup specific now.
+    global_investor_id = db.Column(db.Integer, db.ForeignKey('global_investors.id'), nullable=True)
+    
     name = db.Column(db.String(255), nullable=False)
     firm_name = db.Column(db.String(255), nullable=True)
     type = db.Column(db.String(50), nullable=True) # Angel, VC, Fund, Accelerator
     email = db.Column(db.String(255), nullable=True)
     website = db.Column(db.Text, nullable=True)
+    
+    # CRM Fields
+    stage = db.Column(db.Enum(InvestorStage), default=InvestorStage.PROSPECT, nullable=True)
     notes = db.Column(db.Text, nullable=True)
+    check_size_interest = db.Column(db.Float, nullable=True)
+    next_action_date = db.Column(db.DateTime, nullable=True)
+    next_action_type = db.Column(db.String(50), nullable=True) # 'Email', 'Call', 'Meeting'
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    startup = db.relationship('Startup', back_populates='investors')
+    global_investor = db.relationship('GlobalInvestor', back_populates='crm_instances')
     rounds = db.relationship('RoundInvestor', back_populates='investor')
+    interaction_logs = db.relationship('InteractionLog', back_populates='investor', cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
             'investor_id': self.investor_id,
+            'startup_id': self.startup_id,
+            'global_investor_id': self.global_investor_id,
             'name': self.name,
             'firm_name': self.firm_name,
             'type': self.type,
             'email': self.email,
             'website': self.website,
             'notes': self.notes,
+            'stage': str(self.stage) if self.stage else None,
+            'check_size_interest': float(self.check_size_interest) if self.check_size_interest else None,
+            'total_invested': sum([float(ri.amount_invested) for ri in self.rounds if ri.amount_invested]) if self.rounds else 0.0,
+            'next_action_date': self.next_action_date.isoformat() if self.next_action_date else None,
+            'next_action_type': self.next_action_type,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+class InteractionLog(db.Model):
+    """Logs interactions (calls, emails, notes) with an investor."""
+    __tablename__ = 'interaction_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    investor_id = db.Column(db.Integer, db.ForeignKey('investors.investor_id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    type = db.Column(db.String(50), nullable=False) # 'Email', 'Call', 'Meeting', 'Note'
+    summary = db.Column(db.Text, nullable=True)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    investor = db.relationship('Investor', back_populates='interaction_logs')
+    user = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'investor_id': self.investor_id,
+            'user_id': self.user_id,
+            'user_name': self.user.full_name,
+            'type': self.type,
+            'summary': self.summary,
+            'date': self.date.isoformat(),
         }
 
 class RoundInvestor(db.Model):
     """Link table between FundingRound and Investor."""
     __tablename__ = 'round_investors'
-    round_id = db.Column(db.Integer, db.ForeignKey('funding_rounds.round_id'), primary_key=True)
-    investor_id = db.Column(db.Integer, db.ForeignKey('investors.investor_id'), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    round_id = db.Column(db.Integer, db.ForeignKey('funding_rounds.round_id'), nullable=False)
+    investor_id = db.Column(db.Integer, db.ForeignKey('investors.investor_id'), nullable=False)
     amount_invested = db.Column(db.Numeric(15,2), nullable=True)
     
     funding_round = db.relationship('FundingRound', back_populates='investors')
@@ -1301,4 +1603,176 @@ class Evaluation(db.Model):
             'final_decision': self.final_decision,
             'overall_summary': self.overall_summary,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+class AccountType(Enum):
+    ASSET = "ASSET"
+    LIABILITY = "LIABILITY"
+    EQUITY = "EQUITY"
+    INCOME = "INCOME"
+    EXPENSE = "EXPENSE"
+
+    def __str__(self):
+        return self.value
+
+class Account(db.Model):
+    """Represents a financial account in the chart of accounts."""
+    __tablename__ = 'accounts'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    type = db.Column(db.Enum(AccountType), nullable=False)
+    subtype = db.Column(db.String(100), nullable=True) # e.g., 'Bank', 'Credit Card', 'Operating Expense'
+    balance = db.Column(db.Numeric(15, 2), default=0.00) # Current balance
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('accounts', lazy=True))
+
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'name': self.name,
+            'type': self.type.value if hasattr(self.type, 'value') else self.type,
+            'subtype': self.subtype,
+            'balance': float(self.balance),
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class JournalEntry(db.Model):
+    """Represents a double-entry accounting transaction."""
+    __tablename__ = 'journal_entries'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+    reference = db.Column(db.String(100), nullable=True) # e.g., Invoice #123
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('journal_entries', lazy=True))
+    lines = db.relationship('JournalLine', backref='journal_entry', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'date': self.date.isoformat(),
+            'description': self.description,
+            'reference': self.reference,
+            'lines': [line.to_dict() for line in self.lines],
+            'created_at': self.created_at.isoformat()
+        }
+
+class JournalLine(db.Model):
+    """Represents a line item in a journal entry (debit or credit)."""
+    __tablename__ = 'journal_lines'
+    id = db.Column(db.Integer, primary_key=True)
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
+    debit = db.Column(db.Numeric(15, 2), default=0.00)
+    credit = db.Column(db.Numeric(15, 2), default=0.00)
+
+    description = db.Column(db.String(255), nullable=True) # Line-level description
+    business_model_id = db.Column(db.Integer, db.ForeignKey('business_models.id'), nullable=True)
+    quantity = db.Column(db.Float, default=0.0) # For operational tracking (e.g. units sold)
+
+    account = db.relationship('Account')
+    business_model = db.relationship('BusinessModel')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'journal_entry_id': self.journal_entry_id,
+            'account_id': self.account_id,
+            'account_name': self.account.name,
+            'debit': float(self.debit),
+            'credit': float(self.credit),
+            'description': self.description,
+            'business_model_id': self.business_model_id,
+            'business_model_name': self.business_model.name if self.business_model else None,
+            'quantity': self.quantity
+        }
+
+class StakeholderType(Enum):
+    FOUNDER = 'Founder'
+    INVESTOR = 'Investor'
+    EMPLOYEE = 'Employee'
+    OPTION_POOL = 'Option Pool'
+    ADVISOR = 'Advisor'
+
+class CapTableEntry(db.Model):
+    __tablename__ = 'cap_table_entries'
+
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    stakeholder_name = db.Column(db.String(255), nullable=False)
+    stakeholder_type = db.Column(db.Enum(StakeholderType), default=StakeholderType.FOUNDER)
+    shares = db.Column(db.Integer, default=0)
+
+    startup = db.relationship('Startup', backref=db.backref('cap_table', lazy=True))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'stakeholder_name': self.stakeholder_name,
+            'stakeholder_type': self.stakeholder_type.value,
+            'shares': self.shares
+        }
+
+class StartupSnapshot(db.Model):
+    """Daily snapshot of startup health and derived insights."""
+    __tablename__ = 'startup_snapshots'
+
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False, default=datetime.utcnow)
+
+    # Key Indices (0-100 or specific metrics)
+    founder_maturity_score = db.Column(db.Float, nullable=True)
+    product_readiness_score = db.Column(db.Float, nullable=True)
+    market_fit_score = db.Column(db.Float, nullable=True)
+    runway_months = db.Column(db.Float, nullable=True)
+    
+    # Detailed Insight Payloads
+    financial_data = db.Column(db.JSON, nullable=True) # Burn, Trend, Unit Economics
+    product_data = db.Column(db.JSON, nullable=True) # Velocity, Technical Debt
+    growth_data = db.Column(db.JSON, nullable=True) # CAC, Channels, Content
+    team_data = db.Column(db.JSON, nullable=True) # Focus allocation, Overload
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('snapshots', lazy=True, order_by='desc(StartupSnapshot.date)'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'date': self.date.isoformat(),
+            'founder_maturity_score': self.founder_maturity_score,
+            'product_readiness_score': self.product_readiness_score,
+            'market_fit_score': self.market_fit_score,
+            'runway_months': self.runway_months,
+            'financial_data': self.financial_data,
+            'product_data': self.product_data,
+            'growth_data': self.growth_data,
+            'team_data': self.team_data,
+            'created_at': self.created_at.isoformat()
+        }
+    investment_amount = db.Column(db.Float, default=0.0)
+    date_issued = db.Column(db.Date, default=datetime.utcnow)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'stakeholder_name': self.stakeholder_name,
+            'stakeholder_type': self.stakeholder_type.value,
+            'shares': self.shares,
+            'investment_amount': self.investment_amount,
+            'date_issued': self.date_issued.isoformat() if self.date_issued else None
         }

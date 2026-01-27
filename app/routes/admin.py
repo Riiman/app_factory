@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from app.extensions import db
-from app.models import Submission, Startup, User, Founder, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole, ScopeStatus, ContractStatus
+from app.models import Submission, Startup, User, Founder, StartupStage, SubmissionStatus, EvaluationTask, ScopeDocument, ScopeComment, Contract, ContractSignatory, UserRole, ScopeStatus, ContractStatus, StartupSnapshot
 from app.utils.decorators import admin_required
 from flask_jwt_extended import get_jwt_identity
 from sqlalchemy.orm import joinedload
@@ -180,6 +180,7 @@ def update_submission_status(submission_id):
             # Create Startup
             startup = Startup(
                 user_id=submission.user_id,
+                organization_id=submission.organization_id,
                 submission_id=submission.id,
                 name=submission.startup_name,
                 slug=slug,
@@ -501,3 +502,165 @@ def create_activity():
     
     return jsonify({'success': True, 'activity': activity.to_dict()}), 201
 
+
+# ============================================================================
+# ADMIN ANALYTICS ENDPOINTS
+# New endpoints for admin dashboard analytics - DO NOT modify user endpoints
+# ============================================================================
+
+from app.services.admin_analytics_service import (
+    calculate_portfolio_metrics,
+    get_startup_rankings,
+    get_organization_alerts
+)
+
+@admin_bp.route('/analytics/portfolio-summary', methods=['GET'])
+@admin_required
+def get_portfolio_summary():
+    """
+    Get aggregated portfolio metrics for all startups in the admin's organization.
+    Super Admin (Org ID 1) sees all organizations.
+    """
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    # Determine which organization to query
+    org_id = None if user.organization_id == 1 else user.organization_id
+    
+    try:
+        metrics = calculate_portfolio_metrics(org_id)
+        return jsonify({'success': True, 'data': metrics}), 200
+    except Exception as e:
+        print(f"Error calculating portfolio metrics: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/analytics/startup-rankings', methods=['GET'])
+@admin_required
+def get_rankings():
+    """
+    Get startup rankings by specified metric.
+    Query params:
+    - metric: 'revenue', 'customers', 'mrr', 'burn' (default: 'revenue')
+    - limit: number of results (default: 10)
+    """
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    # Get query parameters
+    metric = request.args.get('metric', 'revenue')
+    limit = int(request.args.get('limit', 10))
+    
+    # Determine which organization to query
+    org_id = None if user.organization_id == 1 else user.organization_id
+    
+    try:
+        rankings = get_startup_rankings(org_id, metric=metric, limit=limit)
+        return jsonify({'success': True, 'data': rankings}), 200
+    except Exception as e:
+        print(f"Error getting startup rankings: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/analytics/organization-alerts', methods=['GET'])
+@admin_required
+def get_org_alerts():
+    """
+    Get all critical alerts across the organization.
+    """
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    # Determine which organization to query
+    org_id = None if user.organization_id == 1 else user.organization_id
+    
+    try:
+        alerts = get_organization_alerts(org_id)
+        return jsonify({'success': True, 'data': alerts}), 200
+    except Exception as e:
+        print(f"Error getting organization alerts: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# INSIGHTS ENDPOINTS
+# ============================================================================
+
+@admin_bp.route('/startups/<int:startup_id>/insights/latest', methods=['GET'])
+@admin_required
+def get_latest_insights(startup_id):
+    """Get the latest insights snapshot for a startup"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    startup = Startup.query.get_or_404(startup_id)
+    
+    if not validate_admin_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized access to startup.'}), 403
+    
+    latest_snapshot = StartupSnapshot.query.filter_by(
+        startup_id=startup_id
+    ).order_by(StartupSnapshot.date.desc()).first()
+    
+    if not latest_snapshot:
+        return jsonify({
+            'success': True,
+            'data': None,
+            'message': 'No insights snapshot available yet'
+        }), 200
+    
+    return jsonify({
+        'success': True,
+        'data': {
+            'date': latest_snapshot.date.isoformat(),
+            'founder_maturity_score': latest_snapshot.founder_maturity_score,
+            'product_readiness_score': latest_snapshot.product_readiness_score,
+            'market_fit_score': latest_snapshot.market_fit_score,
+            'runway_months': latest_snapshot.runway_months,
+            'financial_data': latest_snapshot.financial_data,
+            'product_data': latest_snapshot.product_data,
+            'growth_data': latest_snapshot.growth_data,
+            'team_data': latest_snapshot.team_data
+        }
+    }), 200
+
+
+@admin_bp.route('/startups/<int:startup_id>/insights/history', methods=['GET'])
+@admin_required
+def get_insights_history(startup_id):
+    """Get historical insights snapshots for trend analysis"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    startup = Startup.query.get_or_404(startup_id)
+    
+    if not validate_admin_access(startup, user):
+        return jsonify({'success': False, 'error': 'Unauthorized access to startup.'}), 403
+    
+    limit = request.args.get('limit', 30, type=int)
+    
+    snapshots = StartupSnapshot.query.filter_by(
+        startup_id=startup_id
+    ).order_by(StartupSnapshot.date.desc()).limit(limit).all()
+    
+    if not snapshots:
+        return jsonify({
+            'success': True,
+            'data': [],
+            'message': 'No historical insights available yet'
+        }), 200
+    
+    history = [{
+        'date': snapshot.date.isoformat(),
+        'founder_maturity_score': snapshot.founder_maturity_score,
+        'product_readiness_score': snapshot.product_readiness_score,
+        'market_fit_score': snapshot.market_fit_score,
+        'runway_months': snapshot.runway_months,
+        'financial_data': snapshot.financial_data,
+        'product_data': snapshot.product_data,
+        'growth_data': snapshot.growth_data
+    } for snapshot in reversed(snapshots)]
+    
+    return jsonify({
+        'success': True,
+        'data': history
+    }), 200

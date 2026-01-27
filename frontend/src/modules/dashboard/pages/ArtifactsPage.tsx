@@ -42,6 +42,12 @@ const ArtifactsPage: React.FC<ArtifactsPageProps> = ({ startupId, onArtifactClic
         enabled: !!startupId,
     });
 
+    // Filter out child artifacts (files that belong to a collection)
+    // Only show top-level artifacts and collections in the main list
+    const topLevelArtifacts = artifacts.filter(artifact =>
+        artifact.linked_to_type !== 'Artifact'
+    );
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -65,7 +71,7 @@ const ArtifactsPage: React.FC<ArtifactsPageProps> = ({ startupId, onArtifactClic
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {artifacts.map((artifact) => (
+                            {topLevelArtifacts.map((artifact) => (
                                 <tr key={artifact.id} onClick={() => onArtifactClick(artifact)} className="cursor-pointer hover:bg-gray-50">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">

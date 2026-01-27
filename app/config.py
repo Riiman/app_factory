@@ -31,6 +31,13 @@ class Config:
     JWT_CSRF_IN_COOKIES = False
     JWT_CSRF_PROTECTION = False
     
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+    
+    # Application Configuration
+    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:5000')
+    GETLATE_API_KEY = os.getenv('GETLATE_API_KEY', 'sk_0b138c1c46622852bf949abc534b0305905133b5cebd34e266756804c90fe2a3')
+
     # Mail Configuration
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.getenv('MAIL_PORT', 587))

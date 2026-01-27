@@ -73,7 +73,7 @@ const StartupListView: React.FC<StartupListViewProps> = ({ startups, onSelectSta
                       <StatusBadge status={startup.status} />
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={startup.currentStage} />
+                      <StatusBadge status={startup.current_stage} />
                     </td>
                     <td className="px-6 py-4">
                       {new Date(startup.created_at).toLocaleDateString()}

@@ -51,15 +51,10 @@ const LoginPage: FC = () => {
       const firebaseUser = result.user;
       const idToken = await firebaseUser.getIdToken();
 
-      const data = await api.post('/auth/login', { firebase_id_token: idToken });
+      try {
+        const data = await api.post('/auth/login', { firebase_id_token: idToken });
 
-      if (data.access_token) {
-        // Check if user has an organization
-        if (!data.user.organization_id) {
-          // User doesn't have an organization, show modal
-          setPendingOAuthToken(data.access_token);
-          setShowOrgModal(true);
-        } else {
+        if (data.success) {
           // User has organization, proceed normally
           localStorage.setItem('access_token', data.access_token);
           localStorage.setItem('user', JSON.stringify(data.user));
@@ -68,12 +63,31 @@ const LoginPage: FC = () => {
           } else {
             navigate('/dashboard');
           }
+        } else if (data.requires_signup) {
+          console.log("Redirecting to signup (Success flow)...");
+          // Redirect to signup page with Firebase token
+          navigate('/signup', {
+            state: {
+              firebaseToken: idToken,
+              email: data.email
+            }
+          });
+        } else if (data.requires_organization) {
+          console.log("Showing organization modal (Success flow)...");
+          setPendingOAuthToken(data.access_token);
+          setShowOrgModal(true);
+        } else {
+          setError(data.error || 'An unknown error occurred.');
         }
-      } else {
-        setError(data.error || 'An unknown error occurred.');
+      } catch (err: any) {
+        console.error("Inner API call failed:", err);
+        // Error handling for actual network/server errors
+        throw err;
       }
     } catch (err: any) {
-      console.error("Google Sign-In Error:", err);
+      console.error("Google Sign-In Error (Outer Catch):", err);
+      console.log("Error message:", err.message);
+
       const errorMessage = err.response?.data?.error || err.message || 'Failed to sign in with Google.';
       setError(errorMessage);
       await signOut(auth);

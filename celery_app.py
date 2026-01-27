@@ -1,3 +1,7 @@
+import trio
+# import eventlet
+# eventlet.monkey_patch()
+
 from app import create_app
 from app.extensions import celery as celery_instance
 

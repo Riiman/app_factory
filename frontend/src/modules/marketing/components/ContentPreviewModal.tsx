@@ -8,6 +8,7 @@
 import React from 'react';
 import { X, Heart, MessageCircle, Share2, Send, Bookmark, MoreHorizontal } from 'lucide-react';
 import { MarketingContentItem } from '@/types/dashboard-types';
+import api from '@/utils/api';
 
 interface ContentPreviewModalProps {
     item: MarketingContentItem;
@@ -78,7 +79,7 @@ const LinkedInPreview = ({ item }: { item: MarketingContentItem }) => {
             {/* Media */}
             {item.image_url && (
                 <div className="w-full bg-gray-100">
-                    <img src={item.image_url} alt="Post content" className="w-full object-cover max-h-96" />
+                    <img src={api.getAssetUrl(item.image_url)} alt="Post content" className="w-full object-cover max-h-96" />
                 </div>
             )}
 
@@ -121,7 +122,7 @@ const TwitterPreview = ({ item }: { item: MarketingContentItem }) => {
                     {/* Media */}
                     {item.image_url && (
                         <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200">
-                            <img src={item.image_url} alt="Tweet media" className="w-full object-cover" />
+                            <img src={api.getAssetUrl(item.image_url)} alt="Tweet media" className="w-full object-cover" />
                         </div>
                     )}
 
@@ -155,7 +156,7 @@ const InstagramPreview = ({ item }: { item: MarketingContentItem }) => {
             {/* Image */}
             <div className="aspect-square bg-gray-100">
                 {item.image_url ? (
-                    <img src={item.image_url} alt="Insta post" className="w-full h-full object-cover" />
+                    <img src={api.getAssetUrl(item.image_url)} alt="Insta post" className="w-full h-full object-cover" />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
                 )}
@@ -200,7 +201,7 @@ const EmailPreview = ({ item }: { item: MarketingContentItem }) => {
 
                 {item.image_url && (
                     <div className="mt-4">
-                        <img src={item.image_url} alt="Email" className="rounded-md max-w-full" />
+                        <img src={api.getAssetUrl(item.image_url)} alt="Email" className="rounded-md max-w-full" />
                     </div>
                 )}
             </div>
@@ -218,7 +219,7 @@ const GenericPreview = ({ item }: { item: MarketingContentItem }) => {
             </div>
             {item.image_url && (
                 <div className="mt-4">
-                    <img src={item.image_url} alt="Preview" className="rounded-md max-w-full" />
+                    <img src={api.getAssetUrl(item.image_url)} alt="Preview" className="rounded-md max-w-full" />
                 </div>
             )}
         </div>
