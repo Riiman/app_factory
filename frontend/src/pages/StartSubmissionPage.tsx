@@ -51,7 +51,7 @@ const StartSubmissionPage = () => {
                         <div className="relative flex items-center justify-center h-16">
                             {/* Centered Logo */}
                             <div className="flex items-center cursor-pointer">
-                                <Link to="/" className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500">
+                                <Link to="/" className="text-3xl font-bold bg-clip-text text-transparent animate-gradient-x">
                                     VentureStack
                                 </Link>
                             </div>

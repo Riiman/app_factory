@@ -62,7 +62,7 @@ const FinalizeSubmissionPage = () => {
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16 relative">
                         {/* Centered Logo */}
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500">
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-3xl font-bold bg-clip-text text-transparent animate-gradient-x">
                             VentureStack
                         </div>
 
