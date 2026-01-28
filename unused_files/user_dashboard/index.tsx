@@ -1,6 +1,6 @@
 /**
  * @file index.tsx
- * @description This is the main entry point for the StartupOS Dashboard React application.
+ * @description This is the main entry point for the VentureStack Dashboard React application.
  * It uses ReactDOM.createRoot to render the root App component into the DOM.
  */
 

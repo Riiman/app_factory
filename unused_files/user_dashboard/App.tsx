@@ -1,6 +1,6 @@
 /**
  * @file App.tsx
- * @description The root component of the StartupOS Dashboard application.
+ * @description The root component of the VentureStack Dashboard application.
  * This component acts as the central hub for state management, routing, and modal control.
  * It fetches the initial startup data and passes it down to the various page components.
  * It also contains all the logic for handling user interactions, such as navigation and
@@ -73,23 +73,23 @@ const App: React.FC = () => {
     const [selectedFundingRoundId, setSelectedFundingRoundId] = useState<number | null>(null);
     /** The ID of the currently selected marketing campaign for viewing its detail page. */
     const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
-    
+
     // --- Detail Modal States ---
     /** Visibility state for the Monthly Report detail modal. */
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     /** The monthly report data currently displayed in the detail modal. */
     const [selectedReport, setSelectedReport] = useState<BusinessMonthlyData | null>(null);
-    
+
     /** Visibility state for the Task detail modal. */
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     /** The task data currently displayed in the detail modal. */
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    
+
     /** Visibility state for the Experiment detail modal. */
     const [isExperimentModalOpen, setIsExperimentModalOpen] = useState(false);
     /** The experiment data currently displayed in the detail modal. */
     const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
-    
+
     /** Visibility state for the Artifact detail modal. */
     const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
     /** The artifact data currently displayed in the detail modal. */
@@ -151,7 +151,7 @@ const App: React.FC = () => {
         setActiveScope(Scope.PRODUCT);
         setActiveSubPage('Products List');
     };
-    
+
     const handleSelectFundingRound = (roundId: number) => {
         setSelectedFundingRoundId(roundId);
     };
@@ -176,7 +176,7 @@ const App: React.FC = () => {
     // --- Open/Close Create Modals ---
     const handleOpenCreateModal = () => setIsCreateModalOpen(true);
     const handleCloseCreateModal = () => setIsCreateModalOpen(false);
-    
+
     const handleSelectCreateType = (type: CreateModalType) => {
         setIsCreateModalOpen(false);
         if (type === 'task') setIsCreateTaskModalOpen(true);
@@ -188,7 +188,7 @@ const App: React.FC = () => {
         setSelectedCampaignForContent(campaignId);
         setIsCreateContentItemModalOpen(true);
     }
-    
+
     // --- Create Handlers (Backend Integration Points) ---
     /**
      * Handles the creation of a new task.
@@ -206,7 +206,7 @@ const App: React.FC = () => {
         setStartupData(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }));
         setIsCreateTaskModalOpen(false);
     };
-    
+
     const handleCreateExperiment = (newExperimentData: Omit<Experiment, 'id' | 'startup_id' | 'created_at' | 'status'>) => {
         const newExperiment: Experiment = {
             ...newExperimentData,
@@ -230,7 +230,7 @@ const App: React.FC = () => {
         setStartupData(prev => ({ ...prev, artifacts: [...prev.artifacts, newArtifact] }));
         setIsCreateArtifactModalOpen(false);
     };
-    
+
     const handleCreateProduct = (newProductData: Omit<Product, 'id' | 'startup_id' | 'tech_stack' | 'features' | 'metrics' | 'issues' | 'business_details'>) => {
         const newId = Date.now();
         const newProduct: Product = {
@@ -321,7 +321,7 @@ const App: React.FC = () => {
         }));
         setIsCreateFundingRoundModalOpen(false);
     };
-    
+
     /**
      * Handles the creation of a new investor.
      * @param {Omit<Investor, 'investor_id' | 'created_at'>} newInvestorData - Data from the creation modal.
@@ -339,7 +339,7 @@ const App: React.FC = () => {
         }));
         setIsCreateInvestorModalOpen(false);
     };
-    
+
     /**
      * Handles the creation of a new marketing campaign.
      * @param {Omit<MarketingCampaign, 'campaign_id' | 'startup_id' | 'created_by' | 'created_at' | 'content_calendar'>} newCampaignData - Data from the creation modal.
@@ -376,7 +376,7 @@ const App: React.FC = () => {
         }));
         setIsCreateCampaignModalOpen(false);
     };
-    
+
     /**
      * Handles the creation of a new content item.
      * @param {Omit<MarketingContentItem, 'content_id' | 'calendar_id' | 'created_by' | 'created_at'>} newContentData - The new content item data.
@@ -445,7 +445,7 @@ const App: React.FC = () => {
     const handleBackToList = () => setSelectedProductId(null);
     const handleBackToRoundsList = () => setSelectedFundingRoundId(null);
     const handleBackToCampaignsList = () => setSelectedCampaignId(null);
-    
+
     /**
      * Finds the name of a linked entity (Product, FundingRound, etc.) by its type and ID.
      * Used to provide context in detail modals.
@@ -473,12 +473,12 @@ const App: React.FC = () => {
         switch (activeScope) {
             case Scope.DASHBOARD:
                 return <DashboardOverview startupData={startupData} />;
-            
+
             case Scope.PRODUCT:
                 if (activeSubPage === 'Products List') {
                     const selectedProduct = startupData.products.find(p => p.id === selectedProductId);
                     if (selectedProduct) {
-                        return <ProductDetailPage 
+                        return <ProductDetailPage
                             product={selectedProduct}
                             linkedTasks={startupData.tasks.filter(t => t.linked_to_type === 'Product' && t.linked_to_id === selectedProduct.id)}
                             linkedExperiments={startupData.experiments.filter(e => e.linked_to_type === 'Product' && e.linked_to_id === selectedProduct.id)}
@@ -500,24 +500,24 @@ const App: React.FC = () => {
                 return <ProductListPage products={startupData.products} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} />;
 
             case Scope.BUSINESS:
-                 if (activeSubPage === 'Overview & Model') {
-                    return <BusinessOverviewPage 
-                                businessOverview={startupData.business_overview} 
-                                monthlyData={startupData.business_monthly_data} 
-                           />;
+                if (activeSubPage === 'Overview & Model') {
+                    return <BusinessOverviewPage
+                        businessOverview={startupData.business_overview}
+                        monthlyData={startupData.business_monthly_data}
+                    />;
                 }
-                 if (activeSubPage === 'Monthly Reporting') {
-                    return <BusinessMonthlyReportingPage 
-                                monthlyData={startupData.business_monthly_data}
-                                onRowClick={handleOpenReportModal}
-                                onAddNewReport={() => setIsCreateReportModalOpen(true)}
-                           />;
+                if (activeSubPage === 'Monthly Reporting') {
+                    return <BusinessMonthlyReportingPage
+                        monthlyData={startupData.business_monthly_data}
+                        onRowClick={handleOpenReportModal}
+                        onAddNewReport={() => setIsCreateReportModalOpen(true)}
+                    />;
                 }
-                return <BusinessOverviewPage 
-                            businessOverview={startupData.business_overview}
-                            monthlyData={startupData.business_monthly_data}
-                       />;
-            
+                return <BusinessOverviewPage
+                    businessOverview={startupData.business_overview}
+                    monthlyData={startupData.business_monthly_data}
+                />;
+
             case Scope.FUNDRAISING:
                 if (activeSubPage === 'Overview') {
                     return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details} />;
@@ -525,83 +525,83 @@ const App: React.FC = () => {
                 if (activeSubPage === 'Funding Rounds') {
                     const selectedRound = startupData.funding_rounds.find(r => r.round_id === selectedFundingRoundId);
                     if (selectedRound) {
-                        return <FundingRoundDetailPage 
-                                    round={selectedRound}
-                                    investors={startupData.investors}
-                                    linkedTasks={startupData.tasks.filter(t => t.linked_to_type === 'FundingRound' && t.linked_to_id === selectedRound.round_id)}
-                                    linkedArtifacts={startupData.artifacts.filter(a => a.linked_to_type === 'FundingRound' && a.linked_to_id === selectedRound.round_id)}
-                                    onBack={handleBackToRoundsList}
-                               />
+                        return <FundingRoundDetailPage
+                            round={selectedRound}
+                            investors={startupData.investors}
+                            linkedTasks={startupData.tasks.filter(t => t.linked_to_type === 'FundingRound' && t.linked_to_id === selectedRound.round_id)}
+                            linkedArtifacts={startupData.artifacts.filter(a => a.linked_to_type === 'FundingRound' && a.linked_to_id === selectedRound.round_id)}
+                            onBack={handleBackToRoundsList}
+                        />
                     }
-                    return <FundingRoundsPage 
-                                fundingRounds={startupData.funding_rounds}
-                                onSelectRound={handleSelectFundingRound} 
-                                onAddNewRound={() => setIsCreateFundingRoundModalOpen(true)}
-                           />;
+                    return <FundingRoundsPage
+                        fundingRounds={startupData.funding_rounds}
+                        onSelectRound={handleSelectFundingRound}
+                        onAddNewRound={() => setIsCreateFundingRoundModalOpen(true)}
+                    />;
                 }
                 if (activeSubPage === 'Investor CRM') {
-                    return <InvestorCrmPage 
-                                investors={startupData.investors}
-                                onAddNewInvestor={() => setIsCreateInvestorModalOpen(true)} 
-                           />;
+                    return <InvestorCrmPage
+                        investors={startupData.investors}
+                        onAddNewInvestor={() => setIsCreateInvestorModalOpen(true)}
+                    />;
                 }
                 return <FundraisingOverviewPage fundraiseDetails={startupData.fundraise_details} />;
 
             case Scope.MARKETING:
                 if (activeSubPage === 'Overview') {
-                    return <MarketingOverviewPage 
-                                marketingOverview={startupData.marketing_overview} 
-                                campaigns={startupData.marketing_campaigns}
-                            />;
+                    return <MarketingOverviewPage
+                        marketingOverview={startupData.marketing_overview}
+                        campaigns={startupData.marketing_campaigns}
+                    />;
                 }
                 if (activeSubPage === 'Campaigns') {
                     const selectedCampaign = startupData.marketing_campaigns.find(c => c.campaign_id === selectedCampaignId);
-                     if (selectedCampaign) {
-                        return <MarketingCampaignDetailPage 
-                                    campaign={selectedCampaign}
-                                    linkedTasks={startupData.tasks.filter(t => t.linked_to_type === 'MarketingCampaign' && t.linked_to_id === selectedCampaign.campaign_id)}
-                                    linkedArtifacts={startupData.artifacts.filter(a => a.linked_to_type === 'MarketingCampaign' && a.linked_to_id === selectedCampaign.campaign_id)}
-                                    onBack={handleBackToCampaignsList}
-                                    onAddContentItem={() => handleOpenCreateContentItemModal(selectedCampaign.campaign_id)}
-                               />
+                    if (selectedCampaign) {
+                        return <MarketingCampaignDetailPage
+                            campaign={selectedCampaign}
+                            linkedTasks={startupData.tasks.filter(t => t.linked_to_type === 'MarketingCampaign' && t.linked_to_id === selectedCampaign.campaign_id)}
+                            linkedArtifacts={startupData.artifacts.filter(a => a.linked_to_type === 'MarketingCampaign' && a.linked_to_id === selectedCampaign.campaign_id)}
+                            onBack={handleBackToCampaignsList}
+                            onAddContentItem={() => handleOpenCreateContentItemModal(selectedCampaign.campaign_id)}
+                        />
                     }
-                    return <MarketingCampaignsPage 
-                                campaigns={startupData.marketing_campaigns}
-                                onSelectCampaign={handleSelectCampaign} 
-                                onAddNewCampaign={() => setIsCreateCampaignModalOpen(true)}
-                           />;
+                    return <MarketingCampaignsPage
+                        campaigns={startupData.marketing_campaigns}
+                        onSelectCampaign={handleSelectCampaign}
+                        onAddNewCampaign={() => setIsCreateCampaignModalOpen(true)}
+                    />;
                 }
                 if (activeSubPage === 'Content Calendar') {
-                    return <MarketingContentCalendarPage 
-                                campaigns={startupData.marketing_campaigns} 
-                                onAddNewContentItem={() => handleOpenCreateContentItemModal()}
-                            />;
+                    return <MarketingContentCalendarPage
+                        campaigns={startupData.marketing_campaigns}
+                        onAddNewContentItem={() => handleOpenCreateContentItemModal()}
+                    />;
                 }
-                return <MarketingOverviewPage 
-                            marketingOverview={startupData.marketing_overview} 
-                            campaigns={startupData.marketing_campaigns} 
-                       />;
+                return <MarketingOverviewPage
+                    marketingOverview={startupData.marketing_overview}
+                    campaigns={startupData.marketing_campaigns}
+                />;
 
             case Scope.WORKSPACE:
                 if (activeSubPage === 'Tasks') return <TasksPage tasks={startupData.tasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
                 if (activeSubPage === 'Experiments') return <ExperimentsPage experiments={startupData.experiments} onExperimentClick={handleOpenExperimentModal} onAddNewExperiment={() => setIsCreateExperimentModalOpen(true)} />;
                 if (activeSubPage === 'Artifacts') return <ArtifactsPage artifacts={startupData.artifacts} onArtifactClick={handleOpenArtifactModal} getLinkedEntityName={getLinkedEntityName} onAddNewArtifact={() => setIsCreateArtifactModalOpen(true)} />;
                 return <TasksPage tasks={startupData.tasks} onTaskClick={handleOpenTaskModal} onAddNewTask={() => setIsCreateTaskModalOpen(true)} />;
-             
+
             case Scope.TEAM:
                 return <TeamPage founders={startupData.founders} onAddNewFounder={() => setIsCreateFounderModalOpen(true)} />;
             case Scope.SETTINGS:
                 return <SettingsPage
-                            startupName={startupData.name}
-                            startupSlug={startupData.slug}
-                            nextMilestone={startupData.next_milestone}
-                            onSave={handleUpdateStartupSettings}
-                        />;
+                    startupName={startupData.name}
+                    startupSlug={startupData.slug}
+                    nextMilestone={startupData.next_milestone}
+                    onSave={handleUpdateStartupSettings}
+                />;
             default:
                 return <DashboardOverview startupData={startupData} />;
         }
     };
-    
+
     const scopeMapping: Record<string, Scope> = {
         Dashboard: Scope.DASHBOARD,
         Product: Scope.PRODUCT,
@@ -612,7 +612,7 @@ const App: React.FC = () => {
         Team: Scope.TEAM,
         Settings: Scope.SETTINGS,
     };
-    
+
     const menuItems = [
         { name: 'Dashboard', icon: Home, subItems: [] },
         { name: 'Product', icon: Package, subItems: ['Products List', 'Product Metrics', 'Issues & Feedback'] },
@@ -627,15 +627,15 @@ const App: React.FC = () => {
 
     return (
         <div className="flex h-screen bg-gray-50 text-gray-800">
-            <Sidebar 
+            <Sidebar
                 menuItems={menuItems}
                 activeScope={activeScope}
                 activeSubPage={activeSubPage}
                 onNavClick={(scopeName, subPage) => handleNavClick(scopeMapping[scopeName], subPage)}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
-                <Header 
-                    startupName={startupData.name} 
+                <Header
+                    startupName={startupData.name}
                     currentStage={startupData.current_stage}
                     user={startupData.user}
                     onCreateClick={handleOpenCreateModal}
@@ -648,7 +648,7 @@ const App: React.FC = () => {
             </div>
             {/* Detail Modals */}
             {isReportModalOpen && selectedReport && (
-                <MonthlyReportDetailModal 
+                <MonthlyReportDetailModal
                     report={selectedReport}
                     onClose={handleCloseReportModal}
                 />
@@ -699,8 +699,8 @@ const App: React.FC = () => {
                 <CreateExperimentModal
                     onClose={() => setIsCreateExperimentModalOpen(false)}
                     onCreate={handleCreateExperiment}
-                     // FIX: Added missing keys from the Scope enum to satisfy the Record<Scope, LinkableItem[]> type.
-                     linkableItems={{
+                    // FIX: Added missing keys from the Scope enum to satisfy the Record<Scope, LinkableItem[]> type.
+                    linkableItems={{
                         [Scope.PRODUCT]: startupData.products.map(p => ({ id: p.id, name: p.name })),
                         [Scope.FUNDRAISING]: startupData.funding_rounds.map(r => ({ id: r.round_id, name: `${r.round_type} Round` })),
                         [Scope.MARKETING]: startupData.marketing_campaigns.map(c => ({ id: c.campaign_id, name: c.campaign_name })),
@@ -751,7 +751,7 @@ const App: React.FC = () => {
                     productId={selectedProductId}
                 />
             )}
-             {isCreateIssueModalOpen && (
+            {isCreateIssueModalOpen && (
                 <CreateIssueModal
                     onClose={() => setIsCreateIssueModalOpen(false)}
                     onCreate={handleCreateIssue}

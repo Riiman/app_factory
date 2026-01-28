@@ -560,7 +560,7 @@ const AdminDashboardPage: React.FC = () => {
       <aside className="w-64 bg-brand-surface border-r border-slate-200 flex flex-col">
         <div className="p-4 border-b border-slate-200 flex flex-col justify-between">
           <h1 className="text-xl font-bold text-brand-primary flex items-center">
-            <Building2 className="mr-2" /> StartupOS Admin
+            <Building2 className="mr-2" /> VentureStack Admin
           </h1>
           {inviteCode && (
             <div className="mt-2 text-xs text-slate-500 bg-slate-100 rounded px-2 py-1">
@@ -596,7 +596,7 @@ const AdminDashboardPage: React.FC = () => {
           </button>
         </div>
         <div className="p-4 border-t border-slate-200 text-xs text-slate-500">
-          &copy; {new Date().getFullYear()} StartupOS Inc.
+          &copy; {new Date().getFullYear()} VentureStack a Turning Idea Product.
         </div>
       </aside>
 
