@@ -671,3 +671,20 @@ def send_password_reset_email(user_email, user_name, reset_token):
     """
     
     return send_email_internal([user_email], "Reset your VentureStack password", html_content)
+
+
+def get_response_date():
+    """Calculate expected response date (7 business days from now)"""
+    from datetime import datetime, timedelta
+    
+    today = datetime.now()
+    business_days = 0
+    current_date = today
+    
+    while business_days < 7:
+        current_date += timedelta(days=1)
+        # Skip weekends (5 = Saturday, 6 = Sunday)
+        if current_date.weekday() < 5:
+            business_days += 1
+    
+    return current_date.strftime("%B %d, %Y")
