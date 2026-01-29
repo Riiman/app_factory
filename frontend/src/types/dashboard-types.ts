@@ -178,7 +178,9 @@ export interface ScopeDocument {
 export interface Organization {
   id: number;
   name: string;
+  slug?: string;
   invite_code: string;
+  logo_url?: string;
   created_at: string;
 }
 

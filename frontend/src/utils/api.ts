@@ -171,6 +171,14 @@ class Api {
     return `${backendOrigin}${path}`;
   }
 
+  async uploadFile(url: string, formData: FormData) {
+    const response = await this.fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+    return response.json();
+  }
+
   async uploadLogo(startupId: number, formData: FormData) {
     const response = await this.fetch(`/startups/${startupId}/logo`, {
       method: 'POST',

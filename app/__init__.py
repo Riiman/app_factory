@@ -21,7 +21,8 @@ migrate = Migrate()
 jwt = JWTManager()
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    # Serve static files from the root 'static' directory, not 'app/static'
+    app = Flask(__name__, static_folder='../static')
     app.config.from_object(config_class)
 
     # Initialize Firebase Admin SDK
@@ -144,6 +145,10 @@ def create_app(config_class=Config):
         # Register V4 routes
         from .routes.v4_builder import v4_builder
         app.register_blueprint(v4_builder)
+
+        # Register Organization routes
+        from .routes.organization import organization_bp
+        app.register_blueprint(organization_bp)
 
 
 

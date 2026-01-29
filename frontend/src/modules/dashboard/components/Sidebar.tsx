@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { Scope } from '@/types/dashboard-types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Represents a single top-level item in the sidebar menu.
@@ -16,6 +17,8 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 interface MenuItem {
     /** The display name of the menu item (e.g., 'Product'). */
     name: string;
+    /** The actual scope enum value, if different from name. */
+    scope?: Scope;
     /** The Lucide icon component to display. */
     icon: React.ElementType;
     /** A list of sub-page names for this menu item. */
@@ -42,6 +45,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage, onNavClick, bottomItems }) => {
     /** Internal state to manage which collapsible section is currently open. */
     const [openScope, setOpenScope] = useState<string | null>(activeScope ? activeScope.toString() : Scope.WORKSPACE.toString());
+    const { user } = useAuth(); // Access user context for organization details
 
     /**
      * Toggles the open/closed state of a collapsible menu section.
@@ -52,23 +56,39 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
     };
 
     /**
-     * Checks if a given scope name matches the currently active scope.
-     * @param {string} scopeName - The name of the scope to check.
-     * @returns {boolean} True if the scope is active.
+     * Checks if a given menu item is active.
      */
-    const isScopeActive = (scopeName: string) => {
-        return activeScope?.toString().toLowerCase() === scopeName.toLowerCase();
+    const isItemActive = (item: MenuItem) => {
+        if (item.scope) {
+            return activeScope === item.scope;
+        }
+        return activeScope?.toString().toLowerCase() === item.name.toLowerCase();
     }
+
+    console.log("Sidebar: user:", user);
+    console.log("Sidebar: user.organization:", user?.organization);
+    console.log("Sidebar: user.organization.logo_url:", user?.organization?.logo_url);
 
 
     return (
         <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
-            <div className="h-16 flex items-center justify-center border-b border-gray-200">
-                <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500">VentureStack</h1>
+            <div className="h-24 flex flex-col items-center justify-center border-b border-gray-200 p-4">
+                {user?.organization?.logo_url ? (
+                    <div className="flex flex-col items-center w-full">
+                        <img
+                            src={user.organization.logo_url}
+                            alt={user.organization.name}
+                            className="h-10 object-contain mb-2"
+                        />
+                        <span className="text-[9px] font-bold tracking-[0.2em] uppercase bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500 animate-pulse">Powered by VentureStack</span>
+                    </div>
+                ) : (
+                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500">VentureStack</h1>
+                )}
             </div>
             <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
                 {menuItems.map((item) => {
-                    const isActive = isScopeActive(item.name);
+                    const isActive = isItemActive(item);
                     const isOpen = openScope === item.name;
                     const Icon = item.icon;
 
@@ -128,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
             {bottomItems && bottomItems.length > 0 && (
                 <div className="border-t border-gray-200 px-2 py-4 space-y-1">
                     {bottomItems.map((item) => {
-                        const isActive = isScopeActive(item.name);
+                        const isActive = isItemActive(item);
                         const Icon = item.icon;
                         return (
                             <a

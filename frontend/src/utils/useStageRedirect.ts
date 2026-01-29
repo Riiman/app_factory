@@ -1,9 +1,12 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useCallback } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useStageRedirect = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { orgSlug } = useParams<{ orgSlug: string }>();
+    const { startupSlug } = useAuth();
 
     const handleNavigation = useCallback((startupStage: string | null, submissionStatus: string | null) => {
         let targetPath = '/dashboard';
@@ -64,25 +67,50 @@ export const useStageRedirect = () => {
             }
         }
 
+        // Determine prefix: use URL param if available, otherwise fallback to auth slug
+        const prefix = orgSlug ? `/${orgSlug}` : (startupSlug ? `/${startupSlug}` : '');
+        const fullTargetPath = `${prefix}${targetPath}`;
+
+        // Helper to check if current path matches target, ignoring trailing slashes
+        const currentPath = location.pathname.endsWith('/') ? location.pathname.slice(0, -1) : location.pathname;
+        const target = fullTargetPath.endsWith('/') ? fullTargetPath.slice(0, -1) : fullTargetPath;
+
         // Prevent infinite loops and allow sub-routes for dashboard
         if (targetPath === '/dashboard') {
-            if (!location.pathname.startsWith('/dashboard') && location.pathname !== '/') {
-                // Allow access to dashboard sub-routes, but redirect if on a restricted page like /evaluation
-                // when they should be on dashboard.
-                // However, we must be careful not to redirect away from valid dashboard sub-routes.
-                // If the user is on /evaluation but target is /dashboard, we SHOULD redirect.
-                const restrictedPaths = ['/evaluation', '/scope', '/contract', '/pending-review', '/rejected-submission', '/submission', '/start-submission'];
-                if (restrictedPaths.includes(location.pathname)) {
-                    navigate('/dashboard');
+            // Check if we are already under the dashboard subtree of the correct org
+            const isInDashboardSubtree = currentPath.startsWith(`${prefix}/dashboard`) || (prefix === '' && currentPath.startsWith('/dashboard'));
+
+            if (isInDashboardSubtree) {
+                // We are in the dashboard area. 
+                // However, if we are on a "restricted" page (like /evaluation) but state says we should be on dashboard, we might redirect.
+                // But wait, restricted paths logic was to handle moving OUT of restricted areas.
+                // If targetPath is /dashboard, it implies we are FULLY active.
+
+                // Let's re-evaluate the "restrictedPaths" logic with prefixes.
+                // Restricted paths are the ones we redirected TO in other cases.
+                const restrictedSuffixes = ['/evaluation', '/scope', '/contract', '/pending-review', '/rejected-submission', '/submission', '/start-submission'];
+
+                // If current path ends with one of these, but we are supposed to be on dashboard, redirect.
+                const isOnRestrictedPage = restrictedSuffixes.some(suffix => currentPath.endsWith(suffix));
+
+                if (isOnRestrictedPage) {
+                    navigate(fullTargetPath);
+                }
+                // Otherwise, stay where we are (e.g. /dashboard/products)
+            } else {
+                // Not in dashboard subtree at all, redirect to root dashboard
+                if (currentPath !== target) {
+                    navigate(fullTargetPath);
                 }
             }
         } else {
-            if (location.pathname !== targetPath) {
-                navigate(targetPath);
+            // For non-dashboard targets (exact matches usually)
+            if (currentPath !== target) {
+                navigate(fullTargetPath);
             }
         }
 
-    }, [navigate, location]);
+    }, [navigate, location, orgSlug, startupSlug]);
 
     return { handleNavigation };
 };

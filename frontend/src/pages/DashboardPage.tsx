@@ -742,30 +742,31 @@ const DashboardPage: React.FC = () => {
         'Product': Scope.PRODUCT,
         'Business': Scope.BUSINESS,
         'Fundraising': Scope.FUNDRAISING,
+        'Investment': Scope.FUNDRAISING,
         'Marketing': Scope.MARKETING,
         'Workspace': Scope.WORKSPACE,
         'Team': Scope.TEAM,
+        'Human Resource': Scope.TEAM,
         'Settings': Scope.SETTINGS,
         'Email': Scope.EMAIL,
         'AI Assistant': Scope.CHAT,
         'Accounting': Scope.ACCOUNTING,
-        'CRM': Scope.CRM
+        'CRM': Scope.CRM,
+        'Sales': Scope.CRM
     };
 
 
     const menuItems = React.useMemo(() => {
         const allItems = [
-            { name: 'Dashboard', icon: Home, subItems: [], requiredScope: null },
-            { name: 'AI Assistant', icon: MessageSquare, subItems: [], requiredScope: null },
-            { name: 'Email', icon: Mail, subItems: [], requiredScope: null },
-            { name: 'CRM', icon: Users, subItems: ['Overview', 'Contacts', 'Deals', 'Lists', 'Settings'], requiredScope: null },
-            { name: 'Product', icon: Package, subItems: ['Products List', 'Product Metrics', 'Issues & Feedback'], requiredScope: 'PRODUCT' },
-            { name: 'Business', icon: Briefcase, subItems: ['Overview & Model', 'Business Models', 'Monthly Reporting'], requiredScope: 'BUSINESS' },
-            { name: 'Fundraising', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor Database', 'Investor CRM', 'Cap Table', 'Scenario Calculator'], requiredScope: 'FUNDRAISE' },
-            { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar', 'Settings'], requiredScope: 'MARKETING' },
-            { name: 'Accounting', icon: DollarSign, subItems: ['Overview', 'Transactions', 'Journal', 'Integrations'], requiredScope: 'ACCOUNTING' },
-            { name: 'Team', icon: Users, subItems: [], requiredScope: 'TEAM' },
-            { name: 'Workspace', icon: BookOpen, subItems: ['Tasks', 'Experiments', 'Artifacts'], requiredScope: 'WORKSPACE' }
+            { name: 'Dashboard', icon: Home, subItems: [], requiredScope: null, scope: Scope.DASHBOARD },
+            { name: 'Product', icon: Package, subItems: ['Products List', 'Product Metrics', 'Issues & Feedback'], requiredScope: 'PRODUCT', scope: Scope.PRODUCT },
+            { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar', 'Settings'], requiredScope: 'MARKETING', scope: Scope.MARKETING },
+            { name: 'Sales', icon: Users, subItems: ['Overview', 'Contacts', 'Deals', 'Lists', 'Settings'], requiredScope: null, scope: Scope.CRM },
+            { name: 'Accounting', icon: DollarSign, subItems: ['Overview', 'Transactions', 'Journal', 'Integrations'], requiredScope: 'ACCOUNTING', scope: Scope.ACCOUNTING },
+            { name: 'Human Resource', icon: Users, subItems: [], requiredScope: 'TEAM', scope: Scope.TEAM },
+            { name: 'Investment', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor Database', 'Investor CRM', 'Cap Table', 'Scenario Calculator'], requiredScope: 'FUNDRAISE', scope: Scope.FUNDRAISING },
+            { name: 'Email', icon: Mail, subItems: [], requiredScope: null, scope: Scope.EMAIL },
+            { name: 'AI Assistant', icon: MessageSquare, subItems: [], requiredScope: null, scope: Scope.CHAT }
         ];
 
         if (!user) return [];

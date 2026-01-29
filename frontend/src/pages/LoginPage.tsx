@@ -1,10 +1,10 @@
 import React, { FC, useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Footer from '../components/layout/Footer';
 import AuthFormWrapper from '../components/AuthFormWrapper';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { GoogleIcon, LinkedInIcon } from '../components/Icons';
+import { GoogleIcon } from '../components/Icons';
 import api from '../utils/api';
 import { auth } from '../firebase';
 import {
@@ -18,7 +18,9 @@ import OrganizationSelectionModal from '../components/auth/OrganizationSelection
 
 const LoginPage: FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, startupSlug } = useAuth();
+  const { orgSlug } = useParams<{ orgSlug: string }>();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -28,22 +30,62 @@ const LoginPage: FC = () => {
   const [pendingOAuthToken, setPendingOAuthToken] = useState<string | null>(null);
   const [isOrgModalLoading, setIsOrgModalLoading] = useState(false);
 
+  // Resend Verification State
+  const [showResend, setShowResend] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    try {
+      await api.post('/auth/resend-verification', { email });
+      setError('');
+      alert("Verification email sent! Please check your inbox.");
+      setShowResend(false);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to resend email.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  // Helper to validate tenant access
+  const validateTenantAccess = (userData: any) => {
+    if (!orgSlug) return true; // Global login is always valid context-wise
+
+    // Check if user's organization slug matches the URL slug
+    const userOrgSlug = userData.organization?.slug;
+
+    if (userOrgSlug === orgSlug) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const getDashboardPath = (userData: any) => {
+    // Always direct to the user's actual organization dashboard
+    const slug = userData.organization?.slug;
+    return slug ? `/${slug}/dashboard` : (startupSlug ? `/${startupSlug}/dashboard` : '/dashboard');
+  };
+
   // Redirect if user is already logged in
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin') {
-        navigate('/admin');
+      // Validate context if we are already logged in
+      if (orgSlug && user.organization?.slug !== orgSlug) {
+        setError("You are logged in to a different organization. Please sign out to switch.");
       } else {
-        navigate('/dashboard');
+        if (user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          const dest = orgSlug ? `/${orgSlug}/dashboard` : (startupSlug ? `/${startupSlug}/dashboard` : '/dashboard');
+          navigate(dest);
+        }
       }
     }
-  }, [user, navigate]);
-
-
-
+  }, [user, navigate, orgSlug, startupSlug]);
 
   const handleGoogleSignIn = async () => {
-    console.log("handleGoogleSignIn called (Popup flow)");
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -55,39 +97,50 @@ const LoginPage: FC = () => {
         const data = await api.post('/auth/login', { firebase_id_token: idToken });
 
         if (data.success) {
-          // User has organization, proceed normally
+          // STRICT CHECK: Tenant Mismatch
+          if (orgSlug && data.user.organization?.slug !== orgSlug) {
+            setError("You do not belong to this organization.");
+            await signOut(auth); // Reject session
+            return;
+          }
+
           localStorage.setItem('access_token', data.access_token);
           localStorage.setItem('user', JSON.stringify(data.user));
+
           if (data.user.role === 'admin') {
             window.location.href = '/admin';
           } else {
-            window.location.href = '/dashboard';
+            window.location.href = getDashboardPath(data.user);
           }
         } else if (data.requires_signup) {
-          console.log("Redirecting to signup (Success flow)...");
-          // Redirect to signup page with Firebase token
-          navigate('/signup', {
+          // If on tenant route, we might want to carry that context
+          const signupPath = orgSlug ? `/${orgSlug}/signup` : '/signup';
+          navigate(signupPath, {
             state: {
               firebaseToken: idToken,
               email: data.email
             }
           });
         } else if (data.requires_organization) {
-          console.log("Showing organization modal (Success flow)...");
-          setPendingOAuthToken(data.access_token);
-          setShowOrgModal(true);
+
+          if (orgSlug) {
+            // If trying to login to specific tenant but has no org -> They clearly don't belong here.
+            setError("You do not have an account in this organization.");
+            await signOut(auth);
+          } else {
+            setPendingOAuthToken(data.access_token);
+            setShowOrgModal(true);
+          }
+
         } else {
           setError(data.error || 'An unknown error occurred.');
         }
       } catch (err: any) {
         console.error("Inner API call failed:", err);
-        // Error handling for actual network/server errors
         throw err;
       }
     } catch (err: any) {
-      console.error("Google Sign-In Error (Outer Catch):", err);
-      console.log("Error message:", err.message);
-
+      console.error("Google Sign-In Error:", err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to sign in with Google.';
       setError(errorMessage);
       await signOut(auth);
@@ -102,30 +155,21 @@ const LoginPage: FC = () => {
       if (!pendingOAuthToken) {
         throw new Error('No authentication token found');
       }
-
       const payload = mode === 'create'
         ? { mode: 'create', organization_name: value }
         : { mode: 'join', invite_code: value };
 
-      // Set the token temporarily for this request
       localStorage.setItem('access_token', pendingOAuthToken);
-
       const response = await api.post('/auth/assign-organization', payload);
 
-      // Update with new token that includes organization info
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
 
       setShowOrgModal(false);
       setPendingOAuthToken(null);
+      window.location.href = getDashboardPath(response.user);
 
-      if (response.user.role === 'admin') {
-        window.location.href = '/admin';
-      } else {
-        window.location.href = '/dashboard';
-      }
     } catch (err: any) {
-      console.error("Organization assignment error:", err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to assign organization.';
       setError(errorMessage);
       throw err;
@@ -146,19 +190,39 @@ const LoginPage: FC = () => {
       const data = await api.post('/auth/login', { firebase_id_token: idToken });
 
       if (data.access_token) {
+        // STRICT CHECK: Tenant Mismatch
+        if (orgSlug && data.user.organization?.slug !== orgSlug) {
+          setError("You do not belong to this organization.");
+          await signOut(auth); // Reject session
+          return;
+        }
+
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
+
         if (data.user.role === 'admin') {
           window.location.href = '/admin';
         } else {
-          window.location.href = '/dashboard';
+          window.location.href = getDashboardPath(data.user);
         }
       } else {
-        setError(data.error || 'An unknown error occurred.');
+        if (data.requires_organization) {
+          if (orgSlug) {
+            setError("You do not have an account in this organization.");
+            await signOut(auth);
+          } else {
+            setError("Organization required. Please contact support.");
+          }
+        } else {
+          setError(data.error || 'An unknown error occurred.');
+        }
       }
     } catch (err: any) {
       if (err.code === 'auth/invalid-credential') {
         setError('Invalid email or password.');
+      } else if (err.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+        setError('Please verify your email address before logging in.');
+        setShowResend(true);
       } else {
         console.error("Firebase login error:", err);
         setError(err.message || 'Failed to connect to the server.');
@@ -180,15 +244,38 @@ const LoginPage: FC = () => {
         </div>
       </header>
       <AuthFormWrapper
-        title="Sign in to your account"
-        footer={<>Not a member? <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-500">Create an account</Link></>}
+        title={orgSlug ? "Sign in to your organization" : "Sign in to your account"}
+        footer={<>Not a member? <Link to={orgSlug ? `/${orgSlug}/signup` : "/signup"} className="font-medium text-blue-600 hover:text-blue-500">Create an account</Link></>}
       >
         <form className="space-y-6" onSubmit={handleSubmit}>
           <Input id="email-login" label="Email address" type="email" required value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} />
           <Input id="password-login" label="Password" type="password" required value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} />
+
+          <div className="flex items-center justify-end">
+            <Link to="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+              Forgot your password?
+            </Link>
+          </div>
+
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+          {showResend && (
+            <div className="text-center mt-2">
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                className="text-sm text-indigo-600 hover:text-indigo-500 font-medium disabled:opacity-50"
+              >
+                {resendLoading ? 'Sending...' : 'Resend Verification Email'}
+              </button>
+            </div>
+          )}
+
           <div>
-            <Button type="submit" className="w-full justify-center">Sign in</Button>
+            <Button type="submit" className="w-full justify-center">
+              {orgSlug ? "Sign in" : "Sign in"}
+            </Button>
           </div>
         </form>
         <div className="mt-6">
@@ -211,7 +298,6 @@ const LoginPage: FC = () => {
       </AuthFormWrapper>
       <Footer />
 
-      {/* Organization Selection Modal for OAuth users */}
       <OrganizationSelectionModal
         isOpen={showOrgModal}
         onClose={() => {

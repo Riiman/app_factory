@@ -90,15 +90,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupId, startupName, sta
                                 <label htmlFor="startup-name" className="block text-sm font-medium text-gray-700">Startup Name</label>
                                 <input type="text" id="startup-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </div>
-                            <div>
-                                <label htmlFor="startup-slug" className="block text-sm font-medium text-gray-700">URL Slug</label>
-                                <div className="mt-1 flex rounded-md shadow-sm">
-                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
-                                        VentureStackAI.com/
-                                    </span>
-                                    <input type="text" id="startup-slug" value={slug} onChange={(e) => setSlug(e.target.value)} className="flex-1 block w-full min-w-0 rounded-none rounded-r-md border-gray-300 sm:text-sm" />
-                                </div>
-                            </div>
+                            {/* Slug editing moved to Admin Dashboard */}
                             <div>
                                 <label htmlFor="next-milestone" className="block text-sm font-medium text-gray-700">Next Milestone</label>
                                 <input type="text" id="next-milestone" value={milestone} onChange={(e) => setMilestone(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />

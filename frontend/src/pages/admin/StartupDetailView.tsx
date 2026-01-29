@@ -74,6 +74,7 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
             startupId={startup.id}
             currentLogoUrl={startup.logo_url}
             size="lg"
+            editable={false} // Admin shouldn't change startup logos here
             onUploadSuccess={(url) => {
               // Usually we'd update state here, but since props are managed by parent
               // and we might need to refresh, for now the preview is handled inside component

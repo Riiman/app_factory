@@ -290,7 +290,9 @@ class Organization(db.Model):
     __tablename__ = 'organizations'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
+    slug = db.Column(db.String(255), unique=True, nullable=True) # Added slug
     invite_code = db.Column(db.String(10), unique=True, nullable=False, default=lambda: secrets.token_hex(4))
+    logo_url = db.Column(db.String(500), nullable=True) # Organization Logo URL
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     users = db.relationship('User', back_populates='organization')
@@ -301,7 +303,9 @@ class Organization(db.Model):
         return {
             'id': self.id,
             'name': self.name,
+            'slug': self.slug, # Include slug in dict
             'invite_code': self.invite_code,
+            'logo_url': self.logo_url,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

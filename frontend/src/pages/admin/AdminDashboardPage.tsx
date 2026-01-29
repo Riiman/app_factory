@@ -13,11 +13,12 @@ import ContractView from './ContractView';
 import Overview from './Overview';
 import RecentActivityFeed from '@/modules/dashboard/components/RecentActivityFeed';
 import NotificationCenter from '@/modules/dashboard/components/NotificationCenter';
-import { Building2, LayoutDashboard, Inbox, FileClock, FileSignature, FileText, Briefcase, LogOut } from 'lucide-react';
+import { Building2, LayoutDashboard, Inbox, FileClock, FileSignature, FileText, Briefcase, LogOut, Settings } from 'lucide-react';
 
 import { useAuth } from '../../contexts/AuthContext';
 
-type ActiveView = 'overview' | 'submissions' | 'in-review' | 'startups';
+type ActiveView = 'overview' | 'submissions' | 'in-review' | 'startups' | 'settings';
+import OrgSettingsView from './OrgSettingsView';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -542,6 +543,8 @@ const AdminDashboardPage: React.FC = () => {
           />;
         }
         return <StartupListView startups={activeStartups} onSelectStartup={handleSelectStartup} />;
+      case 'settings':
+        return <OrgSettingsView />;
       default:
         return (
           <Overview
@@ -558,13 +561,35 @@ const AdminDashboardPage: React.FC = () => {
   return (
     <div className="flex h-screen bg-brand-background">
       <aside className="w-64 bg-brand-surface border-r border-slate-200 flex flex-col">
-        <div className="p-4 border-b border-slate-200 flex flex-col justify-between">
-          <h1 className="text-xl font-bold text-brand-primary flex items-center">
-            <Building2 className="mr-2" /> VentureStack Admin
-          </h1>
+        <div className="p-5 border-b border-slate-200 flex flex-col items-center">
+          {user?.organization?.logo_url ? (
+            <div className="flex flex-col items-center w-full mb-3">
+              <img
+                src={user.organization.logo_url}
+                alt={user.organization.name}
+                className="h-12 object-contain mb-3"
+              />
+              <div className="flex items-center space-x-1.5 opacity-60">
+                <span className="text-[9px] font-bold tracking-[0.2em] uppercase bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500 animate-pulse">Powered by VentureStack</span>
+              </div>
+            </div>
+          ) : (
+            <h1 className="text-xl font-bold text-brand-primary flex items-center justify-center mb-4">
+              <Building2 className="mr-2" /> VentureStack Admin
+            </h1>
+          )}
+
           {inviteCode && (
-            <div className="mt-2 text-xs text-slate-500 bg-slate-100 rounded px-2 py-1">
-              Invite Code: <span className="font-mono font-bold text-slate-700 select-all cursor-pointer" onClick={() => { navigator.clipboard.writeText(inviteCode); toast.success('Invite Code Copied!') }} title="Click to copy">{inviteCode}</span>
+            <div
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 flex items-center justify-between hover:border-slate-300 transition-colors group cursor-pointer mt-3"
+              onClick={() => { navigator.clipboard.writeText(inviteCode); toast.success('Invite Code Copied!') }}
+              title="Click to copy"
+            >
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Invite:</span>
+              <div className="flex items-center space-x-1.5">
+                <span className="font-mono text-xs font-bold text-slate-700">{inviteCode}</span>
+                <FileSignature className="h-3 w-3 text-slate-400 group-hover:text-brand-primary transition-colors" />
+              </div>
             </div>
           )}
         </div>
@@ -585,6 +610,12 @@ const AdminDashboardPage: React.FC = () => {
             <h2 className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Directory</h2>
             <ul>
               <NavItem icon={<Briefcase className="mr-3 h-4 w-4" />} label="Startups" view="startups" activeView={activeView} onClick={handleViewChange} />
+            </ul>
+          </div>
+          <div>
+            <h2 className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Management</h2>
+            <ul>
+              <NavItem icon={<Settings className="mr-3 h-4 w-4" />} label="Settings" view="settings" activeView={activeView} onClick={handleViewChange} />
             </ul>
           </div>
 
@@ -618,7 +649,11 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.TEAM]: [],
             [Scope.USER_SETTINGS]: [],
             [Scope.SETTINGS]: [],
-            [Scope.DASHBOARD]: []
+            [Scope.DASHBOARD]: [],
+            [Scope.ACCOUNTING]: [],
+            [Scope.EMAIL]: [],
+            [Scope.CHAT]: [],
+            [Scope.CRM]: []
           }}
         />
       )}
@@ -637,13 +672,18 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.TEAM]: [],
             [Scope.USER_SETTINGS]: [],
             [Scope.SETTINGS]: [],
-            [Scope.DASHBOARD]: []
+            [Scope.DASHBOARD]: [],
+            [Scope.ACCOUNTING]: [],
+            [Scope.EMAIL]: [],
+            [Scope.CHAT]: [],
+            [Scope.CRM]: []
           }}
         />
       )}
 
       {isCreateArtifactModalOpen && selectedStartup && (
         <CreateArtifactModal
+          startupId={selectedStartup.id}
           onClose={() => setIsCreateArtifactModalOpen(false)}
           onCreate={handleCreateArtifact}
           linkableItems={{
@@ -656,7 +696,11 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.TEAM]: [],
             [Scope.USER_SETTINGS]: [],
             [Scope.SETTINGS]: [],
-            [Scope.DASHBOARD]: []
+            [Scope.DASHBOARD]: [],
+            [Scope.ACCOUNTING]: [],
+            [Scope.EMAIL]: [],
+            [Scope.CHAT]: [],
+            [Scope.CRM]: []
           }}
         />
       )}

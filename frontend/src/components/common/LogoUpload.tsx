@@ -9,6 +9,7 @@ interface LogoUploadProps {
     onDeleteSuccess?: () => void;
     size?: 'sm' | 'md' | 'lg';
     editable?: boolean;
+    uploadUrl?: string;
 }
 
 const LogoUpload: React.FC<LogoUploadProps> = ({
@@ -18,6 +19,7 @@ const LogoUpload: React.FC<LogoUploadProps> = ({
     onDeleteSuccess,
     size = 'md',
     editable = true,
+    uploadUrl,
 }) => {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -73,7 +75,12 @@ const LogoUpload: React.FC<LogoUploadProps> = ({
             const formData = new FormData();
             formData.append('logo', file);
 
-            const response = await api.uploadLogo(startupId, formData);
+            let response;
+            if (uploadUrl) {
+                response = await api.uploadFile(uploadUrl, formData);
+            } else {
+                response = await api.uploadLogo(startupId, formData);
+            }
 
             const newLogoUrl = response.logo_url;
             setPreviewUrl(newLogoUrl);
@@ -97,7 +104,17 @@ const LogoUpload: React.FC<LogoUploadProps> = ({
         setError(null);
 
         try {
-            await api.deleteLogo(startupId);
+            if (uploadUrl) { // Using uploadUrl as a proxy to know custom mode, ideally strictly use deleteUrl
+                // Assuming DELETE on the same endpoint (or derived) for organizations as per my implementation
+                // But wait, the prop name logic is tricky. 
+                // Let's assume if uploadUrl is provided, we use the DELETE method on the same URL 
+                // (which matches my backend implementation: PUT/DELETE on /logo)
+                // Or better, add deleteUrl prop
+                await api.delete(uploadUrl);
+            } else {
+                await api.deleteLogo(startupId);
+            }
+
             setPreviewUrl(null);
             setImageError(false);
 

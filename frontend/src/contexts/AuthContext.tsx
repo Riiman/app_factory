@@ -9,6 +9,7 @@ interface AuthContextType {
     submissionStatus: string | null;
     submissionData: any | null;
     startupStage: string | null;
+    startupSlug: string | null; // Added startupSlug
     nextQuestion: string | null;
     isLoading: boolean;
     handleLogout: () => void;
@@ -23,6 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
     const [submissionData, setSubmissionData] = useState<any | null>(null);
     const [startupStage, setStartupStage] = useState<string | null>(null);
+    const [startupSlug, setStartupSlug] = useState<string | null>(null); // State for startupSlug
     const [nextQuestion, setNextQuestion] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -46,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setSubmissionStatus(null);
             setSubmissionData(null);
             setStartupStage(null);
+            setStartupSlug(null); // Clear startupSlug
             setNextQuestion(null);
             window.location.href = '/login';
         }
@@ -68,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     try {
                         const startupData = await api.getStartupData(data.user.startup_id);
                         setStartupStage(startupData.current_stage);
+                        setStartupSlug(startupData.slug); // Set startupSlug
                     } catch (err) {
                         console.error("Failed to fetch startup stage:", err);
                     }
@@ -108,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setSubmissionStatus(null);
                 setSubmissionData(null);
                 setStartupStage(null);
+                setStartupSlug(null); // Clear startupSlug
                 setNextQuestion(null);
                 setIsLoading(false);
             }
@@ -119,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [fetchUserData]);
 
     const token = localStorage.getItem('access_token');
-    const value = { user, submissionStatus, submissionData, startupStage, nextQuestion, isLoading, handleLogout, refreshUser, token };
+    const value = { user, submissionStatus, submissionData, startupStage, startupSlug, nextQuestion, isLoading, handleLogout, refreshUser, token };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
