@@ -166,9 +166,18 @@ class Api {
     if (!path) return undefined;
     if (path.startsWith('http')) return path;
 
-    // Use explicit backend origin for assets to avoid proxy issues with images
-    const backendOrigin = 'http://localhost:5000';
-    return `${backendOrigin}${path}`;
+    // If API_BASE_URL is a full URL, use its origin for assets
+    if (API_BASE_URL.startsWith('http')) {
+      try {
+        const url = new URL(API_BASE_URL);
+        return `${url.origin}${path}`;
+      } catch (e) {
+        console.warn('Invalid API_BASE_URL, falling back to relative path:', e);
+      }
+    }
+
+    // Otherwise return relative path; Vite proxy or production server will handle it
+    return path;
   }
 
   async uploadFile(url: string, formData: FormData) {
