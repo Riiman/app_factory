@@ -108,7 +108,8 @@ const LoginPage: FC = () => {
           localStorage.setItem('user', JSON.stringify(data.user));
 
           if (data.user.role === 'admin') {
-            window.location.href = '/admin';
+            const orgSlug = data.user.organization?.slug;
+            window.location.href = orgSlug ? `/${orgSlug}/admin` : '/admin';
           } else {
             window.location.href = getDashboardPath(data.user);
           }
@@ -201,7 +202,8 @@ const LoginPage: FC = () => {
         localStorage.setItem('user', JSON.stringify(data.user));
 
         if (data.user.role === 'admin') {
-          window.location.href = '/admin';
+          const orgSlug = data.user.organization?.slug;
+          window.location.href = orgSlug ? `/${orgSlug}/admin` : '/admin';
         } else {
           window.location.href = getDashboardPath(data.user);
         }

@@ -74,7 +74,8 @@ cd app_factory
 2.  **Install Python Dependencies**:
     ```bash
     pip install -r requirements.txt
-    pip install gunicorn
+    pip install -r requirements.txt
+    pip install gunicorn trio redis
     ```
 
 3.  **Environment Variables**:
@@ -247,6 +248,13 @@ server {
         root /var/www/turningidea;
         index index.html index.htm;
         try_files $uri $uri/ /index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # CRITICAL: Serve persistent backend static files (uploads, logos)
+    # The alias path must match where your app_factory is located on the server
+    location /static {
+        alias /home/ubuntu/app_factory/static;
     }
 
     location /api {
@@ -307,4 +315,7 @@ Since you are deploying to a new domain/IP, you must authorize it in Firebase.
 *   **Check Backend Logs**: `sudo journalctl -u turningidea -f`
 *   **Check Nginx Logs**: `sudo tail -f /var/log/nginx/error.log`
 *   **Docker Error**: If you see `Error while fetching server API version: Not supported URL scheme http+docker`, ensure you have `docker>=7.1.0` installed. Run `pip install --upgrade docker`.
+*   **Docker Error**: If you see `Error while fetching server API version: Not supported URL scheme http+docker`, ensure you have `docker>=7.1.0` installed. Run `pip install --upgrade docker`.
 *   **Permissions**: Ensure `www-data` user can access the directory if needed (usually default ubuntu user is fine for socket).
+*   **Broken Images/Assets**: Ensure `API_BASE_URL` is set correctly in frontend build and Nginx includes the `/static` location block pointed to the backend `static` folder.
+*   **WebSocket Connection Refused**: Ensure `trio` is installed (`pip install trio`) and `turningidea-ws.service` is running.
