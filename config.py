@@ -21,7 +21,19 @@ class Config:
     # JWT Configuration
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', SECRET_KEY)
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    JWT_TOKEN_LOCATION = ['headers']
+    JWT_HEADER_NAME = 'Authorization'
+    JWT_HEADER_TYPE = 'Bearer'
+    JWT_CSRF_IN_COOKIES = False
+    JWT_CSRF_PROTECTION = False
+    
+    # OAuth 2.0 Client secrets
+    GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', 'your-google-client-id')
+    GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', 'your-google-client-secret')
+    LINKEDIN_CLIENT_ID = os.environ.get('LINKEDIN_CLIENT_ID', 'your-linkedin-client-id')
+    LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET', 'your-linkedin-client-secret')
     
     # Mail Configuration
     MAIL_SERVER = 'smtp.gmail.com'
@@ -31,6 +43,13 @@ class Config:
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@turningideas.com')
+    REQUIRE_EMAIL_VERIFICATION = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'False') == 'True'
+    
+    # Gmail API Configuration (OAuth 2.0)
+    USE_GMAIL_API = os.getenv('USE_GMAIL_API', 'False') == 'True'
+    GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
+    GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET')
+    GOOGLE_OAUTH_REFRESH_TOKEN = os.getenv('GOOGLE_OAUTH_REFRESH_TOKEN')
     
     # Upload Configuration
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -39,6 +58,14 @@ class Config:
     
     # OpenAI Configuration
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    
+    # Azure OpenAI Configuration
+    AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
+    AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
+    AZURE_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
+    AZURE_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2024-08-01-preview')
+
+    # GetLate Configuration
     
     # GetLate Configuration
     GETLATE_API_KEY = os.getenv('GETLATE_API_KEY')
@@ -53,6 +80,15 @@ class Config:
     
     # CORS Configuration
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000').split(',')
+    
+    # Session Configuration
+    SESSION_TYPE = os.getenv('SESSION_TYPE', 'sqlalchemy')
+
+    # File paths
+    DOCUMENTS_DIR = os.path.join(os.path.dirname(basedir), 'generated_documents')
+    
+    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:5000')
 
 class DevelopmentConfig(Config):
     """Development configuration"""

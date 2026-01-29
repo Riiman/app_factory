@@ -297,11 +297,42 @@ def send_password_reset_email(user_email, user_name, reset_token):
     
     return send_email_internal([user_email], "Reset your VentureXit password", html_content)
 
+
+def get_org_context(email):
+    """
+    Fetch organization context for a given email.
+    Returns: (org_name, org_logo_url)
+    """
+    from app.models import User
+    
+    try:
+        user = User.query.filter_by(email=email).first()
+        if user and user.organization:
+            return user.organization.name, user.organization.logo_url
+    except Exception as e:
+        print(f"Error fetching org context for {email}: {str(e)}")
+        
+    return "Turning Ideas App Factory", None
+
+# VentureStack Text Logo CSS
+VS_LOGO_HTML = """
+<div style="font-family: 'Inter', sans-serif; font-size: 24px; font-weight: 800; background: linear-gradient(to right, #2563eb, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; display: inline-block;">
+    VENTURESTACK
+</div>
+"""
+
 def send_submission_confirmation_email(recipient_email, startup_name):
     """
     Send confirmation email when a startup application is submitted
     """
-    subject = f"Application Submitted - {startup_name}"
+    org_name, org_logo_url = get_org_context(recipient_email)
+    
+    subject = f"Application Submitted - {startup_name} to {org_name}"
+    
+    # Org Logo HTML
+    org_logo_html = ""
+    if org_logo_url:
+        org_logo_html = f'<img src="{org_logo_url}" alt="{org_name}" style="max-height: 40px; margin-left: 15px; vertical-align: middle;">'
     
     # HTML email template
     html_body = f"""
@@ -318,59 +349,45 @@ def send_submission_confirmation_email(recipient_email, startup_name):
                 padding: 20px;
             }}
             .header {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 30px;
                 text-align: center;
-                border-radius: 10px 10px 0 0;
-            }}
-            .header h1 {{
-                margin: 0;
-                font-size: 28px;
+                padding: 30px 0;
+                border-bottom: 1px solid #e0e0e0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }}
             .content {{
-                background: #ffffff;
-                padding: 30px;
-                border: 1px solid #e0e0e0;
-                border-top: none;
+                padding: 30px 0;
             }}
             .success-icon {{
                 font-size: 48px;
                 text-align: center;
                 margin: 20px 0;
+                color: #10b981;
             }}
             .info-box {{
                 background: #f8f9fa;
-                border-left: 4px solid #667eea;
+                border-left: 4px solid #2563eb;
                 padding: 15px;
                 margin: 20px 0;
             }}
-            .next-steps {{
-                background: #fff3cd;
-                border-left: 4px solid #ffc107;
-                padding: 15px;
-                margin: 20px 0;
-            }}
-            .next-steps h3 {{
-                margin-top: 0;
-                color: #856404;
+            .highlight {{
+                color: #2563eb;
+                font-weight: bold;
             }}
             .footer {{
                 text-align: center;
-                padding: 20px;
+                padding-top: 20px;
                 color: #666;
-                font-size: 14px;
+                font-size: 12px;
                 border-top: 1px solid #e0e0e0;
-            }}
-            .highlight {{
-                color: #667eea;
-                font-weight: bold;
             }}
         </style>
     </head>
     <body>
         <div class="header">
-            <h1>🎉 Application Submitted Successfully!</h1>
+            {VS_LOGO_HTML}
+            {org_logo_html}
         </div>
         
         <div class="content">
@@ -378,7 +395,7 @@ def send_submission_confirmation_email(recipient_email, startup_name):
             
             <p>Dear Founder,</p>
             
-            <p>Thank you for submitting your application for <span class="highlight">{startup_name}</span> to Turning Ideas App Factory!</p>
+            <p>Thank you for submitting your application for <span class="highlight">{startup_name}</span> to <strong>{org_name}</strong>!</p>
             
             <div class="info-box">
                 <h3>📋 What Happens Next?</h3>
@@ -389,41 +406,26 @@ def send_submission_confirmation_email(recipient_email, startup_name):
                 </ul>
             </div>
             
-            <div class="next-steps">
-                <h3>⏰ Timeline</h3>
-                <p>You can expect to hear from us by <strong>{get_response_date()}</strong></p>
-            </div>
-            
-            <p>In the meantime, feel free to:</p>
-            <ul>
-                <li>Check your application status on your dashboard</li>
-                <li>Update your profile with any additional information</li>
-                <li>Explore our resources for founders</li>
-            </ul>
-            
-            <p>If you have any questions, feel free to reach out to us at <a href="mailto:support@turningideas.com">support@turningideas.com</a></p>
-            
-            <p>We're excited to learn more about your startup!</p>
+            <p>You can expect to hear from us by <strong>{get_response_date()}</strong></p>
             
             <p>Best regards,<br>
-            <strong>The Turning Ideas Team</strong></p>
+            <strong>The {org_name} Team</strong></p>
         </div>
         
         <div class="footer">
-            <p>© 2025 Turning Ideas App Factory. All rights reserved.</p>
-            <p>Building the future, one startup at a time.</p>
+            <p>© {datetime.now().year} {org_name}. Powered by VentureStack.</p>
         </div>
     </body>
     </html>
     """
     
-    # Plain text version for email clients that don't support HTML
+    # Plain text version
     text_body = f"""
     Application Submitted Successfully!
     
     Dear Founder,
     
-    Thank you for submitting your application for {startup_name} to Turning Ideas App Factory!
+    Thank you for submitting your application for {startup_name} to {org_name}!
     
     WHAT HAPPENS NEXT?
     - Review Period: Our team will review your application within 5-7 business days
@@ -432,45 +434,19 @@ def send_submission_confirmation_email(recipient_email, startup_name):
     
     Timeline: You can expect to hear from us by {get_response_date()}
     
-    In the meantime, feel free to:
-    - Check your application status on your dashboard
-    - Update your profile with any additional information
-    - Explore our resources for founders
-    
-    If you have any questions, reach out to us at support@turningideas.com
-    
-    We're excited to learn more about your startup!
-    
     Best regards,
-    The Turning Ideas Team
-    
-    © 2025 Turning Ideas App Factory
-    Building the future, one startup at a time.
+    The {org_name} Team
     """
     
     result = send_email_internal([recipient_email], subject, html_body, text_body)
     return result.get('success', False)
 
-def get_response_date():
-    """Calculate expected response date (7 business days from now)"""
-    from datetime import datetime, timedelta
-    
-    today = datetime.now()
-    business_days = 0
-    current_date = today
-    
-    while business_days < 7:
-        current_date += timedelta(days=1)
-        # Skip weekends (5 = Saturday, 6 = Sunday)
-        if current_date.weekday() < 5:
-            business_days += 1
-    
-    return current_date.strftime("%B %d, %Y")
-
 def send_submission_status_email(email, startup_name, status, message=''):
     """
     Send notification when submission status changes
     """
+    org_name, org_logo_url = get_org_context(email)
+    
     status_messages = {
         'under_review': {
             'title': 'Application Under Review',
@@ -490,18 +466,20 @@ def send_submission_status_email(email, startup_name, status, message=''):
         }
     }
     
-    # Handle case insensitivity and enum naming differences
     status_key = status.lower()
-    
     status_info = status_messages.get(status_key, {
         'title': 'Application Status Update',
         'message': 'Your application status has been updated.'
     })
     
     subject = f"{status_info['title']} - {startup_name}"
-    
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
     
+    # Org Logo HTML
+    org_logo_html = ""
+    if org_logo_url:
+        org_logo_html = f'<img src="{org_logo_url}" alt="{org_name}" style="max-height: 40px; margin-left: 15px; vertical-align: middle;">'
+
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -509,37 +487,46 @@ def send_submission_status_email(email, startup_name, status, message=''):
         <style>
             body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
             .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
-            .button {{ display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
-            .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
-            .status-box {{ background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #667eea; }}
+            .header {{ 
+                text-align: center; 
+                padding: 30px 0; 
+                border-bottom: 1px solid #e0e0e0; 
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }}
+            .content {{ padding: 30px 0; }}
+            .button {{ display: inline-block; padding: 12px 30px; background: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+            .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; border-top: 1px solid #e0e0e0; padding-top: 20px; }}
+            .status-box {{ background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #2563eb; }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>{{status_info['title']}}</h1>
+                {VS_LOGO_HTML}
+                {org_logo_html}
             </div>
             <div class="content">
+                <h2>{status_info['title']}</h2>
                 <p>Hello,</p>
-                <p>We have an update regarding your application for <strong>{{startup_name}}</strong>.</p>
+                <p><strong>{org_name}</strong> has an update regarding your application for <strong>{startup_name}</strong>.</p>
                 
                 <div class="status-box">
-                    <h3>Status: {{status.replace('_', ' ').title()}}</h3>
-                    <p>{{status_info['message']}}</p>
-                    {{f'<p><strong>Additional Notes:</strong> {{message}}</p>' if message else ''}}
+                    <h3>Status: {status.replace('_', ' ').title()}</h3>
+                    <p>{status_info['message']}</p>
+                    {f'<p><strong>Additional Notes:</strong> {message}</p>' if message else ''}
                 </div>
                 
-                {{'<p>Our team will be in touch with you shortly regarding next steps.</p>' if status == 'approved' else ''}}
-                {{'<p>We encourage you to continue refining your business model and reapply in the future.</p>' if status == 'rejected' else ''}}
+                {'<p>Our team will be in touch with you shortly regarding next steps.</p>' if status == 'approved' else ''}
+                {'<p>We encourage you to continue refining your business model and reapply in the future.</p>' if status == 'rejected' else ''}
                 
                 <a href="{frontend_url}/submissions" class="button">View Submission Details</a>
                 
                 <p>If you have any questions, please feel free to contact us.</p>
             </div>
             <div class="footer">
-                <p>&copy; 2025 Turning Ideas App Factory. All rights reserved.</p>
+                <p>&copy; {datetime.now().year} {org_name}. Powered by VentureStack.</p>
             </div>
         </div>
     </body>
@@ -563,8 +550,12 @@ def send_contact_form_email(data):
         <style>
             body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
             .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: #1e3a8a; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }}
-            .content {{ background: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; border: 1px solid #ddd; }}
+            .header {{ 
+                text-align: center; 
+                padding: 30px 0; 
+                border-bottom: 1px solid #e0e0e0; 
+            }}
+            .content {{ background: #f9f9f9; padding: 20px; border-radius: 5px; border: 1px solid #ddd; margin-top: 20px; }}
             .field {{ margin-bottom: 15px; }}
             .label {{ font-weight: bold; color: #555; }}
             .value {{ margin-top: 5px; }}
@@ -573,6 +564,7 @@ def send_contact_form_email(data):
     <body>
         <div class="container">
             <div class="header">
+                {VS_LOGO_HTML}
                 <h2>New Contact Request</h2>
             </div>
             <div class="content">
@@ -608,6 +600,9 @@ def send_contact_form_email(data):
     
     result = send_email_internal([admin_email], subject, html_content)
     return result.get('success', False)
+
+
+def generate_verification_token(email, expires_in=3600):
     """
     Generate JWT token for email verification.
     
@@ -745,17 +740,7 @@ def send_verification_email(user_email, user_name, verification_token):
     </html>
     """
     
-    try:
-        msg = Message(
-            subject="Verify your VentureXit account",
-            recipients=[user_email],
-            html=html_content
-        )
-        mail.send(msg)
-        return {"success": True}
-    
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    return send_email_internal([user_email], "Verify your VentureXit account", html_content)
 
 def send_password_reset_email(user_email, user_name, reset_token):
     """
@@ -830,362 +815,5 @@ def send_password_reset_email(user_email, user_name, reset_token):
     </html>
     """
     
-    try:
-        msg = Message(
-            subject="Reset your VentureXit password",
-            recipients=[user_email],
-            html=html_content
-        )
-        mail.send(msg)
-        return {"success": True}
-    
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    return send_email_internal([user_email], "Reset your VentureXit password", html_content)
 
-def send_submission_confirmation_email(recipient_email, startup_name):
-    """
-    Send confirmation email when a startup application is submitted
-    
-    Args:
-        recipient_email: User's email address
-        startup_name: Name of the submitted startup
-    """
-    try:
-        subject = f"Application Submitted - {startup_name}"
-        
-        # HTML email template
-        html_body = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    line-height: 1.6;
-                    color: #333;
-                    max-width: 600px;
-                    margin: 0 auto;
-                    padding: 20px;
-                }}
-                .header {{
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 30px;
-                    text-align: center;
-                    border-radius: 10px 10px 0 0;
-                }}
-                .header h1 {{
-                    margin: 0;
-                    font-size: 28px;
-                }}
-                .content {{
-                    background: #ffffff;
-                    padding: 30px;
-                    border: 1px solid #e0e0e0;
-                    border-top: none;
-                }}
-                .success-icon {{
-                    font-size: 48px;
-                    text-align: center;
-                    margin: 20px 0;
-                }}
-                .info-box {{
-                    background: #f8f9fa;
-                    border-left: 4px solid #667eea;
-                    padding: 15px;
-                    margin: 20px 0;
-                }}
-                .next-steps {{
-                    background: #fff3cd;
-                    border-left: 4px solid #ffc107;
-                    padding: 15px;
-                    margin: 20px 0;
-                }}
-                .next-steps h3 {{
-                    margin-top: 0;
-                    color: #856404;
-                }}
-                .footer {{
-                    text-align: center;
-                    padding: 20px;
-                    color: #666;
-                    font-size: 14px;
-                    border-top: 1px solid #e0e0e0;
-                }}
-                .highlight {{
-                    color: #667eea;
-                    font-weight: bold;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>🎉 Application Submitted Successfully!</h1>
-            </div>
-            
-            <div class="content">
-                <div class="success-icon">✓</div>
-                
-                <p>Dear Founder,</p>
-                
-                <p>Thank you for submitting your application for <span class="highlight">{startup_name}</span> to Turning Ideas App Factory!</p>
-                
-                <div class="info-box">
-                    <h3>📋 What Happens Next?</h3>
-                    <ul>
-                        <li><strong>Review Period:</strong> Our team will review your application within 5-7 business days</li>
-                        <li><strong>Evaluation:</strong> We'll assess your startup based on innovation, market potential, team strength, and scalability</li>
-                        <li><strong>Decision:</strong> You'll receive an email with our decision and next steps</li>
-                    </ul>
-                </div>
-                
-                <div class="next-steps">
-                    <h3>⏰ Timeline</h3>
-                    <p>You can expect to hear from us by <strong>{get_response_date()}</strong></p>
-                </div>
-                
-                <p>In the meantime, feel free to:</p>
-                <ul>
-                    <li>Check your application status on your dashboard</li>
-                    <li>Update your profile with any additional information</li>
-                    <li>Explore our resources for founders</li>
-                </ul>
-                
-                <p>If you have any questions, feel free to reach out to us at <a href="mailto:support@turningideas.com">support@turningideas.com</a></p>
-                
-                <p>We're excited to learn more about your startup!</p>
-                
-                <p>Best regards,<br>
-                <strong>The Turning Ideas Team</strong></p>
-            </div>
-            
-            <div class="footer">
-                <p>© 2025 Turning Ideas App Factory. All rights reserved.</p>
-                <p>Building the future, one startup at a time.</p>
-            </div>
-        </body>
-        </html>
-        """
-        
-        # Plain text version for email clients that don't support HTML
-        text_body = f"""
-        Application Submitted Successfully!
-        
-        Dear Founder,
-        
-        Thank you for submitting your application for {startup_name} to Turning Ideas App Factory!
-        
-        WHAT HAPPENS NEXT?
-        - Review Period: Our team will review your application within 5-7 business days
-        - Evaluation: We'll assess your startup based on innovation, market potential, team strength, and scalability
-        - Decision: You'll receive an email with our decision and next steps
-        
-        Timeline: You can expect to hear from us by {get_response_date()}
-        
-        In the meantime, feel free to:
-        - Check your application status on your dashboard
-        - Update your profile with any additional information
-        - Explore our resources for founders
-        
-        If you have any questions, reach out to us at support@turningideas.com
-        
-        We're excited to learn more about your startup!
-        
-        Best regards,
-        The Turning Ideas Team
-        
-        © 2025 Turning Ideas App Factory
-        Building the future, one startup at a time.
-        """
-        
-        # Send email using Flask-Mail
-        msg = Message(
-            subject=subject,
-            recipients=[recipient_email],
-            body=text_body,
-            html=html_body
-        )
-        
-        mail.send(msg)
-        return True
-        
-    except Exception as e:
-        print(f"Error sending submission confirmation email: {str(e)}")
-        return False
-
-
-def get_response_date():
-    """Calculate expected response date (7 business days from now)"""
-    from datetime import datetime, timedelta
-    
-    today = datetime.now()
-    business_days = 0
-    current_date = today
-    
-    while business_days < 7:
-        current_date += timedelta(days=1)
-        # Skip weekends (5 = Saturday, 6 = Sunday)
-        if current_date.weekday() < 5:
-            business_days += 1
-    
-    return current_date.strftime("%B %d, %Y")
-
-def send_submission_status_email(email, startup_name, status, message=''):
-    """
-    Send notification when submission status changes
-    """
-    status_messages = {
-        'under_review': {
-            'title': 'Application Under Review',
-            'message': 'Your application is currently being reviewed by our team.'
-        },
-        'approved': {
-            'title': 'Application Approved! 🎉',
-            'message': 'Congratulations! Your application has been approved.'
-        },
-        'rejected': {
-            'title': 'Application Status Update',
-            'message': 'Thank you for your application. After careful review, we are unable to move forward at this time.'
-        },
-        'in_review': {
-             'title': 'Application Under Review',
-             'message': 'Your application is currently being reviewed by our team.'
-        }
-    }
-    
-    # Handle case insensitivity and enum naming differences
-    status_key = status.lower()
-    
-    status_info = status_messages.get(status_key, {
-        'title': 'Application Status Update',
-        'message': 'Your application status has been updated.'
-    })
-    
-    subject = f"{status_info['title']} - {startup_name}"
-    
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
-            .button {{ display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
-            .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
-            .status-box {{ background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #667eea; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>{{status_info['title']}}</h1>
-            </div>
-            <div class="content">
-                <p>Hello,</p>
-                <p>We have an update regarding your application for <strong>{{startup_name}}</strong>.</p>
-                
-                <div class="status-box">
-                    <h3>Status: {{status.replace('_', ' ').title()}}</h3>
-                    <p>{{status_info['message']}}</p>
-                    {{f'<p><strong>Additional Notes:</strong> {{message}}</p>' if message else ''}}
-                </div>
-                
-                {{'<p>Our team will be in touch with you shortly regarding next steps.</p>' if status == 'approved' else ''}}
-                {{'<p>We encourage you to continue refining your business model and reapply in the future.</p>' if status == 'rejected' else ''}}
-                
-                <a href="{frontend_url}/submissions" class="button">View Submission Details</a>
-                
-                <p>If you have any questions, please feel free to contact us.</p>
-            </div>
-            <div class="footer">
-                <p>&copy; 2025 Turning Ideas App Factory. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    try:
-        msg = Message(
-            subject=subject,
-            recipients=[email],
-            html=html_content
-        )
-        mail.send(msg)
-        return True
-    except Exception as e:
-        print(f"Error sending submission status email: {str(e)}")
-        return False
-
-def send_contact_form_email(data):
-    """
-    Send contact form submission to admin
-    """
-    admin_email = os.getenv('MAIL_DEFAULT_SENDER', 'info@venturestackai.com')
-    subject = f"New Contact Request: {data.get('name', 'Unknown')}"
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: #1e3a8a; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }}
-            .content {{ background: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; border: 1px solid #ddd; }}
-            .field {{ margin-bottom: 15px; }}
-            .label {{ font-weight: bold; color: #555; }}
-            .value {{ margin-top: 5px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h2>New Contact Request</h2>
-            </div>
-            <div class="content">
-                <div class="field">
-                    <div class="label">Name:</div>
-                    <div class="value">{data.get('name', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Email:</div>
-                    <div class="value">{data.get('email', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Organization:</div>
-                    <div class="value">{data.get('organization', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Timeline:</div>
-                    <div class="value">{data.get('timeline', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Use Case:</div>
-                    <div class="value">{data.get('useCase', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Message:</div>
-                    <div class="value">{data.get('message', 'N/A')}</div>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    try:
-        msg = Message(
-            subject=subject,
-            recipients=[admin_email],
-            html=html_content
-        )
-        mail.send(msg)
-        return True
-    except Exception as e:
-        print(f"Error sending contact form email: {str(e)}")
-        return False

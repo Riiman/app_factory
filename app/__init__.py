@@ -3,7 +3,8 @@ from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
 from flask_cors import CORS
-from .config import Config
+from flask_cors import CORS
+# from .config import Config # REMOVED: Using root config provided by run.py
 from authlib.integrations.flask_client import OAuth
 import logging
 import os
@@ -20,10 +21,15 @@ logging.basicConfig(level=logging.DEBUG)
 migrate = Migrate()
 jwt = JWTManager()
 
-def create_app(config_class=Config):
+def create_app(config_class=None): # Changed default from Config to None
     # Serve static files from the root 'static' directory, not 'app/static'
     app = Flask(__name__, static_folder='../static')
-    app.config.from_object(config_class)
+    if config_class:
+        app.config.from_object(config_class)
+    else:
+        # Fallback if no config provided (e.g. tests) - Try importing from root? 
+        # For now, assume config_class is always passed by run.py
+        pass
 
     # Initialize Firebase Admin SDK
     if not firebase_admin._apps:
