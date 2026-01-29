@@ -158,76 +158,35 @@ def send_verification_email(user_email, user_name, verification_token):
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
     verification_link = f"{frontend_url}/verify-email?token={verification_token}"
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-            }}
-            .container {{
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            .header {{
-                background-color: #4F46E5;
-                color: white;
-                padding: 20px;
-                text-align: center;
-                border-radius: 5px 5px 0 0;
-            }}
-            .content {{
-                background-color: #f9f9f9;
-                padding: 30px;
-                border-radius: 0 0 5px 5px;
-            }}
-            .button {{
-                display: inline-block;
-                padding: 12px 30px;
-                background-color: #4F46E5;
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-                margin: 20px 0;
-            }}
-            .footer {{
-                text-align: center;
-                margin-top: 20px;
-                font-size: 12px;
-                color: #666;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>Welcome to VentureXit!</h1>
-            </div>
-            <div class="content">
-                <p>Hi {user_name},</p>
-                <p>Thank you for signing up with VentureXit, India's premier marketplace for startup exits and acquisitions.</p>
-                <p>Please verify your email address by clicking the button below:</p>
-                <center>
-                    <a href="{verification_link}" class="button">Verify Email Address</a>
-                </center>
-                <p>Or copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; color: #4F46E5;">{verification_link}</p>
-                <p><strong>This link will expire in 1 hour.</strong></p>
-                <p>If you didn't create an account with VentureXit, you can safely ignore this email.</p>
-            </div>
-            <div class="footer">
-                <p>© 2025 VentureXit. All rights reserved.</p>
-                <p>Noida, India</p>
-            </div>
-        </div>
-    </body>
-    </html>
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Hi {user_name},
+    </p>
+
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Thanks for joining VentureStack. Please confirm your email address to activate your account.
+    </p>
+
+    <p style="margin-top:24px; font-size:13px; color:#6b7280;">
+    This link expires in 1 hour.
+    </p>
+
+    <p style="font-size:13px; color:#6b7280; word-break:break-all;">
+    {verification_link}
+    </p>
+
+    <p style="margin-top:24px; font-size:13px; color:#6b7280;">
+    If you didn’t create a VentureStack account, you can safely ignore this email.
+    </p>
     """
-    
+
+    html_content = render_premium_email(
+        title="Verify your email",
+        body_html=body_html,
+        cta_text="Confirm email",
+        cta_link=verification_link
+    )
+        
     return send_email_internal([user_email], "Verify your VentureXit account", html_content)
 
 def send_password_reset_email(user_email, user_name, reset_token):
@@ -237,63 +196,27 @@ def send_password_reset_email(user_email, user_name, reset_token):
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
     reset_link = f"{frontend_url}/reset-password?token={reset_token}"
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-            }}
-            .container {{
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            .header {{
-                background-color: #DC2626;
-                color: white;
-                padding: 20px;
-                text-align: center;
-                border-radius: 5px 5px 0 0;
-            }}
-            .content {{
-                background-color: #f9f9f9;
-                padding: 30px;
-                border-radius: 0 0 5px 5px;
-            }}
-            .button {{
-                display: inline-block;
-                padding: 12px 30px;
-                background-color: #DC2626;
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-                margin: 20px 0;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>Password Reset Request</h1>
-            </div>
-            <div class="content">
-                <p>Hi {user_name},</p>
-                <p>We received a request to reset your password for your VentureXit account.</p>
-                <p>Click the button below to reset your password:</p>
-                <center>
-                    <a href="{reset_link}" class="button">Reset Password</a>
-                </center>
-                <p><strong>This link will expire in 1 hour.</strong></p>
-                <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
-            </div>
-        </div>
-    </body>
-    </html>
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Hi {user_name},
+    </p>
+
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    We received a request to reset your VentureStack password.
+    </p>
+
+    <p style="margin-top:24px; font-size:13px; color:#6b7280;">
+    This link expires in 1 hour. If you didn’t request this, you can safely ignore this email.
+    </p>
     """
+
+    html_content = render_premium_email(
+        title="Reset your password",
+        body_html=body_html,
+        cta_text="Reset password",
+        cta_link=reset_link,
+        footer_note="Security first"
+    )
     
     return send_email_internal([user_email], "Reset your VentureXit password", html_content)
 
@@ -316,11 +239,109 @@ def get_org_context(email):
 
 # VentureStack Text Logo CSS
 VS_LOGO_HTML = """
-<!-- Import Inter Font -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800&display=swap" rel="stylesheet">
-<div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 28px; font-weight: 700; background: linear-gradient(to right, #2563eb, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; display: inline-block;">
-    VentureStack
+<div style="
+  font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:-0.3px;
+  background:linear-gradient(90deg, #2563eb, #f97316);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  display:inline-block;
+">
+  VentureStack
 </div>
+"""
+
+
+def render_premium_email(
+    title,
+    body_html,
+    cta_text=None,
+    cta_link=None,
+    footer_note="Built for serious founders"
+):
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+</head>
+<body style="
+  margin:0;
+  padding:0;
+  background-color:#f6f7f9;
+  font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="
+          background:#ffffff;
+          border-radius:14px;
+          box-shadow:0 12px 30px rgba(0,0,0,0.05);
+          overflow:hidden;
+        ">
+
+          <!-- Header -->
+          <tr>
+            <td style="padding:40px 48px 24px; border-bottom:1px solid #eef0f3;">
+              {VS_LOGO_HTML}
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 48px;">
+              <h1 style="
+                margin:0 0 16px;
+                font-size:24px;
+                font-weight:600;
+                color:#111827;
+              ">
+                {title}
+              </h1>
+
+              {body_html}
+
+              {f'''
+              <a href="{cta_link}" style="
+                display:inline-block;
+                margin-top:28px;
+                padding:14px 28px;
+                background:#111827;
+                color:#ffffff;
+                font-size:14px;
+                font-weight:500;
+                text-decoration:none;
+                border-radius:10px;
+              ">
+                {cta_text}
+              </a>
+              ''' if cta_text and cta_link else ''}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="
+              padding:28px 48px;
+              background:#fafafa;
+              border-top:1px solid #eef0f3;
+              font-size:12px;
+              color:#9ca3af;
+            ">
+              © {datetime.now().year} VentureStack · {footer_note}
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
 """
 
 def send_submission_confirmation_email(recipient_email, startup_name):
@@ -337,89 +358,44 @@ def send_submission_confirmation_email(recipient_email, startup_name):
         org_logo_html = f'<img src="{org_logo_url}" alt="{org_name}" style="max-height: 40px; margin-left: 15px; vertical-align: middle;">'
     
     # HTML email template
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            .header {{
-                text-align: center;
-                padding: 30px 0;
-                border-bottom: 1px solid #e0e0e0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }}
-            .content {{
-                padding: 30px 0;
-            }}
-            .success-icon {{
-                font-size: 48px;
-                text-align: center;
-                margin: 20px 0;
-                color: #10b981;
-            }}
-            .info-box {{
-                background: #f8f9fa;
-                border-left: 4px solid #2563eb;
-                padding: 15px;
-                margin: 20px 0;
-            }}
-            .highlight {{
-                color: #2563eb;
-                font-weight: bold;
-            }}
-            .footer {{
-                text-align: center;
-                padding-top: 20px;
-                color: #666;
-                font-size: 12px;
-                border-top: 1px solid #e0e0e0;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            {VS_LOGO_HTML}
-            {org_logo_html}
-        </div>
-        
-        <div class="content">
-            <div class="success-icon">✓</div>
-            
-            <p>Dear Founder,</p>
-            
-            <p>Thank you for submitting your application for <span class="highlight">{startup_name}</span> to <strong>{org_name}</strong>!</p>
-            
-            <div class="info-box">
-                <h3>📋 What Happens Next?</h3>
-                <ul>
-                    <li><strong>Review Period:</strong> Our team will review your application within 5-7 business days</li>
-                    <li><strong>Evaluation:</strong> We'll assess your startup based on innovation, market potential, team strength, and scalability</li>
-                    <li><strong>Decision:</strong> You'll receive an email with our decision and next steps</li>
-                </ul>
-            </div>
-            
-            <p>You can expect to hear from us by <strong>{get_response_date()}</strong></p>
-            
-            <p>Best regards,<br>
-            <strong>The {org_name} Team</strong></p>
-        </div>
-        
-        <div class="footer">
-            <p>© {datetime.now().year} {org_name}. Powered by VentureStack.</p>
-        </div>
-    </body>
-    </html>
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Dear Founder,
+    </p>
+
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Thank you for submitting your application for
+    <strong>{startup_name}</strong> to <strong>{org_name}</strong>.
+    </p>
+
+    <div style="
+    margin:24px 0;
+    padding:16px;
+    background:#f9fafb;
+    border-left:4px solid #111827;
+    font-size:14px;
+    color:#374151;
+    ">
+    <strong>What happens next</strong><br><br>
+    • Review within 5–7 business days<br>
+    • Evaluation based on market, team, and scalability<br>
+    • You’ll receive an update by <strong>{get_response_date()}</strong>
+    </div>
+
+    <p style="font-size:14px; color:#374151;">
+    We appreciate the time you took to apply.
+    </p>
+
+    <p style="font-size:14px; color:#374151;">
+    — The {org_name} Team
+    </p>
     """
+
+    html_body = render_premium_email(
+        title="Application submitted",
+        body_html=body_html,
+        footer_note="Powered by VentureStack"
+    )
     
     # Plain text version
     text_body = f"""
@@ -482,58 +458,42 @@ def send_submission_status_email(email, startup_name, status, message=''):
     if org_logo_url:
         org_logo_html = f'<img src="{org_logo_url}" alt="{org_name}" style="max-height: 40px; margin-left: 15px; vertical-align: middle;">'
 
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ 
-                text-align: center; 
-                padding: 30px 0; 
-                border-bottom: 1px solid #e0e0e0; 
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }}
-            .content {{ padding: 30px 0; }}
-            .button {{ display: inline-block; padding: 12px 30px; background: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
-            .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; border-top: 1px solid #e0e0e0; padding-top: 20px; }}
-            .status-box {{ background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #2563eb; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                {VS_LOGO_HTML}
-                {org_logo_html}
-            </div>
-            <div class="content">
-                <h2>{status_info['title']}</h2>
-                <p>Hello,</p>
-                <p><strong>{org_name}</strong> has an update regarding your application for <strong>{startup_name}</strong>.</p>
-                
-                <div class="status-box">
-                    <h3>Status: {status.replace('_', ' ').title()}</h3>
-                    <p>{status_info['message']}</p>
-                    {f'<p><strong>Additional Notes:</strong> {message}</p>' if message else ''}
-                </div>
-                
-                {'<p>Our team will be in touch with you shortly regarding next steps.</p>' if status == 'approved' else ''}
-                {'<p>We encourage you to continue refining your business model and reapply in the future.</p>' if status == 'rejected' else ''}
-                
-                <a href="{frontend_url}/submissions" class="button">View Submission Details</a>
-                
-                <p>If you have any questions, please feel free to contact us.</p>
-            </div>
-            <div class="footer">
-                <p>&copy; {datetime.now().year} {org_name}. Powered by VentureStack.</p>
-            </div>
-        </div>
-    </body>
-    </html>
+    status_label = status.replace("_", " ").title()
+
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Hello,
+    </p>
+
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    <strong>{org_name}</strong> has updated the status of your application for
+    <strong>{startup_name}</strong>.
+    </p>
+
+    <div style="
+    margin:24px 0;
+    padding:16px;
+    background:#f9fafb;
+    border-left:4px solid #111827;
+    font-size:14px;
+    color:#374151;
+    ">
+    <strong>Status:</strong> {status_label}<br><br>
+    {status_info['message']}
+    {f'<br><br><strong>Notes:</strong> {message}' if message else ''}
+    </div>
+
+    <p style="font-size:14px; color:#374151;">
+    You can view more details in your dashboard.
+    </p>
     """
+
+    html_content = render_premium_email(
+        title=status_info["title"],
+        body_html=body_html,
+        cta_text="View submission",
+        cta_link=f"{frontend_url}/submissions"
+    )
     
     result = send_email_internal([email], subject, html_content)
     return result.get('success', False)
@@ -545,60 +505,34 @@ def send_contact_form_email(data):
     admin_email = os.getenv('MAIL_DEFAULT_SENDER', 'info@venturestackai.com')
     subject = f"New Contact Request: {data.get('name', 'Unknown')}"
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ 
-                text-align: center; 
-                padding: 30px 0; 
-                border-bottom: 1px solid #e0e0e0; 
-            }}
-            .content {{ background: #f9f9f9; padding: 20px; border-radius: 5px; border: 1px solid #ddd; margin-top: 20px; }}
-            .field {{ margin-bottom: 15px; }}
-            .label {{ font-weight: bold; color: #555; }}
-            .value {{ margin-top: 5px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                {VS_LOGO_HTML}
-                <h2>New Contact Request</h2>
-            </div>
-            <div class="content">
-                <div class="field">
-                    <div class="label">Name:</div>
-                    <div class="value">{data.get('name', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Email:</div>
-                    <div class="value">{data.get('email', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Organization:</div>
-                    <div class="value">{data.get('organization', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Timeline:</div>
-                    <div class="value">{data.get('timeline', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Use Case:</div>
-                    <div class="value">{data.get('useCase', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Message:</div>
-                    <div class="value">{data.get('message', 'N/A')}</div>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
+    body_html = f"""
+    <p style="font-size:15px; color:#374151;">
+    A new contact request has been submitted.
+    </p>
+
+    <div style="
+    margin:24px 0;
+    padding:16px;
+    background:#f9fafb;
+    border-left:4px solid #111827;
+    font-size:14px;
+    color:#374151;
+    ">
+    <strong>Name:</strong> {data.get('name', 'N/A')}<br><br>
+    <strong>Email:</strong> {data.get('email', 'N/A')}<br><br>
+    <strong>Organization:</strong> {data.get('organization', 'N/A')}<br><br>
+    <strong>Timeline:</strong> {data.get('timeline', 'N/A')}<br><br>
+    <strong>Use case:</strong> {data.get('useCase', 'N/A')}<br><br>
+    <strong>Message:</strong><br>
+    {data.get('message', 'N/A')}
+    </div>
     """
+
+    html_content = render_premium_email(
+        title="New contact request",
+        body_html=body_html,
+        footer_note="Internal notification"
+    )
     
     result = send_email_internal([admin_email], subject, html_content)
     return result.get('success', False)
@@ -656,93 +590,6 @@ def verify_token(token):
         return None  # Token expired
     except jwt.InvalidTokenError:
         return None  # Invalid token
-
-def send_verification_email(user_email, user_name, verification_token):
-    """
-    Send verification email using Resend.
-    
-    Args:
-        user_email: Recipient email address
-        user_name: User's name for personalization
-        verification_token: JWT token for verification
-    
-    Returns:
-        Response from Resend API
-    """
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    verification_link = f"{frontend_url}/verify-email?token={verification_token}"
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            .header {{
-                text-align: center;
-                padding: 30px 0;
-                border-bottom: 1px solid #e0e0e0;
-            }}
-            .content {{
-                padding: 30px 0;
-            }}
-            .button {{
-                display: inline-block;
-                padding: 12px 30px;
-                background-color: #2563eb;
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-                margin: 20px 0;
-            }}
-            .footer {{
-                text-align: center;
-                padding-top: 20px;
-                color: #666;
-                font-size: 12px;
-                border-top: 1px solid #e0e0e0;
-            }}
-            .link {{
-                color: #2563eb;
-                word-break: break-all;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            {VS_LOGO_HTML}
-        </div>
-        
-        <div class="content">
-            <p>Hi {user_name},</p>
-            <p>Thank you for signing up with VentureStack!</p>
-            <p>Please verify your email address to continue:</p>
-            
-            <center>
-                <a href="{verification_link}" class="button">Verify Email Address</a>
-            </center>
-            
-            <p>Or copy and paste this link into your browser:</p>
-            <p><a href="{verification_link}" class="link">{verification_link}</a></p>
-            
-            <p>This link will expire in 1 hour.</p>
-        </div>
-        
-        <div class="footer">
-            <p>© {datetime.now().year} VentureStack. All rights reserved.</p>
-        </div>
-    </body>
-    </html>
-    """
-    
-    return send_email_internal([user_email], "Verify your VentureStack account", html_content)
 
 def send_password_reset_email(user_email, user_name, reset_token):
     """
