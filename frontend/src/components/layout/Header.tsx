@@ -15,7 +15,7 @@ const Header: FC = () => {
             </Link>
           </div>
           <nav className="hidden md:flex items-center space-x-4">
-            <a href="#features" className="text-gray-600 hover:text-gray-900 font-medium">Features</a>
+            {/* Features link removed */}
           </nav>
           <div className="flex items-center space-x-4">
             <Link to="/login">

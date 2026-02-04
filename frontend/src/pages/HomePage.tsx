@@ -1,4 +1,5 @@
 import React, { FC, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/ui/Button';
 import DeepDiveSection from '../components/DeepDiveSection';
@@ -55,8 +56,15 @@ const HomePage: FC = () => {
             <Button size="lg" className="px-8 h-14 text-lg shadow-xl shadow-brand-500/20">
               Get Started
             </Button>
-            <Button variant="outline" size="lg" className="px-8 h-14 text-lg group">
-              See How It Works <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            <Button
+              variant="outline"
+              size="lg"
+              className="px-8 h-14 text-lg group"
+              onClick={() => document.getElementById('solution')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              <span className="flex items-center gap-2">
+                See How It Works <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
             </Button>
           </div>
 
@@ -335,12 +343,16 @@ const HomePage: FC = () => {
           <h2 className="text-4xl lg:text-5xl font-bold mb-8">Ready to Run Innovation on One System?</h2>
           <p className="text-xl text-slate-300 mb-12">We’ll tailor VentureStack to how you build.</p>
           <div className="flex flex-col sm:flex-row justify-center gap-6">
-            <Button size="lg" className="bg-white text-brand-600 hover:bg-slate-100 border-none px-8 font-bold">
-              I’m a Founder
-            </Button>
-            <Button size="lg" variant="outline" className="border-slate-600 text-white hover:bg-slate-800 hover:border-slate-500 px-8">
-              I Run an Incubator / Program
-            </Button>
+            <Link to="/signup">
+              <Button size="lg" className="bg-white text-brand-600 hover:bg-slate-100 border-none px-8 font-bold">
+                I’m a Founder
+              </Button>
+            </Link>
+            <Link to="/org/signup">
+              <Button size="lg" variant="outline" className="border-slate-600 text-white hover:bg-slate-800 hover:border-slate-500 px-8">
+                I Run an Incubator / Program
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
