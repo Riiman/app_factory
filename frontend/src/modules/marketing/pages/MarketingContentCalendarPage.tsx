@@ -148,6 +148,7 @@ const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> 
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Content Title</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assets</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Channel</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Publish Date</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -168,6 +169,7 @@ const MarketingContentCalendarPage: React.FC<MarketingContentCalendarPageProps> 
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">{item.campaignName}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-500">{item.channel || '-'}</td>
                                         <td className="px-6 py-4 text-sm text-gray-500">{item.content_type}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.publish_date).toLocaleDateString()}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">

@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Check, ChevronDown } from 'lucide-react';
 import { MarketingCampaign, MarketingCampaignStatus, Product } from '@/types/dashboard-types';
 
 /**
@@ -26,17 +26,58 @@ interface EditCampaignModalProps {
     products: Product[];
 }
 
+const AVAILABLE_CHANNELS = [
+    'LinkedIn',
+    'Facebook',
+    'Twitter / X',
+    'Instagram',
+    'YouTube',
+    'Email / Newsletter',
+    'Blog / SEO',
+    'Google Ads'
+];
+
 const EditCampaignModal: React.FC<EditCampaignModalProps> = ({ campaign, onClose, onUpdate, products }) => {
     // Form state, initialized with existing campaign data
     const [campaignName, setCampaignName] = useState(campaign.campaign_name || '');
     const [objective, setObjective] = useState(campaign.objective || '');
-    const [channel, setChannel] = useState(campaign.channel || '');
+
+    // Multi-select state
+    const [selectedChannels, setSelectedChannels] = useState<string[]>(
+        campaign.channel
+            ? campaign.channel.split(',').map(s => s.trim()).filter(Boolean)
+            : []
+    );
+    const [isChannelDropdownOpen, setIsChannelDropdownOpen] = useState(false);
+    const channelDropdownRef = React.useRef<HTMLDivElement>(null);
+
     const [startDate, setStartDate] = useState(campaign.start_date || '');
     const [endDate, setEndDate] = useState(campaign.end_date || '');
     const [status, setStatus] = useState<MarketingCampaignStatus>(campaign.status || MarketingCampaignStatus.PLANNED);
     const [contentMode, setContentMode] = useState(campaign.content_mode || false);
     const [productId, setProductId] = useState<string>(campaign.product_id?.toString() || '');
     const [notes, setNotes] = useState(campaign.notes || '');
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (channelDropdownRef.current && !channelDropdownRef.current.contains(event.target as Node)) {
+                setIsChannelDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const toggleChannel = (channel: string) => {
+        if (selectedChannels.includes(channel)) {
+            setSelectedChannels(selectedChannels.filter(c => c !== channel));
+        } else {
+            setSelectedChannels([...selectedChannels, channel]);
+        }
+    };
 
     /**
      * Handles form submission, packages the data, and calls the onUpdate prop.
@@ -49,8 +90,9 @@ const EditCampaignModal: React.FC<EditCampaignModalProps> = ({ campaign, onClose
             alert('Please enter a campaign name.');
             return;
         }
-        if (!channel.trim()) {
-            alert('Please specify a channel.');
+
+        if (selectedChannels.length === 0) {
+            alert('Please select at least one channel.');
             return;
         }
         if (!startDate) {
@@ -61,7 +103,7 @@ const EditCampaignModal: React.FC<EditCampaignModalProps> = ({ campaign, onClose
         onUpdate({
             campaign_name: campaignName,
             objective,
-            channel,
+            channel: selectedChannels.join(', '),
             start_date: startDate,
             end_date: endDate || undefined,
             status,
@@ -88,8 +130,42 @@ const EditCampaignModal: React.FC<EditCampaignModalProps> = ({ campaign, onClose
                             <textarea id="edit-campaign-objective" value={objective} onChange={e => setObjective(e.target.value)} rows={3} className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm"></textarea>
                         </FormField>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField label="Channel" id="edit-campaign-channel">
-                                <input type="text" id="edit-campaign-channel" value={channel} onChange={e => setChannel(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="e.g., Google Ads, Blog" />
+                            <FormField label="Channels" id="edit-campaign-channel">
+                                <div className="relative" ref={channelDropdownRef}>
+                                    <button
+                                        type="button"
+                                        className="relative w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                        onClick={() => setIsChannelDropdownOpen(!isChannelDropdownOpen)}
+                                    >
+                                        <span className="block truncate">
+                                            {selectedChannels.length > 0 ? selectedChannels.join(', ') : "Select channels..."}
+                                        </span>
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                            <ChevronDown className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                                        </span>
+                                    </button>
+
+                                    {isChannelDropdownOpen && (
+                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                            {AVAILABLE_CHANNELS.map((channel) => (
+                                                <div
+                                                    key={channel}
+                                                    className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-50 ${selectedChannels.includes(channel) ? 'text-brand-primary bg-blue-50' : 'text-gray-900'}`}
+                                                    onClick={() => toggleChannel(channel)}
+                                                >
+                                                    <span className={`block truncate ${selectedChannels.includes(channel) ? 'font-semibold' : 'font-normal'}`}>
+                                                        {channel}
+                                                    </span>
+                                                    {selectedChannels.includes(channel) && (
+                                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-brand-primary">
+                                                            <Check className="h-4 w-4" aria-hidden="true" />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </FormField>
                             <FormField label="Start Date" id="edit-campaign-start-date">
                                 <input type="date" id="edit-campaign-start-date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />

@@ -766,7 +766,8 @@ const DashboardPage: React.FC = () => {
             { name: 'Human Resource', icon: Users, subItems: [], requiredScope: 'TEAM', scope: Scope.TEAM },
             { name: 'Investment', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor Database', 'Investor CRM', 'Cap Table', 'Scenario Calculator'], requiredScope: 'FUNDRAISE', scope: Scope.FUNDRAISING },
             { name: 'Email', icon: Mail, subItems: [], requiredScope: null, scope: Scope.EMAIL },
-            { name: 'AI Assistant', icon: MessageSquare, subItems: [], requiredScope: null, scope: Scope.CHAT }
+            { name: 'AI Assistant', icon: MessageSquare, subItems: [], requiredScope: null, scope: Scope.CHAT },
+            { name: 'Workspace', icon: Briefcase, subItems: ['Tasks', 'Experiments', 'Artifacts'], requiredScope: 'WORKSPACE', scope: Scope.WORKSPACE }
         ];
 
         if (!user) return [];

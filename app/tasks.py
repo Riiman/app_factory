@@ -142,6 +142,18 @@ def generate_scope_document_task(startup_id):
                         startup.submission.status = SubmissionStatus.APPROVED
                         print(f"--- [Celery Task] Updated submission {startup.submission.id} status to APPROVED ---")
 
+                        # Send Email Notification
+                        from app.email_utils import send_submission_status_email
+                        try:
+                            send_submission_status_email(
+                                startup.submission.user.email,
+                                startup.submission.startup_name,
+                                "approved",
+                                "Your application has been approved! We are now generating your scope of work."
+                            )
+                        except Exception as e:
+                            print(f"Failed to send status email: {e}")
+
                 
                 db.session.commit()
                 

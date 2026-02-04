@@ -199,7 +199,7 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                                         title=item_data.get('title'),
                                         content_brief=item_data.get('description'), # Map description to brief
                                         content_body=None, # Leave body empty for generation
-                                        platform=item_data.get('platform', 'General'),
+                                        channel=item_data.get('platform', 'General'), # Map platform to channel
                                         media_type='image' if item_data.get('image_idea') else 'text_only',
                                         image_prompt=item_data.get('image_idea'),
                                         created_by=startup.user_id,

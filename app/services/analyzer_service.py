@@ -172,6 +172,18 @@ def run_analysis(submission_id):
                         }, 
                         rooms=[f"user_{submission.user_id}", "admin"])
             
+            # Send Email Notification
+            from app.email_utils import send_submission_status_email
+            try:
+                send_submission_status_email(
+                    submission.user.email,
+                    submission.startup_name,
+                    "in_review",
+                    "Your application has been analyzed and is now under review by our team."
+                )
+            except Exception as e:
+                print(f"Failed to send status email: {e}")
+            
             print(f"--- [Celery Task] Analysis for submission {submission_id} completed successfully. ---")
 
     except Exception as e:

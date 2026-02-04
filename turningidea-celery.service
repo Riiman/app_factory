@@ -1,0 +1,14 @@
+[Unit]
+Description=Celery Worker for Turning Idea App
+After=network.target redis-server.service
+
+[Service]
+User=azureuser
+Group=www-data
+WorkingDirectory=/home/azureuser/app_factory
+Environment="PATH=/home/azureuser/app_factory/venv/bin"
+EnvironmentFile=/home/azureuser/app_factory/.env
+ExecStart=/home/azureuser/app_factory/venv/bin/celery -A celery_app.celery worker --loglevel=info --logfile=celery.log
+
+[Install]
+WantedBy=multi-user.target

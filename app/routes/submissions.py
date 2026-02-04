@@ -25,7 +25,7 @@ def start_submission():
     if existing_submission:
         return jsonify({"msg": "You already have an active submission.", "submission_id": existing_submission.id}), 400
 
-    new_submission = Submission(user_id=user_id, status=SubmissionStatus.DRAFT)
+    new_submission = Submission(user_id=user_id, organization_id=user.organization_id, status=SubmissionStatus.DRAFT)
     db.session.add(new_submission)
     db.session.commit()
 

@@ -115,12 +115,13 @@ def organization_signup():
         
         publish_update("user_signup", {"user": user.to_dict()}, rooms=["admin"])
 
-        # Send Verification Email
-        try:
-            token = generate_verification_token(user.email)
-            send_verification_email(user.email, user.full_name, token)
-        except Exception as e:
-            current_app.logger.error(f"Failed to send verification email: {e}")
+        # Send Verification Email ONLY if not verified
+        if not user.email_verified:
+            try:
+                token = generate_verification_token(user.email)
+                send_verification_email(user.email, user.full_name, token)
+            except Exception as e:
+                current_app.logger.error(f"Failed to send verification email: {e}")
 
         return jsonify({
             'success': True, 
@@ -202,12 +203,13 @@ def signup():
         
         publish_update("user_signup", {"user": user.to_dict()}, rooms=["admin"])
 
-        # Send Verification Email
-        try:
-            token = generate_verification_token(user.email)
-            send_verification_email(user.email, user.full_name, token)
-        except Exception as e:
-            current_app.logger.error(f"Failed to send verification email: {e}")
+        # Send Verification Email ONLY if not verified
+        if not user.email_verified:
+            try:
+                token = generate_verification_token(user.email)
+                send_verification_email(user.email, user.full_name, token)
+            except Exception as e:
+                current_app.logger.error(f"Failed to send verification email: {e}")
 
         return jsonify({
             'success': True, 

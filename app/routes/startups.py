@@ -28,12 +28,12 @@ def validate_startup_access(startup, user, required_scope=None):
     if user.organization_id == 1 and user.role == UserRole.ADMIN:
         return True
 
-    if startup.organization_id != user.organization_id:
-        return False
-
-    # Owner Check
+    # Owner Check - Always allow owner access regardless of org drift (or fix drift on save)
     if startup.user_id == user.id:
         return True
+
+    if startup.organization_id != user.organization_id:
+        return False
     
     # Org Admin Check
     if user.role == UserRole.ADMIN:
