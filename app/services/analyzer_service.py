@@ -152,11 +152,7 @@ def run_analysis(submission_id):
             print(f"--- [Celery Task] Error parsing synthesis JSON: {e} ---")
             # Fallback
             evaluation.overall_score = 0
-            evaluation.final_decision = "Error"
-            evaluation.overall_summary = "Failed to parse analysis results."
         finally:
-            evaluation.status = 'completed'
-            
             # Set submission status to IN_REVIEW now that analysis is complete
             submission.status = SubmissionStatus.IN_REVIEW
 

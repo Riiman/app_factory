@@ -38,8 +38,15 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
         print(f"--- [Generation Task] Generating Product for startup ID: {startup_id} ---")
         product_prompt = PromptTemplate.from_template(
             "Based on the following scope document, define a product with a name and description. "
-            "Also, define a list of key features for the MVP. "
-            "Output a JSON object with keys 'product_name' (string), 'product_description' (string), and 'features' (array of strings).\n\n"
+            "Also, define a comprehensive list of features for the MVP and immediate roadmap. "
+            "For each feature, provide:\n"
+            "- 'name': Feature title\n"
+            "- 'description': Detailed explanation\n"
+            "- 'user_story': 'As a [role], I want [action] so that [result]'\n"
+            "- 'acceptance_criteria': Bullet points of verifiable criteria\n"
+            "- 'priority': 1 (Critical) to 5 (Low)\n"
+            "- 'rice_scores': Object with keys 'reach' (1-10), 'impact' (1-10), 'confidence' (0-100), 'effort' (1-10)\n\n"
+            "Output a JSON object with keys 'product_name' (string), 'product_description' (string), and 'features' (array of objects).\n\n"
             "Scope Document:\n{scope_content}"
         )
         product_chain = product_prompt | llm
@@ -57,12 +64,48 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
             db.session.add(product)
             db.session.flush() # to get product.id
 
-            for feature_name in product_data.get('features', []):
-                feature = Feature(
-                    product_id=product.id,
-                    name=feature_name,
-                    created_at=datetime.utcnow()
-                )
+            from app.models import FeatureStatus # ensure import
+            
+            for feature_data in product_data.get('features', []):
+                # Handle both string (legacy) and object (new) formats
+                if isinstance(feature_data, str):
+                    feature = Feature(
+                        product_id=product.id,
+                        name=feature_data,
+                        status=FeatureStatus.BACKLOG,
+                        priority=3,
+                        created_at=datetime.utcnow(),
+                        created_by=startup.user_id # Assign creator
+                    )
+                else:
+                    feature = Feature(
+                        product_id=product.id,
+                        name=feature_data.get('name'),
+                        description=feature_data.get('description'),
+                        user_story=feature_data.get('user_story'),
+                        acceptance_criteria=feature_data.get('acceptance_criteria'),
+                        priority=feature_data.get('priority', 3),
+                        status=FeatureStatus.BACKLOG,
+                        created_at=datetime.utcnow(),
+                        created_by=startup.user_id
+                    )
+                    
+                    # RICE Scoring
+                    rice = feature_data.get('rice_scores', {})
+                    if rice:
+                        feature.rice_reach = rice.get('reach')
+                        feature.rice_impact = rice.get('impact')
+                        feature.rice_confidence = rice.get('confidence')
+                        feature.rice_effort = rice.get('effort')
+                        
+                        # Calculate Score: (R * I * C%) / E
+                        try:
+                            if feature.rice_effort and feature.rice_effort > 0:
+                                score = (feature.rice_reach * feature.rice_impact * (feature.rice_confidence / 100)) / feature.rice_effort
+                                feature.rice_score = round(score, 2)
+                        except:
+                            pass
+
                 db.session.add(feature)
         except json.JSONDecodeError:
             print(f"--- [Generation Task] Error: Failed to decode JSON for product generation for startup ID: {startup_id}. Raw output: {product_json_str} ---")

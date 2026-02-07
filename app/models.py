@@ -4,8 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from enum import Enum
 class UserRole(Enum):
     """Defines the roles a user can have within the application."""
-    USER = "user"
-    ADMIN = "admin"
+    USER = "USER"
+    ADMIN = "ADMIN"
 
 class SubmissionStatus(Enum):
     DRAFT = 'DRAFT'
@@ -18,11 +18,11 @@ class SubmissionStatus(Enum):
 
 class StartupStatus(Enum):
     """Defines the operational status of a startup within the incubator program."""
-    INACTIVE = "inactive"
-    ACTIVE = "active"
-    INCUBATING = "incubating"
-    GRADUATED = "graduated"
-    ARCHIVED = "archived"
+    INACTIVE = "INACTIVE"
+    ACTIVE = "ACTIVE"
+    INCUBATING = "INCUBATING"
+    GRADUATED = "GRADUATED"
+    ARCHIVED = "ARCHIVED"
 
     def __str__(self):
         return self.value
@@ -59,55 +59,55 @@ class ContractStatus(Enum):
 
 class ArtifactType(Enum):
     """Specifies the type of an artifact, e.g., file, link, or text content."""
-    FILE = "file"
-    LINK = "link"
-    TEXT = "text"
+    FILE = "FILE"
+    LINK = "LINK"
+    TEXT = "TEXT"
 
     def __str__(self):
         return self.value
 
 class StorageBackend(str, Enum):
     """Indicates where a FILE artifact is stored"""
-    LOCAL = "local"      # Local file system (legacy)
-    S3 = "s3"           # AWS S3 (new)
-    EXTERNAL = "external"  # External URL (for LINK type)
-    INLINE = "inline"   # Inline content (for TEXT type)
+    LOCAL = "LOCAL"      # Local file system (legacy)
+    S3 = "S3"           # AWS S3 (new)
+    EXTERNAL = "EXTERNAL"  # External URL (for LINK type)
+    INLINE = "INLINE"   # Inline content (for TEXT type)
 
     def __str__(self):
         return self.value
 
 class TaskStatus(Enum):
     """Indicates the current status of a task."""
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
 
     def __str__(self):
         return self.value
 
 class RequestStatus(Enum):
     """Represents the status of a request, e.g., for resources or mentorship."""
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
 
     def __str__(self):
         return self.value
 
 class ExperimentStatus(Enum):
     """Describes the current state of an experiment."""
-    PLANNED = "planned"
-    RUNNING = "running"
-    COMPLETED = "completed"
+    PLANNED = "PLANNED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
 
     def __str__(self):
         return self.value
 
 class ProductStage(Enum):
     """Indicates the development stage of a product."""
-    CONCEPT = "concept"
-    DEVELOPMENT = "development"
-    BETA = "beta"
+    CONCEPT = "CONCEPT"
+    DEVELOPMENT = "DEVELOPMENT"
+    BETA = "BETA"
     LIVE = "live"
 
     def __str__(self):
@@ -115,12 +115,12 @@ class ProductStage(Enum):
 
 class Scope(Enum):
     """Defines the functional area or domain a task, experiment, or artifact belongs to."""
-    PRODUCT = "product"
-    BUSINESS = "business"
-    FUNDRAISE = "fundraise"
-    MARKETING = "marketing"
-    ACCOUNTING = "accounting"
-    GENERAL = "general"
+    PRODUCT = "PRODUCT"
+    BUSINESS = "BUSINESS"
+    FUNDRAISE = "FUNDRAISE"
+    MARKETING = "MARKETING"
+    ACCOUNTING = "ACCOUNTING"
+    GENERAL = "GENERAL"
 
     def __str__(self):
         return self.value
@@ -426,6 +426,9 @@ class Startup(db.Model):
     organization = db.relationship('Organization', back_populates='startups')
     team_members = db.relationship('TeamMember', back_populates='startup', lazy=True, cascade='all, delete-orphan')
 
+    # New relationship for Planner
+    sprints = db.relationship('Sprint', back_populates='startup', lazy=True, cascade='all, delete-orphan')
+
     def to_dict(self, include_relations=False):
         """
         Serializes the Startup object to a dictionary.
@@ -528,6 +531,10 @@ class Product(db.Model):
     product_issues = db.relationship('ProductIssue', back_populates='product', lazy=True, cascade='all, delete-orphan')
     business_details = db.relationship('ProductBusinessDetails', back_populates='product', uselist=False, cascade='all, delete-orphan')
     marketing_campaigns = db.relationship('MarketingCampaign', back_populates='product', lazy=True)
+    
+    # New relationships for Planner
+    sprints = db.relationship('Sprint', back_populates='product', cascade='all, delete-orphan')
+    releases = db.relationship('Release', back_populates='product', cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -551,36 +558,141 @@ class Product(db.Model):
         }
 
 class FeatureStatus(Enum):
-    PENDING = "PENDING"
+    BACKLOG = "BACKLOG"
+    PLANNED = "PLANNED"
     IN_PROGRESS = "IN_PROGRESS"
-    COMPLETED = "COMPLETED"
+    IN_REVIEW = "IN_REVIEW"
+    DONE = "DONE"
+    SHIPPED = "SHIPPED"
+    PENDING = "PENDING" # Valid until migrated
 
     def __str__(self):
         return self.value
 
 class Feature(db.Model):
-    """Represents a specific feature of a product."""
+    """Represents a specific feature of a product with planning details."""
     __tablename__ = 'features'
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    sprint_id = db.Column(db.Integer, db.ForeignKey('sprints.id'), nullable=True)
+    release_id = db.Column(db.Integer, db.ForeignKey('releases.id'), nullable=True)
+    
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    user_story = db.Column(db.Text, nullable=True)
     acceptance_criteria = db.Column(db.Text, nullable=True)
-    status = db.Column(db.Enum(FeatureStatus), default=FeatureStatus.PENDING, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    status = db.Column(db.Enum(FeatureStatus), default=FeatureStatus.BACKLOG, nullable=False)
+    priority = db.Column(db.Integer, default=3) # 1=High, 5=Low
+    effort_estimate = db.Column(db.String(10), nullable=True) # XS, S, M, L, XL
+    target_date = db.Column(db.Date, nullable=True)
+    
+    # RICE Scoring
+    rice_reach = db.Column(db.Integer, nullable=True) # 1-10
+    rice_impact = db.Column(db.Integer, nullable=True) # 1-10
+    rice_confidence = db.Column(db.Integer, nullable=True) # 0-100
+    rice_effort = db.Column(db.Integer, nullable=True) # Person-months
+    rice_score = db.Column(db.Float, nullable=True)
 
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
     product = db.relationship('Product', back_populates='features')
+    sprint = db.relationship('Sprint', back_populates='features')
+    release = db.relationship('Release', back_populates='features')
+    creator = db.relationship('User', foreign_keys=[created_by])
 
     def to_dict(self):
         return {
             'id': self.id,
             'product_id': self.product_id,
+            'sprint_id': self.sprint_id,
+            'release_id': self.release_id,
             'name': self.name,
             'description': self.description,
+            'user_story': self.user_story,
             'acceptance_criteria': self.acceptance_criteria,
-            'status': str(self.status),
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'status': self.status.value,
+            'priority': self.priority,
+            'effort_estimate': self.effort_estimate,
+            'target_date': self.target_date.isoformat() if self.target_date else None,
+            'rice_score': self.rice_score,
+            'rice_details': {
+                'reach': self.rice_reach,
+                'impact': self.rice_impact,
+                'confidence': self.rice_confidence,
+                'effort': self.rice_effort
+            },
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+class Sprint(db.Model):
+    """Agile sprint planning"""
+    __tablename__ = 'sprints'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    
+    name = db.Column(db.String(100), nullable=False)
+    goal = db.Column(db.Text)
+    
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    
+    capacity = db.Column(db.Integer)
+    status = db.Column(db.String(20), default='PLANNING') # PLANNING, ACTIVE, COMPLETED
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    product = db.relationship('Product', back_populates='sprints')
+    startup = db.relationship('Startup', back_populates='sprints') # Needs relationship on Startup
+    features = db.relationship('Feature', back_populates='sprint')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'product_id': self.product_id,
+            'name': self.name,
+            'goal': self.goal,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'status': self.status,
+            'capacity': self.capacity,
+            'features': [f.to_dict() for f in self.features]
+        }
+
+class Release(db.Model):
+    """Product releases/milestones"""
+    __tablename__ = 'releases'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    
+    version = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    
+    target_date = db.Column(db.Date)
+    actual_date = db.Column(db.Date)
+    
+    status = db.Column(db.String(20), default='PLANNED')
+    release_notes = db.Column(db.Text)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    product = db.relationship('Product', back_populates='releases')
+    features = db.relationship('Feature', back_populates='release')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'product_id': self.product_id,
+            'version': self.version,
+            'name': self.name,
+            'status': self.status,
+            'target_date': self.target_date.isoformat() if self.target_date else None,
+            'release_notes': self.release_notes
+        }
+
 
 class ProductMetric(db.Model):
     """Tracks various metrics related to a product's performance."""
@@ -1780,3 +1892,250 @@ class StartupSnapshot(db.Model):
             'investment_amount': self.investment_amount,
             'date_issued': self.date_issued.isoformat() if self.date_issued else None
         }
+
+class JobStatus(Enum):
+    DRAFT = "DRAFT"
+    OPEN = "OPEN"
+    CLOSED = "CLOSED"
+    ARCHIVED = "ARCHIVED"
+
+class Job(db.Model):
+    """Represents a job position within a startup."""
+    __tablename__ = 'jobs'
+    id = db.Column(db.Integer, primary_key=True)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True) # Full HTML/Markdown description
+    requirements = db.Column(db.JSON, nullable=True) # List of requirements
+    
+    status = db.Column(db.Enum(JobStatus), default=JobStatus.DRAFT)
+    location = db.Column(db.String(255), nullable=True) # Remote, Hybrid, City
+    
+    # Salary Range
+    salary_min = db.Column(db.Float, nullable=True)
+    salary_max = db.Column(db.Float, nullable=True)
+    currency = db.Column(db.String(10), default="USD")
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('jobs', lazy=True))
+    applications = db.relationship('Application', back_populates='job', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'startup_id': self.startup_id,
+            'title': self.title,
+            'description': self.description,
+            'requirements': self.requirements,
+            'status': self.status.value,
+            'location': self.location,
+            'salary_min': self.salary_min,
+            'salary_max': self.salary_max,
+            'currency': self.currency,
+            'application_count': len(self.applications) if self.applications else 0,
+            'created_at': self.created_at.isoformat(),
+        }
+
+class Candidate(db.Model):
+    """Represents a candidate who can apply to multiple jobs."""
+    __tablename__ = 'candidates'
+    id = db.Column(db.Integer, primary_key=True)
+    # startup_id removed to make candidates global or we can keep it optional if needed. 
+    # For now, let's keep it simple: Candidates are linked to applications. 
+    # But to prevent data leaks between startups, we should probably link to Organization or Startup.
+    # Plan said "Reusable across multiple applications".
+    # Let's add startup_id as nullable for now, or assume they are created in context of a startup.
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=True) 
+    
+    name = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), nullable=False, unique=False) # Email unique per startup? Or global?
+    # If we want one candidate per startup, we need compound unique constraint.
+    phone = db.Column(db.String(50), nullable=True)
+    
+    resume_url = db.Column(db.String(500), nullable=True) # Link to Artifact (S3)
+    parsed_data = db.Column(db.JSON, nullable=True) # AI Extracted Skills, Experience
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    startup = db.relationship('Startup', backref=db.backref('candidates', lazy=True))
+    applications = db.relationship('Application', back_populates='candidate', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'phone': self.phone,
+            'resume_url': self.resume_url,
+            'parsed_data': self.parsed_data,
+            'created_at': self.created_at.isoformat(),
+        }
+
+class ApplicationStatus(Enum):
+    APPLIED = "APPLIED"
+    SCREENING = "SCREENING"
+    INTERVIEW = "INTERVIEW"
+    OFFER = "OFFER"
+    HIRED = "HIRED"
+    REJECTED = "REJECTED"
+    WITHDRAWN = "WITHDRAWN"
+
+class Application(db.Model):
+    """Links a Candidate to a specific Job with progress tracking."""
+    __tablename__ = 'applications'
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'), nullable=False)
+    candidate_id = db.Column(db.Integer, db.ForeignKey('candidates.id'), nullable=False)
+    
+    status = db.Column(db.Enum(ApplicationStatus), default=ApplicationStatus.APPLIED)
+    stage = db.Column(db.String(50), default="Applied") # Kanban Column Name
+    
+    # AI Scoring
+    ai_score = db.Column(db.Integer, default=0) # 0-100
+    ai_analysis = db.Column(db.JSON, nullable=True) # Why match/mismatch
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    job = db.relationship('Job', back_populates='applications')
+    candidate = db.relationship('Candidate', back_populates='applications')
+    interviews = db.relationship('Interview', back_populates='application', lazy=True, cascade='all, delete-orphan')
+    activities = db.relationship('RecruitmentActivity', back_populates='application', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'job_id': self.job_id,
+            'job_title': self.job.title if self.job else None,
+            'candidate_id': self.candidate_id,
+            'candidate_name': self.candidate.name if self.candidate else None,
+            'candidate': self.candidate.to_dict() if self.candidate else None,
+            'status': self.status.value,
+            'stage': self.stage,
+            'ai_score': self.ai_score,
+            'ai_analysis': self.ai_analysis,
+            'created_at': self.created_at.isoformat(),
+        }
+
+class InterviewStatus(Enum):
+    SCHEDULED = "SCHEDULED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    NO_SHOW = "NO_SHOW"
+
+class Interview(db.Model):
+    """Represents a scheduled interview for an application."""
+    __tablename__ = 'interviews'
+    id = db.Column(db.Integer, primary_key=True)
+    application_id = db.Column(db.Integer, db.ForeignKey('applications.id'), nullable=False)
+    interviewer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    scheduled_at = db.Column(db.DateTime, nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.Enum(InterviewStatus), default=InterviewStatus.SCHEDULED)
+    
+    meeting_link = db.Column(db.String(500), nullable=True)
+
+    application = db.relationship('Application', back_populates='interviews')
+    interviewer = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'application_id': self.application_id,
+            'interviewer_id': self.interviewer_id,
+            'interviewer_name': self.interviewer.full_name if self.interviewer else None,
+            'scheduled_at': self.scheduled_at.isoformat(),
+            'notes': self.notes,
+            'status': self.status.value,
+            'meeting_link': self.meeting_link
+        }
+
+
+class CalendarEventType(Enum):
+    MEETING = 'MEETING'
+    REMINDER = 'REMINDER'
+    BLOCKER = 'BLOCKER'
+    OTHER = 'OTHER'
+
+# Association table for event attendees
+event_attendees = db.Table('event_attendees',
+    db.Column('event_id', db.Integer, db.ForeignKey('calendar_events.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True)
+)
+
+class CalendarEvent(db.Model):
+    """Represents a manually created calendar event."""
+    __tablename__ = 'calendar_events'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    startup_id = db.Column(db.Integer, db.ForeignKey('startups.id'), nullable=False)
+    
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    start_time = db.Column(db.DateTime, nullable=False, index=True)
+    end_time = db.Column(db.DateTime, nullable=False, index=True)
+    event_type = db.Column(db.Enum(CalendarEventType), default=CalendarEventType.MEETING)
+    location = db.Column(db.String(200))
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', foreign_keys=[user_id], backref='calendar_events')
+    startup = db.relationship('Startup', backref='calendar_events')
+    
+    # Attendees relationship
+    attendees = db.relationship('User', secondary=event_attendees, lazy='subquery',
+        backref=db.backref('attending_events', lazy=True))
+
+    def to_dict(self):
+        start_iso = self.start_time.isoformat()
+        if not self.start_time.tzinfo:
+            start_iso += 'Z'
+            
+        end_iso = self.end_time.isoformat()
+        if not self.end_time.tzinfo:
+            end_iso += 'Z'
+            
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'start': start_iso,
+            'end': end_iso,
+            'type': self.event_type.value,
+            'location': self.location,
+            'created_at': self.created_at.isoformat(),
+            'user_name': self.user.full_name if self.user else None,
+            'attendees': [{
+                'id': u.id,
+                'name': u.full_name,
+                'email': u.email
+            } for u in self.attendees]
+        }
+
+class RecruitmentActivity(db.Model):
+    """Audit log for recruitment actions."""
+    __tablename__ = 'recruitment_activities'
+    id = db.Column(db.Integer, primary_key=True)
+    application_id = db.Column(db.Integer, db.ForeignKey('applications.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # Who performed action
+    action = db.Column(db.String(255), nullable=False) # "Moved to Interview", "Added Note"
+    details = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    application = db.relationship('Application', back_populates='activities')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'application_id': self.application_id,
+            'user_id': self.user_id,
+            'action': self.action,
+            'details': self.details,
+            'created_at': self.created_at.isoformat()
+        }
+

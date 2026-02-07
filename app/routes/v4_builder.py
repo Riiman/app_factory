@@ -46,7 +46,7 @@ def start_mission():
         
         startup_id = data.get('startup_id')
         mission = data.get('mission')
-        mission_type = data.get('mission_type', 'general')
+        mission_type = data.get('mission_type', 'GENERAL')
         priority = data.get('priority', 'medium')
         options = data.get('options', {})
         

@@ -42,7 +42,7 @@ def start_v3_mission():
         # Execute with V4
         result = executor.execute_mission(
             mission_id=mission_id,
-            mission_type='general',
+            mission_type='GENERAL',
             description=mission,
             priority='medium'
         )

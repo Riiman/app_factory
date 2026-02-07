@@ -13,6 +13,7 @@ import TasksPage from '@/modules/dashboard/pages/TasksPage';
 import ProductListPage from '@/modules/product/pages/ProductListPage';
 import ProductDetailPage from '@/modules/product/pages/ProductDetailPage';
 import ProductMetricsPage from '@/modules/product/pages/ProductMetricsPage';
+import ProductOverviewPage from '@/modules/product/pages/ProductOverviewPage';
 import ProductIssuesPage from '@/modules/product/pages/ProductIssuesPage';
 
 import BusinessOverviewPage from '@/modules/business/pages/BusinessOverviewPage';
@@ -45,7 +46,19 @@ import ContactDetailPage from '@/modules/crm/pages/ContactDetailPage';
 import CrmListsPage from '@/modules/crm/pages/CrmListsPage';
 import CrmSettingsPage from '@/modules/crm/pages/CrmSettingsPage';
 import SalesOverviewPage from '@/modules/crm/pages/SalesOverviewPage';
-import { Home, Package, Briefcase, DollarSign, Megaphone, BookOpen, Users, Settings, Mail, MessageSquare } from 'lucide-react';
+import RecruitmentOverview from '@/modules/recruitment/RecruitmentOverview';
+import RecruitmentDashboard from '@/modules/recruitment/RecruitmentDashboard';
+import JobDetail from '@/modules/recruitment/JobDetail';
+import CalendarPage from '@/modules/calendar/CalendarPage';
+import TeamCalendarPage from '@/modules/calendar/TeamCalendarPage';
+import { Home, Package, Briefcase, DollarSign, Megaphone, BookOpen, Users, Settings, Mail, MessageSquare, Calendar as CalendarIcon, TrendingUp, Calculator, PieChart, Shield, BarChart3, Banknote, Handshake, UserCog } from 'lucide-react';
+
+// ... (lines 55-843 unchanged, omitted for brevity, will focus replace on imports and menuItems separately if needed, but here I can do it in one go if I include enough context or just do two edits)
+// Actually better to do two edits or use multi_replace.
+// I will use replace_file_content for imports first, then another for menuItems.
+
+// Wait, I can't write comments in replacement content that aren't code. 
+// I will just use multi_replace to do both at once.
 import CreateModal from '@/modules/dashboard/components/CreateModal';
 import CreateTaskModal from '@/modules/dashboard/components/CreateTaskModal';
 import CreateExperimentModal from '@/modules/dashboard/components/CreateExperimentModal';
@@ -121,24 +134,52 @@ const DashboardPage: React.FC = () => {
 
     // --- Deep Linking Support ---
     useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash;
+            if (hash.startsWith('#recruitment-job-')) {
+                // Format: #recruitment-job-<jobId>-app-<appId>
+                const parts = hash.split('-');
+                const jobIdIndex = parts.indexOf('job');
+                const appIdIndex = parts.indexOf('app');
+
+                if (jobIdIndex !== -1 && appIdIndex !== -1) {
+                    const jobId = parseInt(parts[jobIdIndex + 1]);
+                    const appId = parseInt(parts[appIdIndex + 1]);
+
+                    if (!isNaN(jobId) && !isNaN(appId)) {
+                        setActiveScope(Scope.RECRUITMENT);
+                        setActiveSubPage('Jobs');
+                        setSelectedJobId(jobId);
+                        setSelectedApplicationId(appId);
+                        // Clear hash to avoid loop or re-trigger
+                        window.history.replaceState(null, '', ' ');
+                    }
+                }
+            }
+        };
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHashChange);
+
+        // Check initial hash
+        handleHashChange();
+
+        // Also check location search params
         const params = new URLSearchParams(location.search);
         const scopeParam = params.get('scope');
         const tabParam = params.get('tab');
 
         if (scopeParam) {
-            // Find scope enum from string (case insensitive logic)
-            // Scope values are 'marketing', 'product' etc.
             const scopeKey = Object.values(Scope).find(s => s.toLowerCase() === scopeParam.toLowerCase());
-            if (scopeKey) {
-                setActiveScope(scopeKey);
-            }
+            if (scopeKey) setActiveScope(scopeKey);
         }
 
-        if (tabParam) {
-            // Mapping simplistic tab names if needed, or direct
-            setActiveSubPage(tabParam);
-        }
-    }, [location.search]);
+        if (tabParam) setActiveSubPage(tabParam);
+
+        return () => {
+            window.removeEventListener('hashchange', handleHashChange);
+        };
+    }, [location.search, location.hash]);
 
     // --- Socket.IO Listener for Real-time Updates ---
     useEffect(() => {
@@ -214,6 +255,7 @@ const DashboardPage: React.FC = () => {
     // --- UI State (Navigation, Modals, etc.) ---
     const [activeScope, setActiveScope] = useState<Scope>(Scope.DASHBOARD);
     const [activeSubPage, setActiveSubPage] = useState<string>('Overview');
+    const [activeMenuItem, setActiveMenuItem] = useState<string>('Dashboard');
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
     const [selectedFundingRoundId, setSelectedFundingRoundId] = useState<number | null>(null);
     const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
@@ -264,20 +306,29 @@ const DashboardPage: React.FC = () => {
     const [isAddInvestmentModalOpen, setIsAddInvestmentModalOpen] = useState(false);
     const [selectedRoundIdForInvestment, setSelectedRoundIdForInvestment] = useState<number | null>(null);
     const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+    const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+    const [selectedApplicationId, setSelectedApplicationId] = useState<number | null>(null);
 
     // --- Handlers and Component Logic (remains largely the same) ---
     // NOTE: The create/update/delete handlers still use manual state updates.
     // A future refactor would be to replace them with `useMutation` and query invalidation.
-    const handleNavClick = (scope: Scope, subPage: string = 'Overview') => {
-        // ... same as before
+    const handleNavClick = (scopeName: string, scope: Scope, subPage?: string) => {
+        console.log('handleNavClick called with:', scopeName, scope, subPage);
         setActiveScope(scope);
-        setActiveSubPage(subPage);
-        setSelectedProductId(null);
-        setSelectedFundingRoundId(null);
+        setActiveSubPage(subPage || 'Overview');
+        setActiveMenuItem(scopeName);
+
+        // Reset detail views
         setSelectedProductId(null);
         setSelectedFundingRoundId(null);
         setSelectedCampaignId(null);
         setSelectedContactId(null);
+        setSelectedContactId(null);
+        setSelectedJobId(null);
+        setSelectedApplicationId(null);
+    };
+    const handleSelectJob = (jobId: number) => {
+        setSelectedJobId(jobId);
     };
     const handleSelectCampaign = (campaignId: number) => setSelectedCampaignId(campaignId);
     const handleSelectContact = (contactId: number) => {
@@ -347,8 +398,9 @@ const DashboardPage: React.FC = () => {
     const handleCreateFeature = async (newFeatureData: Omit<any, 'id' | 'product_id'>, productId: number) => {
         if (!startup) return;
         try {
-            await api.createFeature(startup.id, productId, newFeatureData);
+            await api.addPlannerFeature(productId, newFeatureData);
             queryClient.invalidateQueries({ queryKey: ['products', startup.id] }); // Or more specific if DetailPage has specific key
+            queryClient.invalidateQueries({ queryKey: ['planner_features', productId] }); // Invalidate planner query
             setIsCreateFeatureModalOpen(false);
         } catch (error) { console.error("Failed to create feature:", error); }
     };
@@ -473,6 +525,7 @@ const DashboardPage: React.FC = () => {
         try {
             await api.updateFeature(startup.id, productId, featureId, updatedData);
             queryClient.invalidateQueries({ queryKey: ['products', startup.id] });
+            queryClient.invalidateQueries({ queryKey: ['planner_features', productId] });
             setIsEditFeatureModalOpen(false);
         } catch (error) { console.error("Failed to update feature:", error); }
     };
@@ -520,9 +573,22 @@ const DashboardPage: React.FC = () => {
 
         switch (activeScope) {
             case Scope.DASHBOARD:
+                if (activeMenuItem === 'Calendar') {
+                    // Check if it's Team Calendar sub-page
+                    if (activeSubPage === 'Team Calendar') {
+                        return <TeamCalendarPage />;
+                    }
+                    // Default to My Calendar
+                    return <CalendarPage />;
+                }
                 return <DashboardOverview startupId={startup.id} />;
 
+
+
             case Scope.PRODUCT:
+                if (activeSubPage === 'Overview') {
+                    return <ProductOverviewPage startupId={startup.id} onNavigate={(page) => handleNavClick('Product', Scope.PRODUCT, page)} />;
+                }
                 if (activeSubPage === 'Products List') {
                     if (selectedProductId) {
                         return <ProductDetailPage
@@ -557,13 +623,14 @@ const DashboardPage: React.FC = () => {
                 if (activeSubPage === 'Issues & Feedback') {
                     return <ProductIssuesPage startupId={startup.id} onAddNewIssue={() => setIsCreateIssueModalOpen(true)} />;
                 }
-                return <ProductListPage startupId={startup.id} onSelectProduct={handleSelectProduct} onAddNewProduct={() => setIsCreateProductModalOpen(true)} isGeneratingProduct={startup.is_generating_product} />;
+                return <ProductOverviewPage startupId={startup.id} onNavigate={(page) => handleNavClick('Product', Scope.PRODUCT, page)} />;
+
 
 
 
             case Scope.BUSINESS:
                 if (activeSubPage === 'Overview & Model') {
-                    return <BusinessOverviewPage startupId={startup.id} onNavigate={(page) => handleNavClick(Scope.BUSINESS, page)} />;
+                    return <BusinessOverviewPage startupId={startup.id} onNavigate={(page) => handleNavClick('Business', Scope.BUSINESS, page)} />;
                 }
                 if (activeSubPage === 'Business Models') {
                     return <BusinessModelsPage />;
@@ -575,7 +642,7 @@ const DashboardPage: React.FC = () => {
                         onAddNewReport={() => setIsCreateReportModalOpen(true)}
                     />;
                 }
-                return <BusinessOverviewPage startupId={startup.id} onNavigate={(page) => handleNavClick(Scope.BUSINESS, page)} />;
+                return <BusinessOverviewPage startupId={startup.id} onNavigate={(page) => handleNavClick('Business', Scope.BUSINESS, page)} />;
 
             case Scope.FUNDRAISING:
                 if (activeSubPage === 'Overview') {
@@ -732,6 +799,29 @@ const DashboardPage: React.FC = () => {
                     return <ContactDetailPage contactId={selectedContactId} onBack={() => setSelectedContactId(null)} />;
                 }
                 return <CustomerListPage onSelectContact={handleSelectContact} />;
+            case Scope.RECRUITMENT:
+                if (selectedJobId) {
+                    return <JobDetail
+                        startupId={startup.id}
+                        jobId={selectedJobId}
+                        onBack={() => {
+                            setSelectedJobId(null);
+                            setSelectedApplicationId(null);
+                        }}
+                        initialApplicationId={selectedApplicationId}
+                    />;
+                }
+                if (activeSubPage === 'Jobs') {
+                    return <RecruitmentDashboard startupId={startup.id} onSelectJob={handleSelectJob} />;
+                }
+                if (activeSubPage === 'Calendar') {
+                    return <CalendarPage
+                        title="Recruitment Calendar"
+                        subtitle="Manage interviews and recruitment deadlines"
+                        modules={['recruitment']}
+                    />;
+                }
+                return <RecruitmentOverview startupId={startup.id} />;
             default:
                 return <DashboardOverview startupId={startup.id} />;
         }
@@ -739,6 +829,7 @@ const DashboardPage: React.FC = () => {
 
     const scopeMapping: Record<string, Scope> = {
         'Dashboard': Scope.DASHBOARD,
+        'Calendar': Scope.DASHBOARD,
         'Product': Scope.PRODUCT,
         'Business': Scope.BUSINESS,
         'Fundraising': Scope.FUNDRAISING,
@@ -746,25 +837,27 @@ const DashboardPage: React.FC = () => {
         'Marketing': Scope.MARKETING,
         'Workspace': Scope.WORKSPACE,
         'Team': Scope.TEAM,
-        'Human Resource': Scope.TEAM,
+        'Admin': Scope.TEAM, // Renamed from Human Resource
         'Settings': Scope.SETTINGS,
         'Email': Scope.EMAIL,
         'AI Assistant': Scope.CHAT,
         'Accounting': Scope.ACCOUNTING,
         'CRM': Scope.CRM,
-        'Sales': Scope.CRM
+        'Sales': Scope.CRM,
+        'Human Resource': Scope.RECRUITMENT // Renamed from Recruitment
     };
 
 
     const menuItems = React.useMemo(() => {
         const allItems = [
             { name: 'Dashboard', icon: Home, subItems: [], requiredScope: null, scope: Scope.DASHBOARD },
-            { name: 'Product', icon: Package, subItems: ['Products List', 'Product Metrics', 'Issues & Feedback'], requiredScope: 'PRODUCT', scope: Scope.PRODUCT },
+            { name: 'Calendar', icon: CalendarIcon, subItems: ['My Calendar', 'Team Calendar'], requiredScope: null, scope: Scope.DASHBOARD },
+            { name: 'Product', icon: Package, subItems: ['Overview', 'Products List', 'Product Metrics', 'Issues & Feedback'], requiredScope: 'PRODUCT', scope: Scope.PRODUCT },
             { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar', 'Settings'], requiredScope: 'MARKETING', scope: Scope.MARKETING },
-            { name: 'Sales', icon: Users, subItems: ['Overview', 'Contacts', 'Deals', 'Lists', 'Settings'], requiredScope: null, scope: Scope.CRM },
-            { name: 'Accounting', icon: DollarSign, subItems: ['Overview', 'Transactions', 'Journal', 'Integrations'], requiredScope: 'ACCOUNTING', scope: Scope.ACCOUNTING },
-            { name: 'Human Resource', icon: Users, subItems: [], requiredScope: 'TEAM', scope: Scope.TEAM },
-            { name: 'Investment', icon: DollarSign, subItems: ['Overview', 'Funding Rounds', 'Investor Database', 'Investor CRM', 'Cap Table', 'Scenario Calculator'], requiredScope: 'FUNDRAISE', scope: Scope.FUNDRAISING },
+            { name: 'Sales', icon: TrendingUp, subItems: ['Overview', 'Contacts', 'Deals', 'Lists', 'Settings'], requiredScope: null, scope: Scope.CRM },
+            { name: 'Human Resource', icon: Users, subItems: ['Overview', 'Jobs', 'Calendar'], requiredScope: null, scope: Scope.RECRUITMENT }, // Renamed from Recruitment
+            { name: 'Accounting', icon: Calculator, subItems: ['Overview', 'Transactions', 'Journal', 'Integrations'], requiredScope: 'ACCOUNTING', scope: Scope.ACCOUNTING },
+            { name: 'Investment', icon: PieChart, subItems: ['Overview', 'Funding Rounds', 'Investor Database', 'Investor CRM', 'Cap Table', 'Scenario Calculator'], requiredScope: 'FUNDRAISING', scope: Scope.FUNDRAISING },
             { name: 'Email', icon: Mail, subItems: [], requiredScope: null, scope: Scope.EMAIL },
             { name: 'AI Assistant', icon: MessageSquare, subItems: [], requiredScope: null, scope: Scope.CHAT },
             { name: 'Workspace', icon: Briefcase, subItems: ['Tasks', 'Experiments', 'Artifacts'], requiredScope: 'WORKSPACE', scope: Scope.WORKSPACE }
@@ -789,10 +882,23 @@ const DashboardPage: React.FC = () => {
     }, [user, startup]);
 
     const bottomItems = React.useMemo(() => {
-        return [
+        const items = [
+            { name: 'Admin', icon: Shield, subItems: [], requiredScope: 'TEAM', scope: Scope.TEAM }, // Moved from main menu
             { name: 'Settings', icon: Settings, subItems: [], requiredScope: 'SETTINGS' }
         ];
-    }, []);
+
+        if (!user) return [];
+        const isOwner = startup && user.id === startup.user_id;
+        const isAdmin = user.role === 'admin';
+
+        if (isOwner || isAdmin) return items;
+
+        const userScopes = (user.scopes || []).map(s => s.toUpperCase());
+        return items.filter(item => {
+            if (!item.requiredScope) return true;
+            return userScopes.includes(item.requiredScope);
+        });
+    }, [user, startup]);
 
     if (isLoading || isQueryLoading) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -812,7 +918,8 @@ const DashboardPage: React.FC = () => {
                 menuItems={menuItems}
                 activeScope={activeScope}
                 activeSubPage={activeSubPage}
-                onNavClick={(scopeName, subPage) => handleNavClick(scopeMapping[scopeName], subPage)}
+                activeMenuItem={activeMenuItem}
+                onNavClick={(scopeName, subPage) => handleNavClick(scopeName, scopeMapping[scopeName], subPage)}
                 bottomItems={bottomItems}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -822,7 +929,7 @@ const DashboardPage: React.FC = () => {
                     logoUrl={startup.logo_url}
                     user={user}
                     onCreateClick={handleOpenCreateModal}
-                    onSettingsClick={() => handleNavClick(Scope.USER_SETTINGS)}
+                    onSettingsClick={() => handleNavClick('User Settings', Scope.USER_SETTINGS)}
                     onLogout={handleLogout}
                     notificationCenter={<NotificationCenter notifications={notifications} onMarkAsRead={handleMarkNotificationAsRead} />}
                 />
@@ -846,7 +953,7 @@ const DashboardPage: React.FC = () => {
                     [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
                     [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
                     [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
-                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: []
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: [], [Scope.RECRUITMENT]: []
                 }}
                 defaultScope={selectedLinkedScope || undefined}
                 defaultLinkedToId={selectedLinkedId || undefined}
@@ -860,7 +967,7 @@ const DashboardPage: React.FC = () => {
                     [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
                     [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
                     [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
-                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: []
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: [], [Scope.RECRUITMENT]: []
                 }}
             />}
 
@@ -872,7 +979,7 @@ const DashboardPage: React.FC = () => {
                     [Scope.PRODUCT]: (startup.products || []).map((p: any) => ({ id: p.id, name: p.name })),
                     [Scope.FUNDRAISING]: (startup.funding_rounds || []).map((r: any) => ({ id: r.round_id, name: `${r.round_type} Round` })),
                     [Scope.MARKETING]: (startup.marketing_campaigns || []).map((c: any) => ({ id: c.campaign_id, name: c.campaign_name })),
-                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: []
+                    [Scope.GENERAL]: [], [Scope.BUSINESS]: [], [Scope.DASHBOARD]: [], [Scope.WORKSPACE]: [], [Scope.TEAM]: [], [Scope.SETTINGS]: [], [Scope.USER_SETTINGS]: [], [Scope.EMAIL]: [], [Scope.ACCOUNTING]: [], [Scope.CHAT]: [], [Scope.CRM]: [], [Scope.RECRUITMENT]: []
                 }}
                 defaultScope={selectedLinkedScope || undefined}
                 defaultLinkedToId={selectedLinkedId || undefined}

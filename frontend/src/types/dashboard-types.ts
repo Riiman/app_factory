@@ -1,6 +1,6 @@
 export enum UserRole {
-  USER = 'user',
-  ADMIN = 'admin',
+  USER = 'USER',
+  ADMIN = 'ADMIN',
 }
 
 export enum SubmissionStatus {
@@ -13,11 +13,11 @@ export enum SubmissionStatus {
 }
 
 export enum StartupStatus {
-  INACTIVE = 'inactive',
-  ACTIVE = 'active',
-  INCUBATING = 'incubating',
-  GRADUATED = 'graduated',
-  ARCHIVED = 'archived',
+  INACTIVE = 'INACTIVE',
+  ACTIVE = 'ACTIVE',
+  INCUBATING = 'INCUBATING',
+  GRADUATED = 'GRADUATED',
+  ARCHIVED = 'ARCHIVED',
 }
 
 export enum StartupStage {
@@ -40,10 +40,10 @@ export enum InvestorStage {
 }
 
 export enum ProductStage {
-  CONCEPT = 'concept',
-  DEVELOPMENT = 'development',
-  BETA = 'beta',
-  LIVE = 'live',
+  CONCEPT = 'CONCEPT',
+  DEVELOPMENT = 'DEVELOPMENT',
+  BETA = 'BETA',
+  LIVE = 'LIVE',
 }
 
 export enum MarketingCampaignStatus {
@@ -61,38 +61,39 @@ export enum MarketingContentStatus {
 }
 
 export enum TaskStatus {
-  PENDING = 'pending',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
 }
 
 export enum ExperimentStatus {
-  PLANNED = 'planned',
-  RUNNING = 'running',
-  COMPLETED = 'completed',
+  PLANNED = 'PLANNED',
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
 }
 
 export enum ArtifactType {
-  FILE = 'file',
-  LINK = 'link',
-  TEXT = 'text',
+  FILE = 'FILE',
+  LINK = 'LINK',
+  TEXT = 'TEXT',
 }
 
 export enum Scope {
-  GENERAL = 'general',
-  PRODUCT = 'product',
-  FUNDRAISING = 'fundraise',
-  MARKETING = 'marketing',
-  ACCOUNTING = 'accounting',
-  BUSINESS = 'business',
-  DASHBOARD = 'Dashboard', // UI specific Scope
-  WORKSPACE = 'Workspace', // UI specific Scope
-  TEAM = 'Team', // UI specific Scope
-  SETTINGS = 'Settings', // UI specific Scope
+  GENERAL = 'GENERAL',
+  PRODUCT = 'PRODUCT',
+  FUNDRAISING = 'FUNDRAISE',
+  MARKETING = 'MARKETING',
+  ACCOUNTING = 'ACCOUNTING',
+  BUSINESS = 'BUSINESS',
+  DASHBOARD = 'DASHBOARD',
+  WORKSPACE = 'WORKSPACE',
+  TEAM = 'TEAM',
+  SETTINGS = 'SETTINGS',
   USER_SETTINGS = 'USER_SETTINGS',
   EMAIL = 'EMAIL',
-  CHAT = 'Chat',
-  CRM = 'crm',
+  CHAT = 'CHAT',
+  CRM = 'CRM',
+  RECRUITMENT = 'RECRUITMENT',
 }
 
 export enum ScopeStatus {
@@ -263,18 +264,65 @@ export interface ProductIssue {
 }
 
 export enum FeatureStatus {
-  PENDING = 'PENDING',
+  BACKLOG = 'BACKLOG',
+  PLANNED = 'PLANNED',
   IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
+  IN_REVIEW = 'IN_REVIEW',
+  DONE = 'DONE',
+  SHIPPED = 'SHIPPED',
+  PENDING = 'PENDING',
+}
+
+export interface RiceScore {
+  reach: number;
+  impact: number;
+  confidence: number;
+  effort: number;
 }
 
 export interface Feature {
   id: number;
   product_id: number;
+  sprint_id?: number;
+  release_id?: number;
   name: string;
   description: string;
+  user_story?: string;
   acceptance_criteria?: string;
+  priority: number;
   status: FeatureStatus;
+  effort_estimate?: string;
+  rice_reach?: number;
+  rice_impact?: number;
+  rice_confidence?: number;
+  rice_effort?: number;
+  rice_score?: number;
+  rice_details?: RiceScore;
+  target_date?: string;
+  created_at?: string;
+}
+
+export interface Sprint {
+  id: number;
+  product_id: number;
+  name: string;
+  goal?: string;
+  start_date: string;
+  end_date: string;
+  capacity?: number;
+  status: 'PLANNING' | 'ACTIVE' | 'COMPLETED';
+  features?: Feature[];
+}
+
+export interface Release {
+  id: number;
+  product_id: number;
+  version: string;
+  name?: string;
+  description?: string;
+  status: 'PLANNED' | 'IN_PROGRESS' | 'SHIPPED';
+  target_date?: string;
+  release_notes?: string;
 }
 
 
@@ -565,10 +613,10 @@ export interface Experiment {
 }
 
 export enum StorageBackend {
-  LOCAL = 'local',
-  S3 = 's3',
-  EXTERNAL = 'external',
-  INLINE = 'inline',
+  LOCAL = 'LOCAL',
+  S3 = 'S3',
+  EXTERNAL = 'EXTERNAL',
+  INLINE = 'INLINE',
 }
 
 export interface Artifact {
@@ -797,4 +845,87 @@ export interface Alert {
   priority: number;
   startup_id?: number;
   startup_name?: string;
+}
+// ============================================================================
+// RECRUITMENT TYPES
+// ============================================================================
+
+export enum JobStatus {
+  DRAFT = "DRAFT",
+  OPEN = "OPEN",
+  CLOSED = "CLOSED",
+  ARCHIVED = "ARCHIVED",
+}
+
+export interface Job {
+  id: number;
+  startup_id: number;
+  title: string;
+  description: string;
+  requirements: string[]; // Stored as JSON list of strings in DB
+  status: JobStatus;
+  location?: string;
+  salary_min?: number;
+  salary_max?: number;
+  currency?: string;
+  application_count?: number;
+  created_at: string;
+}
+
+export interface Candidate {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  resume_url?: string;
+  parsed_data?: any; // JSON with skills, etc.
+  created_at: string;
+}
+
+export enum ApplicationStatus {
+  APPLIED = "APPLIED",
+  SCREENING = "SCREENING",
+  INTERVIEW = "INTERVIEW",
+  OFFER = "OFFER",
+  HIRED = "HIRED",
+  REJECTED = "REJECTED",
+  WITHDRAWN = "WITHDRAWN",
+}
+
+export interface Application {
+  id: number;
+  job_id: number;
+  job_title: string;
+  candidate_id: number;
+  candidate_name: string;
+  candidate?: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    resume_url: string;
+    parsed_data?: {
+      skills?: string[];
+      experience_years?: number;
+      current_role?: string;
+      current_company?: string;
+      location?: string;
+      education?: string;
+      summary?: string;
+    };
+  };
+  status: ApplicationStatus;
+  stage: string; // Kanban column
+  ai_score?: number;
+  ai_analysis?: any;
+  created_at: string;
+}
+
+export interface RecruitmentPipeline {
+  Applied: Application[];
+  Screening: Application[];
+  Interview: Application[];
+  Offer: Application[];
+  Hired: Application[];
+  Rejected: Application[];
 }

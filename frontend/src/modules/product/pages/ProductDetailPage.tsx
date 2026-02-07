@@ -32,7 +32,11 @@ interface ProductDetailPageProps {
 }
 
 
-type Tab = 'Features' | 'Metrics' | 'Issues' | 'Linked Items';
+import { RoadmapView, BacklogView, SprintView, ReleaseView } from '../components/planner';
+
+// ... (existing imports, but remove tab definition)
+
+type Tab = 'Roadmap' | 'Backlog' | 'Sprints' | 'Releases' | 'Metrics' | 'Issues' | 'Linked Items';
 
 const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     productId,
@@ -46,8 +50,8 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     onEditFeature
 }) => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<Tab>('Features');
-    const tabs: Tab[] = ['Features', 'Metrics', 'Issues', 'Linked Items'];
+    const [activeTab, setActiveTab] = useState<Tab>('Roadmap');
+    const tabs: Tab[] = ['Roadmap', 'Backlog', 'Sprints', 'Releases', 'Metrics', 'Issues', 'Linked Items'];
 
     // Delete Confirmation State
     const [deleteConfirmState, setDeleteConfirmState] = useState<{
@@ -131,46 +135,14 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
     const renderTabContent = () => {
         switch (activeTab) {
-            case 'Features':
-                return (
-                    <Card title="Features" actions={<button onClick={onAddFeature} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Add Feature</button>}>
-                        <ul className="divide-y divide-gray-200">
-                            {(product.features || []).map((feature: Feature) => (
-                                <li key={feature.id} className="py-4 flex justify-between items-start group">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="font-semibold text-gray-800">{feature.name}</h4>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full ${feature.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                                feature.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                                                    'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                {feature.status ? feature.status.replace('_', ' ') : 'PENDING'}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm text-gray-600 mt-1">{feature.description}</p>
-                                    </div>
-                                    <div className="flex space-x-2">
-                                        <button
-                                            onClick={() => onEditFeature(product.id, feature)}
-                                            disabled={feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED'}
-                                            className={`p-1 transition-opacity ${feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100'}`}
-                                            title={feature.status === 'IN_PROGRESS' || feature.status === 'COMPLETED' ? "Cannot edit in-progress or completed features" : "Edit Feature"}
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteClick('feature', feature.id, feature.name)}
-                                            className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            title="Delete Feature"
-                                        >
-                                            <Plus size={16} className="rotate-45" />
-                                        </button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </Card>
-                );
+            case 'Roadmap':
+                return <RoadmapView product={product} />;
+            case 'Backlog':
+                return <BacklogView product={product} onAddFeature={onAddFeature} onEditFeature={(f) => onEditFeature(product.id, f)} />;
+            case 'Sprints':
+                return <SprintView product={product} />;
+            case 'Releases':
+                return <ReleaseView product={product} />;
             case 'Metrics':
                 return (
                     <Card title="Metrics" actions={<button onClick={onAddMetric} className="text-sm font-medium text-brand-primary flex items-center"><Plus size={16} className="mr-1" /> Add Metric</button>}>

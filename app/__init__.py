@@ -125,6 +125,19 @@ def create_app(config_class=None): # Changed default from Config to None
         from .routes.analytics import analytics_bp
         app.register_blueprint(analytics_bp)
 
+        # Recruitment Module
+        from .routes.recruitment import recruitment_bp
+        app.register_blueprint(recruitment_bp)
+
+        # Calendar Module
+        from .routes.calendar import calendar_bp
+        app.register_blueprint(calendar_bp)
+
+        # Register product_planner blueprint
+        from .routes.product_planner import product_planner_bp
+        app.register_blueprint(product_planner_bp)
+
+
         # OAuth Providers
         oauth.register(
             name='google',

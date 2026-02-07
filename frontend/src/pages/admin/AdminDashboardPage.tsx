@@ -428,6 +428,7 @@ const AdminDashboardPage: React.FC = () => {
     try {
       await api.updateFeature(selectedStartupId, selectedProductForFeatureEdit, selectedFeatureToEdit.id, updatedData);
       queryClient.invalidateQueries({ queryKey: ['adminData'] });
+      queryClient.invalidateQueries({ queryKey: ['planner_features', selectedProductForFeatureEdit] });
       setIsEditFeatureModalOpen(false);
     } catch (err) {
       console.error("Failed to update feature:", err);

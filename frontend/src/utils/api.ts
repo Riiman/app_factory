@@ -846,6 +846,245 @@ class Api {
     });
     return response.scenario;
   }
+
+  // --- Recruitment ---
+
+  async getJobs(startupId: number) {
+    const response = await this.fetch(`/recruitment/jobs?startup_id=${startupId}`);
+    return await response.json();
+  }
+
+  async getJobDetail(jobId: number) {
+    const response = await this.fetch(`/recruitment/jobs/${jobId}`);
+    return await response.json();
+  }
+
+  async createJob(startupId: number, data: any) {
+    return this.post(`/recruitment/jobs`, { startup_id: startupId, ...data });
+  }
+
+  async closeJob(jobId: number) {
+    return this.post(`/recruitment/jobs/${jobId}/close`, {});
+  }
+
+  async generateJobDescription(title: string, keywords: string, context?: string) {
+    return this.post(`/recruitment/jobs/generate-description`, { title, keywords, context });
+  }
+
+  async uploadCandidate(jobId: number | null, startupId: number, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('startup_id', startupId.toString());
+    if (jobId) formData.append('job_id', jobId.toString());
+
+    return this.uploadFile(`/recruitment/candidates/upload`, formData);
+  }
+
+  async getJobPipeline(jobId: number) {
+    const response = await this.fetch(`/recruitment/jobs/${jobId}/pipeline`);
+    return await response.json();
+  }
+
+  async getApplicationDetail(appId: number) {
+    const response = await this.fetch(`/recruitment/applications/${appId}`);
+    return await response.json();
+  }
+
+  async getRecruitmentAnalytics(startupId: number) {
+    const response = await this.fetch(`/recruitment/analytics?startup_id=${startupId}`);
+    return await response.json();
+  }
+
+  async moveApplication(appId: number, stage: string) {
+    return this.post(`/recruitment/applications/${appId}/move`, { stage });
+  }
+
+  async getApplicationActivities(appId: number) {
+    const response = await this.fetch(`/recruitment/applications/${appId}/activities`);
+    return await response.json();
+  }
+
+  async addApplicationActivity(appId: number, note: string, type: string = 'comment') {
+    return this.post(`/recruitment/applications/${appId}/activities`, { note, type });
+  }
+
+  // Calendar API
+  async getCalendarEvents(params: {
+    user_id?: number;
+    start?: string;
+    end?: string;
+    types?: string[];
+    modules?: string[];
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params.user_id) queryParams.append('user_id', params.user_id.toString());
+    if (params.start) queryParams.append('start', params.start);
+    if (params.end) queryParams.append('end', params.end);
+    params.types?.forEach(type => queryParams.append('types[]', type));
+    params.modules?.forEach(module => queryParams.append('modules[]', module));
+
+    const response = await this.fetch(`/calendar/events?${queryParams.toString()}`);
+    return await response.json();
+  }
+
+  async createEvent(data: {
+    title: string;
+    description?: string;
+    start: string;
+    end: string;
+    type: string;
+    location?: string;
+  }) {
+    const response = await this.fetch('/calendar/events', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  async updateEvent(eventId: number | string, data: any) {
+    const response = await this.fetch(`/calendar/events/${eventId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  async deleteEvent(eventId: number | string) {
+    const response = await this.fetch(`/calendar/events/${eventId}`, {
+      method: 'DELETE',
+    });
+    return await response.json();
+  }
+
+  async getTeamCalendarEvents(params: {
+    start?: string;
+    end?: string;
+    types?: string[];
+    modules?: string[];
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params.start) queryParams.append('start', params.start);
+    if (params.end) queryParams.append('end', params.end);
+    params.types?.forEach(type => queryParams.append('types[]', type));
+    params.modules?.forEach(module => queryParams.append('modules[]', module));
+
+    const response = await this.fetch(`/calendar/team-events?${queryParams.toString()}`);
+    return await response.json();
+  }
+
+  // Recruitment - Interview Scheduling
+  async scheduleInterview(applicationId: number, data: {
+    scheduled_at: string;
+    interviewer_id: number;
+    meeting_link?: string | null;
+    notes?: string | null;
+  }) {
+    const response = await this.fetch(`/recruitment/applications/${applicationId}/schedule-interview`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  async updateInterview(interviewId: number | string, data: any) {
+    const response = await this.fetch(`/recruitment/interviews/${interviewId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  async deleteInterview(interviewId: number | string) {
+    const response = await this.fetch(`/recruitment/interviews/${interviewId}`, {
+      method: 'DELETE',
+    });
+    return await response.json();
+  }
+
+
+  // --- PRODUCT PLANNER ENDPOINTS ---
+
+  async getFeatures(productId: number, filters?: any) {
+    // const params = new URLSearchParams(filters).toString();
+    const response = await this.fetch(`/planner/products/${productId}/features`);
+    if (!response.ok) throw new Error('Failed to fetch features');
+    return await response.json(); // Returns array directly
+  }
+
+  // Overriding/Replacing existing createFeature if it's different in planner logic,
+  // but existing createFeature uses /startups/... which might be legacy.
+  // The new planner endpoints use /api/planner
+  // Let's create new methods to avoid breaking legacy for now.
+
+  async addPlannerFeature(productId: number, data: any) {
+    const response = await this.post(`/planner/products/${productId}/features`, data);
+    return response;
+  }
+
+  async updatePlannerFeature(featureId: number, data: any) {
+    const response = await this.put(`/planner/features/${featureId}`, data);
+    return response;
+  }
+
+  async deletePlannerFeature(featureId: number) {
+    return this.delete(`/planner/features/${featureId}`);
+  }
+
+  async getSprints(productId: number) {
+    const response = await this.fetch(`/planner/products/${productId}/sprints`);
+    if (!response.ok) throw new Error('Failed to fetch sprints');
+    return await response.json();
+  }
+
+  async createSprint(productId: number, data: any) {
+    const response = await this.post(`/planner/products/${productId}/sprints`, data);
+    return response;
+  }
+
+  async startSprint(sprintId: number) {
+    const response = await this.post(`/planner/sprints/${sprintId}/start`, {});
+    return response;
+  }
+
+  async completeSprint(sprintId: number) {
+    const response = await this.post(`/planner/sprints/${sprintId}/complete`, {});
+    return response;
+  }
+
+  async getReleases(productId: number) {
+    const response = await this.fetch(`/planner/products/${productId}/releases`);
+    if (!response.ok) throw new Error('Failed to fetch releases');
+    return await response.json();
+  }
+
+  async createRelease(productId: number, data: any) {
+    const response = await this.post(`/planner/products/${productId}/releases`, data);
+    return response;
+  }
+
+  async generateReleaseNotes(releaseId: number) {
+    const response = await this.post(`/planner/releases/${releaseId}/generate-notes`, {});
+    return response;
+  }
+
+  // Feature Assignment Methods
+  async assignFeaturesToSprint(sprintId: number, featureIds: number[]) {
+    const response = await this.post(`/planner/sprints/${sprintId}/assign-features`, { feature_ids: featureIds });
+    return response;
+  }
+
+  async assignFeaturesToRelease(releaseId: number, featureIds: number[]) {
+    const response = await this.post(`/planner/releases/${releaseId}/assign-features`, { feature_ids: featureIds });
+    return response;
+  }
+
+  async unassignFeature(featureId: number, type: 'sprint' | 'release' | 'both' = 'both') {
+    const response = await this.post(`/planner/features/${featureId}/unassign`, { type });
+    return response;
+  }
+
+
 }
 
 export default new Api();

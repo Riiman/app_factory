@@ -225,7 +225,7 @@ def _calculate_module_health(startup_id, days=90):
     for product in products:
         features = Feature.query.filter_by(product_id=product.id).all()
         total_features += len(features)
-        completed_features += sum(1 for f in features if f.status == FeatureStatus.COMPLETED)
+        completed_features += sum(1 for f in features if f.status == FeatureStatus.DONE)
         
         bugs = ProductIssue.query.filter(
             ProductIssue.product_id == product.id,
@@ -423,7 +423,7 @@ def _get_recent_wins(startup_id, days=30):
     # Completed features - use created_at since updated_at doesn't exist
     completed_features = Feature.query.join(Product).filter(
         Product.startup_id == startup_id,
-        Feature.status == FeatureStatus.COMPLETED,
+        Feature.status == FeatureStatus.DONE,
         Feature.created_at >= cutoff_date
     ).order_by(Feature.created_at.desc()).limit(3).all()
     

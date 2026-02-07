@@ -36,13 +36,15 @@ interface SidebarProps {
     activeScope: Scope;
     /** The currently active sub-page, used for highlighting. */
     activeSubPage: string;
+    /** The currently active menu item name (e.g., 'Dashboard', 'Calendar'). */
+    activeMenuItem?: string;
     /** Callback function triggered when a navigation link is clicked. */
     onNavClick: (scope: string, subPage?: string) => void;
     /** Optional list of items to display pinned to the bottom. */
     bottomItems?: MenuItem[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage, onNavClick, bottomItems }) => {
+const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage, activeMenuItem, onNavClick, bottomItems }) => {
     /** Internal state to manage which collapsible section is currently open. */
     const [openScope, setOpenScope] = useState<string | null>(activeScope ? activeScope.toString() : Scope.WORKSPACE.toString());
     const { user } = useAuth(); // Access user context for organization details
@@ -59,6 +61,11 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
      * Checks if a given menu item is active.
      */
     const isItemActive = (item: MenuItem) => {
+        // If activeMenuItem is provided, use exact name match
+        if (activeMenuItem) {
+            return item.name === activeMenuItem;
+        }
+        // Fallback to scope-based matching
         if (item.scope) {
             return activeScope === item.scope;
         }
