@@ -27,9 +27,17 @@ def create_app(config_class=None): # Changed default from Config to None
     if config_class:
         app.config.from_object(config_class)
     else:
-        # Fallback if no config provided (e.g. tests) - Try importing from root? 
-        # For now, assume config_class is always passed by run.py
-        pass
+        # Fallback: Try to load config from root config.py
+        try:
+            # Dynamically import config from root to avoid circular imports or path issues
+            import sys
+            import os
+            sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+            from config import get_config
+            app.config.from_object(get_config())
+        except ImportError as e:
+            app.logger.warning(f"Could not load config from root: {e}")
+            pass
 
     # Initialize Firebase Admin SDK
     if not firebase_admin._apps:
