@@ -37,8 +37,14 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
         # --- Generate Product and Features ---
         print(f"--- [Generation Task] Generating Product for startup ID: {startup_id} ---")
         product_prompt = PromptTemplate.from_template(
-            "Based on the following scope document, define a product with a name and description. "
-            "Also, define a comprehensive list of features for the MVP and immediate roadmap. "
+            "Based on the following scope document, define a product with comprehensive details. "
+            "Also, define a comprehensive list of features for the MVP and immediate roadmap. \n\n"
+            "For the product, provide:\n"
+            "- 'product_name': Product name\n"
+            "- 'product_description': Detailed product description\n"
+            "- 'customer_segment': Description of target customers (who will use this product)\n"
+            "- 'unique_value_prop': Core unique value proposition (what makes this product special)\n"
+            "- 'tech_stack': Array of suggested technologies/frameworks (e.g., ['React', 'Node.js', 'PostgreSQL'])\n\n"
             "For each feature, provide:\n"
             "- 'name': Feature title\n"
             "- 'description': Detailed explanation\n"
@@ -46,7 +52,7 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
             "- 'acceptance_criteria': Bullet points of verifiable criteria\n"
             "- 'priority': 1 (Critical) to 5 (Low)\n"
             "- 'rice_scores': Object with keys 'reach' (1-10), 'impact' (1-10), 'confidence' (0-100), 'effort' (1-10)\n\n"
-            "Output a JSON object with keys 'product_name' (string), 'product_description' (string), and 'features' (array of objects).\n\n"
+            "Output a JSON object with keys 'product_name', 'product_description', 'customer_segment', 'unique_value_prop', 'tech_stack', and 'features' (array of objects).\n\n"
             "Scope Document:\n{scope_content}"
         )
         product_chain = product_prompt | llm
@@ -59,6 +65,9 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                 startup_id=startup.id,
                 name=product_data.get('product_name'),
                 description=product_data.get('product_description'),
+                customer_segment=product_data.get('customer_segment'),
+                unique_value_prop=product_data.get('unique_value_prop'),
+                tech_stack=product_data.get('tech_stack'),
                 created_at=datetime.utcnow()
             )
             db.session.add(product)
@@ -103,6 +112,17 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                             if feature.rice_effort and feature.rice_effort > 0:
                                 score = (feature.rice_reach * feature.rice_impact * (feature.rice_confidence / 100)) / feature.rice_effort
                                 feature.rice_score = round(score, 2)
+                                
+                                # Generate effort estimate (T-shirt sizing) based on RICE effort
+                                effort_map = {1: 'XS', 2: 'S', 3: 'M', 4: 'L', 5: 'L'}
+                                if feature.rice_effort <= 2:
+                                    feature.effort_estimate = effort_map.get(feature.rice_effort, 'XS')
+                                elif feature.rice_effort <= 4:
+                                    feature.effort_estimate = 'M'
+                                elif feature.rice_effort <= 6:
+                                    feature.effort_estimate = 'L'
+                                else:
+                                    feature.effort_estimate = 'XL'
                         except:
                             pass
 
@@ -123,8 +143,13 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
         # --- Generate Product Metrics ---
         metrics_data = [] # Initialize metrics_data to an empty list
         metrics_prompt = PromptTemplate.from_template(
-            "Based on the following scope document, define 3-5 key product metrics to track for the MVP. "
-            "Output a JSON array of strings, e.g., ['Metric 1', 'Metric 2'].\n\n"
+            "Based on the following scope document, define 3-5 key product metrics to track for the MVP. \n"
+            "For each metric, provide:\n"
+            "- 'metric_name': Name of the metric (e.g., 'Daily Active Users')\n"
+            "- 'target_value': Suggested target/goal value (numeric)\n"
+            "- 'unit': Unit of measurement (e.g., 'users', '%', '$', 'sessions')\n"
+            "- 'period': Tracking period ('daily', 'weekly', 'monthly', 'quarterly')\n\n"
+            "Output a JSON object with a 'metrics' key containing an array of metric objects.\n\n"
             "Scope Document:\n{scope_content}"
         )
         metrics_chain = metrics_prompt | llm
@@ -143,17 +168,30 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
             print(f"--- [Generation Task] Warning: Failed to decode JSON for metrics generation for startup ID: {startup_id}. Raw output: {metrics_json_str} ---")
 
         if metrics_data:
-            for metric_name in metrics_data:
-                # Ensure each metric_name is a string if the LLM outputted an array of strings
-                if isinstance(metric_name, str):
+            for metric_obj in metrics_data:
+                # Handle both string (legacy) and object (new) formats
+                if isinstance(metric_obj, str):
+                    # Legacy format: just metric name
                     metric = ProductMetric(
                         product_id=product.id,
-                        metric_name=metric_name,
+                        metric_name=metric_obj,
                         date_recorded=datetime.utcnow()
                     )
-                    db.session.add(metric)
+                elif isinstance(metric_obj, dict):
+                    # New format: structured metric object
+                    metric = ProductMetric(
+                        product_id=product.id,
+                        metric_name=metric_obj.get('metric_name'),
+                        target_value=metric_obj.get('target_value'),
+                        unit=metric_obj.get('unit'),
+                        period=metric_obj.get('period'),
+                        date_recorded=datetime.utcnow()
+                    )
                 else:
-                    print(f"--- [Generation Task] Warning: Metric item is not a string for startup ID: {startup_id}. Item: {metric_name} ---")
+                    print(f"--- [Generation Task] Warning: Metric item is not a string or dict for startup ID: {startup_id}. Item: {metric_obj} ---")
+                    continue
+                    
+                db.session.add(metric)
 
 
     if generate_gtm:
@@ -186,6 +224,7 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                 if isinstance(campaign_data_item, dict):
                     campaign = MarketingCampaign(
                         startup_id=startup.id,
+                        product_id=product.id if product else None,  # Link to generated product
                         campaign_name=campaign_data_item.get('name'),
                         objective=campaign_data_item.get('objective'),
                         created_by=startup.user_id,
@@ -228,6 +267,7 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                             content_calendar = MarketingContentCalendar(
                                 campaign_id=campaign.campaign_id,
                                 title=f"Content Calendar for {campaign.campaign_name}",
+                                description=f"Scheduled content for {campaign.campaign_name} campaign",
                                 owner_id=startup.user_id,
                                 start_date=datetime.utcnow()
                             )
@@ -235,20 +275,42 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                             db.session.flush() # to get content_calendar.id
 
                             publish_date = datetime.utcnow()
+                            last_publish_date = None
                             for item_data in content_calendar_data:
                                 if isinstance(item_data, dict):
+                                    channel = item_data.get('platform', 'General')
+                                    
+                                    # Infer content_type from channel
+                                    content_type_map = {
+                                        'LinkedIn': 'Social Post',
+                                        'Instagram': 'Social Post',
+                                        'Facebook': 'Social Post',
+                                        'Twitter': 'Social Post',
+                                        'X': 'Social Post',
+                                        'Blog': 'Blog Article',
+                                        'Email': 'Email Campaign',
+                                        'YouTube': 'Video',
+                                        'TikTok': 'Video'
+                                    }
+                                    content_type = content_type_map.get(channel, 'Post')
+                                    
                                     content_item = MarketingContentItem(
                                         calendar_id=content_calendar.calendar_id,
                                         title=item_data.get('title'),
+                                        content_type=content_type,  # Inferred from channel
                                         content_brief=item_data.get('description'), # Map description to brief
                                         content_body=None, # Leave body empty for generation
-                                        channel=item_data.get('platform', 'General'), # Map platform to channel
+                                        channel=channel, # Map platform to channel
                                         media_type='image' if item_data.get('image_idea') else 'text_only',
                                         image_prompt=item_data.get('image_idea'),
                                         created_by=startup.user_id,
                                         publish_date=publish_date,
                                         created_at=datetime.utcnow()
                                     )
+                                    
+                                    # Track last publish date for calendar end_date
+                                    if last_publish_date is None or publish_date > last_publish_date:
+                                        last_publish_date = publish_date
                                     
                                     # Generate Image if prompt exists
                                     if content_item.image_prompt:
@@ -259,6 +321,29 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
                                     publish_date += timedelta(days=3)
                                 else:
                                     print(f"--- [Generation Task] Warning: Content item is not a dictionary for campaign '{campaign.campaign_name}'. Item: {item_data} ---")
+                            
+                            # Set calendar end_date based on last publish date
+                            if last_publish_date:
+                                content_calendar.end_date = last_publish_date
+                            
+                            # --- Update Campaign with Channel and End Date ---
+                            # Aggregate unique channels from content items
+                            channels = set()
+                            last_publish_date = None
+                            for item in content_calendar.content_items:
+                                if item.channel:
+                                    channels.add(item.channel)
+                                if item.publish_date:
+                                    if last_publish_date is None or item.publish_date > last_publish_date:
+                                        last_publish_date = item.publish_date
+                            
+                            # Update campaign with aggregated data
+                            if channels:
+                                campaign.channel = ", ".join(sorted(channels))
+                            if last_publish_date:
+                                # Add 7 days buffer after last publish date
+                                campaign.end_date = last_publish_date + timedelta(days=7)
+                            
                         else:
                             print(f"--- [Generation Task] Warning: No content calendar data to process for campaign '{campaign.campaign_name}'. Raw output: {content_calendar_json_str} ---")
                     except json.JSONDecodeError:
