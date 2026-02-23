@@ -123,13 +123,30 @@ def organization_signup():
             except Exception as e:
                 current_app.logger.error(f"Failed to send verification email: {e}")
 
+        # 6. Check the user's most recent submission (even if empty, for consistency)
+        submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+        submission_status = submission.status.value if submission else "not_started"
+        
+        user_dict = user.to_dict()
+        if not user.startups:
+             from app.models import TeamMember
+             tm = TeamMember.query.filter_by(user_id=user.id).first()
+             if tm:
+                 user_dict['scopes'] = tm.scopes
+                 if not user_dict.get('startup_id'):
+                     user_dict['startup_id'] = tm.startup_id
+        else:
+             user_dict['scopes'] = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
+
         return jsonify({
             'success': True, 
             'message': 'Organization created successfully.',
             'organization': new_org.to_dict(),
             'invite_code': new_org.invite_code, 
-            'user': user.to_dict(),
-            'access_token': access_token
+            'user': user_dict,
+            'access_token': access_token,
+            'submission_status': submission_status,
+            'submission_data': submission.to_dict() if submission else None,
         }), 201
 
     except auth.InvalidIdTokenError:
@@ -211,11 +228,28 @@ def signup():
             except Exception as e:
                 current_app.logger.error(f"Failed to send verification email: {e}")
 
+        # 5. Check the user's most recent submission (existing logic)
+        submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+        submission_status = submission.status.value if submission else "not_started"
+        
+        user_dict = user.to_dict()
+        if not user.startups:
+             from app.models import TeamMember
+             tm = TeamMember.query.filter_by(user_id=user.id).first()
+             if tm:
+                 user_dict['scopes'] = tm.scopes
+                 if not user_dict.get('startup_id'):
+                     user_dict['startup_id'] = tm.startup_id
+        else:
+             user_dict['scopes'] = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
+
         return jsonify({
             'success': True, 
             'message': 'Account created successfully.',
-            'user': user.to_dict(),
-            'access_token': access_token
+            'user': user_dict,
+            'access_token': access_token,
+            'submission_status': submission_status,
+            'submission_data': submission.to_dict() if submission else None,
         }), 201
 
     except auth.InvalidIdTokenError:
@@ -436,12 +470,29 @@ def assign_organization():
                 additional_claims={"role": user.role.value, "organization_id": org.id}
             )
             
+            # Check the user's most recent submission
+            submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+            submission_status = submission.status.value if submission else "not_started"
+            
+            user_dict = user.to_dict()
+            if not user.startups:
+                 from app.models import TeamMember
+                 tm = TeamMember.query.filter_by(user_id=user.id).first()
+                 if tm:
+                     user_dict['scopes'] = tm.scopes
+                     if not user_dict.get('startup_id'):
+                         user_dict['startup_id'] = tm.startup_id
+            else:
+                 user_dict['scopes'] = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
+
             return jsonify({
                 'success': True,
                 'message': 'Successfully joined organization.',
                 'organization': org.to_dict(),
-                'user': user.to_dict(),
-                'access_token': access_token
+                'user': user_dict,
+                'access_token': access_token,
+                'submission_status': submission_status,
+                'submission_data': submission.to_dict() if submission else None,
             }), 200
             
         else:

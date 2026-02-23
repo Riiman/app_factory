@@ -20,7 +20,7 @@ const RequireScope: React.FC<RequireScopeProps> = ({ children, scope, redirectTo
     // Note: Assuming 'admin' role or ownership implies full access.
     // We can also check if (user.id === startup.user_id) but we need startup context.
     // For now, let's rely on the scopes list in the user object if available, OR role.
-    if (user.role === 'admin') return <>{children}</>;
+    if (user.role?.toUpperCase() === 'ADMIN' || user.role === 'admin') return <>{children}</>;
 
     // 2. Check Scopes
     // We assume the backend User.to_dict() includes a list of scopes for the CURRENT startup.

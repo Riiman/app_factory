@@ -15,7 +15,7 @@ const PublicRoute: React.FC = () => {
   if (user) {
 
     let targetPath: string;
-    if (user.role === 'admin') {
+    if (user.role?.toUpperCase() === 'ADMIN' || user.role === 'admin') {
       targetPath = '/admin';
       // Admin might not be bound to one org, so maybe no prefix?
       // Or if checking an org, /orgSlug/admin? Assuming global admin for now.

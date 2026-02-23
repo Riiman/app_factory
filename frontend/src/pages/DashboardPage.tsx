@@ -866,7 +866,7 @@ const DashboardPage: React.FC = () => {
         if (!user) return [];
 
         const isOwner = startup && user.id === startup.user_id;
-        const isAdmin = user.role === 'admin';
+        const isAdmin = user.role?.toUpperCase() === 'ADMIN' || user.role === 'admin';
 
         if (isOwner || isAdmin) {
             return allItems;
@@ -889,7 +889,7 @@ const DashboardPage: React.FC = () => {
 
         if (!user) return [];
         const isOwner = startup && user.id === startup.user_id;
-        const isAdmin = user.role === 'admin';
+        const isAdmin = user.role?.toUpperCase() === 'ADMIN' || user.role === 'admin';
 
         if (isOwner || isAdmin) return items;
 

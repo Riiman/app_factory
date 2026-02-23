@@ -75,7 +75,7 @@ const LoginPage: FC = () => {
       if (orgSlug && user.organization?.slug !== orgSlug) {
         setError("You are logged in to a different organization. Please sign out to switch.");
       } else {
-        if (user.role === 'admin') {
+        if (user.role?.toUpperCase() === 'ADMIN' || user.role === 'admin') {
           navigate('/admin');
         } else {
           const dest = orgSlug ? `/${orgSlug}/dashboard` : (startupSlug ? `/${startupSlug}/dashboard` : '/dashboard');
@@ -107,7 +107,7 @@ const LoginPage: FC = () => {
           localStorage.setItem('access_token', data.access_token);
           localStorage.setItem('user', JSON.stringify(data.user));
 
-          if (data.user.role === 'admin') {
+          if (data.user.role?.toUpperCase() === 'ADMIN' || data.user.role === 'admin') {
             const orgSlug = data.user.organization?.slug;
             window.location.href = orgSlug ? `/${orgSlug}/admin` : '/admin';
           } else {
@@ -201,7 +201,7 @@ const LoginPage: FC = () => {
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.user));
 
-        if (data.user.role === 'admin') {
+        if (data.user.role?.toUpperCase() === 'ADMIN' || data.user.role === 'admin') {
           const orgSlug = data.user.organization?.slug;
           window.location.href = orgSlug ? `/${orgSlug}/admin` : '/admin';
         } else {
