@@ -378,10 +378,14 @@ const DashboardPage: React.FC = () => {
             setIsCreateExperimentModalOpen(false);
         } catch (error) { console.error("Failed to create experiment:", error); }
     };
-    const handleCreateArtifact = async (newArtifactData: Omit<Artifact, 'id' | 'startup_id' | 'created_at'>) => {
+    const handleCreateArtifact = async (newArtifactData: any) => {
         if (!startup) return;
         try {
-            await api.createArtifact(startup.id, newArtifactData);
+            // Only call createArtifact if the artifact doesn't already have an ID
+            // (e.g., FILE uploads already create the record in CreateArtifactModal)
+            if (!newArtifactData.id) {
+                await api.createArtifact(startup.id, newArtifactData);
+            }
             queryClient.invalidateQueries({ queryKey: ['artifacts', startup.id] });
             setIsCreateArtifactModalOpen(false);
         } catch (error) { console.error("Failed to create artifact:", error); }
