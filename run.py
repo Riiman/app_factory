@@ -11,9 +11,7 @@ import os
 config_class = get_config()
 app = create_app(config_class)
 
-# Debug: Print S3 bucket configuration
-print(f"DEBUG: AWS_S3_BUCKET from os.getenv = {os.getenv('AWS_S3_BUCKET')}")
-print(f"DEBUG: AWS_S3_BUCKET from app.config = {app.config.get('AWS_S3_BUCKET')}")
+
 
 @app.shell_context_processor
 def make_shell_context():
