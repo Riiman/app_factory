@@ -6,16 +6,8 @@ import time
 
 class DockerManager:
     def __init__(self):
-        try:
-            # Force local socket for Linux environment to avoid SSH hangs
-            self.client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-        except Exception:
-            try:
-                # Fallback to env
-                self.client = docker.from_env()
-            except Exception as e:
-                print(f"Error initializing Docker client: {e}")
-                self.client = None
+        self._client = None
+        self._client_initialized = False
 
         # Fix: Initialize base_work_dir
         base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,7 +16,26 @@ class DockerManager:
             try:
                 os.makedirs(self.base_work_dir, exist_ok=True)
             except Exception as e:
-                print(f"Error creating base_work_dir: {e}")
+                pass # Suppress error printing for cleanly startup
+
+    @property
+    def client(self):
+        if not self._client_initialized:
+            self._client_initialized = True
+            # Suppress noisy docker debug logs
+            logging.getLogger('docker').setLevel(logging.WARNING)
+            logging.getLogger('urllib3').setLevel(logging.WARNING)
+            try:
+                # Force local socket for Linux environment to avoid SSH hangs
+                self._client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+            except Exception:
+                try:
+                    # Fallback to env
+                    self._client = docker.from_env()
+                except Exception:
+                    # We are not using docker anymore, suppress the error print
+                    self._client = None
+        return self._client
 
     def get_container_name(self, startup_id, container_name=None):
         """

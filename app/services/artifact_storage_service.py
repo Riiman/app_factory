@@ -1,62 +1,57 @@
 """
-Artifact Storage Service - Handles S3 operations for FILE-type artifacts.
+Artifact Storage Service - Handles Azure Blob Storage operations for FILE-type artifacts.
 
-This service manages file uploads to S3, generates presigned download URLs,
+This service manages file uploads to Azure Blob Storage, generates SAS download URLs,
 and handles file deletion. It maintains backward compatibility with existing
 LINK and TEXT artifacts.
 """
 
-import boto3
-from botocore.exceptions import ClientError
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
+from azure.core.exceptions import AzureError
 from werkzeug.utils import secure_filename
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from flask import current_app
 from app.models import Artifact, ArtifactType, StorageBackend, Scope
 from app.extensions import db
 
 
 class ArtifactStorageService:
-    """Service for managing file storage in S3 for FILE-type artifacts"""
-    
-    def __init__(self):
-        """Initialize S3 client"""
-        self.s3_client = None
-    
-    def _ensure_client(self):
-        """Ensure S3 client is initialized"""
-        if not self.s3_client:
-            self._initialize_s3_client()
-        return self.s3_client
+    """Service for managing file storage in Azure Blob Storage for FILE-type artifacts"""
 
-    def _initialize_s3_client(self):
-        """Initialize boto3 S3 client with credentials from config"""
+    def __init__(self):
+        """Initialize Azure Blob client (lazy)"""
+        self.blob_service_client = None
+
+    def _ensure_client(self):
+        """Ensure Blob service client is initialized"""
+        if not self.blob_service_client:
+            self._initialize_blob_client()
+        return self.blob_service_client
+
+    def _initialize_blob_client(self):
+        """Initialize Azure BlobServiceClient with connection string from config"""
         try:
-            self.s3_client = boto3.client(
-                's3',
-                aws_access_key_id=current_app.config.get('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=current_app.config.get('AWS_SECRET_ACCESS_KEY'),
-                region_name=current_app.config.get('AWS_REGION', 'us-east-1')
-            )
+            connection_string = current_app.config.get('AZURE_STORAGE_CONNECTION_STRING')
+            if not connection_string:
+                raise ValueError("AZURE_STORAGE_CONNECTION_STRING is not set.")
+            self.blob_service_client = BlobServiceClient.from_connection_string(connection_string)
         except Exception as e:
-            current_app.logger.error(f"Failed to initialize S3 client: {str(e)}")
-            self.s3_client = None
-    
-    def _generate_s3_key(self, startup_id, scope, original_filename):
+            current_app.logger.error(f"Failed to initialize Azure Blob client: {str(e)}")
+            self.blob_service_client = None
+
+    def _generate_blob_name(self, startup_id, scope, original_filename):
         """
-        Generate unique S3 key for file storage.
+        Generate unique blob name for file storage.
         Format: {startup_id}/{scope}/{timestamp}_{uuid}_{filename}
         """
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
         unique_id = str(uuid.uuid4())[:8]
         safe_filename = secure_filename(original_filename)
-        
-        # Map scope to folder structure
         scope_folder = str(scope).lower() if scope else 'general'
-        
         return f"{startup_id}/{scope_folder}/{timestamp}_{unique_id}_{safe_filename}"
-    
+
     def upload_file_artifact(
         self,
         file,
@@ -69,8 +64,8 @@ class ArtifactStorageService:
         description=None
     ):
         """
-        Upload a file to S3 and create FILE-type artifact.
-        
+        Upload a file to Azure Blob Storage and create a FILE-type artifact.
+
         Args:
             file: FileStorage object from request.files
             startup_id: ID of the startup
@@ -80,242 +75,239 @@ class ArtifactStorageService:
             linked_entity_type: Optional entity type (e.g., 'transaction', 'customer')
             linked_entity_id: Optional entity ID
             description: Optional description
-            
+
         Returns:
-            Artifact object with S3 fields populated
-            
+            Artifact object with Azure Blob fields populated
+
         Raises:
-            ValueError: If file validation fails
-            Exception: If S3 upload fails
+            ValueError: If file validation or config fails
+            Exception: If Azure upload fails
         """
         if not self._ensure_client():
-            raise Exception("S3 client not initialized. Check AWS credentials.")
-        
-        current_app.logger.info("=== Starting file upload ===")
-        
+            raise Exception("Azure Blob client not initialized. Check AZURE_STORAGE_CONNECTION_STRING.")
+
+        current_app.logger.info("=== Starting file upload (Azure Blob Storage) ===")
+
         # Validate file
         is_valid, error_msg = self._validate_file(file)
         if not is_valid:
             current_app.logger.error(f"File validation failed: {error_msg}")
             raise ValueError(error_msg)
-        
+
         current_app.logger.info("File validation passed")
-        
+
         # Get file metadata
         original_filename = file.filename
         file_size = self._get_file_size(file)
         mime_type = file.content_type or 'application/octet-stream'
-        
+
         current_app.logger.info(f"File metadata: name={original_filename}, size={file_size}, mime={mime_type}")
-        
-        # Generate S3 key
-        s3_bucket = current_app.config.get('AWS_S3_BUCKET')
-        s3_region = current_app.config.get('AWS_REGION', 'us-east-1')
-        
-        current_app.logger.info(f"S3 config: bucket={s3_bucket}, region={s3_region}")
-        
-        # Validate S3 configuration
-        if not s3_bucket:
+
+        # Get Azure config
+        container_name = current_app.config.get('AZURE_STORAGE_CONTAINER_NAME')
+        if not container_name:
             raise ValueError(
-                "AWS_S3_BUCKET is not configured. Please set AWS_S3_BUCKET in your .env file "
-                "and restart the Flask server."
+                "AZURE_STORAGE_CONTAINER_NAME is not configured. "
+                "Please set it in your .env file and restart the server."
             )
-        
-        s3_key = self._generate_s3_key(startup_id, scope, original_filename)
-        
-        current_app.logger.info(f"Generated S3 key: {s3_key}")
-        
+
+        blob_name = self._generate_blob_name(startup_id, scope, original_filename)
+        current_app.logger.info(f"Generated blob name: {blob_name}")
+
         try:
-            # Upload to S3
-            file.seek(0)  # Reset file pointer
-            current_app.logger.info("Starting S3 upload...")
-            self.s3_client.upload_fileobj(
-                file,
-                s3_bucket,
-                s3_key,
-                ExtraArgs={
-                    'ContentType': mime_type,
-                    'ServerSideEncryption': 'AES256'
-                }
+            # Upload to Azure Blob Storage
+            file.seek(0)
+            current_app.logger.info("Starting Azure Blob upload...")
+            blob_client = self.blob_service_client.get_blob_client(
+                container=container_name,
+                blob=blob_name
             )
-            
+            blob_client.upload_blob(
+                file,
+                overwrite=True,
+                content_settings=None  # content_type can be set here if needed
+            )
+
             # Create artifact record
+            # We reuse s3_bucket/s3_key/s3_region to store Azure equivalents
+            # to avoid a DB migration (container_name / blob_name / azure)
             artifact = Artifact(
                 startup_id=startup_id,
                 scope=scope,
                 name=name,
                 description=description,
                 type=ArtifactType.FILE,
-                location=s3_key,  # Store S3 key in location field
-                storage_backend=StorageBackend.S3,
+                location=blob_name,            # blob name stored in location
+                storage_backend=StorageBackend.S3,  # reusing S3 enum as AZURE placeholder
                 file_size=file_size,
                 mime_type=mime_type,
                 original_filename=original_filename,
-                s3_bucket=s3_bucket,
-                s3_key=s3_key,
-                s3_region=s3_region,
+                s3_bucket=container_name,      # container name
+                s3_key=blob_name,              # blob name
+                s3_region='azure',             # sentinel to indicate Azure
                 uploaded_by=user_id,
                 linked_to_type=linked_entity_type,
                 linked_to_id=linked_entity_id
             )
-            
+
             db.session.add(artifact)
             db.session.commit()
-            
-            current_app.logger.info(f"File uploaded to S3: {s3_key}")
+
+            current_app.logger.info(f"File uploaded to Azure Blob: {blob_name}")
             return artifact
-            
-        except ClientError as e:
-            current_app.logger.error(f"S3 upload failed: {str(e)}")
-            raise Exception(f"Failed to upload file to S3: {str(e)}")
-    
+
+        except AzureError as e:
+            current_app.logger.error(f"Azure Blob upload failed: {str(e)}")
+            raise Exception(f"Failed to upload file to Azure Blob Storage: {str(e)}")
+
     def get_download_url(self, artifact_id, expiration=None):
         """
-        Generate presigned download URL for FILE artifacts.
-        
+        Generate a SAS download URL for FILE artifacts.
+
         Args:
             artifact_id: ID of the artifact
             expiration: URL expiration time in seconds (default from config)
-            
+
         Returns:
-            str: Presigned download URL for FILE artifacts
+            str: SAS URL for FILE artifacts
             str: Direct location for LINK artifacts
-            None: For TEXT artifacts (content in location field)
-            
-        Raises:
-            ValueError: If artifact not found or deleted
-            Exception: If URL generation fails
+            None: For TEXT artifacts
         """
         artifact = Artifact.query.get(artifact_id)
         if not artifact:
             raise ValueError("Artifact not found")
-        
+
         if artifact.is_deleted:
             raise ValueError("Artifact has been deleted")
-        
-        # Handle different artifact types
+
+        # Handle LINK and TEXT artifact types (unchanged)
         if artifact.type == ArtifactType.LINK:
-            # For LINK artifacts, return the location directly
             return artifact.location
-        
+
         if artifact.type == ArtifactType.TEXT:
-            # For TEXT artifacts, content is in location field
             return None
-        
-        # For FILE artifacts with S3 storage
-        if artifact.type == ArtifactType.FILE and artifact.storage_backend == StorageBackend.S3:
+
+        # For FILE artifacts backed by Azure Blob Storage
+        if artifact.type == ArtifactType.FILE:
             if not self._ensure_client():
-                raise Exception("S3 client not initialized")
-            
-            expiration = expiration or current_app.config.get('S3_URL_EXPIRATION', 3600)
-            
+                raise Exception("Azure Blob client not initialized")
+
+            expiration_seconds = expiration or current_app.config.get('AZURE_BLOB_URL_EXPIRATION', 3600)
+            container_name = artifact.s3_bucket   # container stored here
+            blob_name = artifact.s3_key            # blob name stored here
+
             try:
-                url = self.s3_client.generate_presigned_url(
-                    'get_object',
-                    Params={
-                        'Bucket': artifact.s3_bucket,
-                        'Key': artifact.s3_key
-                    },
-                    ExpiresIn=expiration
+                # Extract account name and key from the client
+                account_name = self.blob_service_client.account_name
+                account_key = self.blob_service_client.credential.account_key
+
+                sas_token = generate_blob_sas(
+                    account_name=account_name,
+                    container_name=container_name,
+                    blob_name=blob_name,
+                    account_key=account_key,
+                    permission=BlobSasPermissions(read=True),
+                    expiry=datetime.now(timezone.utc) + timedelta(seconds=expiration_seconds)
                 )
-                return url
-            except ClientError as e:
-                current_app.logger.error(f"Failed to generate presigned URL: {str(e)}")
+
+                blob_url = (
+                    f"https://{account_name}.blob.core.windows.net"
+                    f"/{container_name}/{blob_name}?{sas_token}"
+                )
+                return blob_url
+
+            except AzureError as e:
+                current_app.logger.error(f"Failed to generate SAS URL: {str(e)}")
                 raise Exception(f"Failed to generate download URL: {str(e)}")
-        
-        # For FILE artifacts with LOCAL storage (legacy)
-        if artifact.type == ArtifactType.FILE and artifact.storage_backend == StorageBackend.LOCAL:
-            # Return local file path (would need separate handling in routes)
-            return artifact.location
-        
+
         return None
-    
+
     def delete_artifact(self, artifact_id):
         """
-        Soft delete artifact in DB and hard delete from S3 if applicable.
-        
+        Soft-delete artifact in DB and hard-delete the blob from Azure.
+
         Args:
             artifact_id: ID of the artifact to delete
-            
+
         Returns:
             bool: True if successful
-            
+
         Raises:
             ValueError: If artifact not found
         """
         artifact = Artifact.query.get(artifact_id)
         if not artifact:
             raise ValueError("Artifact not found")
-        
+
         # Soft delete in database
         artifact.is_deleted = True
         artifact.deleted_at = datetime.utcnow()
-        
-        # Hard delete from S3 if it's a FILE with S3 storage
-        if artifact.type == ArtifactType.FILE and artifact.storage_backend == StorageBackend.S3:
+
+        # Hard delete from Azure Blob Storage for FILE artifacts
+        if artifact.type == ArtifactType.FILE:
             if self._ensure_client():
+                container_name = artifact.s3_bucket
+                blob_name = artifact.s3_key
                 try:
-                    self.s3_client.delete_object(
-                        Bucket=artifact.s3_bucket,
-                        Key=artifact.s3_key
+                    blob_client = self.blob_service_client.get_blob_client(
+                        container=container_name,
+                        blob=blob_name
                     )
-                    current_app.logger.info(f"Deleted file from S3: {artifact.s3_key}")
-                except ClientError as e:
-                    current_app.logger.error(f"Failed to delete from S3: {str(e)}")
-                    # Continue with soft delete even if S3 deletion fails
-        
+                    blob_client.delete_blob()
+                    current_app.logger.info(f"Deleted blob from Azure: {blob_name}")
+                except AzureError as e:
+                    current_app.logger.error(f"Failed to delete blob from Azure: {str(e)}")
+                    # Continue with soft delete even if blob deletion fails
+
         db.session.commit()
         return True
-    
+
     def _validate_file(self, file):
         """
         Validate file size and type.
-        
+
         Returns:
             tuple: (is_valid: bool, error_message: str)
         """
         current_app.logger.info(f"Validating file: {file}")
-        current_app.logger.info(f"File object: {type(file)}")
-        current_app.logger.info(f"Has filename attr: {hasattr(file, 'filename')}")
-        
+
         if not file or not file.filename:
-            current_app.logger.error(f"File validation failed: no file or filename. file={file}, filename={getattr(file, 'filename', None)}")
             return False, "No file provided"
-        
+
         current_app.logger.info(f"Filename: {file.filename}")
-        
+
         # Check file size
         max_size = current_app.config.get('MAX_FILE_SIZE', 16 * 1024 * 1024)
         file_size = self._get_file_size(file)
-        
+
         current_app.logger.info(f"File size: {file_size} bytes, max: {max_size} bytes")
-        
+
         if file_size > max_size:
             return False, f"File size ({file_size} bytes) exceeds maximum allowed ({max_size} bytes)"
-        
+
         # Check file extension
         allowed_extensions = {
-            'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg',  # Images
-            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv',  # Documents
-            'txt', 'md',  # Text files
-            'zip'  # Archives
+            'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg',   # Images
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv',   # Documents
+            'txt', 'md',                                     # Text files
+            'zip'                                            # Archives
         }
-        
+
         filename = file.filename.lower()
         if '.' not in filename:
             return False, "File must have an extension"
-        
+
         extension = filename.rsplit('.', 1)[1]
         if extension not in allowed_extensions:
             return False, f"File type '.{extension}' not allowed"
-        
+
         return True, ""
-    
+
     def _get_file_size(self, file):
         """Get file size in bytes"""
         file.seek(0, os.SEEK_END)
         size = file.tell()
-        file.seek(0)  # Reset to beginning
+        file.seek(0)
         return size
 
 

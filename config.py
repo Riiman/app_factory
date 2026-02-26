@@ -70,12 +70,10 @@ class Config:
     # GetLate Configuration
     GETLATE_API_KEY = os.getenv('GETLATE_API_KEY')
     
-    # AWS S3 Configuration
-    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-    AWS_S3_BUCKET = os.getenv('AWS_S3_BUCKET')
-    AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
-    S3_URL_EXPIRATION = int(os.getenv('S3_URL_EXPIRATION', '3600'))  # 1 hour default
+    # Azure Blob Storage Configuration
+    AZURE_STORAGE_CONNECTION_STRING = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    AZURE_STORAGE_CONTAINER_NAME = os.getenv('AZURE_STORAGE_CONTAINER_NAME', 'venturestack-userdata')
+    AZURE_BLOB_URL_EXPIRATION = int(os.getenv('AZURE_BLOB_URL_EXPIRATION', '3600'))  # 1 hour default
     MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', str(16 * 1024 * 1024)))  # 16MB default
     
     # CORS Configuration
