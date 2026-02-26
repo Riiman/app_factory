@@ -1,3 +1,8 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import trio
 import asyncio
 import json
@@ -72,10 +77,6 @@ async def startup_event():
 
 
 # --- WebSocket Endpoint ---
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # --- JWT Configuration ---
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-please-change') 
