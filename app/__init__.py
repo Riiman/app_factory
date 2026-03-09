@@ -14,7 +14,7 @@ from firebase_admin import credentials
 from .extensions import db, sess, celery, oauth, redis_client, mail
 from .celery_utils import configure_celery
 import redis
-
+import sys
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -30,8 +30,6 @@ def create_app(config_class=None): # Changed default from Config to None
         # Fallback: Try to load config from root config.py
         try:
             # Dynamically import config from root to avoid circular imports or path issues
-            import sys
-            import os
             sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
             from config import get_config
             app.config.from_object(get_config())
