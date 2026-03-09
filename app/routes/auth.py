@@ -594,7 +594,8 @@ def get_organization_by_slug(slug):
             'id': org.id,
             'name': org.name,
             'slug': org.slug,
-            'invite_code': org.invite_code # Required for signup flow
+            'invite_code': org.invite_code, # Required for signup flow
+            'logo_url': org.logo_url
         }
     }), 200
 

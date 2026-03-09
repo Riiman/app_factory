@@ -35,7 +35,7 @@ const SignupPage: FC = () => {
   const [organizationId, setOrganizationId] = useState(''); // Invite code
 
   // Multi-tenant state
-  const [targetOrg, setTargetOrg] = useState<{ name: string, invite_code: string } | null>(null);
+  const [targetOrg, setTargetOrg] = useState<{ name: string, invite_code: string, logo_url?: string } | null>(null);
   const [isLoadingOrg, setIsLoadingOrg] = useState(false);
 
   // Route type detection
@@ -301,6 +301,7 @@ const SignupPage: FC = () => {
       </header>
       <AuthFormWrapper
         title={pageTitle}
+        logoUrl={targetOrg?.logo_url}
         footer={<>Already a member? <Link to={orgSlug ? `/${orgSlug}/login` : "/login"} className="font-medium text-blue-600 hover:text-blue-500">Sign in</Link></>}
       >
         {/* HIDE TOGGLE if Tenant Route or Create Route (Strict Separation) */}

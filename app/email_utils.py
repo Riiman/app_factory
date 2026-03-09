@@ -673,6 +673,50 @@ def send_password_reset_email(user_email, user_name, reset_token):
     return send_email_internal([user_email], "Reset your VentureStack password", html_content)
 
 
+def send_org_ready_credentials_email(user_email, user_name, org_name, slug, temp_password):
+    """
+    Send credentials to a newly pre-setup organization admin.
+    """
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    login_link = f"{frontend_url}/{slug}/login"
+    
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Hi {user_name},
+    </p>
+ 
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Your organization, <strong>{org_name}</strong>, is now ready on VentureStack!
+    </p>
+ 
+    <div style="
+    margin:24px 0;
+    padding:16px;
+    background:#f9fafb;
+    border-left:4px solid #111827;
+    font-size:14px;
+    color:#374151;
+    ">
+    <strong>Your Login Credentials:</strong><br><br>
+    • <strong>Email:</strong> {user_email}<br>
+    • <strong>Temporary Password:</strong> <code style="background:#eeeeee; padding:2px 4px; border-radius:3px;">{temp_password}</code>
+    </div>
+ 
+    <p style="font-size:14px; color:#374151;">
+    For security reasons, we recommend changing your password after your first login.
+    </p>
+    """
+ 
+    html_content = render_premium_email(
+        title="Your Organization is Ready",
+        body_html=body_html,
+        cta_text="Log in to your Dashboard",
+        cta_link=login_link,
+        footer_note="Welcome to the future of venture building"
+    )
+         
+    return send_email_internal([user_email], f"Welcome to {org_name} on VentureStack", html_content)
+ 
 def get_response_date():
     """Calculate expected response date (7 business days from now)"""
     from datetime import datetime, timedelta

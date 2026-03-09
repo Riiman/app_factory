@@ -34,6 +34,31 @@ const LoginPage: FC = () => {
   const [showResend, setShowResend] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
 
+  // Multi-tenant state
+  const [targetOrg, setTargetOrg] = useState<{ name: string, logo_url?: string } | null>(null);
+  const [isLoadingOrg, setIsLoadingOrg] = useState(false);
+
+  // Fetch Organization if looking at a tenant route
+  useEffect(() => {
+    if (orgSlug) {
+      const fetchOrg = async () => {
+        setIsLoadingOrg(true);
+        try {
+          const response = await api.get(`/auth/organization/${orgSlug}`);
+          if (response.success) {
+            setTargetOrg(response.organization);
+          }
+        } catch (err) {
+          console.error("Failed to fetch organization:", err);
+          // Silent fail for login branding
+        } finally {
+          setIsLoadingOrg(false);
+        }
+      };
+      fetchOrg();
+    }
+  }, [orgSlug]);
+
   const handleResendVerification = async () => {
     setResendLoading(true);
     try {
@@ -246,7 +271,8 @@ const LoginPage: FC = () => {
         </div>
       </header>
       <AuthFormWrapper
-        title={orgSlug ? "Sign in to your organization" : "Sign in to your account"}
+        title={targetOrg ? `Sign in to ${targetOrg.name}` : "Sign in to your account"}
+        logoUrl={targetOrg?.logo_url}
         footer={<>Not a member? <Link to={orgSlug ? `/${orgSlug}/signup` : "/signup"} className="font-medium text-blue-600 hover:text-blue-500">Create an account</Link></>}
       >
         <form className="space-y-6" onSubmit={handleSubmit}>
