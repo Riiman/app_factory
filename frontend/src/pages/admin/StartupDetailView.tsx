@@ -369,7 +369,7 @@ const AnalyticsTab: React.FC<{ startupId: number; startup: Startup }> = ({ start
     queryKey: ['startupInsights', startupId],
     queryFn: async () => {
       const response = await api.get(`/admin/startups/${startupId}/insights/latest`);
-      return response.data?.data;
+      return response.data;
     },
   });
 

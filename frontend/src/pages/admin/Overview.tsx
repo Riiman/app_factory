@@ -40,7 +40,7 @@ const Overview: React.FC<OverviewProps> = ({ startups, submissions, activity, no
         queryFn: async () => {
             try {
                 const response = await api.get('/admin/analytics/portfolio-summary');
-                return response.data?.data || null;
+                return response.data || null;
             } catch (error) {
                 console.error('Error fetching portfolio metrics:', error);
                 return null;
@@ -55,7 +55,7 @@ const Overview: React.FC<OverviewProps> = ({ startups, submissions, activity, no
         queryFn: async () => {
             try {
                 const response = await api.get('/admin/analytics/startup-rankings?metric=revenue&limit=5');
-                return response.data?.data || [];
+                return response.data || [];
             } catch (error) {
                 console.error('Error fetching rankings:', error);
                 return [];
@@ -69,7 +69,7 @@ const Overview: React.FC<OverviewProps> = ({ startups, submissions, activity, no
         queryFn: async () => {
             try {
                 const response = await api.get('/admin/analytics/organization-alerts');
-                return response.data?.data || [];
+                return response.data || [];
             } catch (error) {
                 console.error('Error fetching alerts:', error);
                 return [];

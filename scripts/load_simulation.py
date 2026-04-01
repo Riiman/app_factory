@@ -19,7 +19,7 @@ from app.models import (
     Task, FundingRound, TaskStatus, Scope, ProductStage, User,
     Feature, FeatureStatus, Experiment, ExperimentStatus,
     MarketingCampaign, MarketingCampaignStatus, Investor, InvestorStage, RoundInvestor,
-    CapTableEntry, StakeholderType
+    CapTableEntry, StakeholderType, Sprint, ProductMetric
 )
 from app.modules.crm.models import (
     CrmCompany, CrmContact, CrmDeal, CrmDealStage
@@ -61,6 +61,7 @@ def load_simulation_to_db(json_path, user_email):
         Experiment.query.filter_by(startup_id=startup.id).delete()
         Investor.query.filter_by(startup_id=startup.id).delete()
         CapTableEntry.query.filter_by(startup_id=startup.id).delete()
+        Sprint.query.filter_by(startup_id=startup.id).delete()
         MarketingCampaign.query.filter_by(startup_id=startup.id).delete()
         CrmDeal.query.filter_by(startup_id=startup.id).delete()
         CrmCompany.query.filter_by(startup_id=startup.id).delete()
@@ -108,29 +109,23 @@ def load_simulation_to_db(json_path, user_email):
         
         # 2b. Ensure Product exists
         product_data = sim_data.get("product")
-        if not startup.products and product_data:
-            p = Product(
-                startup_id=startup.id,
-                name=product_data.get("name", "PulseSync Platform"),
-                description=product_data.get("description", "AI-powered productivity and analytics"),
-                stage=ProductStage.BETA,
-            )
-            db.session.add(p)
-            db.session.flush()
-        elif not startup.products:
-            # Fallback
-            p = Product(
-                startup_id=startup.id,
-                name="PulseSync Platform",
-                description="AI-powered productivity and analytics",
-                stage=ProductStage.BETA,
-            )
-            db.session.add(p)
-            db.session.flush()
-        
-        # 2a. Record Opening Balance in Ledger
         first_month = sim_data["monthly_data"][0]
         start_dt = datetime.strptime(f"{first_month['month']} {first_month['year']}", "%B %Y").date()
+        
+        if not startup.products:
+            p1 = Product(
+                startup_id=startup.id,
+                name=product_data.get("name", "PulseSync Platform") if product_data else "PulseSync Platform",
+                description=product_data.get("description", "AI-powered productivity and analytics") if product_data else "AI-powered productivity and analytics",
+                stage=ProductStage.BETA,
+                created_at=start_dt
+            )
+            db.session.add(p1)
+            db.session.flush()
+        else:
+            p1 = startup.products[0]
+        
+        # 2a. Record Opening Balance in Ledger
         opening_je = JournalEntry(startup_id=startup.id, date=start_dt, description="Opening Balance")
         db.session.add(opening_je)
         db.session.flush()
@@ -339,6 +334,21 @@ def load_simulation_to_db(json_path, user_email):
             )
             db.session.add(bdata)
 
+            # 3.5 Sprints
+            sprint = None
+            if p1:
+                sprint = Sprint(
+                    startup_id=startup.id,
+                    product_id=p1.id,
+                    name=f"Sprint - {month_name} {year}",
+                    goal=f"Reach {month_data['milestone']} targets",
+                    start_date=dt,
+                    end_date=dt + timedelta(days=14),
+                    status="COMPLETED"
+                )
+                db.session.add(sprint)
+                db.session.flush()
+
             # 4. Tasks
             for task_data in month_data.get("tasks", []):
                 task_status = task_data.get("status", "PENDING").upper()
@@ -376,6 +386,7 @@ def load_simulation_to_db(json_path, user_email):
                         name=feat_data["name"],
                         description=feat_data["description"],
                         status=getattr(FeatureStatus, feature_status, FeatureStatus.BACKLOG),
+                        sprint_id=sprint.id if sprint else None,
                         created_by=user.id
                     )
                     db.session.add(feature)
