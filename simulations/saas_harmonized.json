@@ -1,0 +1,1203 @@
+{
+    "metadata": {
+        "company_name": "Syncwise",
+        "tagline": "Smarter Collaboration, Simplified.",
+        "description": "Syncwise is a SaaS startup founded in 2024 that streamlines cross-company project collaboration for distributed teams. Its platform integrates project management, document sharing, and real-time communication, helping mid-sized businesses reduce friction and improve productivity. After validating product-market fit in its first year, Syncwise is now scaling operations and expanding its customer base.",
+        "roadmap": [
+            {
+                "month_name": "May",
+                "year": 2025,
+                "milestone_title": "Beta Expansion",
+                "narrative_description": "Syncwise expands its closed beta to onboard 10 new mid-sized companies, gathering broader feedback and validating core features in diverse environments."
+            },
+            {
+                "month_name": "June",
+                "year": 2025,
+                "milestone_title": "Feature Release: Advanced Document Collaboration",
+                "narrative_description": "Launches a new module for real-time document editing, addressing a top user request and enabling smoother workflow integrations."
+            },
+            {
+                "month_name": "July",
+                "year": 2025,
+                "milestone_title": "Seed Funding Round",
+                "narrative_description": "Closes a $2M seed round led by a prominent early-stage VC, providing capital for product development and go-to-market activities."
+            },
+            {
+                "month_name": "August",
+                "year": 2025,
+                "milestone_title": "Hiring Key Team Members",
+                "narrative_description": "Onboards experienced engineers and a growth lead, strengthening technical and marketing capabilities for the next phase."
+            },
+            {
+                "month_name": "September",
+                "year": 2025,
+                "milestone_title": "First Paid Customer",
+                "narrative_description": "Secures its first paid subscription from a mid-sized consultancy, validating pricing and value proposition."
+            },
+            {
+                "month_name": "October",
+                "year": 2025,
+                "milestone_title": "API Launch",
+                "narrative_description": "Releases public APIs, enabling customers to integrate Syncwise with their internal systems and third-party tools."
+            },
+            {
+                "month_name": "November",
+                "year": 2025,
+                "milestone_title": "Customer Success Program Initiated",
+                "narrative_description": "Establishes formal onboarding and support processes to reduce churn and ensure user adoption."
+            },
+            {
+                "month_name": "December",
+                "year": 2025,
+                "milestone_title": "Major B2B Win",
+                "narrative_description": "Signs a contract with a regional tech firm for 100+ seats, marking the company\u2019s first significant enterprise deal."
+            },
+            {
+                "month_name": "January",
+                "year": 2026,
+                "milestone_title": "Launch Mobile App",
+                "narrative_description": "Debuts Syncwise\u2019s mobile app for iOS and Android, extending collaboration to teams on the go."
+            },
+            {
+                "month_name": "February",
+                "year": 2026,
+                "milestone_title": "Security Audit Passed",
+                "narrative_description": "Completes a third-party security audit, boosting trust among enterprise prospects and preparing for compliance certifications."
+            },
+            {
+                "month_name": "March",
+                "year": 2026,
+                "milestone_title": "International Expansion",
+                "narrative_description": "Onboards its first European customer and localizes the platform for German and French markets."
+            },
+            {
+                "month_name": "April",
+                "year": 2026,
+                "milestone_title": "User Milestone: 5,000 Active Users",
+                "narrative_description": "Celebrates surpassing 5,000 active users, demonstrating sustained growth and preparing for the next phase of scaling."
+            }
+        ]
+    },
+    "monthly_data": [
+        {
+            "financials": {
+                "revenue": 32000.0,
+                "expenses": 74000.0,
+                "mrr": 27000.0,
+                "new_customers": 10,
+                "total_customers": 33
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics",
+                    "amount": 9000.0,
+                    "stage": "OPEN",
+                    "notes": "Beta onboarding this month; evaluating platform fit for their distributed operations."
+                },
+                {
+                    "name": "TechNova Solutions",
+                    "amount": 11500.0,
+                    "stage": "WON",
+                    "notes": "Signed up for annual contract after successful pilot in beta expansion."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard 10 Beta Companies",
+                    "description": "Coordinate and execute onboarding for 10 new mid-sized companies into the closed beta.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Collect Feature Feedback",
+                    "description": "Gather detailed feedback on core collaboration features from new beta users.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Optimize Support Workflow",
+                    "description": "Improve support responsiveness for expanded beta cohort.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Document Search",
+                    "description": "Release document search with filters and relevance ranking for beta users.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Team Analytics Dashboard",
+                    "description": "Beta launch of cross-team productivity analytics for managers.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Group Onboarding Sessions",
+                    "hypothesis": "Running group onboarding webinars will reduce setup time and improve engagement rates among new beta companies.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Beta Expansion Outreach",
+                    "channel": "LinkedIn Ads",
+                    "spend": 6000,
+                    "conversions": 4
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.95,
+                    "unit": "%"
+                },
+                {
+                    "name": "Weekly Active Users",
+                    "value": 420,
+                    "unit": "users"
+                },
+                {
+                    "name": "Collaboration Efficiency",
+                    "value": 1.8,
+                    "unit": "hours saved per user/week"
+                }
+            ],
+            "month": "May",
+            "year": 2025,
+            "milestone": "Beta Expansion"
+        },
+        {
+            "financials": {
+                "revenue": 124000.0,
+                "expenses": 87000.0,
+                "mrr": 11000.0,
+                "new_customers": 32,
+                "total_customers": 298
+            },
+            "crm_deals": [
+                {
+                    "name": "TechBridge Inc.",
+                    "amount": 24000.0,
+                    "stage": "WON",
+                    "notes": "Closed after demoing Advanced Document Collaboration; annual contract"
+                },
+                {
+                    "name": "Unified Group",
+                    "amount": 15000.0,
+                    "stage": "OPEN",
+                    "notes": "Pilot started; interested in document module for remote teams"
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "QA Testing: Document Collaboration",
+                    "description": "Conduct thorough QA for the new real-time document editing module.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Workflow Integration Guides",
+                    "description": "Publish support documentation for seamless integration with existing workflows.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Training Sessions",
+                    "description": "Host webinars to onboard customers on the new document collaboration features.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Document Collaboration",
+                    "description": "Real-time co-editing, version control, and inline commenting on docs.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Workflow Integration API",
+                    "description": "API endpoints to integrate document collaboration with external tools.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Document Collaboration Adoption",
+                    "hypothesis": "Launching advanced document collaboration will increase weekly active users by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Feature Launch Webinar",
+                    "channel": "Webinar",
+                    "spend": 3500,
+                    "conversions": 24
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 1320,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.97,
+                    "unit": "%"
+                },
+                {
+                    "name": "Document Collaboration Usage",
+                    "value": 880,
+                    "unit": "sessions"
+                }
+            ],
+            "month": "June",
+            "year": 2025,
+            "milestone": "Feature Release: Advanced Document Collaboration"
+        },
+        {
+            "financials": {
+                "revenue": 42000.0,
+                "expenses": 86000.0,
+                "mrr": 38000.0,
+                "new_customers": 21,
+                "total_customers": 145
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "Closed a mid-sized SaaS subscription; key reference for expansion."
+                },
+                {
+                    "name": "Bluewave Logistics",
+                    "amount": 9000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating enterprise features; expected close in August."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Close Seed Funding",
+                    "description": "Finalize legal docs, wire funds, and announce the $2M seed round.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Ramp Up Hiring",
+                    "description": "Recruit 3 new engineers and 2 sales reps to support scaling.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Update Financial Model",
+                    "description": "Revise projections and budget post-fundraising.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Document Permissions",
+                    "description": "Granular access controls for shared files across companies.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Real-time messaging sync with Slack channels.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Project Timeline View",
+                    "description": "Visual Gantt chart for cross-company projects.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Freemium Conversion Funnel",
+                    "hypothesis": "Offering a 30-day free trial will increase conversion from trial to paid by 15%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Seed Round PR Blitz",
+                    "channel": "Press & LinkedIn",
+                    "spend": 6500,
+                    "conversions": 320
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.94,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 680,
+                    "unit": "users"
+                },
+                {
+                    "name": "Project Completion Efficiency",
+                    "value": 1.21,
+                    "unit": "x baseline"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed",
+                "amount": 2000000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Alex Chen",
+                        "firm": "NextLeap Ventures",
+                        "amount": 1200000
+                    },
+                    {
+                        "name": "Maria Patel",
+                        "firm": "Angel Syndicate",
+                        "amount": 400000
+                    },
+                    {
+                        "name": "Jesse Green",
+                        "firm": "Operator Capital",
+                        "amount": 400000
+                    }
+                ]
+            },
+            "month": "July",
+            "year": 2025,
+            "milestone": "Seed Funding Round"
+        },
+        {
+            "financials": {
+                "revenue": 72000.0,
+                "expenses": 95000.0,
+                "mrr": 60000.0,
+                "new_customers": 15,
+                "total_customers": 95
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics Expansion",
+                    "amount": 18000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating expanded licenses after pilot success; needs integration demo."
+                },
+                {
+                    "name": "BrightLane Media",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "Closed with annual contract for 40 seats following marketing campaign."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard Senior Backend Engineer",
+                    "description": "Integrate new hire into platform team and assign system reliability improvements.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboard Growth Lead",
+                    "description": "Introduce growth lead to product and assign campaign strategy planning.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Update Onboarding Documentation",
+                    "description": "Revise internal onboarding docs to support upcoming hiring wave.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Role-Based Access",
+                    "description": "Granular permission settings for cross-company projects.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration (Beta)",
+                    "description": "Real-time notifications and message sync with Slack workspaces.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Self-Serve Free Trial",
+                    "hypothesis": "Allowing users to start a free trial without sales contact will increase conversions by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Remote Team Productivity Webinar",
+                    "channel": "LinkedIn Ads",
+                    "spend": 7000,
+                    "conversions": 35
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.96,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 840,
+                    "unit": "users"
+                },
+                {
+                    "name": "Customer Retention Rate",
+                    "value": 94.5,
+                    "unit": "%"
+                }
+            ],
+            "month": "August",
+            "year": 2025,
+            "milestone": "Hiring Key Team Members"
+        },
+        {
+            "financials": {
+                "revenue": 1200.0,
+                "expenses": 65000.0,
+                "mrr": 1200.0,
+                "new_customers": 1,
+                "total_customers": 1
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Consulting",
+                    "amount": 1200.0,
+                    "stage": "WON",
+                    "notes": "First paid subscription secured; mid-sized consultancy validating pricing and value proposition."
+                },
+                {
+                    "name": "Northpoint Solutions",
+                    "amount": 1800.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled, evaluating Syncwise for their distributed teams."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard First Paid Customer",
+                    "description": "Guide Acme Consulting through platform setup and ensure successful adoption.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Finalize Pricing Documentation",
+                    "description": "Create and publish pricing tiers for mid-sized businesses based on feedback.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Playbook",
+                    "description": "Develop onboarding and support playbook for new customers.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Document Permissions",
+                    "description": "Enable granular control over document access for cross-company teams.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Integrated Slack Notifications",
+                    "description": "Push real-time project updates to Slack channels for improved communication.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Consultancy Pricing Pilot",
+                    "hypothesis": "Mid-sized consultancies will accept a $1200/month subscription tier for enhanced collaboration features.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Outreach to Consultancies",
+                    "channel": "LinkedIn",
+                    "spend": 3500,
+                    "conversions": 1
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.8,
+                    "unit": "%"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 47,
+                    "unit": "users"
+                },
+                {
+                    "name": "Collaboration Efficiency",
+                    "value": 1.4,
+                    "unit": "hrs saved per user/month"
+                }
+            ],
+            "month": "September",
+            "year": 2025,
+            "milestone": "First Paid Customer"
+        },
+        {
+            "financials": {
+                "revenue": 85000.0,
+                "expenses": 72000.0,
+                "mrr": 78000.0,
+                "new_customers": 18,
+                "total_customers": 112
+            },
+            "crm_deals": [
+                {
+                    "name": "PulseTech Integration Suite",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise interested in custom API integration; demo scheduled after API launch."
+                },
+                {
+                    "name": "Northway Innovations",
+                    "amount": 8500.0,
+                    "stage": "WON",
+                    "notes": "Closed after API beta access enabled seamless onboarding."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Finalize API Documentation",
+                    "description": "Produce and publish clear developer docs for API endpoints.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboard Pilot API Customers",
+                    "description": "Select and assist 5 pilot customers in integrating with the new public APIs.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Monitor API Performance",
+                    "description": "Set up monitoring and alerting for API usage and uptime.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Public API Endpoints",
+                    "description": "RESTful endpoints for project, document, and user management.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "API Usage Dashboard",
+                    "description": "Dashboard for customers to view their API consumption and analytics.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "API Self-Service Onboarding",
+                    "hypothesis": "Allowing customers to self-onboard to the API will decrease support requests by 30%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "API Launch Webinar",
+                    "channel": "Webinar",
+                    "spend": 3500,
+                    "conversions": 41
+                },
+                {
+                    "name": "Developer Community Outreach",
+                    "channel": "LinkedIn/Slack Groups",
+                    "spend": 1200,
+                    "conversions": 19
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "API Uptime",
+                    "value": 99.97,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 690,
+                    "unit": "users"
+                },
+                {
+                    "name": "Integrations Enabled",
+                    "value": 28,
+                    "unit": "connected accounts"
+                }
+            ],
+            "month": "October",
+            "year": 2025,
+            "milestone": "API Launch"
+        },
+        {
+            "financials": {
+                "revenue": 125000.0,
+                "expenses": 68000.0,
+                "mrr": 105000.0,
+                "new_customers": 23,
+                "total_customers": 188
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics",
+                    "amount": 18000.0,
+                    "stage": "WON",
+                    "notes": "Closed after onboarding demo; prioritized customer success integration."
+                },
+                {
+                    "name": "BrightWave Media",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating custom onboarding support and SLAs."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Design Onboarding Flow",
+                    "description": "Create and finalize customer onboarding flow for new mid-sized business clients.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Hire Customer Success Manager",
+                    "description": "Recruit and onboard first dedicated customer success manager for Syncwise.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Launch Support Portal",
+                    "description": "Develop and deploy a support portal for customer self-service and ticket tracking.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Guided Onboarding",
+                    "description": "Step-by-step onboarding wizard for new customers, tailored by industry.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Automated Welcome Emails",
+                    "description": "Automated email sequence for new users to drive early adoption and engagement.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Customer Success Dashboard",
+                    "description": "Dashboard for tracking user adoption and flagging potential churn.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Onboarding Email Sequence",
+                    "hypothesis": "Automated onboarding emails will increase 14-day activation rate by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Customer Success Webinar",
+                    "channel": "LinkedIn Ads",
+                    "spend": 4500,
+                    "conversions": 42
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "14-Day Activation Rate",
+                    "value": 0.61,
+                    "unit": "fraction"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 1420,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.93,
+                    "unit": "percent"
+                }
+            ],
+            "month": "November",
+            "year": 2025,
+            "milestone": "Customer Success Program Initiated"
+        },
+        {
+            "financials": {
+                "revenue": 78500.0,
+                "expenses": 98000.0,
+                "mrr": 72000.0,
+                "new_customers": 120,
+                "total_customers": 410
+            },
+            "crm_deals": [
+                {
+                    "name": "TechWorks Regional",
+                    "amount": 65000.0,
+                    "stage": "WON",
+                    "notes": "Closed first enterprise deal for 100+ seats; multi-year contract."
+                },
+                {
+                    "name": "InnovateX",
+                    "amount": 22000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating with mid-sized SaaS firm for 35 seats; demo scheduled."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Enterprise Onboarding",
+                    "description": "Setup and onboard TechWorks Regional for 100+ seats; ensure seamless rollout.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Success Playbook",
+                    "description": "Develop new playbook for enterprise clients to maximize adoption and satisfaction.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Capacity Scaling",
+                    "description": "Scale infrastructure to support increased user load from enterprise win.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Admin Controls",
+                    "description": "Enterprise-grade admin tools for bulk user management and permissions.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Custom Integrations API",
+                    "description": "API for connecting Syncwise to client-specific software stacks.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Real-time Analytics Dashboard",
+                    "description": "Dashboard for project activity and collaboration metrics.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Onboarding Flow",
+                    "hypothesis": "Streamlining onboarding for large clients will reduce churn and drive satisfaction.",
+                    "result": "Validated"
+                },
+                {
+                    "name": "Targeted LinkedIn Outreach",
+                    "hypothesis": "Direct outreach to regional tech firms will increase qualified leads.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Enterprise Launch PR",
+                    "channel": "Press & Digital Media",
+                    "spend": 11000,
+                    "conversions": 23
+                },
+                {
+                    "name": "LinkedIn Ads for Mid-market",
+                    "channel": "LinkedIn",
+                    "spend": 8500,
+                    "conversions": 17
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.97,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 3150,
+                    "unit": "users"
+                },
+                {
+                    "name": "Collaboration Efficiency",
+                    "value": 27.1,
+                    "unit": "% increase (YOY)"
+                }
+            ],
+            "month": "December",
+            "year": 2025,
+            "milestone": "Major B2B Win"
+        },
+        {
+            "financials": {
+                "revenue": 104000.0,
+                "expenses": 87000.0,
+                "mrr": 95000.0,
+                "new_customers": 31,
+                "total_customers": 410
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics Expansion",
+                    "amount": 36000.0,
+                    "stage": "OPEN",
+                    "notes": "Acme is considering upgrading to enterprise plan with mobile rollout for field teams."
+                },
+                {
+                    "name": "Brightline Media",
+                    "amount": 14000.0,
+                    "stage": "WON",
+                    "notes": "Closed after demoing new mobile features. Media team plans full adoption in Q1."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Mobile App Store Submission",
+                    "description": "Submit Syncwise mobile app to Apple App Store and Google Play for review and approval.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "User Onboarding Guide Update",
+                    "description": "Update onboarding documentation and in-app walkthroughs to include mobile workflows.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Push Notification Testing",
+                    "description": "Test and QA real-time push notifications for mobile users.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "iOS & Android Apps",
+                    "description": "Native mobile apps for seamless project access and communication on the go.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Mobile Push Notifications",
+                    "description": "Real-time alerts for task updates and messages delivered to mobile devices.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Offline Mode (Beta)",
+                    "description": "Allow access to recent documents and tasks even without network connection.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Mobile Launch Waitlist Conversion",
+                    "hypothesis": "Early access waitlist users will convert to paid accounts at a 20% higher rate than average.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Mobile App Launch Press",
+                    "channel": "PR & Tech Blogs",
+                    "spend": 6000,
+                    "conversions": 135
+                },
+                {
+                    "name": "Paid Social: Mobile First Teams",
+                    "channel": "LinkedIn/Meta Ads",
+                    "spend": 9000,
+                    "conversions": 74
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 2100,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.96,
+                    "unit": "%"
+                },
+                {
+                    "name": "Mobile Sessions",
+                    "value": 4700,
+                    "unit": "sessions"
+                }
+            ],
+            "month": "January",
+            "year": 2026,
+            "milestone": "Launch Mobile App"
+        },
+        {
+            "financials": {
+                "revenue": 125000.0,
+                "expenses": 78000.0,
+                "mrr": 11000.0,
+                "new_customers": 22,
+                "total_customers": 188
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics",
+                    "amount": 30000.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise prospect; audit completion shared for trust-building."
+                },
+                {
+                    "name": "BrightCorp",
+                    "amount": 45000.0,
+                    "stage": "WON",
+                    "notes": "Deal closed after security audit report submission."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Complete Third-Party Security Audit",
+                    "description": "Finalize and pass the security audit with accredited vendor.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Update Compliance Documentation",
+                    "description": "Revise compliance docs to reflect audit results for prospects and certification prep.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Enterprise Outreach Post-Audit",
+                    "description": "Launch targeted outreach to enterprise leads leveraging security credentials.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "SOC 2 Readiness Module",
+                    "description": "Automated logging and reporting tools for upcoming SOC 2 compliance.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Enhanced Role-Based Access Control",
+                    "description": "Granular permissions for enterprise-grade team management.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Audit Logging Dashboard",
+                    "description": "UI for admins to monitor and export security logs.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Trust Messaging",
+                    "hypothesis": "Highlighting audit completion in marketing will increase enterprise demo requests by 30%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Security Audit Announcement",
+                    "channel": "LinkedIn Sponsored Posts",
+                    "spend": 6000,
+                    "conversions": 12
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Platform Uptime",
+                    "value": 99.96,
+                    "unit": "%"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 1482,
+                    "unit": "users"
+                },
+                {
+                    "name": "Enterprise Demo Requests",
+                    "value": 18,
+                    "unit": "requests"
+                }
+            ],
+            "month": "February",
+            "year": 2026,
+            "milestone": "Security Audit Passed"
+        },
+        {
+            "financials": {
+                "revenue": 110000.0,
+                "expenses": 82000.0,
+                "mrr": 95000.0,
+                "new_customers": 14,
+                "total_customers": 72
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme GmbH",
+                    "amount": 24000.0,
+                    "stage": "WON",
+                    "notes": "First European customer onboarded; annual contract for 60 seats."
+                },
+                {
+                    "name": "Paris Collab Solutions",
+                    "amount": 18500.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating localization requirements for French market onboarding."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "German Localization Launch",
+                    "description": "Deploy platform with full German language support and local compliance features.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "French Localization QA",
+                    "description": "Conduct quality assurance on French language interface and documentation.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "EU Data Privacy Review",
+                    "description": "Ensure platform meets GDPR and local privacy standards for new European customers.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Multi-language Support",
+                    "description": "Platform interface and notifications now available in German and French.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Timezone-aware Scheduling",
+                    "description": "Improved calendar and meeting functionality for distributed European teams.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Localized Onboarding Flow",
+                    "hypothesis": "A tailored onboarding flow for German and French users increases activation rate by 15%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "DACH Region Launch",
+                    "channel": "LinkedIn Ads",
+                    "spend": 12000,
+                    "conversions": 6
+                },
+                {
+                    "name": "French Market Webinar",
+                    "channel": "Webinar",
+                    "spend": 3500,
+                    "conversions": 3
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.94,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 1380,
+                    "unit": "users"
+                },
+                {
+                    "name": "Collaboration Efficiency",
+                    "value": 27.2,
+                    "unit": "% improvement"
+                }
+            ],
+            "month": "March",
+            "year": 2026,
+            "milestone": "International Expansion"
+        },
+        {
+            "financials": {
+                "revenue": 55000.0,
+                "expenses": 78000.0,
+                "mrr": 47000.0,
+                "new_customers": 320,
+                "total_customers": 1300
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics",
+                    "amount": 18000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating annual contract for 120 seats; pilot successful."
+                },
+                {
+                    "name": "GreenTech Solutions",
+                    "amount": 9500.0,
+                    "stage": "WON",
+                    "notes": "Closed deal for 60 seats; expected to drive referrals."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "User Milestone Announcement",
+                    "description": "Publish blog post and press release celebrating 5,000 active users.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboarding Improvements",
+                    "description": "Revise onboarding flow to handle increased user volume and reduce drop-off.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Success Hiring",
+                    "description": "Hire two new customer success reps to support scaling user base.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Team Analytics Dashboard",
+                    "description": "Provides managers with actionable insights into team productivity and collaboration trends.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Enable seamless syncing of messages and notifications between Syncwise and Slack.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Referral Program Launch",
+                    "hypothesis": "Launching a referral program will increase new customer sign-ups by 15%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Spring Growth Webinar",
+                    "channel": "LinkedIn Ads",
+                    "spend": 6000,
+                    "conversions": 90
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 5100,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.97,
+                    "unit": "%"
+                },
+                {
+                    "name": "Average Collaboration Efficiency",
+                    "value": 17.3,
+                    "unit": "% improvement YOY"
+                }
+            ],
+            "month": "April",
+            "year": 2026,
+            "milestone": "User Milestone: 5,000 Active Users"
+        }
+    ]
+}

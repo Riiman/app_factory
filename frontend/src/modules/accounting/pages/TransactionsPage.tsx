@@ -17,6 +17,18 @@ const TransactionsPage: React.FC = () => {
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [transactionType, setTransactionType] = useState<'INCOME' | 'EXPENSE'>('INCOME');
 
+    // Timeline filters
+    const currentYear = new Date().getFullYear();
+    const [selectedMonth, setSelectedMonth] = useState<number | ''>('');
+    const [selectedYear, setSelectedYear] = useState<number | ''>('');
+
+    const queryString = React.useMemo(() => {
+        const params = new URLSearchParams();
+        if (selectedMonth) params.append('month', selectedMonth.toString());
+        if (selectedYear) params.append('year', selectedYear.toString());
+        return params.toString() ? `?${params.toString()}` : '';
+    }, [selectedMonth, selectedYear]);
+
     const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
         queryKey: ['accounts', user?.startup_id],
         queryFn: () => api.get(`/startups/${user?.startup_id}/accounting/accounts`),
@@ -24,8 +36,8 @@ const TransactionsPage: React.FC = () => {
     });
 
     const { data: journalEntries = [], isLoading: journalLoading } = useQuery<JournalEntry[]>({
-        queryKey: ['journal', user?.startup_id],
-        queryFn: () => api.get(`/startups/${user?.startup_id}/accounting/journal`),
+        queryKey: ['journal', user?.startup_id, selectedMonth, selectedYear],
+        queryFn: () => api.get(`/startups/${user?.startup_id}/accounting/journal${queryString}`),
         enabled: !!user?.startup_id
     });
 
@@ -84,27 +96,51 @@ const TransactionsPage: React.FC = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
                     <p className="text-sm text-gray-500">View and manage all your financial transactions.</p>
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-2 mr-2">
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : '')}
+                            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        >
+                            <option value="">All Months</option>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'long' })}</option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value ? Number(e.target.value) : '')}
+                            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        >
+                            <option value="">All Years</option>
+                            {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <button
                         onClick={() => handleOpenTransaction('INCOME')}
-                        className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 px-4 py-2 rounded-lg font-medium transition-colors"
+                        className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
                     >
                         <ArrowDownLeft className="w-4 h-4" />
                         Record Income
                     </button>
                     <button
                         onClick={() => handleOpenTransaction('EXPENSE')}
-                        className="flex items-center gap-2 bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2 rounded-lg font-medium transition-colors"
+                        className="flex items-center gap-2 bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
                     >
                         <ArrowUpRight className="w-4 h-4" />
                         Record Expense
                     </button>
                     <button
                         onClick={() => setIsImportModalOpen(true)}
-                        className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors"
+                        className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
                     >
                         <Upload className="w-4 h-4" />
-                        Import CSV
+                        Import
                     </button>
                 </div>
             </div>

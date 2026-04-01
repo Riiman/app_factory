@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from app.models import (
     Startup, StartupSnapshot, Task, Experiment, BusinessMonthlyData, 
     Product, ProductIssue, MarketingCampaign, InteractionLog, 
-    TaskStatus, ExperimentStatus, Investor, InvestorStage
+    TaskStatus, ExperimentStatus, Investor, InvestorStage, BusinessModel
 )
 from app.modules.crm.models import CrmDeal, CrmDealStage
 from app.extensions import db
@@ -99,9 +99,11 @@ class InsightsService:
         campaigns = MarketingCampaign.query.filter_by(startup_id=startup.id).all()
         spend = sum(float(c.spend) for c in campaigns if c.spend)
         impressions = sum(c.impressions for c in campaigns if c.impressions)
+        conversions = sum(c.conversions for c in campaigns if c.conversions)
         return {
             "total_spend": spend,
-            "total_impressions": impressions
+            "total_impressions": impressions,
+            "total_conversions": conversions
         }
 
     @staticmethod
@@ -148,8 +150,11 @@ class InsightsService:
     @staticmethod
     def _calculate_financials(startup):
         """Calculates financial health metrics."""
-        # Get latest monthly data
-        latest_data = BusinessMonthlyData.query.filter_by(startup_id=startup.id).order_by(BusinessMonthlyData.month_start.desc()).first()
+        # Get latest monthly data with actual values (skip empty placeholders)
+        latest_data = BusinessMonthlyData.query.filter(
+            BusinessMonthlyData.startup_id == startup.id,
+            (BusinessMonthlyData.total_revenue > 0) | (BusinessMonthlyData.total_expenses > 0)
+        ).order_by(BusinessMonthlyData.month_start.desc()).first()
         
         # Default values
         burn = 0
@@ -241,7 +246,7 @@ class InsightsService:
         
         # Velocity: Features completed in last 30 days
         # Note: Ideally track completion date. For now, total completed.
-        completed_features = sum([1 for f in main_product.features if str(f.status) == 'COMPLETED'])
+        completed_features = sum([1 for f in main_product.features if str(f.status) == 'DONE'])
         total_features = len(main_product.features)
         
         readiness = (completed_features / total_features * 100) if total_features > 0 else 0
@@ -297,11 +302,19 @@ class InsightsService:
         # Average CAC by channel
         avg_channel_cac = {k: sum(v)/len(v) for k, v in channel_performance.items()}
         
+        # Totals for overview
+        totals = sum(float(c.spend) for c in campaigns if c.spend)
+        conversions = sum(c.conversions for c in campaigns if c.conversions)
+        impressions = sum(c.impressions for c in campaigns if c.impressions)
+        
         return {
             "market_fit_score": 50.0, # Placeholder until we have retention curves
             "false_pmf_signal": false_pmf_signal,
             "latest_churn": churn_rate,
-            "channel_cac": avg_channel_cac
+            "channel_cac": avg_channel_cac,
+            "total_spend": totals,
+            "total_conversions": conversions,
+            "total_impressions": impressions
         }
 
     @staticmethod

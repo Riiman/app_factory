@@ -26,6 +26,8 @@ def calculate_sales_funnel(startup_id):
     
     funnel_data = []
     
+    # First get raw count/value for each stage
+    raw_data = {}
     for stage in stage_order:
         result = db.session.query(
             func.count(CrmDeal.id).label('count'),
@@ -34,11 +36,23 @@ def calculate_sales_funnel(startup_id):
             CrmDeal.startup_id == startup_id,
             CrmDeal.stage == stage
         ).first()
-        
-        funnel_data.append({
-            'stage': stage.value,
+        raw_data[stage] = {
             'count': result.count or 0,
             'value': float(result.total_value or 0)
+        }
+    
+    # Accumulate backwards for a true funnel (Closed Won -> Appointment)
+    cumulative_count = 0
+    cumulative_value = 0.0
+    
+    for stage in reversed(stage_order):
+        cumulative_count += raw_data[stage]['count']
+        cumulative_value += raw_data[stage]['value']
+        
+        funnel_data.insert(0, {
+            'stage': stage.value,
+            'count': cumulative_count,
+            'value': cumulative_value
         })
     
     return funnel_data

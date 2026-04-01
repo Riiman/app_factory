@@ -13,9 +13,21 @@ const JournalPage: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
+    // Timeline filters
+    const currentYear = new Date().getFullYear();
+    const [selectedMonth, setSelectedMonth] = useState<number | ''>('');
+    const [selectedYear, setSelectedYear] = useState<number | ''>('');
+
+    const queryString = React.useMemo(() => {
+        const params = new URLSearchParams();
+        if (selectedMonth) params.append('month', selectedMonth.toString());
+        if (selectedYear) params.append('year', selectedYear.toString());
+        return params.toString() ? `?${params.toString()}` : '';
+    }, [selectedMonth, selectedYear]);
+
     const { data: journalEntries = [], isLoading } = useQuery<JournalEntry[]>({
-        queryKey: ['journal', user?.startup_id],
-        queryFn: () => api.get(`/startups/${user?.startup_id}/accounting/journal`),
+        queryKey: ['journal', user?.startup_id, selectedMonth, selectedYear],
+        queryFn: () => api.get(`/startups/${user?.startup_id}/accounting/journal${queryString}`),
         enabled: !!user?.startup_id
     });
 
@@ -23,16 +35,42 @@ const JournalPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-4 mb-6">
-                <button
-                    onClick={() => navigate('/dashboard')}
-                    className="p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                </button>
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Journal Entries</h1>
-                    <p className="text-gray-500 text-sm">A complete chronological record of all financial transactions.</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Journal Entries</h1>
+                        <p className="text-gray-500 text-sm">A complete chronological record of all financial transactions.</p>
+                    </div>
+                </div>
+
+                <div className="flex gap-2">
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : '')}
+                        className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                    >
+                        <option value="">All Months</option>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                            <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'long' })}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value ? Number(e.target.value) : '')}
+                        className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                    >
+                        <option value="">All Years</option>
+                        {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
+                            <option key={y} value={y}>{y}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
@@ -99,7 +137,7 @@ const JournalPage: React.FC = () => {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 

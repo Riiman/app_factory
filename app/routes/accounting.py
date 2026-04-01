@@ -22,8 +22,10 @@ def setup_accounting(startup_id):
 @accounting_bp.route('/api/startups/<int:startup_id>/accounting/accounts', methods=['GET'])
 def get_accounts(startup_id):
     try:
+        month = request.args.get('month', type=int)
+        year = request.args.get('year', type=int)
         accounts = accounting_service.get_accounts(startup_id)
-        return jsonify([acc.to_dict() for acc in accounts]), 200
+        return jsonify([acc.to_dict(month=month, year=year) for acc in accounts]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -44,7 +46,9 @@ def create_account(startup_id):
 @accounting_bp.route('/api/startups/<int:startup_id>/accounting/journal', methods=['GET'])
 def get_journal_entries(startup_id):
     try:
-        entries = accounting_service.get_journal_entries(startup_id)
+        month = request.args.get('month', type=int)
+        year = request.args.get('year', type=int)
+        entries = accounting_service.get_journal_entries(startup_id, month=month, year=year)
         return jsonify([entry.to_dict() for entry in entries]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -126,5 +130,16 @@ def update_journal_line_allocation(startup_id, line_id):
         db.session.commit()
         
         return jsonify(line.to_dict()), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@accounting_bp.route('/api/startups/<int:startup_id>/accounting/accounts/<int:account_id>', methods=['PATCH'])
+def update_account(startup_id, account_id):
+    try:
+        data = request.get_json()
+        updated_account = accounting_service.update_account(startup_id, account_id, data)
+        return jsonify(updated_account), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500

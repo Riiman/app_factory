@@ -127,9 +127,45 @@ def initialize_accounting(startup_id, initial_accounts):
 def get_accounts(startup_id):
     return Account.query.filter_by(startup_id=startup_id).all()
 
-def get_journal_entries(startup_id):
-    return JournalEntry.query.filter_by(startup_id=startup_id).order_by(JournalEntry.date.desc()).all()
+def get_journal_entries(startup_id, month=None, year=None):
+    query = JournalEntry.query.filter_by(startup_id=startup_id)
+    
+    if month is not None:
+        query = query.filter(extract('month', JournalEntry.date) == month)
+    if year is not None:
+        query = query.filter(extract('year', JournalEntry.date) == year)
+        
+    return query.order_by(JournalEntry.date.desc()).all()
 
+
+def recalculate_startup_balances(startup_id):
+    """
+    Recalculates all account balances for a startup based on journal lines.
+    Useful after bulk data imports or simulation loads.
+    """
+    accounts = Account.query.filter_by(startup_id=startup_id).all()
+    for account in accounts:
+        # Sum all debits and credits for this account
+        totals = db.session.query(
+            func.sum(JournalLine.debit).label('total_debit'),
+            func.sum(JournalLine.credit).label('total_credit')
+        ).join(JournalEntry).filter(
+            JournalEntry.startup_id == startup_id,
+            JournalLine.account_id == account.id
+        ).first()
+
+        total_debit = float(totals.total_debit or 0)
+        total_credit = float(totals.total_credit or 0)
+
+        # Asset/Expense: Debit increases, Credit decreases
+        if account.type in [AccountType.ASSET, AccountType.EXPENSE]:
+            account.balance = total_debit - total_credit
+        # Liability/Equity/Income: Credit increases, Debit decreases
+        else:
+            account.balance = total_credit - total_debit
+    
+    db.session.commit()
+    return True
 
 def create_manual_journal_entry(startup_id, data):
     """
@@ -631,3 +667,30 @@ def import_transactions_from_tally(startup_id, file_stream):
         'success_count': success_count,
         'errors': errors[:50] # Cap errors
     }
+
+def update_account(startup_id, account_id, data):
+    """
+    Updates an existing account.
+    data: {
+        'name': 'New name',
+        'type': 'Type',
+        'subtype': 'Subtype'
+    }
+    """
+    account = Account.query.filter_by(id=account_id, startup_id=startup_id).first()
+    if not account:
+        raise ValueError("Account not found")
+
+    try:
+        if 'name' in data:
+            account.name = data['name']
+        if 'type' in data:
+            account.type = AccountType(data['type'])
+        if 'subtype' in data:
+            account.subtype = data['subtype']
+        
+        db.session.commit()
+        return account.to_dict()
+    except Exception as e:
+        db.session.rollback()
+        raise e

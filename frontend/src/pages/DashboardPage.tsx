@@ -90,6 +90,7 @@ import AccountingSetupPage from '@/modules/accounting/pages/AccountingSetupPage'
 import AccountingOverviewPage from '@/modules/accounting/pages/AccountingOverviewPage';
 import JournalPage from '@/modules/accounting/pages/JournalPage';
 import TransactionsPage from '@/modules/accounting/pages/TransactionsPage';
+import AccountsPage from '@/modules/accounting/pages/AccountsPage';
 import IntegrationSettingsPage from '@/modules/accounting/pages/IntegrationSettingsPage';
 import { useAuth } from '@/contexts/AuthContext';
 import { BusinessOverview, StartupStage } from '@/types/dashboard-types';
@@ -782,6 +783,9 @@ const DashboardPage: React.FC = () => {
                 if (activeSubPage === 'Transactions') {
                     return <TransactionsPage />;
                 }
+                if (activeSubPage === 'Chart of Accounts') {
+                    return <AccountsPage />;
+                }
                 if (activeSubPage === 'Integrations') {
                     return <IntegrationSettingsPage />;
                 }
@@ -860,7 +864,7 @@ const DashboardPage: React.FC = () => {
             { name: 'Marketing', icon: Megaphone, subItems: ['Overview', 'Campaigns', 'Content Calendar', 'Settings'], requiredScope: 'MARKETING', scope: Scope.MARKETING },
             { name: 'Sales', icon: TrendingUp, subItems: ['Overview', 'Contacts', 'Deals', 'Lists', 'Settings'], requiredScope: null, scope: Scope.CRM },
             { name: 'Human Resource', icon: Users, subItems: ['Overview', 'Jobs', 'Calendar'], requiredScope: null, scope: Scope.RECRUITMENT }, // Renamed from Recruitment
-            { name: 'Accounting', icon: Calculator, subItems: ['Overview', 'Transactions', 'Journal', 'Integrations'], requiredScope: 'ACCOUNTING', scope: Scope.ACCOUNTING },
+            { name: 'Accounting', icon: Calculator, subItems: ['Overview', 'Chart of Accounts', 'Transactions', 'Journal', 'Integrations'], requiredScope: 'ACCOUNTING', scope: Scope.ACCOUNTING },
             { name: 'Investment', icon: PieChart, subItems: ['Overview', 'Funding Rounds', 'Investor Database', 'Investor CRM', 'Cap Table', 'Scenario Calculator'], requiredScope: 'FUNDRAISING', scope: Scope.FUNDRAISING },
             { name: 'Email', icon: Mail, subItems: [], requiredScope: null, scope: Scope.EMAIL },
             { name: 'AI Assistant', icon: MessageSquare, subItems: [], requiredScope: null, scope: Scope.CHAT },

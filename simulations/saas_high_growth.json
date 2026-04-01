@@ -1,0 +1,1230 @@
+{
+    "metadata": {
+        "company_name": "SyncStream",
+        "tagline": "Effortless Collaboration, Anywhere.",
+        "description": "SyncStream is a SaaS startup founded in early 2024 that provides real-time document and workflow collaboration tools for remote and hybrid teams. The platform integrates seamlessly with major productivity suites and leverages AI to streamline project management, feedback cycles, and cross-team communication. SyncStream serves small and mid-sized businesses seeking to boost efficiency and employee engagement in distributed work environments.",
+        "roadmap": [
+            {
+                "month_name": "May",
+                "year": 2025,
+                "milestone_title": "Beta 2.0 Launch",
+                "narrative_description": "Released a major update to the beta platform featuring improved AI-powered task suggestions and enhanced integration with Google Workspace. Gathered feedback from pilot customers for further refinement."
+            },
+            {
+                "month_name": "June",
+                "year": 2025,
+                "milestone_title": "First Mid-Market Customer Onboarded",
+                "narrative_description": "Secured and onboarded our first mid-market client, a 200-employee tech consultancy, validating SyncStream\u2019s ability to scale and meet more complex organizational needs."
+            },
+            {
+                "month_name": "July",
+                "year": 2025,
+                "milestone_title": "SOC 2 Compliance Achieved",
+                "narrative_description": "Completed audit and achieved SOC 2 compliance, bolstering customer trust and opening doors to enterprise prospects with stricter security requirements."
+            },
+            {
+                "month_name": "August",
+                "year": 2025,
+                "milestone_title": "Series A Funding Secured",
+                "narrative_description": "Closed a $4.2M Series A round led by a top SaaS investor, fueling product development, marketing, and hiring plans for the next stage of growth."
+            },
+            {
+                "month_name": "September",
+                "year": 2025,
+                "milestone_title": "Team Expansion",
+                "narrative_description": "Grew the team from 10 to 18 employees, adding engineering, marketing, and customer success talent to accelerate feature velocity and improve client onboarding."
+            },
+            {
+                "month_name": "October",
+                "year": 2025,
+                "milestone_title": "Mobile App Release",
+                "narrative_description": "Launched SyncStream\u2019s mobile app for iOS and Android, providing a seamless experience for users on the go and increasing daily engagement rates."
+            },
+            {
+                "month_name": "November",
+                "year": 2025,
+                "milestone_title": "Partnership with Microsoft",
+                "narrative_description": "Announced an official partnership and integration with Microsoft Teams, expanding SyncStream\u2019s reach into the enterprise collaboration ecosystem."
+            },
+            {
+                "month_name": "December",
+                "year": 2025,
+                "milestone_title": "First Annual Customer Summit",
+                "narrative_description": "Held our inaugural customer summit online, bringing together users, sharing best practices, and collecting feedback for future product innovation."
+            },
+            {
+                "month_name": "January",
+                "year": 2026,
+                "milestone_title": "AI Workflow Automation Module Launch",
+                "narrative_description": "Introduced a new AI-powered workflow automation module, enabling customers to automate repetitive tasks and optimize project timelines."
+            },
+            {
+                "month_name": "February",
+                "year": 2026,
+                "milestone_title": "Major B2B Win",
+                "narrative_description": "Closed a deal with a national retail chain (500+ employees), marking SyncStream\u2019s largest B2B contract and demonstrating market traction."
+            },
+            {
+                "month_name": "March",
+                "year": 2026,
+                "milestone_title": "Customer Support Portal Launch",
+                "narrative_description": "Rolled out a self-service customer support portal, reducing ticket response times and improving user satisfaction scores."
+            },
+            {
+                "month_name": "April",
+                "year": 2026,
+                "milestone_title": "ARR Milestone: $1M Reached",
+                "narrative_description": "Surpassed $1M in annual recurring revenue, marking a major financial milestone and validating SyncStream\u2019s product-market fit and scalable growth."
+            }
+        ]
+    },
+    "monthly_data": [
+        {
+            "financials": {
+                "revenue": 800,
+                "expenses": 23000,
+                "mrr": 800,
+                "new_customers": 8,
+                "total_customers": 8
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions Pilot",
+                    "amount": 1200,
+                    "stage": "OPEN",
+                    "notes": "Pilot customer testing Beta 2.0, potential for expansion after successful feedback."
+                },
+                {
+                    "name": "NextGen Marketing Trial",
+                    "amount": 900,
+                    "stage": "OPEN",
+                    "notes": "SMB trialing workflow collaboration tools; reviewing integrations with Google Workspace."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Gather Beta Feedback",
+                    "description": "Collect detailed feedback from pilot customers on Beta 2.0 update and prioritize fixes.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Improve Onboarding Flow",
+                    "description": "Redesign user onboarding for easier setup and integration with productivity suites.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Customer Support Setup",
+                    "description": "Establish support channels for beta users and draft FAQ documentation.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI Task Suggestions",
+                    "description": "Enhanced AI-powered task suggestions for smarter project management.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Google Workspace Integration",
+                    "description": "Seamless integration with Google Docs, Sheets, and Drive for document collaboration.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Feedback Dashboard",
+                    "description": "Unified dashboard for pilot users to submit feedback and track feature requests.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "SMB Outreach Email Campaign",
+                    "hypothesis": "Personalized outreach to SMBs will yield >5% conversion to pilot signups.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Beta Launch Announcement",
+                    "channel": "LinkedIn Ads",
+                    "spend": 3500,
+                    "conversions": 6
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 12,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Session Length",
+                    "value": 18.5,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "Feedback Submission Rate",
+                    "value": 0.66,
+                    "unit": "submissions/user"
+                }
+            ],
+            "month": "May",
+            "year": 2025,
+            "milestone": "Beta 2.0 Launch"
+        },
+        {
+            "financials": {
+                "revenue": 3400.0,
+                "expenses": 9200.0,
+                "mrr": 3400.0,
+                "new_customers": 3,
+                "total_customers": 11
+            },
+            "crm_deals": [
+                {
+                    "name": "TechConsult Mid-Market",
+                    "amount": 2600.0,
+                    "stage": "WON",
+                    "notes": "First mid-market client onboarded, 200 seats. Validates scalability for larger organizations."
+                },
+                {
+                    "name": "RemoteWorks SMB",
+                    "amount": 400.0,
+                    "stage": "OPEN",
+                    "notes": "Demo completed, awaiting contract signature. 20 users."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Mid-Market Client Onboarding",
+                    "description": "Successfully onboarded TechConsult, including custom integrations and admin training.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "June Outreach Campaign",
+                    "description": "Execute targeted LinkedIn outreach to mid-sized tech firms.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Support Scaling Initiative",
+                    "description": "Expand customer support hours to accommodate larger client needs.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Permission Controls",
+                    "description": "Granular user roles and access management for larger organizations.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "AI Meeting Notes Integration",
+                    "description": "Automated meeting notes synced to collaborative documents.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Mobile Workflow Notifications",
+                    "description": "Push notifications for workflow updates on iOS and Android.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Mid-Market Account-Based Marketing",
+                    "hypothesis": "Targeted ABM campaigns will yield at least one mid-market client per quarter.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Mid-Market Outreach",
+                    "channel": "LinkedIn Ads",
+                    "spend": 3500,
+                    "conversions": 1
+                },
+                {
+                    "name": "Remote SMB Webinar",
+                    "channel": "Webinar",
+                    "spend": 1200,
+                    "conversions": 2
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 250,
+                    "unit": "users"
+                },
+                {
+                    "name": "Monthly Document Collaborations",
+                    "value": 820,
+                    "unit": "documents"
+                },
+                {
+                    "name": "Customer Retention Rate",
+                    "value": 92.5,
+                    "unit": "percent"
+                }
+            ],
+            "month": "June",
+            "year": 2025,
+            "milestone": "First Mid-Market Customer Onboarded"
+        },
+        {
+            "financials": {
+                "revenue": 3800.0,
+                "expenses": 16700.0,
+                "mrr": 3800.0,
+                "new_customers": 2,
+                "total_customers": 13
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Interest driven by SOC 2 compliance; evaluating platform for mid-sized team rollout."
+                },
+                {
+                    "name": "BlueSky Enterprises",
+                    "amount": 4200.0,
+                    "stage": "WON",
+                    "notes": "Converted after security certification announcement; starting with pilot project."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Enterprise Outreach Initiative",
+                    "description": "Launch targeted outbound campaigns to prospects with high security requirements.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "SOC 2 Compliance Announcement",
+                    "description": "Publish press release and update website to highlight newly achieved SOC 2 certification.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Playbook Update",
+                    "description": "Revise onboarding and support documentation to leverage new compliance status.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "SOC 2 Compliance Module",
+                    "description": "Internal systems and documentation now meet SOC 2 standards.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Enhanced Admin Controls",
+                    "description": "Improved role-based access and audit logs for enterprise clients.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Workflow Templates Library",
+                    "description": "Pre-built workflows for distributed teams to streamline onboarding and project launches.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Security Positioning",
+                    "hypothesis": "Highlighting SOC 2 compliance will increase inbound interest from enterprise prospects.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "SOC 2 Launch PR",
+                    "channel": "Press Release & LinkedIn",
+                    "spend": 1200,
+                    "conversions": 9
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 153,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Session Duration",
+                    "value": 42.6,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "Customer Satisfaction",
+                    "value": 8.7,
+                    "unit": "score (out of 10)"
+                }
+            ],
+            "month": "July",
+            "year": 2025,
+            "milestone": "SOC 2 Compliance Achieved"
+        },
+        {
+            "financials": {
+                "revenue": 4200.0,
+                "expenses": 68000.0,
+                "mrr": 4200.0,
+                "new_customers": 4,
+                "total_customers": 17
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions",
+                    "amount": 6000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating annual contract, demo scheduled next week."
+                },
+                {
+                    "name": "BrightWave Agency",
+                    "amount": 3600.0,
+                    "stage": "WON",
+                    "notes": "Closed after pilot, onboarding this month."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Hiring Key Roles",
+                    "description": "Initiate recruitment for engineering, marketing, and customer success positions to support growth.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Kickoff Marketing Blitz",
+                    "description": "Launch multi-channel campaigns leveraging Series A announcement to drive brand awareness and customer acquisition.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Board Meeting Preparation",
+                    "description": "Prepare updated financials and growth plans for new investor board meeting.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Feedback Summaries",
+                    "description": "Automated feedback aggregation and actionable insights within projects.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Expanded Integration Suite",
+                    "description": "Add integrations with Notion and Asana to streamline user workflows.",
+                    "status": "BACKLOG"
+                },
+                {
+                    "name": "Enterprise Admin Dashboard",
+                    "description": "Advanced controls and analytics for larger customers.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "LinkedIn Lead Gen Ads",
+                    "hypothesis": "Targeting remote work decision makers on LinkedIn will yield lower CAC and higher conversion rates.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Series A Launch PR",
+                    "channel": "Press & Social Media",
+                    "spend": 12000,
+                    "conversions": 3
+                },
+                {
+                    "name": "Google Ads Expansion",
+                    "channel": "Digital",
+                    "spend": 9000,
+                    "conversions": 2
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Daily Active Users",
+                    "value": 85.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Customer Retention Rate",
+                    "value": 93.0,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Avg. Session Length",
+                    "value": 38.0,
+                    "unit": "minutes"
+                }
+            ],
+            "investment": {
+                "round_name": "Series A",
+                "amount": 4200000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Jessica Lee",
+                        "firm": "Accel Partners",
+                        "amount": 2500000
+                    },
+                    {
+                        "name": "Mark Singh",
+                        "firm": "SaaS Growth Fund",
+                        "amount": 1700000
+                    }
+                ]
+            },
+            "month": "August",
+            "year": 2025,
+            "milestone": "Series A Funding Secured"
+        },
+        {
+            "financials": {
+                "revenue": 6200.0,
+                "expenses": 117000.0,
+                "mrr": 5200.0,
+                "new_customers": 5,
+                "total_customers": 22
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions",
+                    "amount": 3000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled; 50-seat implementation proposed."
+                },
+                {
+                    "name": "BrightPath Consulting",
+                    "amount": 1200.0,
+                    "stage": "WON",
+                    "notes": "Converted from trial after onboarding improvements."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard New Engineers",
+                    "description": "Integrate newly hired engineering talent and assign to current sprint teams.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Launch Paid Social Campaign",
+                    "description": "Deploy targeted ads on LinkedIn and Twitter to drive SMB leads.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Optimize Onboarding Flow",
+                    "description": "Revise client onboarding with new CS hires for faster activation.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Slack Integration",
+                    "description": "Allow users to receive SyncStream notifications and updates directly in Slack.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Live Editing Permissions",
+                    "description": "Granular control over who can edit documents in real-time.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Feedback Analytics Dashboard",
+                    "description": "Visualize feedback cycles and user engagement trends.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Shortened Trial-to-Paid Conversion Flow",
+                    "hypothesis": "Reducing the steps in the signup process will increase paid conversions by 15%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "SMB LinkedIn Blitz",
+                    "channel": "LinkedIn",
+                    "spend": 7000.0,
+                    "conversions": 3
+                },
+                {
+                    "name": "Remote Work Webinar Series",
+                    "channel": "Content/Webinar",
+                    "spend": 3500.0,
+                    "conversions": 2
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "User Daily Active Rate",
+                    "value": 47.0,
+                    "unit": "%"
+                },
+                {
+                    "name": "Average Onboarding Time",
+                    "value": 2.3,
+                    "unit": "days"
+                },
+                {
+                    "name": "NPS Score",
+                    "value": 34.0,
+                    "unit": ""
+                }
+            ],
+            "month": "September",
+            "year": 2025,
+            "milestone": "Team Expansion"
+        },
+        {
+            "financials": {
+                "revenue": 6200.0,
+                "expenses": 58000.0,
+                "mrr": 6200.0,
+                "new_customers": 6,
+                "total_customers": 28
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital",
+                    "amount": 2100.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled; interested in mobile collaboration for distributed teams."
+                },
+                {
+                    "name": "BlueSky Marketing",
+                    "amount": 1500.0,
+                    "stage": "WON",
+                    "notes": "Signed up after mobile app launch; mid-sized agency."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Mobile App Release",
+                    "description": "Launch SyncStream mobile app for iOS and Android to boost engagement.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboarding Optimization",
+                    "description": "Improve onboarding flow for mobile users to increase activation rates.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Success Outreach",
+                    "description": "Reach out to new mobile users for feedback and upsell opportunities.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Push Notifications",
+                    "description": "Mobile push notifications for task updates and feedback cycles.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Mobile Document Editing",
+                    "description": "Enable real-time document editing in mobile app.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Mobile-First Signup Flow",
+                    "hypothesis": "Optimizing signup for mobile will increase conversion rate by 20%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Mobile Launch Campaign",
+                    "channel": "Social Media",
+                    "spend": 5000,
+                    "conversions": 4
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Daily Active Users",
+                    "value": 65.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Mobile Engagement Rate",
+                    "value": 0.38,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Average Session Length",
+                    "value": 18.5,
+                    "unit": "minutes"
+                }
+            ],
+            "month": "October",
+            "year": 2025,
+            "milestone": "Mobile App Release"
+        },
+        {
+            "financials": {
+                "revenue": 6800.0,
+                "expenses": 53000.0,
+                "mrr": 7200.0,
+                "new_customers": 7,
+                "total_customers": 35
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Consulting",
+                    "amount": 3600.0,
+                    "stage": "OPEN",
+                    "notes": "Interested in Microsoft Teams integration, trialing SyncStream."
+                },
+                {
+                    "name": "BlueSky Solutions",
+                    "amount": 4200.0,
+                    "stage": "WON",
+                    "notes": "Signed after partnership announcement, mid-sized business."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Microsoft Teams Integration Launch",
+                    "description": "Deploy and monitor integration with Microsoft Teams for all customers.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Enterprise Outreach",
+                    "description": "Initiate outreach to Microsoft Teams ecosystem partners and channel resellers.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "AI Feedback Cycle Enhancement",
+                    "description": "Start development on improved AI-driven feedback cycles for documents.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Microsoft Teams Integration",
+                    "description": "SyncStream now connects directly with Teams for real-time collaboration.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Workflow Analytics Dashboard",
+                    "description": "Provides insights on team efficiency and bottlenecks across projects.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Demo Webinars",
+                    "hypothesis": "Running webinars focused on Teams integration will increase enterprise leads.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "SyncStream x Microsoft Launch",
+                    "channel": "Paid Social & LinkedIn",
+                    "spend": 12000,
+                    "conversions": 6
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Daily Users",
+                    "value": 154,
+                    "unit": "users"
+                },
+                {
+                    "name": "Customer Retention Rate",
+                    "value": 0.92,
+                    "unit": "fraction"
+                },
+                {
+                    "name": "Avg Document Collaboration Session",
+                    "value": 42.5,
+                    "unit": "minutes"
+                }
+            ],
+            "month": "November",
+            "year": 2025,
+            "milestone": "Partnership with Microsoft"
+        },
+        {
+            "financials": {
+                "revenue": 9500.0,
+                "expenses": 84000.0,
+                "mrr": 8200.0,
+                "new_customers": 7,
+                "total_customers": 42
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Design Team Expansion",
+                    "amount": 3600.0,
+                    "stage": "WON",
+                    "notes": "Upsell to existing customer after positive feedback at Customer Summit."
+                },
+                {
+                    "name": "Nimbus Media Pilot",
+                    "amount": 1800.0,
+                    "stage": "OPEN",
+                    "notes": "3-month pilot for 20 seats, influenced by summit product demos."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Summit Feedback Implementation",
+                    "description": "Analyze and prioritize product feedback collected during the customer summit.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Q1 Content Calendar Planning",
+                    "description": "Plan and schedule thought leadership and case study content based on summit insights.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "SMB Customer Success Playbooks",
+                    "description": "Develop onboarding and engagement playbooks tailored to new SMB customers.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Workflow Templates",
+                    "description": "Customizable workflow templates that auto-adapt to team size and project type.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Summit Replay Library",
+                    "description": "On-demand access to all summit sessions within SyncStream\u2019s platform.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Advanced Analytics Dashboard",
+                    "description": "Real-time usage and engagement analytics for admins.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Referral Incentive Test",
+                    "hypothesis": "Offering a free month for every referred customer will increase signups by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Customer Summit Follow-Up Email Series",
+                    "channel": "Email",
+                    "spend": 2500,
+                    "conversions": 4
+                },
+                {
+                    "name": "LinkedIn Product Demo Ads",
+                    "channel": "Paid Social",
+                    "spend": 4000,
+                    "conversions": 3
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 680.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Session Duration",
+                    "value": 14.5,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "Feature Adoption Rate",
+                    "value": 62.0,
+                    "unit": "percent"
+                }
+            ],
+            "month": "December",
+            "year": 2025,
+            "milestone": "First Annual Customer Summit"
+        },
+        {
+            "financials": {
+                "revenue": 8750.0,
+                "expenses": 43200.0,
+                "mrr": 8750.0,
+                "new_customers": 7,
+                "total_customers": 49
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital",
+                    "amount": 2100.0,
+                    "stage": "OPEN",
+                    "notes": "Interested in AI automation for their remote ops team, demo scheduled."
+                },
+                {
+                    "name": "BlueSky Consulting",
+                    "amount": 1100.0,
+                    "stage": "WON",
+                    "notes": "Signed up following the Customer Summit, onboarding this month."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "AI Workflow Automation Rollout",
+                    "description": "Deploy new AI module to all existing customer accounts and monitor feedback.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Post-Summit Lead Follow-up",
+                    "description": "Reach out to leads gathered at the Customer Summit for demos and trials.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Hiring",
+                    "description": "Interview and onboard two new customer success managers to support growth.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI Workflow Automation Module",
+                    "description": "Automates repetitive tasks and optimizes project timelines using AI.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration Enhancement",
+                    "description": "Improved notifications and workflow triggers for Slack users.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Feedback Analytics Dashboard",
+                    "description": "Visualizes feedback trends and actionable insights for managers.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Automated Onboarding Sequence",
+                    "hypothesis": "Automated onboarding emails will increase trial-to-paid conversion by 10%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "AI Automation Launch Email Blast",
+                    "channel": "Email",
+                    "spend": 1500,
+                    "conversions": 5
+                },
+                {
+                    "name": "LinkedIn Paid Ads",
+                    "channel": "LinkedIn",
+                    "spend": 3200,
+                    "conversions": 2
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 298,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Session Duration",
+                    "value": 34.8,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "Workflow Automation Adoption",
+                    "value": 67.0,
+                    "unit": "percent"
+                }
+            ],
+            "month": "January",
+            "year": 2026,
+            "milestone": "AI Workflow Automation Module Launch"
+        },
+        {
+            "financials": {
+                "revenue": 14500.0,
+                "expenses": 54000.0,
+                "mrr": 13500.0,
+                "new_customers": 12,
+                "total_customers": 61
+            },
+            "crm_deals": [
+                {
+                    "name": "National Retail Chain Rollout",
+                    "amount": 72000.0,
+                    "stage": "WON",
+                    "notes": "Closed largest B2B contract to date; implementation begins Q2."
+                },
+                {
+                    "name": "Regional Consulting Firm",
+                    "amount": 9600.0,
+                    "stage": "OPEN",
+                    "notes": "Proposal sent for company-wide collaboration tools."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboarding National Retail Chain",
+                    "description": "Deploy SyncStream across 500+ users, with dedicated support and training.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Expand Sales Team",
+                    "description": "Hire 2 new sales reps to accelerate B2B pipeline after enterprise win.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Customer Success Playbook",
+                    "description": "Standardize onboarding and support procedures for larger customers.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI Workflow Automation Module",
+                    "description": "Automate repetitive tasks and approvals with AI-driven suggestions.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Enterprise Admin Dashboard",
+                    "description": "Centralized controls and analytics for organizations with 100+ users.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration Enhancements",
+                    "description": "Deeper workflow integration with Slack for feedback and notifications.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Pricing Test",
+                    "hypothesis": "A tiered pricing plan for large teams will increase ACV and reduce sales friction.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "B2B Enterprise Case Study Launch",
+                    "channel": "LinkedIn",
+                    "spend": 6500,
+                    "conversions": 7
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Weekly Active Users",
+                    "value": 540.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Net Promoter Score",
+                    "value": 52.0,
+                    "unit": "NPS"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 2.5,
+                    "unit": "%"
+                }
+            ],
+            "month": "February",
+            "year": 2026,
+            "milestone": "Major B2B Win"
+        },
+        {
+            "financials": {
+                "revenue": 13750.0,
+                "expenses": 45200.0,
+                "mrr": 14500.0,
+                "new_customers": 7,
+                "total_customers": 68
+            },
+            "crm_deals": [
+                {
+                    "name": "BlueWave Consulting",
+                    "amount": 7500.0,
+                    "stage": "OPEN",
+                    "notes": "Mid-sized team trialing SyncStream after portal launch."
+                },
+                {
+                    "name": "Acme HR Solutions",
+                    "amount": 5600.0,
+                    "stage": "WON",
+                    "notes": "Signed annual contract after improved support experience."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Customer Support Portal Launch",
+                    "description": "Deploy the self-service portal for all customers and monitor initial feedback.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Support Team Training",
+                    "description": "Train support agents on new portal workflows to optimize user experience.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "March Outreach Campaign",
+                    "description": "Target SMBs with improved support messaging via email and LinkedIn.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Customer Support Portal",
+                    "description": "Enable users to resolve issues independently and track ticket status.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Automated Feedback Summaries",
+                    "description": "AI-powered feedback digest for project managers.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration Enhancements",
+                    "description": "Streamline real-time notifications and workflow triggers in Slack.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Portal Onboarding Email Test",
+                    "hypothesis": "Onboarding emails for the portal will increase activation rates by 20%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Customer Portal Launch Promo",
+                    "channel": "Email",
+                    "spend": 6000,
+                    "conversions": 4
+                },
+                {
+                    "name": "LinkedIn Outreach",
+                    "channel": "Social",
+                    "spend": 3200,
+                    "conversions": 2
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Average Ticket Response Time",
+                    "value": 4.2,
+                    "unit": "hours"
+                },
+                {
+                    "name": "User Satisfaction Score",
+                    "value": 8.6,
+                    "unit": "out of 10"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 510,
+                    "unit": "users"
+                }
+            ],
+            "month": "March",
+            "year": 2026,
+            "milestone": "Customer Support Portal Launch"
+        },
+        {
+            "financials": {
+                "revenue": 83600.0,
+                "expenses": 56400.0,
+                "mrr": 83000.0,
+                "new_customers": 19,
+                "total_customers": 87
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "Closed annual contract for 50-seat deployment."
+                },
+                {
+                    "name": "BrightTech Innovations",
+                    "amount": 8000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating workflow integration for their remote teams."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "ARR Milestone Announcement",
+                    "description": "Prepare press release and customer email campaign to announce $1M ARR milestone.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Quarterly Customer Feedback Collection",
+                    "description": "Conduct surveys and interviews to gather feedback from new and existing customers.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Onboarding Optimization",
+                    "description": "Review and improve onboarding flow for new customers based on recent growth.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Task Recommendations",
+                    "description": "Suggest actionable tasks and deadlines to users based on project context.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Enable real-time document updates and notifications within Slack channels.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Advanced Workflow Analytics",
+                    "description": "Provide managers with deeper insights into team productivity and bottlenecks.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Referral Program Test",
+                    "hypothesis": "A referral incentive will increase signups by 10% within one month.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Sponsored Content",
+                    "channel": "LinkedIn",
+                    "spend": 12000,
+                    "conversions": 11
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 520,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Session Duration",
+                    "value": 34.2,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "Customer Churn Rate",
+                    "value": 2.5,
+                    "unit": "%"
+                }
+            ],
+            "month": "April",
+            "year": 2026,
+            "milestone": "ARR Milestone: $1M Reached"
+        }
+    ]
+}

@@ -17,47 +17,59 @@ interface AccountingOverviewPageProps {
 }
 
 const AccountingOverviewPage: React.FC<AccountingOverviewPageProps> = ({ startupId }) => {
+    // Timeline filters
+    const currentYear = new Date().getFullYear();
+    const [selectedMonth, setSelectedMonth] = React.useState<number | ''>('');
+    const [selectedYear, setSelectedYear] = React.useState<number | ''>('');
+
+    const queryString = React.useMemo(() => {
+        const params = new URLSearchParams();
+        if (selectedMonth) params.append('month', selectedMonth.toString());
+        if (selectedYear) params.append('year', selectedYear.toString());
+        return params.toString() ? `?${params.toString()}` : '';
+    }, [selectedMonth, selectedYear]);
+
     // Fetch analytics data
     const { data: cashFlow = [] } = useQuery({
-        queryKey: ['cashFlow', startupId],
+        queryKey: ['cashFlow', startupId, selectedMonth, selectedYear],
         queryFn: async () => {
-            const res = await api.get(`/startups/${startupId}/analytics/accounting/cash-flow`);
+            const res = await api.get(`/startups/${startupId}/analytics/accounting/cash-flow${queryString}`);
             return res.data;
         },
         enabled: !!startupId
     });
 
     const { data: pnl } = useQuery({
-        queryKey: ['pnl', startupId],
+        queryKey: ['pnl', startupId, selectedMonth, selectedYear],
         queryFn: async () => {
-            const res = await api.get(`/startups/${startupId}/analytics/accounting/pnl`);
+            const res = await api.get(`/startups/${startupId}/analytics/accounting/pnl${queryString}`);
             return res.data;
         },
         enabled: !!startupId
     });
 
     const { data: expenseBreakdown = [] } = useQuery({
-        queryKey: ['expenseBreakdown', startupId],
+        queryKey: ['expenseBreakdown', startupId, selectedMonth, selectedYear],
         queryFn: async () => {
-            const res = await api.get(`/startups/${startupId}/analytics/accounting/expense-breakdown`);
+            const res = await api.get(`/startups/${startupId}/analytics/accounting/expense-breakdown${queryString}`);
             return res.data;
         },
         enabled: !!startupId
     });
 
     const { data: burnRateTrend = [] } = useQuery({
-        queryKey: ['burnRateTrend', startupId],
+        queryKey: ['burnRateTrend', startupId, selectedMonth, selectedYear],
         queryFn: async () => {
-            const res = await api.get(`/startups/${startupId}/analytics/accounting/burn-rate-trend`);
+            const res = await api.get(`/startups/${startupId}/analytics/accounting/burn-rate-trend${queryString}`);
             return res.data;
         },
         enabled: !!startupId
     });
 
     const { data: balanceSheet } = useQuery({
-        queryKey: ['balanceSheet', startupId],
+        queryKey: ['balanceSheet', startupId, selectedMonth, selectedYear],
         queryFn: async () => {
-            const res = await api.get(`/startups/${startupId}/analytics/accounting/balance-sheet`);
+            const res = await api.get(`/startups/${startupId}/analytics/accounting/balance-sheet${queryString}`);
             return res.data;
         },
         enabled: !!startupId
@@ -67,7 +79,33 @@ const AccountingOverviewPage: React.FC<AccountingOverviewPageProps> = ({ startup
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900">Financial Intelligence</h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 className="text-2xl font-bold text-gray-900">Financial Intelligence</h1>
+
+                <div className="flex gap-2">
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : '')}
+                        className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                    >
+                        <option value="">All Months (YTD)</option>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                            <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'long' })}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value ? Number(e.target.value) : '')}
+                        className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                    >
+                        <option value="">All Years</option>
+                        {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
+                            <option key={y} value={y}>{y}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
             {/* Key Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

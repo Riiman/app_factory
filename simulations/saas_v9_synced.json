@@ -1,0 +1,1269 @@
+{
+    "metadata": {
+        "company_name": "PulseSync",
+        "tagline": "Synchronizing Team Performance, Effortlessly",
+        "description": "PulseSync is a SaaS startup founded in April 2024, specializing in real-time analytics and workflow optimization for remote and hybrid teams. The platform leverages AI to analyze collaboration patterns, provide actionable feedback, and automate routine tasks, helping companies maximize productivity and employee engagement. Currently serving SMBs, PulseSync aims to expand towards enterprise clients and enhance its feature set through integrations and partnerships.",
+        "roadmap": [
+            {
+                "month_name": "May",
+                "year": 2025,
+                "milestone_title": "Beta Feature Release: Smart Task Automation",
+                "narrative_description": "Launched beta of the Smart Task Automation module, enabling users to automate repetitive workflows and receive intelligent suggestions based on past activity. Early adopters provided feedback for refinement."
+            },
+            {
+                "month_name": "June",
+                "year": 2025,
+                "milestone_title": "Onboard First Enterprise Customer",
+                "narrative_description": "Successfully signed and onboarded our first enterprise client, a mid-sized tech firm, marking a significant step towards scaling beyond SMBs. Provided tailored onboarding and support."
+            },
+            {
+                "month_name": "July",
+                "year": 2025,
+                "milestone_title": "Integration with Slack and Microsoft Teams",
+                "narrative_description": "Released official integrations with Slack and Microsoft Teams, allowing users to synchronize workflows and analytics across popular collaboration platforms."
+            },
+            {
+                "month_name": "August",
+                "year": 2025,
+                "milestone_title": "Series A Funding Secured",
+                "narrative_description": "Closed a $3M Series A round led by a prominent VC, with participation from angel investors. Funds earmarked for product development, marketing, and team growth."
+            },
+            {
+                "month_name": "September",
+                "year": 2025,
+                "milestone_title": "Expand Engineering Team",
+                "narrative_description": "Hired four new engineers, focusing on AI and backend development, to accelerate feature rollout and improve platform scalability."
+            },
+            {
+                "month_name": "October",
+                "year": 2025,
+                "milestone_title": "Launch Analytics Dashboard V2",
+                "narrative_description": "Released version 2.0 of the analytics dashboard, featuring enhanced visualizations, customizable reports, and deeper insights into team performance."
+            },
+            {
+                "month_name": "November",
+                "year": 2025,
+                "milestone_title": "Major B2B Win: Partnership with HR Tech Vendor",
+                "narrative_description": "Secured a strategic partnership with an HR tech vendor, enabling PulseSync\u2019s analytics to be embedded within their employee management platform."
+            },
+            {
+                "month_name": "December",
+                "year": 2025,
+                "milestone_title": "ISO 27001 Certification Achieved",
+                "narrative_description": "Completed rigorous security audits and achieved ISO 27001 certification, boosting customer confidence and meeting enterprise compliance requirements."
+            },
+            {
+                "month_name": "January",
+                "year": 2026,
+                "milestone_title": "User Growth Exceeds 10,000 Active Accounts",
+                "narrative_description": "Surpassed 10,000 active user accounts across SMB and enterprise segments, reflecting strong adoption and positive retention metrics."
+            },
+            {
+                "month_name": "February",
+                "year": 2026,
+                "milestone_title": "Customer Success Team Established",
+                "narrative_description": "Formed a dedicated customer success team to support onboarding, drive engagement, and improve retention for growing client base."
+            },
+            {
+                "month_name": "March",
+                "year": 2026,
+                "milestone_title": "International Expansion: UK Market Entry",
+                "narrative_description": "Officially launched in the UK, adapting platform compliance and onboarding local sales reps. First UK clients onboarded successfully."
+            },
+            {
+                "month_name": "April",
+                "year": 2026,
+                "milestone_title": "Release AI-Powered Productivity Insights",
+                "narrative_description": "Rolled out AI-powered productivity insights, offering predictive analytics and actionable recommendations for managers. Received positive feedback from early enterprise users."
+            }
+        ]
+    },
+    "monthly_data": [
+        {
+            "financials": {
+                "revenue": 1500.0,
+                "expenses": 22000.0,
+                "mrr": 1200.0,
+                "new_customers": 6,
+                "total_customers": 6
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital",
+                    "amount": 600.0,
+                    "stage": "WON",
+                    "notes": "Early adopter, signed up after Smart Task Automation beta."
+                },
+                {
+                    "name": "BlueSky Consulting",
+                    "amount": 900.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled, interested in automation features."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Beta Feedback Review",
+                    "description": "Analyze feedback from early adopters of Smart Task Automation and prioritize fixes.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboarding Automation",
+                    "description": "Build onboarding flow for new customers to improve activation rates.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Social Proof Gathering",
+                    "description": "Collect testimonials from beta users for marketing materials.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Smart Task Automation",
+                    "description": "Automates repetitive workflows; beta launched for selected users.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Collaboration Analytics Dashboard",
+                    "description": "Visualizes team collaboration patterns in real time.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Allows workflow automation within Slack; planned for next quarter.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Referral Incentive Test",
+                    "hypothesis": "Offering referral credits will increase signups by 20%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Beta Launch Email Blast",
+                    "channel": "Email",
+                    "spend": 1200,
+                    "conversions": 4,
+                    "impressions": 1800,
+                    "clicks": 350
+                },
+                {
+                    "name": "LinkedIn Awareness Ads",
+                    "channel": "LinkedIn",
+                    "spend": 2500,
+                    "conversions": 2,
+                    "impressions": 7000,
+                    "clicks": 600
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active User Engagement",
+                    "value": 68.0,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Automated Tasks Executed",
+                    "value": 340.0,
+                    "unit": "count"
+                },
+                {
+                    "name": "Feedback Response Rate",
+                    "value": 83.0,
+                    "unit": "percent"
+                }
+            ],
+            "month": "May",
+            "year": 2025,
+            "milestone": "Beta Feature Release: Smart Task Automation"
+        },
+        {
+            "financials": {
+                "revenue": 3500.0,
+                "expenses": 10500.0,
+                "mrr": 3500.0,
+                "new_customers": 2,
+                "total_customers": 8
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Tech Enterprise Plan",
+                    "amount": 2200.0,
+                    "stage": "WON",
+                    "notes": "First enterprise client onboarded with tailored integration and support."
+                },
+                {
+                    "name": "NextWave Solutions (SMB)",
+                    "amount": 350.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled; interested in workflow automation features."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Enterprise Onboarding Support",
+                    "description": "Provide white-glove onboarding and support to the new enterprise client.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Integration Scoping",
+                    "description": "Work with enterprise client to identify required integrations with their existing tools.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Feedback Collection",
+                    "description": "Gather feedback from enterprise and SMB users on Smart Task Automation.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Custom Analytics Dashboards",
+                    "description": "Allow enterprise admin users to create and save custom analytics views.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Single Sign-On (SSO)",
+                    "description": "Enable SSO for enterprise customers for easier user management.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Sales Outreach",
+                    "hypothesis": "Personalized outreach to mid-sized tech firms will generate at least 1 enterprise demo per week.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Enterprise Awareness",
+                    "channel": "LinkedIn Ads",
+                    "spend": 1800,
+                    "conversions": 3,
+                    "impressions": 12000,
+                    "clicks": 410
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Weekly Active Users",
+                    "value": 61,
+                    "unit": "users"
+                },
+                {
+                    "name": "Feature Adoption Rate",
+                    "value": 0.42,
+                    "unit": "fraction"
+                },
+                {
+                    "name": "Avg. Task Automation Runs per Team",
+                    "value": 14.7,
+                    "unit": "runs/team"
+                }
+            ],
+            "month": "June",
+            "year": 2025,
+            "milestone": "Onboard First Enterprise Customer"
+        },
+        {
+            "financials": {
+                "revenue": 4200.0,
+                "expenses": 8500.0,
+                "mrr": 4000.0,
+                "new_customers": 2,
+                "total_customers": 10
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Consulting",
+                    "amount": 2400.0,
+                    "stage": "OPEN",
+                    "notes": "Interested after Slack/MS Teams integration demo. Decision expected next month."
+                },
+                {
+                    "name": "Beta Digital",
+                    "amount": 1200.0,
+                    "stage": "WON",
+                    "notes": "Signed up following successful workflow sync with Microsoft Teams."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Slack/MS Teams Integration Launch",
+                    "description": "Release official integrations with Slack and Microsoft Teams, announce to customer base.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Support Training",
+                    "description": "Prepare support team for handling integration-related queries.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Enterprise Sales Outreach",
+                    "description": "Start outreach to larger companies leveraging new integrations.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Slack Integration",
+                    "description": "Synchronize workflows and analytics with Slack in real time.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Microsoft Teams Integration",
+                    "description": "Enable seamless analytics and workflow optimization within Teams.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Custom Workflow Automation Templates",
+                    "description": "Pre-built templates for automating common remote team tasks.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Drip Campaign",
+                    "hypothesis": "Targeted email sequence to newly integrated Slack/Teams users will increase demo bookings.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Slack & Teams Launch Promo",
+                    "channel": "Paid Social & LinkedIn",
+                    "spend": 1700,
+                    "conversions": 2,
+                    "impressions": 22000,
+                    "clicks": 850
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 148,
+                    "unit": "users"
+                },
+                {
+                    "name": "Weekly Engagement Rate",
+                    "value": 72.5,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Automated Tasks Run",
+                    "value": 410,
+                    "unit": "actions"
+                }
+            ],
+            "month": "July",
+            "year": 2025,
+            "milestone": "Integration with Slack and Microsoft Teams"
+        },
+        {
+            "financials": {
+                "revenue": 5400.0,
+                "expenses": 73000.0,
+                "mrr": 5400.0,
+                "new_customers": 7,
+                "total_customers": 17
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo completed; in procurement review for annual contract."
+                },
+                {
+                    "name": "Nova Health Solutions",
+                    "amount": 9000.0,
+                    "stage": "WON",
+                    "notes": "Signed 1-year contract after pilot success."
+                },
+                {
+                    "name": "Orion Media",
+                    "amount": 7000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating terms for Q4 rollout."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Hiring Engineering Talent",
+                    "description": "Begin recruitment for 3 backend and 2 frontend engineers to accelerate product development.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Enterprise Go-to-Market Plan",
+                    "description": "Draft and approve new GTM strategy targeting mid-market and enterprise clients.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Onboard New Customers",
+                    "description": "Customer success team to onboard and train 7 new SMB clients.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Automated Workflow Suggestions",
+                    "description": "AI-driven recommendations to streamline repetitive team processes.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Google Workspace Integration",
+                    "description": "Connect PulseSync analytics with Google Calendar and Drive.",
+                    "status": "BACKLOG"
+                },
+                {
+                    "name": "Slack & Teams Integration",
+                    "description": "Real-time analytics via Slack and Microsoft Teams bots.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Outbound Sales Email Sequence",
+                    "hypothesis": "Targeted outbound emails to HR managers at tech SMBs will yield >10% meeting conversion rate.",
+                    "result": "Pending"
+                },
+                {
+                    "name": "Freemium Tier Test",
+                    "hypothesis": "Introducing a limited freemium plan will increase sign-ups and top-of-funnel by 30%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Ads Launch",
+                    "channel": "LinkedIn",
+                    "spend": 12000,
+                    "conversions": 5,
+                    "impressions": 42000,
+                    "clicks": 1800
+                },
+                {
+                    "name": "Tech Blog Sponsorship",
+                    "channel": "Blog",
+                    "spend": 8000,
+                    "conversions": 2,
+                    "impressions": 18000,
+                    "clicks": 600
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Weekly Users",
+                    "value": 185.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 2.4,
+                    "unit": "%"
+                },
+                {
+                    "name": "Workflow Automation Rate",
+                    "value": 36.0,
+                    "unit": "%"
+                }
+            ],
+            "investment": {
+                "round_name": "Series A",
+                "amount": 3000000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Sophie Lin",
+                        "firm": "Summit Ventures",
+                        "amount": 2500000
+                    },
+                    {
+                        "name": "Jake Patel",
+                        "firm": "Angel",
+                        "amount": 300000
+                    },
+                    {
+                        "name": "Carla Nguyen",
+                        "firm": "Angel",
+                        "amount": 200000
+                    }
+                ]
+            },
+            "month": "August",
+            "year": 2025,
+            "milestone": "Series A Funding Secured"
+        },
+        {
+            "financials": {
+                "revenue": 6800.0,
+                "expenses": 87000.0,
+                "mrr": 6400.0,
+                "new_customers": 4,
+                "total_customers": 21
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Creative",
+                    "amount": 3000.0,
+                    "stage": "OPEN",
+                    "notes": "Mid-size marketing agency trialing team analytics suite."
+                },
+                {
+                    "name": "BrightLeaf Systems",
+                    "amount": 5400.0,
+                    "stage": "WON",
+                    "notes": "Closed 1-year SMB contract after successful pilot."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard New Engineering Hires",
+                    "description": "Integrate four new engineers, assign onboarding projects and codebase walkthroughs.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Scalability Audit",
+                    "description": "Review backend infrastructure for increased customer load.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Update AI Feedback Engine",
+                    "description": "Expand AI-driven actionable insights based on customer feature requests.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Automated Meeting Summaries",
+                    "description": "AI-powered meeting minutes and action item extraction integrated into workflow.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration Beta",
+                    "description": "Connect PulseSync insights and notifications to Slack workspace.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Admin Analytics Dashboard",
+                    "description": "Advanced reporting for team leads and HR managers.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Outbound LinkedIn Sales Outreach",
+                    "hypothesis": "Targeted LinkedIn outreach will increase qualified SMB pipeline by 20%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "SMB Productivity Webinar",
+                    "channel": "Webinar",
+                    "spend": 3500,
+                    "conversions": 2,
+                    "impressions": 1250,
+                    "clicks": 200
+                },
+                {
+                    "name": "Google Ads - Team Collaboration",
+                    "channel": "Paid Search",
+                    "spend": 4200,
+                    "conversions": 1,
+                    "impressions": 8000,
+                    "clicks": 500
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 480,
+                    "unit": "users"
+                },
+                {
+                    "name": "Net Promoter Score",
+                    "value": 54.0,
+                    "unit": "NPS"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 6.0,
+                    "unit": "%"
+                }
+            ],
+            "month": "September",
+            "year": 2025,
+            "milestone": "Expand Engineering Team"
+        },
+        {
+            "financials": {
+                "revenue": 7200.0,
+                "expenses": 64000.0,
+                "mrr": 7200.0,
+                "new_customers": 4,
+                "total_customers": 25
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Consulting",
+                    "amount": 3500.0,
+                    "stage": "OPEN",
+                    "notes": "Interested in Analytics Dashboard V2 for their hybrid workforce, demo scheduled."
+                },
+                {
+                    "name": "TechNova Solutions",
+                    "amount": 2800.0,
+                    "stage": "WON",
+                    "notes": "Closed after trial of Dashboard V2, onboarded 30 users."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Customer Onboarding for Dashboard V2",
+                    "description": "Guide new and existing customers through the new analytics dashboard features.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Enterprise Outreach",
+                    "description": "Initiate outreach to 10 prospective enterprise clients, leveraging new dashboard capabilities.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Dashboard Feedback Collection",
+                    "description": "Gather feedback from customers using Analytics Dashboard V2 to plan future improvements.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Analytics Dashboard V2",
+                    "description": "Enhanced visualizations, customizable reports, and deeper team insights.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Integrate PulseSync with Slack for real-time notifications and workflow triggers.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Custom Report Templates",
+                    "description": "Enable users to create and save custom report layouts for recurring needs.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Targeted LinkedIn Ads",
+                    "hypothesis": "Running LinkedIn ads for remote team leaders will increase demo bookings by 20%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Dashboard V2 Launch Email Blast",
+                    "channel": "Email",
+                    "spend": 1800,
+                    "conversions": 3,
+                    "impressions": 4000,
+                    "clicks": 650
+                },
+                {
+                    "name": "Remote Work Webinar",
+                    "channel": "Webinar",
+                    "spend": 2600,
+                    "conversions": 1,
+                    "impressions": 1200,
+                    "clicks": 130
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 310.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Avg. Session Duration",
+                    "value": 17.4,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "Feature Adoption Rate (Dashboard V2)",
+                    "value": 0.62,
+                    "unit": "ratio"
+                }
+            ],
+            "month": "October",
+            "year": 2025,
+            "milestone": "Launch Analytics Dashboard V2"
+        },
+        {
+            "financials": {
+                "revenue": 9500.0,
+                "expenses": 63000.0,
+                "mrr": 8200.0,
+                "new_customers": 6,
+                "total_customers": 31
+            },
+            "crm_deals": [
+                {
+                    "name": "HR Tech Vendor Partnership",
+                    "amount": 48000.0,
+                    "stage": "WON",
+                    "notes": "Strategic deal embedding PulseSync analytics into the partner's platform. Annual contract with potential for expansion."
+                },
+                {
+                    "name": "Enterprise SaaS Lead (FinTech)",
+                    "amount": 18000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled; interest in workflow optimization for distributed teams."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Integration Deployment",
+                    "description": "Deploy and test PulseSync analytics within the HR tech vendor\u2019s platform.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Scale Marketing Outreach",
+                    "description": "Expand paid campaigns targeting enterprise HR managers and decision-makers.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Sales Team Expansion",
+                    "description": "Begin hiring two sales reps to support partnership and enterprise growth.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "HR Platform Integration API",
+                    "description": "Robust API enabling seamless embedding of PulseSync analytics in partner HR platforms.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Automated Usage Reports",
+                    "description": "Generate weekly reports for partner customers to drive engagement.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Enterprise Account Management",
+                    "description": "Account tiering and workflow for larger clients.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Partner Cross-Promotion",
+                    "hypothesis": "Joint marketing with HR tech vendor will increase PulseSync inbound leads by 30%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Enterprise HR Awareness",
+                    "channel": "LinkedIn Ads",
+                    "spend": 15000,
+                    "conversions": 3,
+                    "impressions": 45000,
+                    "clicks": 3100
+                },
+                {
+                    "name": "Partner Platform Announcement",
+                    "channel": "Email + Webinars",
+                    "spend": 4800,
+                    "conversions": 2,
+                    "impressions": 12000,
+                    "clicks": 900
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active User Rate",
+                    "value": 87.2,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Workflow Automation Runs",
+                    "value": 2300,
+                    "unit": "per month"
+                },
+                {
+                    "name": "Avg. Session Length",
+                    "value": 18.6,
+                    "unit": "minutes"
+                }
+            ],
+            "month": "November",
+            "year": 2025,
+            "milestone": "Major B2B Win: Partnership with HR Tech Vendor"
+        },
+        {
+            "financials": {
+                "revenue": 10200.0,
+                "expenses": 56000.0,
+                "mrr": 9300.0,
+                "new_customers": 6,
+                "total_customers": 37
+            },
+            "crm_deals": [
+                {
+                    "name": "TechCorp Enterprise",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "ISO 27001 certification enabled entry into RFP process for their remote team analytics."
+                },
+                {
+                    "name": "FlexTeams SMB Renewal",
+                    "amount": 1800.0,
+                    "stage": "WON",
+                    "notes": "Renewed annual contract after successful workflow automation pilot."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "ISO 27001 Certification",
+                    "description": "Complete documentation and audit for ISO 27001, submit certification for marketing.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Enterprise Sales Outreach",
+                    "description": "Leverage new compliance certification for targeted outreach to enterprise prospects.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "HR Tech Partnership Integration",
+                    "description": "Begin technical integration with HR Tech vendor post-partnership milestone.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Security Dashboard",
+                    "description": "Centralized dashboard for compliance and data security reporting, supporting ISO 27001 standards.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Automated Compliance Alerts",
+                    "description": "Send alerts to admins when compliance risks are detected, leveraging AI workflows.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "HR Vendor API Integration",
+                    "description": "First-phase integration with partnered HR Tech vendor for seamless workflow data sync.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Landing Page A/B Test",
+                    "hypothesis": "Enterprise-focused messaging will increase demo requests by 30%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "ISO 27001 Launch PR",
+                    "channel": "Press Release / LinkedIn Ads",
+                    "spend": 12000,
+                    "conversions": 4,
+                    "impressions": 41000,
+                    "clicks": 2460
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Weekly Active Users",
+                    "value": 312,
+                    "unit": "users"
+                },
+                {
+                    "name": "Task Automation Rate",
+                    "value": 0.46,
+                    "unit": "tasks automated per user"
+                },
+                {
+                    "name": "Customer Satisfaction Score",
+                    "value": 4.3,
+                    "unit": "out of 5"
+                }
+            ],
+            "month": "December",
+            "year": 2025,
+            "milestone": "ISO 27001 Certification Achieved"
+        },
+        {
+            "financials": {
+                "revenue": 12400.0,
+                "expenses": 48200.0,
+                "mrr": 10850.0,
+                "new_customers": 11,
+                "total_customers": 48
+            },
+            "crm_deals": [
+                {
+                    "name": "AcmeCorp Expansion",
+                    "amount": 4800.0,
+                    "stage": "WON",
+                    "notes": "AcmeCorp upgraded to enterprise plan after successful pilot."
+                },
+                {
+                    "name": "BlueSky Legal",
+                    "amount": 1800.0,
+                    "stage": "OPEN",
+                    "notes": "SMB client in legal sector evaluating platform for hybrid teams."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Enterprise Onboarding Automation",
+                    "description": "Streamline onboarding flow for new enterprise clients.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Q1 Feature Planning",
+                    "description": "Define and prioritize features for Q1 2026 roadmap.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Hiring",
+                    "description": "Finalize hiring for two new CSMs to support growth in active accounts.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Slack Integration",
+                    "description": "Automated workflow triggers and analytics via Slack.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Advanced Reporting Dashboard",
+                    "description": "Customizable analytics dashboard for enterprise clients.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Automated Meeting Summaries",
+                    "description": "AI-powered meeting notes and action item extraction.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Free 30-Day Trial for Enterprise",
+                    "hypothesis": "Offering a free trial will increase enterprise pipeline conversion by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Enterprise Push",
+                    "channel": "LinkedIn Ads",
+                    "spend": 9000,
+                    "conversions": 7,
+                    "impressions": 85000,
+                    "clicks": 3400
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active User Accounts",
+                    "value": 10430,
+                    "unit": "users"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 3.8,
+                    "unit": "%"
+                },
+                {
+                    "name": "Net Promoter Score",
+                    "value": 42.0,
+                    "unit": "NPS"
+                }
+            ],
+            "month": "January",
+            "year": 2026,
+            "milestone": "User Growth Exceeds 10,000 Active Accounts"
+        },
+        {
+            "financials": {
+                "revenue": 12300.0,
+                "expenses": 74000.0,
+                "mrr": 11900.0,
+                "new_customers": 8,
+                "total_customers": 56
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics Inc.",
+                    "amount": 5400.0,
+                    "stage": "WON",
+                    "notes": "Closed SMB deal after 3-week pilot; customer success team facilitated onboarding."
+                },
+                {
+                    "name": "BrightDesk Solutions",
+                    "amount": 4800.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise trial in progress, focused on workflow automation integrations."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Customer Success Team Onboarding",
+                    "description": "Train and integrate new hires into customer support and onboarding processes.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Enhanced Knowledge Base Launch",
+                    "description": "Develop and release updated support documentation for clients.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Q1 Retention Analysis",
+                    "description": "Analyze churn and engagement following the customer success team rollout.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Automated Onboarding Flows",
+                    "description": "Guided onboarding for new users, triggered by sign-up events.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration (MVP)",
+                    "description": "Initial Slack app for notification and workflow support.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Team Performance Dashboard Enhancements",
+                    "description": "Advanced analytics for team leaders, including new engagement metrics.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Proactive Onboarding Calls",
+                    "hypothesis": "Direct outreach by customer success will improve activation and reduce early churn.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Customer Success Launch Campaign",
+                    "channel": "Email & LinkedIn",
+                    "spend": 6000,
+                    "conversions": 4,
+                    "impressions": 18000,
+                    "clicks": 1200
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 11960,
+                    "unit": "users"
+                },
+                {
+                    "name": "Net Promoter Score",
+                    "value": 45.0,
+                    "unit": "NPS"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 2.3,
+                    "unit": "%"
+                }
+            ],
+            "month": "February",
+            "year": 2026,
+            "milestone": "Customer Success Team Established"
+        },
+        {
+            "financials": {
+                "revenue": 13300.0,
+                "expenses": 42500.0,
+                "mrr": 12700.0,
+                "new_customers": 9,
+                "total_customers": 65
+            },
+            "crm_deals": [
+                {
+                    "name": "London Law Partners",
+                    "amount": 7200.0,
+                    "stage": "WON",
+                    "notes": "First major UK SMB client onboarded; monthly contract, 25 seats."
+                },
+                {
+                    "name": "BrightGrid Consulting",
+                    "amount": 4200.0,
+                    "stage": "OPEN",
+                    "notes": "Demo completed, legal review in progress for UK entry."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "UK Compliance Adaptation",
+                    "description": "Ensure platform and data storage meet UK and GDPR standards.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Local Sales Rep Onboarding",
+                    "description": "Recruit and train two UK-based sales reps to drive local acquisition.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "UK Client Onboarding",
+                    "description": "Guide first UK clients through onboarding and platform setup.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Multi-Currency Billing",
+                    "description": "Enable UK/EU clients to pay in GBP/EUR with local invoicing.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration Upgrade",
+                    "description": "Expanded Slack integration to support advanced workflow automations.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "UK-Focused Paid Social Ads",
+                    "hypothesis": "Targeted LinkedIn ads in the UK will convert 2x better than generic global campaigns.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "UK Market Launch Campaign",
+                    "channel": "LinkedIn",
+                    "spend": 6500,
+                    "conversions": 6,
+                    "impressions": 39000,
+                    "clicks": 1800
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "User Engagement Rate",
+                    "value": 72.5,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 2.8,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Average Seats per Customer",
+                    "value": 18.2,
+                    "unit": "seats"
+                }
+            ],
+            "month": "March",
+            "year": 2026,
+            "milestone": "International Expansion: UK Market Entry"
+        },
+        {
+            "financials": {
+                "revenue": 16200.0,
+                "expenses": 42000.0,
+                "mrr": 14100.0,
+                "new_customers": 8,
+                "total_customers": 73
+            },
+            "crm_deals": [
+                {
+                    "name": "Enterprise Group Ltd.",
+                    "amount": 9000.0,
+                    "stage": "WON",
+                    "notes": "Closed first enterprise account after demoing AI-powered productivity insights."
+                },
+                {
+                    "name": "TechNova Consulting",
+                    "amount": 3500.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating pilot for workflow automation integration."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard Enterprise Clients",
+                    "description": "Provide tailored onboarding sessions for new enterprise customers, focusing on productivity insights features.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "AI Insights Marketing Launch",
+                    "description": "Coordinate marketing campaign targeting enterprise decision makers, highlighting new AI-powered productivity features.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Feedback Collection",
+                    "description": "Gather feedback from early adopters of AI-powered insights for refinement and roadmap planning.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Productivity Insights",
+                    "description": "Provides predictive analytics and actionable recommendations for managers based on team activity data.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Advanced Workflow Automation",
+                    "description": "Automates routine tasks and integrates with popular project management tools for enterprise clients.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Email Outreach",
+                    "hypothesis": "Targeted email campaigns to UK enterprise prospects will yield >5% conversion to demo.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "AI Insights Launch",
+                    "channel": "LinkedIn Ads",
+                    "spend": 9000,
+                    "conversions": 6,
+                    "impressions": 48000,
+                    "clicks": 3000
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active User Engagement",
+                    "value": 67.5,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Feature Adoption Rate (AI Insights)",
+                    "value": 41.3,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Monthly Churn Rate",
+                    "value": 2.2,
+                    "unit": "percent"
+                }
+            ],
+            "month": "April",
+            "year": 2026,
+            "milestone": "Release AI-Powered Productivity Insights"
+        }
+    ]
+}

@@ -1745,14 +1745,40 @@ class Account(db.Model):
     startup = db.relationship('Startup', backref=db.backref('accounts', lazy=True))
 
 
-    def to_dict(self):
+    def to_dict(self, month=None, year=None):
+        balance = float(self.balance)
+        
+        if month is not None and year is not None:
+            # Calculate balance as of the end of the specified month
+            from datetime import date, timedelta
+            month_start = date(year, month, 1)
+            next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            month_end = next_month - timedelta(days=1)
+            
+            # Sum all activity up to month_end
+            totals = db.session.query(
+                db.func.sum(JournalLine.debit).label('total_debit'),
+                db.func.sum(JournalLine.credit).label('total_credit')
+            ).join(JournalEntry).filter(
+                JournalLine.account_id == self.id,
+                JournalEntry.date <= month_end
+            ).first()
+            
+            total_debit = float(totals.total_debit or 0)
+            total_credit = float(totals.total_credit or 0)
+            
+            if self.type in [AccountType.ASSET, AccountType.EXPENSE]:
+                balance = total_debit - total_credit
+            else:
+                balance = total_credit - total_debit
+
         return {
             'id': self.id,
             'startup_id': self.startup_id,
             'name': self.name,
             'type': self.type.value if hasattr(self.type, 'value') else self.type,
             'subtype': self.subtype,
-            'balance': float(self.balance),
+            'balance': balance,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

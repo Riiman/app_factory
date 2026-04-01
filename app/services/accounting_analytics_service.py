@@ -8,13 +8,25 @@ from sqlalchemy import func
 from app.models import Account, AccountType, JournalEntry, JournalLine, BusinessMonthlyData
 from app.extensions import db
 
+def get_date_range(months=6, month=None, year=None):
+    if month and year:
+        start_date = datetime(year, month, 1)
+        if month == 12:
+            end_date = datetime(year + 1, 1, 1)
+        else:
+            end_date = datetime(year, month + 1, 1)
+    else:
+        start_date = datetime.utcnow() - timedelta(days=months * 30)
+        end_date = None
+    return start_date, end_date
 
-def calculate_cash_flow(startup_id, months=6):
+
+def calculate_cash_flow(startup_id, months=6, month=None, year=None):
     """
     Calculate cash flow waterfall data
     Shows cash inflows and outflows over time
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=months * 30)
+    start_date, end_date = get_date_range(months, month, year)
     
     # Get cash/bank accounts
     cash_accounts = Account.query.filter(
@@ -28,44 +40,51 @@ def calculate_cash_flow(startup_id, months=6):
     
     cash_account_ids = [acc.id for acc in cash_accounts]
     
-    # Get starting balance
+    # Get starting balance (all entries BEFORE start_date)
     start_balance_query = db.session.query(
         func.sum(JournalLine.debit - JournalLine.credit).label('balance')
     ).join(JournalEntry).filter(
         JournalLine.account_id.in_(cash_account_ids),
-        JournalEntry.date < cutoff_date
+        JournalEntry.date < start_date
     ).first()
     
     starting_balance = float(start_balance_query.balance or 0)
     
     # Get revenue (income accounts)
+    rev_filters = [
+        JournalEntry.startup_id == startup_id,
+        JournalEntry.date >= start_date,
+        Account.type == AccountType.INCOME
+    ]
+    if end_date: rev_filters.append(JournalEntry.date < end_date)
+    
     revenue_query = db.session.query(
         func.sum(JournalLine.credit - JournalLine.debit).label('revenue')
-    ).join(JournalEntry).join(Account).filter(
-        JournalEntry.startup_id == startup_id,
-        JournalEntry.date >= cutoff_date,
-        Account.type == AccountType.INCOME
-    ).first()
+    ).join(JournalEntry).join(Account).filter(*rev_filters).first()
     
     revenue = float(revenue_query.revenue or 0)
     
     # Get expenses (expense accounts)
+    exp_filters = [
+        JournalEntry.startup_id == startup_id,
+        JournalEntry.date >= start_date,
+        Account.type == AccountType.EXPENSE
+    ]
+    if end_date: exp_filters.append(JournalEntry.date < end_date)
+        
     expense_query = db.session.query(
         func.sum(JournalLine.debit - JournalLine.credit).label('expenses')
-    ).join(JournalEntry).join(Account).filter(
-        JournalEntry.startup_id == startup_id,
-        JournalEntry.date >= cutoff_date,
-        Account.type == AccountType.EXPENSE
-    ).first()
+    ).join(JournalEntry).join(Account).filter(*exp_filters).first()
     
     expenses = float(expense_query.expenses or 0)
     
     # Get ending balance
+    end_bal_filters = [JournalLine.account_id.in_(cash_account_ids)]
+    if end_date: end_bal_filters.append(JournalEntry.date < end_date)
+        
     end_balance_query = db.session.query(
         func.sum(JournalLine.debit - JournalLine.credit).label('balance')
-    ).join(JournalEntry).filter(
-        JournalLine.account_id.in_(cash_account_ids)
-    ).first()
+    ).join(JournalEntry).filter(*end_bal_filters).first()
     
     ending_balance = float(end_balance_query.balance or 0)
     
@@ -80,44 +99,37 @@ def calculate_cash_flow(startup_id, months=6):
     return waterfall_data
 
 
-def calculate_pnl(startup_id, months=6):
+def calculate_pnl(startup_id, months=6, month=None, year=None):
     """
     Calculate Profit & Loss statement
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=months * 30)
+    start_date, end_date = get_date_range(months, month, year)
     
     # Revenue
+    rev_filters = [JournalEntry.startup_id == startup_id, JournalEntry.date >= start_date, Account.type == AccountType.INCOME]
+    if end_date: rev_filters.append(JournalEntry.date < end_date)
+        
     revenue_query = db.session.query(
         func.sum(JournalLine.credit - JournalLine.debit).label('revenue')
-    ).join(JournalEntry).join(Account).filter(
-        JournalEntry.startup_id == startup_id,
-        JournalEntry.date >= cutoff_date,
-        Account.type == AccountType.INCOME
-    ).first()
-    
+    ).join(JournalEntry).join(Account).filter(*rev_filters).first()
     revenue = float(revenue_query.revenue or 0)
     
-    # Cost of Goods Sold (if tracked separately)
+    # Cost of Goods Sold
+    cogs_filters = [JournalEntry.startup_id == startup_id, JournalEntry.date >= start_date, Account.type == AccountType.EXPENSE, Account.name.ilike('%cost%')]
+    if end_date: cogs_filters.append(JournalEntry.date < end_date)
+        
     cogs_query = db.session.query(
         func.sum(JournalLine.debit - JournalLine.credit).label('cogs')
-    ).join(JournalEntry).join(Account).filter(
-        JournalEntry.startup_id == startup_id,
-        JournalEntry.date >= cutoff_date,
-        Account.type == AccountType.EXPENSE,
-        Account.name.ilike('%cost%')
-    ).first()
-    
+    ).join(JournalEntry).join(Account).filter(*cogs_filters).first()
     cogs = float(cogs_query.cogs or 0)
     
     # Operating Expenses
+    opex_filters = [JournalEntry.startup_id == startup_id, JournalEntry.date >= start_date, Account.type == AccountType.EXPENSE, ~Account.name.ilike('%cost%')]
+    if end_date: opex_filters.append(JournalEntry.date < end_date)
+        
     opex_query = db.session.query(
         func.sum(JournalLine.debit - JournalLine.credit).label('opex')
-    ).join(JournalEntry).join(Account).filter(
-        JournalEntry.startup_id == startup_id,
-        JournalEntry.date >= cutoff_date,
-        Account.type == AccountType.EXPENSE,
-        ~Account.name.ilike('%cost%')
-    ).first()
+    ).join(JournalEntry).join(Account).filter(*opex_filters).first()
     
     opex = float(opex_query.opex or 0)
     
@@ -138,20 +150,19 @@ def calculate_pnl(startup_id, months=6):
     }
 
 
-def calculate_expense_breakdown(startup_id, months=6):
+def calculate_expense_breakdown(startup_id, months=6, month=None, year=None):
     """
     Calculate expense breakdown by category/account
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=months * 30)
+    start_date, end_date = get_date_range(months, month, year)
     
+    filters = [JournalEntry.startup_id == startup_id, JournalEntry.date >= start_date, Account.type == AccountType.EXPENSE]
+    if end_date: filters.append(JournalEntry.date < end_date)
+        
     expense_breakdown = db.session.query(
         Account.name,
         func.sum(JournalLine.debit - JournalLine.credit).label('amount')
-    ).join(JournalEntry).filter(
-        JournalEntry.startup_id == startup_id,
-        JournalEntry.date >= cutoff_date,
-        Account.type == AccountType.EXPENSE
-    ).group_by(Account.name).all()
+    ).join(JournalEntry).filter(*filters).group_by(Account.name).all()
     
     total_expenses = sum(float(row.amount or 0) for row in expense_breakdown)
     
@@ -172,16 +183,17 @@ def calculate_expense_breakdown(startup_id, months=6):
     return results
 
 
-def calculate_burn_rate_trend(startup_id, months=6):
+def calculate_burn_rate_trend(startup_id, months=6, month=None, year=None):
     """
-    Calculate burn rate trend over time with runway projection
+    Calculate burn rate trend over time with runway projection. (Usually returns a trend over time. We cap the end date if month is provided.)
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=months * 30)
+    _, end_date = get_date_range(months, month, year)
+    start_date = (end_date if end_date else datetime.utcnow()) - timedelta(days=months * 30)
     
-    monthly_data = BusinessMonthlyData.query.filter(
-        BusinessMonthlyData.startup_id == startup_id,
-        BusinessMonthlyData.month_start >= cutoff_date
-    ).order_by(BusinessMonthlyData.month_start).all()
+    filters = [BusinessMonthlyData.startup_id == startup_id, BusinessMonthlyData.month_start >= start_date]
+    if end_date: filters.append(BusinessMonthlyData.month_start < end_date)
+        
+    monthly_data = BusinessMonthlyData.query.filter(*filters).order_by(BusinessMonthlyData.month_start).all()
     
     results = []
     for data in monthly_data:
@@ -199,37 +211,39 @@ def calculate_burn_rate_trend(startup_id, months=6):
     return results
 
 
-def calculate_balance_sheet_summary(startup_id):
+def calculate_balance_sheet_summary(startup_id, month=None, year=None):
     """
-    Calculate simplified balance sheet summary
+    Calculate simplified balance sheet summary AS OF the given month end.
     """
+    _, end_date = get_date_range(6, month, year)
+    
     # Assets
+    asset_filters = [Account.startup_id == startup_id, Account.type == AccountType.ASSET]
+    if end_date: asset_filters.append(JournalEntry.date < end_date)
+        
     assets_query = db.session.query(
         func.sum(JournalLine.debit - JournalLine.credit).label('total_assets')
-    ).join(Account).filter(
-        Account.startup_id == startup_id,
-        Account.type == AccountType.ASSET
-    ).first()
+    ).join(JournalEntry).join(Account).filter(*asset_filters).first()
     
     total_assets = float(assets_query.total_assets or 0)
     
     # Liabilities
+    liab_filters = [Account.startup_id == startup_id, Account.type == AccountType.LIABILITY]
+    if end_date: liab_filters.append(JournalEntry.date < end_date)
+        
     liabilities_query = db.session.query(
         func.sum(JournalLine.credit - JournalLine.debit).label('total_liabilities')
-    ).join(Account).filter(
-        Account.startup_id == startup_id,
-        Account.type == AccountType.LIABILITY
-    ).first()
+    ).join(JournalEntry).join(Account).filter(*liab_filters).first()
     
     total_liabilities = float(liabilities_query.total_liabilities or 0)
     
     # Equity
+    eq_filters = [Account.startup_id == startup_id, Account.type == AccountType.EQUITY]
+    if end_date: eq_filters.append(JournalEntry.date < end_date)
+        
     equity_query = db.session.query(
         func.sum(JournalLine.credit - JournalLine.debit).label('total_equity')
-    ).join(Account).filter(
-        Account.startup_id == startup_id,
-        Account.type == AccountType.EQUITY
-    ).first()
+    ).join(JournalEntry).join(Account).filter(*eq_filters).first()
     
     total_equity = float(equity_query.total_equity or 0)
     

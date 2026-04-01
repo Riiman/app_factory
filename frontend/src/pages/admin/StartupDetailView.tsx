@@ -111,9 +111,9 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
 const OverviewTab: React.FC<{ startup: Startup, latestMonthData: any }> = ({ startup, latestMonthData }) => (
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div className="lg-col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-      <StatCard icon={<DollarSign size={20} />} label="Latest MRR" value={`$${latestMonthData?.mrr.toLocaleString() || 0}`} />
-      <StatCard icon={<Users size={20} />} label="Total Customers" value={latestMonthData?.total_customers || 0} />
-      <StatCard icon={<TrendingDown size={20} />} label="Latest Net Burn" value={`$${latestMonthData?.net_burn.toLocaleString() || 0}`} />
+      <StatCard icon={<DollarSign size={20} />} label="Latest MRR" value={`$${latestMonthData?.mrr?.toLocaleString() || 0}`} />
+      <StatCard icon={<Users size={20} />} label="Total Customers" value={latestMonthData?.total_customers?.toLocaleString() || 0} />
+      <StatCard icon={<TrendingDown size={20} />} label="Latest Net Burn" value={`$${latestMonthData?.net_burn?.toLocaleString() || 0}`} />
     </div>
     <Card title="Business Performance" className="lg:col-span-3">
       <BusinessPerformanceChart data={startup.monthly_data} />
@@ -208,11 +208,11 @@ const BusinessTab: React.FC<{ monthlyData: any[] }> = ({ monthlyData }) => (
       ['Month', 'Revenue', 'Expenses', 'Net Burn', 'MRR', 'New Customers', 'Total Customers'],
       monthlyData.map(d => [
         new Date(d.month_start).toLocaleString('default', { month: 'long', year: 'numeric' }),
-        `$${d.total_revenue.toLocaleString()}`,
-        `$${d.total_expenses.toLocaleString()}`,
-        `$${d.net_burn.toLocaleString()}`,
-        `$${d.mrr.toLocaleString()}`,
-        d.new_customers,
+        `$${(d.total_revenue ?? 0).toLocaleString()}`,
+        `$${(d.total_expenses ?? 0).toLocaleString()}`,
+        `$${(d.net_burn ?? 0).toLocaleString()}`,
+        `$${(d.mrr ?? 0).toLocaleString()}`,
+        (d.new_customers ?? 0).toLocaleString(),
         d.total_customers
       ]).reverse()
     )}
@@ -238,7 +238,7 @@ const FundraisingTab: React.FC<{ fundingRounds: FundingRound[] }> = ({ fundingRo
           <div><span className="font-semibold">Closed:</span> {round.date_closed ? new Date(round.date_closed).toLocaleDateString() : 'N/A'}</div>
         </div>
         <h4 className="font-semibold mt-4">Investors</h4>
-        {renderTable(['Name', 'Firm', 'Type', 'Amount Invested'], round.investors.map(i => [i.investor.name, i.investor.firm_name || 'N/A', i.investor.type, `$${i.amount_invested.toLocaleString()}`]), "No investors for this round.")}
+        {renderTable(['Name', 'Firm', 'Type', 'Amount Invested'], round.investors.map(i => [i.investor.name, i.investor.firm_name || 'N/A', i.investor.type, `$${(i.amount_invested ?? 0).toLocaleString()}`]), "No investors for this round.")}
       </Card>
     ))}
   </div>

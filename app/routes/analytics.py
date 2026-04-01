@@ -3,7 +3,7 @@ Analytics API Routes
 Provides analytics endpoints for dashboard visualizations
 """
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Startup, User, UserRole
 from app.services.business_analytics_service import (
@@ -563,7 +563,9 @@ def get_cash_flow(startup_id):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     
     try:
-        data = calculate_cash_flow(startup_id)
+        month = request.args.get('month', type=int)
+        year = request.args.get('year', type=int)
+        data = calculate_cash_flow(startup_id, month=month, year=year)
         return jsonify({
             'success': True,
             'data': data
@@ -591,7 +593,9 @@ def get_pnl(startup_id):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     
     try:
-        data = calculate_pnl(startup_id)
+        month = request.args.get('month', type=int)
+        year = request.args.get('year', type=int)
+        data = calculate_pnl(startup_id, month=month, year=year)
         return jsonify({
             'success': True,
             'data': data
@@ -619,7 +623,9 @@ def get_expense_breakdown(startup_id):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     
     try:
-        data = calculate_expense_breakdown(startup_id)
+        month = request.args.get('month', type=int)
+        year = request.args.get('year', type=int)
+        data = calculate_expense_breakdown(startup_id, month=month, year=year)
         return jsonify({
             'success': True,
             'data': data
@@ -647,7 +653,9 @@ def get_burn_rate_trend(startup_id):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     
     try:
-        data = calculate_burn_rate_trend(startup_id)
+        month = request.args.get('month', type=int)
+        year = request.args.get('year', type=int)
+        data = calculate_burn_rate_trend(startup_id, month=month, year=year)
         return jsonify({
             'success': True,
             'data': data
@@ -675,7 +683,9 @@ def get_balance_sheet(startup_id):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     
     try:
-        data = calculate_balance_sheet_summary(startup_id)
+        month = request.args.get('month', type=int)
+        year = request.args.get('year', type=int)
+        data = calculate_balance_sheet_summary(startup_id, month=month, year=year)
         return jsonify({
             'success': True,
             'data': data

@@ -415,7 +415,7 @@ def _get_recent_wins(startup_id, days=30):
     for deal in closed_deals:
         wins.append({
             'type': 'deal_closed',
-            'title': f'{deal.deal_name} - ${deal.amount:,.0f}',
+            'title': f'{deal.name} - ${deal.amount:,.0f}',
             'date': deal.close_date.isoformat() if deal.close_date else None,
             'module': 'crm'
         })
