@@ -3,6 +3,10 @@
         "company_name": "PulseSync",
         "tagline": "Synchronizing Team Performance, Effortlessly",
         "description": "PulseSync is a SaaS startup founded in April 2024, specializing in real-time analytics and workflow optimization for remote and hybrid teams. The platform leverages AI to analyze collaboration patterns, provide actionable feedback, and automate routine tasks, helping companies maximize productivity and employee engagement. Currently serving SMBs, PulseSync aims to expand towards enterprise clients and enhance its feature set through integrations and partnerships.",
+        "product": {
+            "name": "PulseSync Platform",
+            "description": "AI-powered productivity and analytics suite for hybrid teams"
+        },
         "roadmap": [
             {
                 "month_name": "May",
@@ -476,6 +480,7 @@
             "investment": {
                 "round_name": "Series A",
                 "amount": 3000000,
+                "valuation_pre": 30000000,
                 "status": "CLOSED",
                 "investors": [
                     {

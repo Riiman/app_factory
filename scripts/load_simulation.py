@@ -18,7 +18,8 @@ from app.models import (
     Startup, Product, BusinessMonthlyData, ProductMetric, 
     Task, FundingRound, TaskStatus, Scope, ProductStage, User,
     Feature, FeatureStatus, Experiment, ExperimentStatus,
-    MarketingCampaign, MarketingCampaignStatus, Investor, InvestorStage, RoundInvestor
+    MarketingCampaign, MarketingCampaignStatus, Investor, InvestorStage, RoundInvestor,
+    CapTableEntry, StakeholderType
 )
 from app.modules.crm.models import (
     CrmCompany, CrmContact, CrmDeal, CrmDealStage
@@ -59,6 +60,7 @@ def load_simulation_to_db(json_path, user_email):
         Task.query.filter_by(startup_id=startup.id).delete()
         Experiment.query.filter_by(startup_id=startup.id).delete()
         Investor.query.filter_by(startup_id=startup.id).delete()
+        CapTableEntry.query.filter_by(startup_id=startup.id).delete()
         MarketingCampaign.query.filter_by(startup_id=startup.id).delete()
         CrmDeal.query.filter_by(startup_id=startup.id).delete()
         CrmCompany.query.filter_by(startup_id=startup.id).delete()
@@ -103,6 +105,30 @@ def load_simulation_to_db(json_path, user_email):
         db.session.flush()
             
         current_cash = Decimal("150000.00") # Starting cash assumption
+        
+        # 2b. Ensure Product exists
+        product_data = sim_data.get("product")
+        if not startup.products and product_data:
+            p = Product(
+                startup_id=startup.id,
+                name=product_data.get("name", "PulseSync Platform"),
+                description=product_data.get("description", "AI-powered productivity and analytics"),
+                status=ProductStage.BETA,
+                created_by=user.id
+            )
+            db.session.add(p)
+            db.session.flush()
+        elif not startup.products:
+            # Fallback
+            p = Product(
+                startup_id=startup.id,
+                name="PulseSync Platform",
+                description="AI-powered productivity and analytics",
+                status=ProductStage.BETA,
+                created_by=user.id
+            )
+            db.session.add(p)
+            db.session.flush()
         
         # 2a. Record Opening Balance in Ledger
         first_month = sim_data["monthly_data"][0]
@@ -170,18 +196,42 @@ def load_simulation_to_db(json_path, user_email):
             inv_data = month_data.get("investment")
             if inv_data and inv_data["status"].upper() == "CLOSED":
                 month_investment = Decimal(str(inv_data["amount"]))
-                # Set target and raised to same if closed
+                pre_money = Decimal(str(inv_data.get("valuation_pre", "30000000")))
+                post_money = pre_money + month_investment
+                
                 fr = FundingRound(
                     startup_id=startup.id,
                     round_type=inv_data.get("round_name", "Funding"),
                     target_amount=month_investment,
                     amount_raised=month_investment,
-                    date_opened=dt - timedelta(days=120), # ~4 months before
+                    valuation_pre=pre_money,
+                    valuation_post=post_money,
+                    date_opened=dt - timedelta(days=120),
                     date_closed=dt,
                     status="Closed"
                 )
                 db.session.add(fr)
-                db.session.flush() # Get fr.round_id
+                db.session.flush()
+
+                # Update Cap Table
+                # Total shares assumption: 10,000,000 post-money
+                TOTAL_SHARES = 10000000
+                investor_share_pct = month_investment / post_money
+                investor_total_shares = int(TOTAL_SHARES * investor_share_pct)
+                founder_shares = TOTAL_SHARES - investor_total_shares
+
+                # Founder Entry (Update or Create)
+                founder_entry = CapTableEntry.query.filter_by(startup_id=startup.id, stakeholder_type=StakeholderType.FOUNDER).first()
+                if not founder_entry:
+                    founder_entry = CapTableEntry(
+                        startup_id=startup.id,
+                        stakeholder_name=user.full_name,
+                        stakeholder_type=StakeholderType.FOUNDER,
+                        shares=founder_shares
+                    )
+                    db.session.add(founder_entry)
+                else:
+                    founder_entry.shares = founder_shares
 
                 # Create Investors and link them
                 for inv in inv_data.get("investors", []):
@@ -209,6 +259,18 @@ def load_simulation_to_db(json_path, user_email):
                         amount_invested=Decimal(str(inv["amount"]))
                     )
                     db.session.add(ri)
+
+                    # Add to Cap Table
+                    inv_share_pct = Decimal(str(inv["amount"])) / month_investment
+                    inv_shares = int(investor_total_shares * inv_share_pct)
+                    
+                    cap_entry = CapTableEntry(
+                        startup_id=startup.id,
+                        stakeholder_name=inv["name"],
+                        stakeholder_type=StakeholderType.INVESTOR,
+                        shares=inv_shares
+                    )
+                    db.session.add(cap_entry)
 
             # --- PHASE B: Derived Ledger Generation ---
             
