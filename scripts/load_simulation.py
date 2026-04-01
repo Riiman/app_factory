@@ -113,7 +113,7 @@ def load_simulation_to_db(json_path, user_email):
                 startup_id=startup.id,
                 name=product_data.get("name", "PulseSync Platform"),
                 description=product_data.get("description", "AI-powered productivity and analytics"),
-                status=ProductStage.BETA,
+                stage=ProductStage.BETA,
                 created_by=user.id
             )
             db.session.add(p)
@@ -124,7 +124,7 @@ def load_simulation_to_db(json_path, user_email):
                 startup_id=startup.id,
                 name="PulseSync Platform",
                 description="AI-powered productivity and analytics",
-                status=ProductStage.BETA,
+                stage=ProductStage.BETA,
                 created_by=user.id
             )
             db.session.add(p)
