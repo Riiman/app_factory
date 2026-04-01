@@ -1902,22 +1902,6 @@ class StartupSnapshot(db.Model):
             'team_data': self.team_data,
             'created_at': self.created_at.isoformat()
         }
-    investment_amount = db.Column(db.Float, default=0.0)
-    date_issued = db.Column(db.Date, default=datetime.utcnow)
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'startup_id': self.startup_id,
-            'stakeholder_name': self.stakeholder_name,
-            'stakeholder_type': self.stakeholder_type.value,
-            'shares': self.shares,
-            'investment_amount': self.investment_amount,
-            'date_issued': self.date_issued.isoformat() if self.date_issued else None
-        }
 
 class JobStatus(Enum):
     DRAFT = "DRAFT"

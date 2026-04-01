@@ -11,11 +11,12 @@ from app.models import (
     TeamMember, Founder, FundingRound, Investor, CapTableEntry, Artifact,
     ScopeDocument, Contract, Task, BusinessOverview, Submission,
     ScopeDocument, Contract, Task, BusinessOverview, Submission,
-    JournalEntry, JournalLine, Account, AccountType, BusinessModel, ProductMetric
+    JournalEntry, JournalLine, Account, AccountType, BusinessModel, ProductMetric,
+    StartupSnapshot
 )
 from app import db
 from sqlalchemy import func
-from app.services import business_analytics_service
+from app.services import business_analytics_service, executive_analytics_service
 import os
 import json
 from dotenv import load_dotenv
@@ -45,15 +46,23 @@ class AIAssistantService:
             self.create_fundraising_tool(startup_id),
             self.create_documents_tool(startup_id),
             self.create_tasks_tool(startup_id),
-            self.create_business_overview_tool(startup_id)
+            self.create_business_overview_tool(startup_id),
+            self.create_executive_summary_tool(startup_id),
+            self.create_insights_tool(startup_id),
+            self.create_data_ontology_tool(startup_id),
+            self.create_knowledge_graph_tool(startup_id)
         ]
 
         current_date_str = datetime.now().strftime("%Y-%m-%d")
         system_prompt = (
-            f"You are a helpful data assistant for a startup founder. Today is {current_date_str}. "
-            "You have access to the startup's financial, product, and marketing data. "
+            f"You are a highly sophisticated data assistant for a startup founder. Today is {current_date_str}. "
+            "You have access to the startup's financial, product, marketing, and CRM data. "
+            "You also have a 'Knowledge Graph' of the entire system (`models.py`) and a 'Data Ontology' for causal reasoning. "
             "Use the provided tools to answer the user's questions based on real data. "
-            "If you cannot find the answer in the data, state that clearly. "
+            "For complex queries about business impact (e.g., 'How does marketing affect my valuation?'), "
+            "use the 'get_knowledge_graph' to understand the structural links (e.g. Marketing -> Sales -> Revenue -> Valuation) "
+            "and 'get_data_ontology' for causal directions (e.g. Higher Win Rate -> Higher Revenue). "
+            "Always perform multi-step investigations for 'why' questions. "
             "Format your response in a clear, readable manner (using markdown if needed for tables or lists)."
         )
 
@@ -385,3 +394,97 @@ class AIAssistantService:
                 
             return json.dumps(results, indent=2)
         return get_business_context
+
+    def create_executive_summary_tool(self, startup_id: int):
+        @tool
+        def get_executive_summary() -> str:
+            """
+            Fetches a comprehensive executive summary for the startup.
+            Returns financial health (revenue, burn, runway), growth metrics (MRR, customer growth), 
+            module health status, critical alerts, and recent wins.
+            """
+            try:
+                summary = executive_analytics_service.calculate_executive_summary(startup_id)
+                return json.dumps(summary, indent=2)
+            except Exception as e:
+                return f"Error calculating executive summary: {str(e)}"
+        return get_executive_summary
+
+    def create_insights_tool(self, startup_id: int):
+        @tool
+        def get_startup_insights() -> str:
+            """
+            Fetches the latest AI-generated health scores and insights for the startup.
+            Returns scores for founder maturity, product readiness, market fit, and detailed insight payloads.
+            """
+            latest_snapshot = StartupSnapshot.query.filter_by(startup_id=startup_id).order_by(StartupSnapshot.date.desc()).first()
+            if not latest_snapshot:
+                return "No insight snapshots available for this startup yet."
+            
+            return json.dumps(latest_snapshot.to_dict(), indent=2)
+        return get_startup_insights
+
+    def create_data_ontology_tool(self, startup_id: int):
+        @tool
+        def get_data_ontology() -> str:
+            """
+            Fetches the Data Ontology map which explains the relationships between metrics.
+            Explains which drivers (e.g. CAC, Win Rate) impact which outcome metrics (e.g. Runway, Revenue).
+            Use this for root-cause analysis and strategic advice.
+            """
+            ontology = {
+                "financial_drivers": {
+                    "Runway": {"drivers": ["Net Burn", "Cash Balance"], "logic": "Cash / Burn"},
+                    "Net Burn": {"drivers": ["OpEx", "Revenue"], "logic": "Expenses - Revenue"},
+                    "Gross Margin": {"drivers": ["Unit Cost", "Price"], "logic": "(Price - Cost) / Price"}
+                },
+                "growth_drivers": {
+                    "Revenue": {"drivers": ["New Customers", "ARPU"], "logic": "Customers * Price"},
+                    "New Customers": {"drivers": ["Leads", "Conversion Rate"], "logic": "Leads * Rate"},
+                    "CAC": {"drivers": ["Marketing Spend", "New Customers"], "logic": "Spend / Customers"},
+                    "LTV": {"drivers": ["ARPU", "Churn Rate"], "logic": "(ARPU * 12) / Churn"}
+                },
+                "causal_links": [
+                    {"source": "Product Readiness", "target": "Conversion Rate", "impact": "Positive"},
+                    {"source": "CAC", "target": "Runway", "impact": "Negative"},
+                    {"source": "Retention", "target": "LTV", "impact": "Positive"},
+                    {"source": "Sales Win Rate", "target": "Revenue", "impact": "Positive"}
+                ],
+                "analysis_patterns": {
+                    "runway_drop": ["Check Net Burn", "Check Revenue vs OpEx", "Check CAC efficiency"],
+                    "revenue_flat": ["Check Leads", "Check Win Rate", "Check ARPU trends"]
+                }
+            }
+            return json.dumps(ontology, indent=2)
+        return get_data_ontology
+
+    def create_knowledge_graph_tool(self, startup_id: int):
+        @tool
+        def get_knowledge_graph() -> str:
+            """
+            Fetches a comprehensive knowledge graph of the entire data ecosystem (models.py).
+            Shows how Marketing, Sales, Product, Finance, and Valuation segments are linked.
+            Use this for 'Big Picture' analysis and cross-domain reasoning.
+            """
+            graph = {
+                "segments": {
+                    "Marketing": ["MarketingOverview", "MarketingCampaign", "MarketingContentCalendar", "MarketingContentItem"],
+                    "Sales (CRM)": ["CrmCompany", "CrmContact", "CrmDeal", "CrmInteraction"],
+                    "Finance": ["JournalEntry", "JournalLine", "Account", "BusinessMonthlyData", "BusinessModel"],
+                    "Product": ["Product", "Feature", "Sprint", "Release", "ProductMetric"],
+                    "Valuation": ["FundingRound", "RoundInvestor", "GlobalInvestor"]
+                },
+                "key_linkages": [
+                    {"from": "MarketingCampaign", "to": "CrmContact/Lead", "type": "Generation"},
+                    {"from": "CrmDeal (Won)", "to": "JournalLine (Revenue)", "type": "Conversion"},
+                    {"from": "JournalLine", "to": "BusinessMonthlyData", "type": "Aggregation"},
+                    {"from": "BusinessMonthlyData", "to": "FundingRound (Valuation)", "type": "Influence"},
+                    {"from": "Feature (Done)", "to": "ProductMetric (Adoption)", "type": "Impact"}
+                ],
+                "system_nodes": {
+                    "Startup": "Central hub connecting all segments.",
+                    "StartupSnapshot": "Aggregated insight node summarizing all data points."
+                }
+            }
+            return json.dumps(graph, indent=2)
+        return get_knowledge_graph
