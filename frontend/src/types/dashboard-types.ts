@@ -1,6 +1,6 @@
 export enum UserRole {
-  USER = 'user',
-  ADMIN = 'admin',
+  USER = 'USER',
+  ADMIN = 'ADMIN',
 }
 
 export enum SubmissionStatus {
@@ -13,71 +13,87 @@ export enum SubmissionStatus {
 }
 
 export enum StartupStatus {
-  INACTIVE = 'inactive',
-  ACTIVE = 'active',
-  INCUBATING = 'incubating',
-  GRADUATED = 'graduated',
-  ARCHIVED = 'archived',
+  INACTIVE = 'INACTIVE',
+  ACTIVE = 'ACTIVE',
+  INCUBATING = 'INCUBATING',
+  GRADUATED = 'GRADUATED',
+  ARCHIVED = 'ARCHIVED',
 }
 
 export enum StartupStage {
   EVALUATION = 'EVALUATION',
-  SCOPING = 'SCOPING',
-  CONTRACT = 'CONTRACT',
   ADMITTED = 'ADMITTED',
   IDEA = 'IDEA',
   MVP = 'MVP',
   GROWTH = 'GROWTH',
 }
 
+export enum InvestorStage {
+  PROSPECT = 'PROSPECT',
+  CONTACTED = 'CONTACTED',
+  MEETING = 'MEETING',
+  DUE_DILIGENCE = 'DUE_DILIGENCE',
+  TERM_SHEET = 'TERM_SHEET',
+  COMMITTED = 'COMMITTED',
+  PASSED = 'PASSED',
+  PORTFOLIO = 'PORTFOLIO',
+}
+
 export enum ProductStage {
-  CONCEPT = 'concept',
-  DEVELOPMENT = 'development',
-  BETA = 'beta',
-  LIVE = 'live',
+  CONCEPT = 'CONCEPT',
+  DEVELOPMENT = 'DEVELOPMENT',
+  BETA = 'BETA',
+  LIVE = 'LIVE',
 }
 
 export enum MarketingCampaignStatus {
-  PLANNED = 'planned',
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
-  PAUSED = 'paused',
+  PLANNED = 'PLANNED',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  PAUSED = 'PAUSED',
 }
 
 export enum MarketingContentStatus {
-  PLANNED = 'planned',
-  PUBLISHED = 'published',
-  CANCELLED = 'cancelled',
+  PLANNED = 'PLANNED',
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  CANCELLED = 'CANCELLED',
 }
 
 export enum TaskStatus {
-  PENDING = 'pending',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
 }
 
 export enum ExperimentStatus {
-  PLANNED = 'planned',
-  RUNNING = 'running',
-  COMPLETED = 'completed',
+  PLANNED = 'PLANNED',
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
 }
 
 export enum ArtifactType {
-  FILE = 'file',
-  LINK = 'link',
-  TEXT = 'text',
+  FILE = 'FILE',
+  LINK = 'LINK',
+  TEXT = 'TEXT',
 }
 
 export enum Scope {
-  GENERAL = 'general',
-  PRODUCT = 'product',
-  FUNDRAISING = 'fundraise',
-  MARKETING = 'marketing',
-  BUSINESS = 'business',
-  DASHBOARD = 'Dashboard', // UI specific Scope
-  WORKSPACE = 'Workspace', // UI specific Scope
-  TEAM = 'Team', // UI specific Scope
-  SETTINGS = 'Settings', // UI specific Scope
+  GENERAL = 'GENERAL',
+  PRODUCT = 'PRODUCT',
+  FUNDRAISING = 'FUNDRAISE',
+  MARKETING = 'MARKETING',
+  ACCOUNTING = 'ACCOUNTING',
+  BUSINESS = 'BUSINESS',
+  DASHBOARD = 'DASHBOARD',
+  WORKSPACE = 'WORKSPACE',
+  TEAM = 'TEAM',
+  SETTINGS = 'SETTINGS',
+  USER_SETTINGS = 'USER_SETTINGS',
+  EMAIL = 'EMAIL',
+  CHAT = 'CHAT',
+  CRM = 'CRM',
+  RECRUITMENT = 'RECRUITMENT',
 }
 
 export enum ScopeStatus {
@@ -160,9 +176,18 @@ export interface ScopeDocument {
   updated_at: string;
 }
 
+export interface Organization {
+  id: number;
+  name: string;
+  slug?: string;
+  invite_code: string;
+  logo_url?: string;
+  created_at: string;
+}
+
 export interface User {
   id: number;
-  firebase_uid?: string;
+  firebase_uid: string;
   email: string;
   phone_number?: string;
   mobile?: string;
@@ -170,9 +195,13 @@ export interface User {
   phone_verified: boolean;
   full_name: string;
   is_verified: boolean;
-  role: UserRole;
+  role: UserRole | string; // Allow string for compatibility
   created_at: string;
-  startup_id?: number;
+  token?: string;
+  organization_id?: number;
+  organization?: Organization;
+  startup_id?: number | null;
+  scopes?: string[];
 }
 
 export interface Submission {
@@ -201,9 +230,9 @@ export interface Evaluation {
   problem_analysis: Record<string, any>;
   solution_analysis: Record<string, any>;
   market_analysis: Record<string, any>;
-  growth_potential: Record<string, any>;
+  growth_analysis: Record<string, any>;
   competitor_analysis: Record<string, any>;
-  risk_analysis: Record<string, any>;
+  risks_analysis: Record<string, any>;
   overall_score: number;
   final_decision: string;
   overall_summary: string;
@@ -235,23 +264,79 @@ export interface ProductIssue {
 }
 
 export enum FeatureStatus {
-  PENDING = 'PENDING',
+  BACKLOG = 'BACKLOG',
+  PLANNED = 'PLANNED',
   IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
+  IN_REVIEW = 'IN_REVIEW',
+  DONE = 'DONE',
+  SHIPPED = 'SHIPPED',
+  PENDING = 'PENDING',
+}
+
+export interface RiceScore {
+  reach: number;
+  impact: number;
+  confidence: number;
+  effort: number;
 }
 
 export interface Feature {
   id: number;
   product_id: number;
+  sprint_id?: number;
+  release_id?: number;
   name: string;
   description: string;
+  user_story?: string;
   acceptance_criteria?: string;
+  priority: number;
   status: FeatureStatus;
+  effort_estimate?: string;
+  rice_reach?: number;
+  rice_impact?: number;
+  rice_confidence?: number;
+  rice_effort?: number;
+  rice_score?: number;
+  rice_details?: RiceScore;
+  target_date?: string;
+  created_at?: string;
 }
+
+export interface Sprint {
+  id: number;
+  product_id: number;
+  name: string;
+  goal?: string;
+  start_date: string;
+  end_date: string;
+  capacity?: number;
+  status: 'PLANNING' | 'ACTIVE' | 'COMPLETED';
+  features?: Feature[];
+}
+
+export interface Release {
+  id: number;
+  product_id: number;
+  version: string;
+  name?: string;
+  description?: string;
+  status: 'PLANNED' | 'IN_PROGRESS' | 'SHIPPED';
+  target_date?: string;
+  release_notes?: string;
+}
+
+
+export type BusinessModelType = 'SUBSCRIPTION' | 'TRANSACTIONAL' | 'SERVICE' | 'MARKETPLACE' | 'ADVERTISING' | 'HYBRID';
 
 export interface ProductBusinessDetails {
   product_business_id: number;
   product_id: number;
+  model_type: BusinessModelType;
+  model_config?: any; // JSON structure for model-specifics
+  revenue_account_id?: number;
+  revenue_account_name?: string;
+  cost_account_id?: number;
+  cost_account_name?: string;
   pricing_model?: string;
   target_customer?: string;
   revenue_streams?: string;
@@ -259,6 +344,44 @@ export interface ProductBusinessDetails {
   cost_structure?: string;
   created_at: string;
   updated_at: string;
+}
+
+
+export enum BusinessModelStatus {
+  DRAFT = "DRAFT",
+  ACTIVE = "ACTIVE",
+  ARCHIVED = "ARCHIVED",
+}
+
+export interface BusinessModel {
+  id: number;
+  startup_id: number;
+  name: string;
+  description?: string;
+  model_type: BusinessModelType;
+  model_config?: any;
+  revenue_account_id?: number;
+  revenue_account_name?: string;
+  cost_account_id?: number;
+
+  cost_account_name?: string;
+  status: BusinessModelStatus;
+
+  // Proforma
+  target_arpu?: number;
+  target_cac?: number;
+  target_margin?: number;
+
+  created_at: string;
+  updated_at: string;
+
+  // Analytics fields (calculated from transactions)
+  actual_revenue?: number;
+  actual_cost?: number;
+  actual_quantity?: number;
+  actual_arpu?: number;
+  actual_margin?: number;
+  transaction_count?: number;
 }
 
 export interface Product {
@@ -309,21 +432,73 @@ export interface BusinessMonthlyData {
   created_at: string;
 }
 
+export interface BrandDetails {
+  tone_of_voice: string;
+  brand_archetype: string;
+  target_audience: string[];
+  key_messaging_pillars: string[];
+}
+
 export interface MarketingOverview {
   marketing_id: number;
   startup_id: number;
   positioning_statement?: string;
+  brand_details?: BrandDetails;
+}
+
+export interface GlobalInvestor {
+  id: number;
+  name: string;
+  firm_name?: string;
+  title?: string;
+  types?: string[];
+  focus_sectors?: string[];
+  focus_stages?: string[];
+  min_check_size?: number;
+  max_check_size?: number;
+  sweet_spot?: number;
+  locations?: string[];
+  website?: string;
+  logo_url?: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
+  bio?: string;
+  recent_investments?: string;
+  meta_data?: {
+    profile_sweet_spot?: string;
+    profile_range?: string;
+    [key: string]: any;
+  };
+  created_at?: string;
 }
 
 export interface Investor {
   investor_id: number;
+  startup_id?: number;
+  global_investor_id?: number;
   name: string;
   firm_name?: string;
-  type: 'Angel' | 'VC' | 'Fund' | 'Accelerator';
+  type: 'Angel' | 'VC' | 'Fund' | 'Accelerator' | string;
   email?: string;
   website?: string;
   notes?: string;
+  stage?: InvestorStage;
+  check_size_interest?: number;
+  total_invested?: number;
+  next_action_date?: string;
+  next_action_type?: string;
   created_at?: string;
+  updated_at?: string;
+}
+
+export interface MarketingSettings {
+  setting_id: number;
+  startup_id: number;
+  provider: string; // 'linkedin', 'twitter', 'instagram', 'facebook', 'email_sendgrid', 'email_mailgun'
+  is_active: boolean;
+  credentials?: Record<string, string>;
+  updated_at: string;
 }
 
 export interface RoundInvestor {
@@ -336,7 +511,7 @@ export interface RoundInvestor {
 export interface FundingRound {
   round_id: number;
   startup_id: number;
-  round_type: 'Pre-Seed' | 'Seed' | 'Series A';
+  round_type: string;
   status: 'Planned' | 'In Progress' | 'Closed';
   target_amount: number;
   amount_raised: number;
@@ -357,7 +532,11 @@ export interface MarketingContentItem {
   title: string;
   content_type?: string;
   content_body?: string;
+  content_brief?: string;
   channel?: string;
+  media_type?: string;
+  image_url?: string;
+  image_prompt?: string;
   publish_date: string;
   status: MarketingContentStatus;
   performance?: Record<string, any>;
@@ -409,6 +588,12 @@ export interface Task {
   status: TaskStatus;
   linked_to_id?: number;
   linked_to_type?: string;
+  assigned_to?: number;
+  assignee?: {
+    id: number;
+    name: string;
+    email: string;
+  };
   created_at: string;
 }
 
@@ -427,6 +612,13 @@ export interface Experiment {
   created_at: string;
 }
 
+export enum StorageBackend {
+  LOCAL = 'LOCAL',
+  S3 = 'S3',
+  EXTERNAL = 'EXTERNAL',
+  INLINE = 'INLINE',
+}
+
 export interface Artifact {
   id: number;
   startup_id: number;
@@ -438,6 +630,18 @@ export interface Artifact {
   linked_to_id?: number;
   linked_to_type?: string;
   created_at: string;
+
+  // S3 and file-specific fields (only populated for FILE type)
+  storage_backend?: StorageBackend;
+  file_size?: number;
+  mime_type?: string;
+  original_filename?: string;
+  s3_bucket?: string;
+  s3_key?: string;
+  s3_region?: string;
+  uploaded_by?: number;
+  is_deleted?: boolean;
+  file_metadata?: Record<string, any>;
 }
 
 export interface Founder {
@@ -467,6 +671,18 @@ export interface Fundraise {
   next_funding_goal?: NextFundingGoal;
 }
 
+export interface TeamMember {
+  id: number;
+  startup_id: number;
+  user_id: number;
+  user_email?: string;
+  user_name?: string;
+  role: string;
+  linkedin?: string;
+  scopes?: string[];
+  created_at?: string;
+}
+
 export interface Startup {
   id: number;
   user_id: number;
@@ -481,6 +697,10 @@ export interface Startup {
   is_analyzing_submission?: boolean;
   is_generating_scope?: boolean;
   is_generating_contract?: boolean;
+  accounting_initialized?: boolean;
+  has_product?: boolean;
+  has_gtm?: boolean;
+  logo_url?: string;
   created_at: string;
   updated_at: string;
   user: User;
@@ -494,6 +714,7 @@ export interface Startup {
   tasks: Task[];
   experiments: Experiment[];
   artifacts: Artifact[];
+  team_members?: TeamMember[];
   marketing_overview?: MarketingOverview;
   business_overview?: BusinessOverview;
   fundraise_details?: Fundraise;
@@ -501,7 +722,10 @@ export interface Startup {
   contract?: Contract;
   activity?: ActivityLog[];
   notifications?: DashboardNotification[];
+  overall_progress?: number;
 }
+
+export type FundraiseDetails = Fundraise;
 
 export interface ActivityLog {
   id: number;
@@ -522,4 +746,186 @@ export interface DashboardNotification {
   type: 'info' | 'success' | 'warning' | 'error';
   read: boolean;
   created_at: string;
+}
+
+export enum AccountType {
+  ASSET = 'ASSET',
+  LIABILITY = 'LIABILITY',
+  EQUITY = 'EQUITY',
+  INCOME = 'INCOME',
+  EXPENSE = 'EXPENSE',
+}
+
+export interface Account {
+  id: number;
+  startup_id: number;
+  name: string;
+  type: AccountType;
+  subtype?: string;
+  balance: number;
+  created_at: string;
+}
+
+
+export interface JournalLine {
+  id: number;
+  journal_entry_id: number;
+  account_id: number;
+  account_name: string;
+  debit: number;
+  credit: number;
+  description?: string;
+  business_model_id?: number;
+  business_model_name?: string;
+}
+
+export interface JournalEntry {
+  id: number;
+  startup_id: number;
+  date: string;
+  description?: string;
+  reference?: string;
+  lines: JournalLine[];
+  created_at: string;
+}
+
+export interface CapTableEntry {
+  id: number;
+  stakeholder_name: string;
+  stakeholder_type: string;
+  shares: number;
+  investment_amount: number;
+  ownership_percentage?: number;
+}
+
+// ============================================================================
+// ADMIN ANALYTICS TYPES
+// New types for admin dashboard analytics
+// ============================================================================
+
+export interface PortfolioMetrics {
+  total_revenue: number;
+  total_burn: number;
+  total_cash: number;
+  average_runway: number;
+  total_customers: number;
+  total_mrr: number;
+  total_pipeline_value: number;
+  total_startups: number;
+  healthy_startups: number;
+  warning_startups: number;
+  critical_startups: number;
+  startup_summaries: StartupSummary[];
+}
+
+export interface StartupSummary {
+  startup_id: number;
+  startup_name: string;
+  health_status: 'healthy' | 'warning' | 'critical';
+  revenue: number;
+  burn_rate: number;
+  runway_months: number;
+  customer_count: number;
+  mrr: number;
+  alerts: Alert[];
+}
+
+export interface StartupRanking {
+  rank: number;
+  startup_id: number;
+  startup_name: string;
+  metric_value: number;
+  health_status: 'healthy' | 'warning' | 'critical';
+}
+
+export interface Alert {
+  type: 'critical' | 'warning' | 'info';
+  module: string;
+  message: string;
+  priority: number;
+  startup_id?: number;
+  startup_name?: string;
+}
+// ============================================================================
+// RECRUITMENT TYPES
+// ============================================================================
+
+export enum JobStatus {
+  DRAFT = "DRAFT",
+  OPEN = "OPEN",
+  CLOSED = "CLOSED",
+  ARCHIVED = "ARCHIVED",
+}
+
+export interface Job {
+  id: number;
+  startup_id: number;
+  title: string;
+  description: string;
+  requirements: string[]; // Stored as JSON list of strings in DB
+  status: JobStatus;
+  location?: string;
+  salary_min?: number;
+  salary_max?: number;
+  currency?: string;
+  application_count?: number;
+  created_at: string;
+}
+
+export interface Candidate {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  resume_url?: string;
+  parsed_data?: any; // JSON with skills, etc.
+  created_at: string;
+}
+
+export enum ApplicationStatus {
+  APPLIED = "APPLIED",
+  SCREENING = "SCREENING",
+  INTERVIEW = "INTERVIEW",
+  OFFER = "OFFER",
+  HIRED = "HIRED",
+  REJECTED = "REJECTED",
+  WITHDRAWN = "WITHDRAWN",
+}
+
+export interface Application {
+  id: number;
+  job_id: number;
+  job_title: string;
+  candidate_id: number;
+  candidate_name: string;
+  candidate?: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    resume_url: string;
+    parsed_data?: {
+      skills?: string[];
+      experience_years?: number;
+      current_role?: string;
+      current_company?: string;
+      location?: string;
+      education?: string;
+      summary?: string;
+    };
+  };
+  status: ApplicationStatus;
+  stage: string; // Kanban column
+  ai_score?: number;
+  ai_analysis?: any;
+  created_at: string;
+}
+
+export interface RecruitmentPipeline {
+  Applied: Application[];
+  Screening: Application[];
+  Interview: Application[];
+  Offer: Application[];
+  Hired: Application[];
+  Rejected: Application[];
 }

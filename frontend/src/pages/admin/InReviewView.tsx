@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Submission, Evaluation, User, SubmissionStatus, Startup, Scope } from '../../types/dashboard-types';
 import Card from '../../components/admin/Card';
 import StatusBadge from '../../components/admin/StatusBadge';
@@ -14,7 +15,7 @@ interface InReviewViewProps {
 }
 
 const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startups, onUpdateStatus, onOpenCreateTaskModal }) => {
-  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const submissionsWithDetails = useMemo(() => {
@@ -30,21 +31,25 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
     }).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
   }, [submissions, users, startups]);
 
+  const selectedSubmission = useMemo(() =>
+    selectedSubmissionId ? submissionsWithDetails.find(s => s.id === selectedSubmissionId) || null : null
+    , [selectedSubmissionId, submissionsWithDetails]);
+
   useEffect(() => {
     // If there's no selected submission but there are submissions in the list,
     // default to selecting the first one.
-    if (!selectedSubmission && submissionsWithDetails.length > 0) {
-      setSelectedSubmission(submissionsWithDetails[0]);
+    if (!selectedSubmissionId && submissionsWithDetails.length > 0) {
+      setSelectedSubmissionId(submissionsWithDetails[0].id);
     }
     // If a submission was selected, but it's no longer in the list (e.g., status changed),
     // clear the selection or select the first one again.
-    if (selectedSubmission && !submissionsWithDetails.find(s => s.id === selectedSubmission.id)) {
-      setSelectedSubmission(submissionsWithDetails.length > 0 ? submissionsWithDetails[0] : null);
+    else if (selectedSubmissionId && !submissionsWithDetails.find(s => s.id === selectedSubmissionId)) {
+      setSelectedSubmissionId(submissionsWithDetails.length > 0 ? submissionsWithDetails[0].id : null);
     }
-  }, [submissionsWithDetails, selectedSubmission]);
+  }, [submissionsWithDetails, selectedSubmissionId]);
 
   const handleSelectSubmission = (submission: Submission) => {
-    setSelectedSubmission(submission);
+    setSelectedSubmissionId(submission.id);
   };
 
   const handleUpdateStatus = async (submissionId: number, status: SubmissionStatus) => {
@@ -193,39 +198,39 @@ const InReviewView: React.FC<InReviewViewProps> = ({ submissions, users, startup
                     <div className="md:col-span-2 bg-gray-50 p-4 rounded-md">
                       <h5 className="font-bold text-gray-600">Overall Summary</h5>
                       <div className="prose prose-sm max-w-none text-gray-700">
-                        <ReactMarkdown>{selectedDetails.evaluation.overall_summary || 'No summary provided.'}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.overall_summary || 'No summary provided.'}</ReactMarkdown>
                       </div>
                     </div>
                   </div>
                 </Card>
                 <Card title="Problem Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.problem_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.problem_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Solution Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.solution_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.solution_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Market Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.market_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.market_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Growth Potential Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.growth_potential?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.growth_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Competitor Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.competitor_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.competitor_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
                 <Card title="Risks Analysis">
                   <div className="prose prose-sm max-w-none text-brand-text-secondary mt-1">
-                    <ReactMarkdown>{selectedDetails.evaluation.risk_analysis?.summary || 'Not available.'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedDetails.evaluation.risks_analysis?.summary || 'Not available.'}</ReactMarkdown>
                   </div>
                 </Card>
               </>

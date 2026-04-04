@@ -3,8 +3,52 @@ from app.services.analyzer_service import run_analysis
 from app.services.document_generator_service import generate_scope_document
 from app.services.contract_generator_service import generate_contract_document
 from app.services.generation_service import generate_startup_assets
-from app.models import Product, Feature, Startup, Contract, StartupStage, SubmissionStatus
+from app.models import Product, Feature, Startup, Contract, StartupStage, SubmissionStatus, Submission
 from app.services.notification_service import publish_update
+
+@celery.task(name='app.tasks.analyze_submission_task')
+def analyze_submission_task(submission_id):
+    """Celery task to trigger the submission analysis."""
+    print(f"--- [Celery Task] Starting analysis for submission ID: {submission_id} ---")
+    
+    status = "success"
+    message = "Analysis completed successfully!"
+    error_details = None
+    
+    try:
+        run_analysis(submission_id)
+    except Exception as e:
+        print(f"Error in analyze_submission_task: {e}")
+        status = "error"
+        message = "Failed to analyze submission."
+        error_details = str(e)
+        
+        # Attempt to set status to REJECTED or similar if analysis failed
+        try:
+             submission = Submission.query.get(submission_id)
+             if submission:
+                 # We don't have a FAILED status, so using PEDNING or REJECTED might be appropriate, 
+                 # or we just rely on the websocket error event.
+                 pass
+        except:
+            pass
+
+    finally:
+        # Notify user of completion or failure
+        try:
+            submission = Submission.query.get(submission_id)
+            if submission:
+                 publish_update("analysis_completed", 
+                               {
+                                   "submission_id": submission.id, 
+                                   "status": status,
+                                   "message": message,
+                                   "error": error_details,
+                                   "submission": submission.to_dict() if status == 'success' else None 
+                               }, 
+                               rooms=[f"user_{submission.user_id}", "admin"])
+        except Exception as e:
+             print(f"Error sending analysis notification: {e}")
 
 @celery.task(name='app.tasks.generate_startup_assets_task')
 def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm=True):
@@ -37,7 +81,7 @@ def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm
                 publish_update("assets_generation_completed", 
                                {
                                    "startup_id": startup.id, 
-                                   "startup": startup.to_dict(),
+                                   "startup": startup.to_dict(include_relations=True),
                                    "status": status,
                                    "message": message,
                                    "error": error_details
@@ -48,11 +92,7 @@ def generate_startup_assets_task(startup_id, generate_product=True, generate_gtm
             print(f"Error resetting generation flags: {e}")
 
 
-@celery.task(name='app.tasks.analyze_submission_task')
-def analyze_submission_task(submission_id):
-    """Celery task to trigger the submission analysis."""
-    print(f"--- [Celery Task] Starting analysis for submission ID: {submission_id} ---")
-    run_analysis(submission_id)
+
 
 @celery.task(name='app.tasks.generate_scope_document_task')
 def generate_scope_document_task(startup_id):
@@ -92,15 +132,27 @@ def generate_scope_document_task(startup_id):
             if startup:
                 startup.is_generating_scope = False
                 
-                # Move to SCOPING stage only if generation was successful
+                # Move to ADMITTED stage only if generation was successful
                 if status == "success":
-                    startup.current_stage = StartupStage.SCOPING
-                    print(f"--- [Celery Task] Moved startup {startup.id} to SCOPING stage ---")
+                    startup.current_stage = StartupStage.ADMITTED
+                    print(f"--- [Celery Task] Moved startup {startup.id} to ADMITTED stage ---")
                     
                     # ALSO update the Submission status to APPROVED now that it's ready
                     if startup.submission:
                         startup.submission.status = SubmissionStatus.APPROVED
                         print(f"--- [Celery Task] Updated submission {startup.submission.id} status to APPROVED ---")
+
+                        # Send Email Notification
+                        from app.email_utils import send_submission_status_email
+                        try:
+                            send_submission_status_email(
+                                startup.submission.user.email,
+                                startup.submission.startup_name,
+                                "approved",
+                                "Your application has been approved! We are now generating your scope of work."
+                            )
+                        except Exception as e:
+                            print(f"Failed to send status email: {e}")
 
                 
                 db.session.commit()
@@ -111,7 +163,7 @@ def generate_scope_document_task(startup_id):
                                {
                                    "startup_id": startup.id, 
                                    "scope_document": startup.scope_document.to_dict() if startup.scope_document else None,
-                                   "startup": startup.to_dict(), # Send updated startup with new stage
+                                   "startup": startup.to_dict(include_relations=True), # Send updated startup with new stage
                                    "status": status,
                                    "message": message,
                                    "error": error_details,
@@ -155,19 +207,19 @@ def generate_contract_task(startup_id):
             if startup:
                 startup.is_generating_contract = False
                 
-                # Move to CONTRACT stage only if generation was successful
+                # Move to ADMITTED stage only if generation was successful
                 if status == "success":
-                    startup.current_stage = StartupStage.CONTRACT
-                    print(f"--- [Celery Task] Moved startup {startup.id} to CONTRACT stage ---")
+                    startup.current_stage = StartupStage.ADMITTED
+                    print(f"--- [Celery Task] Moved startup {startup.id} to ADMITTED stage ---")
 
                 db.session.commit()
-                # Assuming contract is linked to startup, fetch it to send in update
+                # Assuming contract is linkied to startup, fetch it to send in update
                 contract = Contract.query.filter_by(startup_id=startup.id).first()
                 publish_update("contract_generation_completed", 
                                {
                                    "startup_id": startup.id, 
                                    "contract": contract.to_dict() if contract else None,
-                                   "startup": startup.to_dict(), # Send updated startup with new stage
+                                   "startup": startup.to_dict(include_relations=True), # Send updated startup with new stage
                                    "status": status,
                                    "message": message,
                                    "error": error_details
@@ -175,5 +227,32 @@ def generate_contract_task(startup_id):
                                rooms=[f"user_{startup.user_id}", "admin"])
         except Exception as e:
             print(f"Error resetting contract generation flag: {e}")
+
+from app.services.insights_service import InsightsService
+
+@celery.task(name='app.tasks.generate_daily_snapshots')
+def generate_daily_snapshots():
+    """
+    Daily task to generate business insight snapshots for all active startups.
+    Scheduled to run every 24 hours.
+    """
+    print("--- [Celery Task] Starting Daily Business Insights Snapshot Generation ---")
+    try:
+        # Get all active startups
+        active_startups = Startup.query.filter(Startup.status != StartupStatus.ARCHIVED).all()
+        print(f"Found {len(active_startups)} active startups.")
+        
+        success_count = 0
+        for startup in active_startups:
+            try:
+                InsightsService.generate_snapshot(startup.id)
+                success_count += 1
+            except Exception as e:
+                print(f"Error generating snapshot for startup {startup.id}: {e}")
+        
+        print(f"--- [Celery Task] Completed. Generated {success_count}/{len(active_startups)} snapshots. ---")
+        
+    except Exception as e:
+        print(f"Critical Error in generate_daily_snapshots: {e}")
 
 

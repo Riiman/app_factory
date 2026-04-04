@@ -152,11 +152,7 @@ def run_analysis(submission_id):
             print(f"--- [Celery Task] Error parsing synthesis JSON: {e} ---")
             # Fallback
             evaluation.overall_score = 0
-            evaluation.final_decision = "Error"
-            evaluation.overall_summary = "Failed to parse analysis results."
         finally:
-            evaluation.status = 'completed'
-            
             # Set submission status to IN_REVIEW now that analysis is complete
             submission.status = SubmissionStatus.IN_REVIEW
 
@@ -171,6 +167,18 @@ def run_analysis(submission_id):
                             "message": "Analysis completed successfully!"
                         }, 
                         rooms=[f"user_{submission.user_id}", "admin"])
+            
+            # Send Email Notification
+            from app.email_utils import send_submission_status_email
+            try:
+                send_submission_status_email(
+                    submission.user.email,
+                    submission.startup_name,
+                    "in_review",
+                    "Your application has been analyzed and is now under review by our team."
+                )
+            except Exception as e:
+                print(f"Failed to send status email: {e}")
             
             print(f"--- [Celery Task] Analysis for submission {submission_id} completed successfully. ---")
 

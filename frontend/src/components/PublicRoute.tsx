@@ -1,9 +1,10 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const PublicRoute: React.FC = () => {
-  const { user, isLoading, submissionStatus } = useAuth();
+  const { user, isLoading, submissionStatus, startupSlug } = useAuth();
+  const { orgSlug } = useParams<{ orgSlug: string }>();
 
 
   if (isLoading) {
@@ -14,18 +15,23 @@ const PublicRoute: React.FC = () => {
   if (user) {
 
     let targetPath: string;
-    if (user.role === 'admin') {
+    if (user.role?.toUpperCase() === 'ADMIN' || user.role === 'admin') {
       targetPath = '/admin';
+      // Admin might not be bound to one org, so maybe no prefix?
+      // Or if checking an org, /orgSlug/admin? Assuming global admin for now.
     } else {
       switch (submissionStatus?.toLowerCase()) {
         case 'not_started':
           targetPath = '/start-submission';
           break;
         case 'pending':
-          targetPath = '/submission';
+          targetPath = '/submission'; // Note: PENDING often maps to In Review if submitted
+          // Fix alignment with useStageRedirect? PENDING -> /in-review usually?
+          // Keeping logic similar to original for safety, but check mapping.
+          // Original had /submission
           break;
         case 'in_review':
-          targetPath = '/pending-review';
+          targetPath = '/in-review'; // Fixed path name from pending-review to match App.tsx routes
           break;
         case 'approved':
           targetPath = '/dashboard';
@@ -37,6 +43,10 @@ const PublicRoute: React.FC = () => {
           targetPath = '/start-submission';
           break;
       }
+
+      // Determine prefix
+      const prefix = orgSlug ? `/${orgSlug}` : (startupSlug ? `/${startupSlug}` : '');
+      targetPath = `${prefix}${targetPath}`;
     }
 
     return <Navigate to={targetPath} />;

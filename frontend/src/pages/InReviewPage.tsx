@@ -3,14 +3,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const InReviewPage = () => {
-    const { handleLogout, submissionStatus, user } = useAuth();
+    const { handleLogout, submissionStatus, user, startupStage } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (submissionStatus === 'APPROVED' || user?.startup_id) {
+        if ((submissionStatus === 'APPROVED' || user?.startup_id) && startupStage !== 'EVALUATION') {
             navigate('/scope');
         }
-    }, [submissionStatus, user, navigate]);
+    }, [submissionStatus, user, navigate, startupStage]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">

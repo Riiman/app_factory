@@ -5,9 +5,9 @@ import { ArrowLeft, Play, Square, Terminal as TerminalIcon, Send, Loader2, Check
 import TerminalComponent from '../../components/TerminalComponent';
 import FileExplorer from '../../components/FileExplorer';
 import ChatModal from '../../components/ChatModal';
-import AgentBrain from '../../components/AgentBrain'; // New Component
+import AgentBrain from '../../components/AgentBrain';
 import api, { getWebSocketUrl } from '../../utils/api';
-import { io, Socket } from 'socket.io-client';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PlanStep {
     id: number;
@@ -21,6 +21,7 @@ interface PlanStep {
 const StartupCodeStudio: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user, token } = useAuth(); // Correctly get separate token
     const [isRunning, setIsRunning] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
     const [prompt, setPrompt] = useState('');
@@ -31,34 +32,59 @@ const StartupCodeStudio: React.FC = () => {
     const [missionQueue, setMissionQueue] = useState<any[]>([]);
     const [currentMissionIndex, setCurrentMissionIndex] = useState<number>(0);
     const logsEndRef = useRef<HTMLDivElement>(null);
-    const socketRef = useRef<Socket | null>(null);
+    const socketRef = useRef<WebSocket | null>(null);
 
     // V3 V3 V3: New Thought States
     const [activeNode, setActiveNode] = useState<string>('idle');
 
     const [thoughts, setThoughts] = useState<string[]>([]);
 
-
-
-
     // New State for Refactor
     const [showChatModal, setShowChatModal] = useState(false);
     const [products, setProducts] = useState<any[]>([]);
+    const [isAppReady, setIsAppReady] = useState(false); // New App Health State
+
     const [issues, setIssues] = useState<any[]>([]);
     const [expandedProducts, setExpandedProducts] = useState<Record<number, boolean>>({});
     const [fileRefreshKey, setFileRefreshKey] = useState(0);
+
+    // State for UX hardening
+    const [isStarting, setIsStarting] = useState(false);
+    const [isPreviewOpening, setIsPreviewOpening] = useState(false);
 
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
 
     const addLog = (msg: string) => {
-        const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
-        setLogs(prev => [...prev, logMsg]);
-        setThoughts(prev => [...prev, logMsg]);
+        setLogs(prev => {
+            // Deduplication: Don't add if identical to the very last message (ignoring legacy timestamp checks if plain string)
+            // But here we format with timestamp. Let's check the content content.
+            if (prev.length > 0) {
+                const lastLog = prev[prev.length - 1];
+                if (lastLog.includes(msg)) {
+                    return prev;
+                }
+            }
+            const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
+            const newLogs = [...prev, logMsg];
+            return newLogs.slice(-500); // Limit to last 500 lines
+        });
+        setThoughts(prev => {
+            // Basic deduplication for thoughts too
+            if (prev.length > 0) {
+                const lastThought = prev[prev.length - 1];
+                if (lastThought === msg || lastThought.includes(msg)) return prev;
+            }
+            const logMsg = `[${new Date().toLocaleTimeString()}] ${msg} `;
+            const newThoughts = [...prev, logMsg];
+            return newThoughts.slice(-500); // Limit to last 500 lines
+        });
     };
 
     const handleStart = async () => {
+        if (isStarting || isRunning) return;
+        setIsStarting(true);
         addLog('Starting environment...');
         try {
             const res = await fetch(`/api/builder/${id}/start`, {
@@ -75,6 +101,7 @@ const StartupCodeStudio: React.FC = () => {
                 data = await res.json();
             } catch (e) {
                 addLog(`Error parsing response: ${res.status} ${res.statusText}`);
+                setIsStarting(false);
                 return;
             }
             if (data.status === 'running' || data.status === 'created' || data.status === 'success') {
@@ -88,144 +115,158 @@ const StartupCodeStudio: React.FC = () => {
             }
         } catch (e) {
             addLog(`Error: ${e}`);
+        } finally {
+            setIsStarting(false);
         }
     };
 
     // WebSocket connection for real-time environment updates
     useEffect(() => {
-        if (!id) return;
+        if (!id || !token) return;
 
-        // Connect to /builder namespace
-        // Connect to /builder namespace
-        const socketUrl = getWebSocketUrl('/builder');
-        const socket = io(socketUrl.replace('ws', 'http'), {
-            transports: ['websocket'],
-            path: '/socket.io'
-        });
+        let socket: WebSocket | null = null;
+        let reconnectTimeout: any = null;
 
-        socketRef.current = socket;
+        const connect = () => {
+            const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
+            socket = new WebSocket(`${wsUrl}?token=${token}`);
+            socketRef.current = socket;
 
-        socket.on('connect', () => {
-            console.log('Connected to builder namespace');
-            // Subscribe to updates for this startup
-            socket.emit('subscribe', { startup_id: id });
-        });
+            socket.onopen = () => {
+                console.log('Connected to notification server');
+                // Standard subscribe message
+                if (id) {
+                    socket?.send(JSON.stringify({
+                        type: 'subscribe',
+                        startup_id: id
+                    }));
+                }
+            };
 
-        socket.on('env_status', (data) => {
-            console.log('Received env_status:', data);
-            if (data.status === 'running') {
-                setIsRunning(true);
-                setPorts(data.ports);
-                addLog(`Environment is running. Container ID: ${data.container_id}`);
-            } else {
-                setIsRunning(false);
-                setPorts(null);
-                // Sync state: if environment stops, we can't be working in it
-                setIsWorking(false);
-            }
-        });
+            socket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    const data = msg.data;
 
-        socket.on('build_started', (data) => {
-            console.log('Build started:', data);
-            addLog(`Building ${data.stack_type} environment...`);
-        });
+                    switch (msg.type) {
+                        case 'env_status':
+                            if (data.status === 'running') {
+                                setIsRunning(true);
+                                setPorts(data.ports);
+                                // Set App Ready status based on backend heartbeat (or default to false if missing)
+                                setIsAppReady(data.app_status === 'ready');
+                            } else {
+                                setIsRunning(false);
+                                setPorts(null);
+                                setIsWorking(false);
+                                setIsAppReady(false);
+                            }
+                            break;
 
-        socket.on('build_complete', (data) => {
-            console.log('Build complete:', data);
-            setIsRunning(true);
-            setPorts(data.ports);
-            addLog(`Environment ready! Container ID: ${data.container_id}`);
-        });
+                        case 'build_started':
+                            addLog(`Building ${data.stack_type} environment...`);
+                            break;
 
-        socket.on('build_failed', (data) => {
-            console.log('Build failed:', data);
-            addLog(`Build failed: ${data.error}`);
-        });
+                        case 'build_complete':
+                            setIsRunning(true);
+                            setPorts(data.ports);
+                            addLog(`Environment ready! Container ID: ${data.container_id}`);
+                            break;
 
-        socket.on('agent_update', (data) => {
-            if (data.logs) {
-                // MERGE STRATEGY: Treat logs as thoughts.
-                // Filter out json strings if needed, or just push them.
-                // We map them to strings to be safe (AgentBrain expects string[]).
-                const newThoughts = data.logs.map((l: any) => {
-                    if (typeof l === 'object') return JSON.stringify(l);
-                    return l;
-                });
+                        case 'build_failed':
+                            addLog(`Error: ${data.error}`);
+                            break;
 
-                setThoughts(prev => [...prev, ...newThoughts]);
+                        case 'agent_update':
+                            console.log('[DEBUG WS] Agent Update Received:', data); // Debug Log
+                            if (data.logs && Array.isArray(data.logs)) {
+                                console.log('[DEBUG WS] Logs found:', data.logs); // Debug Log
+                                setLogs(prev => [...prev, ...data.logs]);
 
-                // Still keep legacy logs for internal tracking if needed, 
-                // but we won't display them in a separate panel.
-                setLogs(prev => [...prev, ...data.logs]);
-            }
-            if (data.plan) setPlan(data.plan);
-            if (data.task_status) setTaskStatus(data.task_status);
+                                // RESTORED: Map logs to thoughts so they appear in AgentBrain
+                                const newThoughts = data.logs.map((l: any) => {
+                                    if (typeof l === 'object') return JSON.stringify(l);
+                                    return l;
+                                });
+                                // Fixed closure
+                                console.log('[DEBUG WS] New Thoughts generated:', newThoughts); // Debug Log
+                                setThoughts(prev => [...prev, ...newThoughts].slice(-500));
+                            } else {
+                                console.log('[DEBUG WS] No logs in agent_update payload'); // Debug Log
+                            }
+                            if (data.plan) setPlan(data.plan);
+                            if (data.task_status) setTaskStatus(data.task_status);
+                            if (data.node) setActiveNode(data.node);
 
-            // V3: Sync Node State
-            if (data.node) setActiveNode(data.node);
+                            if (data.total_tasks) {
+                                setProgress({
+                                    completed: data.completed_tasks || 0,
+                                    total: data.total_tasks
+                                });
+                            }
 
-            if (data.total_tasks) {
-                setProgress({
-                    completed: data.completed_tasks || 0,
-                    total: data.total_tasks
-                });
-            }
+                            if (data.waiting_approval) {
+                                setWaitingApproval(true);
+                                setIsWorking(false);
+                                if (data.current_step) setCurrentStep(data.current_step);
+                            } else if (['done', 'qa_passed', 'failed', 'paused'].includes(data.task_status)) {
+                                setIsWorking(false);
+                                setWaitingApproval(false);
+                                if (data.task_status === 'done') fetchData();
+                            } else if (['planning', 'coding', 'strategizing'].includes(data.task_status)) {
+                                setIsWorking(true);
+                            }
 
-            if (data.waiting_approval) {
-                setWaitingApproval(true);
-                setIsWorking(false);
-                if (data.current_step) setCurrentStep(data.current_step);
-                addLog("System paused. Waiting for approval.");
-            } else if (data.task_status === 'waiting_interaction') {
-                setWaitingApproval(true);
-                setIsWorking(false);
-                setShowTerminal(true);
-            } else if (data.task_status === 'done' || data.task_status === 'qa_passed') {
-                // Determine if we are truly done or just switching missions
-                // The overseer will reset status to 'start' if switching, so 'done' might be transient.
-                // However, if we get 'done' and there is a queue, we might just wait for next update?
-                // Actually, the backend overseer returns status='start' for next mission immediately.
-                // So 'done' implies ALL done.
-                setIsWorking(false);
-                setWaitingApproval(false);
-                addLog('Task completed successfully.');
-                fetchData();
-            } else if (data.task_status === 'failed') {
-                setIsWorking(false);
-                setWaitingApproval(false);
-                addLog('Task failed.');
-            } else if (data.task_status === 'planning_needed' || data.task_status === 'plan_ready' || data.task_status === 'coding' || data.task_status === 'strategizing' || data.task_status === 'start') {
-                setIsWorking(true);
-            }
+                            if (data.mission_queue) setMissionQueue(data.mission_queue);
 
-            // Mission Tracking
-            if (data.mission_queue) setMissionQueue(data.mission_queue);
-            if (data.current_mission_index !== undefined) setCurrentMissionIndex(data.current_mission_index);
+                            // Calculate Index dynamically if current_mission object is passed
+                            if (data.current_mission && data.mission_queue) {
+                                const idx = data.mission_queue.findIndex((m: any) => m.id === data.current_mission.id);
+                                if (idx !== -1) setCurrentMissionIndex(idx);
+                            } else if (data.current_mission_index !== undefined) {
+                                setCurrentMissionIndex(data.current_mission_index);
+                            }
+                            break;
 
-            if (data.task_status === 'paused') {
-                setIsWorking(false);
-                addLog('Process paused.');
-            }
-        });
+                        case 'agent_thought':
+                            if (data.content) {
+                                setThoughts(prev => [...prev, data.content].slice(-500));
+                            }
+                            if (data.node) setActiveNode(data.node);
+                            break;
+                    }
+                } catch (e) {
+                    console.error("WS Parse Error", e);
+                    // DEBUG: Show parse error in UI to identify the culprit
+                    if (e instanceof SyntaxError) {
+                        // Only log if it's a syntax error (JSON parse fail)
+                        addLog(`[System] WS Parse Error: ${e.message}`);
+                        addLog(`[System] Bad Data Peek: ${event.data ? String(event.data).substring(0, 100) : 'null'}`);
+                    }
+                }
+            };
 
-        // V3: Thinking Listener
-        socket.on('agent_thought', (data) => {
-            console.log('Thought received:', data);
-            if (data.content) setThoughts(prev => [...prev, data.content]);
-            if (data.node) setActiveNode(data.node);
-        });
+            socket.onclose = () => {
+                console.log('WS Closed. Reconnecting in 3s...');
+                reconnectTimeout = setTimeout(connect, 3000);
+            };
 
-        socket.on('disconnect', () => {
-            console.log('Disconnected from builder namespace');
-        });
+            socket.onerror = (e) => {
+                console.error('WS Error:', e);
+                socket?.close();
+            };
+        };
+
+        connect();
 
         return () => {
-            if (socketRef.current) {
-                socketRef.current.emit('unsubscribe', { startup_id: id });
-                socketRef.current.disconnect();
+            if (socket) {
+                socket.onclose = null; // Prevent reconnect on unmount
+                socket.close();
             }
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
-    }, [id]);
+    }, [id, user?.token]);
 
     const handleStop = async () => {
         addLog('Stopping environment...');
@@ -253,6 +294,28 @@ const StartupCodeStudio: React.FC = () => {
             }
         } catch (e) {
             addLog(`Error pausing: ${e}`);
+        }
+    };
+
+    const handleResume = async () => {
+        addLog('Resuming process...');
+        try {
+            const res = await fetch(`/api/builder/v4/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startup_id: id,
+                    mission: 'Resume previous task',
+                    mission_type: 'general',
+                    priority: 'medium'
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                // setIsWorking(true); // Let socket handle it
+            }
+        } catch (e) {
+            addLog(`Error resuming: ${e}`);
         }
     };
 
@@ -300,8 +363,10 @@ const StartupCodeStudio: React.FC = () => {
         try {
             const res = await fetch(`/api/builder/${id}/status`);
             const data = await res.json();
-            if (data.status === 'active') {
-                setIsWorking(true);
+            if (['active', 'paused', 'waiting_approval', 'waiting_interaction', 'done', 'failed'].includes(data.status)) {
+                // Set working state based on status
+                setIsWorking(data.status === 'active');
+
                 setLogs(data.logs || []);
                 setPlan(data.plan || []);
                 setTaskStatus(data.task_status || 'unknown');
@@ -321,6 +386,9 @@ const StartupCodeStudio: React.FC = () => {
                     setWaitingApproval(true);
                     setIsWorking(false);
                     setShowTerminal(true);
+                } else if (data.status === 'paused') {
+                    // Explicitly handle paused
+                    setIsWorking(false);
                 }
 
                 if (data.mission_queue) setMissionQueue(data.mission_queue);
@@ -358,19 +426,22 @@ const StartupCodeStudio: React.FC = () => {
 
         addLog(`Auto-Triggered Task: "${taskPrompt}"`);
 
-        // V3 API Call
+        // V4 API Call
         try {
-            await fetch(`/api/builder/v3/start`, {
+            await fetch(`/api/builder/v4/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     startup_id: id,
-                    mission: taskPrompt
+                    mission: taskPrompt,
+                    mission_type: 'general',
+                    priority: 'medium'
                 })
             });
-        } catch (e) {
-            addLog(`Error triggering agent: ${e}`);
-            setIsWorking(false);
+            addLog('Task sent to V4 agent with planning enabled');
+        } catch (err) {
+            console.error('Failed to trigger task:', err);
+            addLog('Error: Failed to trigger task');
         }
     };
 
@@ -527,14 +598,17 @@ const StartupCodeStudio: React.FC = () => {
         }, 500);
 
         try {
-            await fetch(`/api/builder/v3/start`, {
+            await fetch(`/api/builder/v4/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     startup_id: id,
-                    mission: currentPrompt
+                    mission: currentPrompt,
+                    mission_type: 'general',
+                    priority: 'medium'
                 })
             });
+            addLog('Task sent to V4 agent with planning');
         } catch (e) {
             addLog(`Error running task: ${e}`);
             setIsWorking(false);
@@ -695,8 +769,8 @@ const StartupCodeStudio: React.FC = () => {
                         </button>
                     </div>
                     {!isRunning ? (
-                        <button onClick={handleStart} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
-                            <Play className="w-4 h-4" /> Start Env
+                        <button onClick={handleStart} disabled={isStarting} className={`flex items-center gap-2 bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm font-medium transition-colors ${isStarting ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {isStarting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} {isStarting ? 'Starting...' : 'Start Env'}
                         </button>
                     ) : (
                         <>
@@ -705,22 +779,45 @@ const StartupCodeStudio: React.FC = () => {
                                     <span className="w-4 h-4 flex items-center justify-center font-bold">||</span> Pause
                                 </button>
                             )}
+                            {!isWorking && taskStatus === 'paused' && (
+                                <button onClick={handleResume} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
+                                    <Play className="w-4 h-4" /> Resume
+                                </button>
+                            )}
                             <button onClick={handleStop} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-medium transition-colors">
                                 <Square className="w-4 h-4" /> Stop Env
                             </button>
                         </>
                     )}
-                    <a
-                        href={`/api/startups/${id}/preview/`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${ports ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed pointer-events-none'
-                            }`}
-                        title={ports ? "Open Preview" : "Preview not available"}
-                        onClick={(e) => { if (!ports) e.preventDefault(); }}
-                    >
-                        <ExternalLink className="w-4 h-4" /> Preview
-                    </a>
+                    {(() => {
+                        const isMissionComplete = !missionQueue || missionQueue.length === 0 || missionQueue.every(m => m.status === 'completed');
+
+                        // "Enable if App is Ready OR Mission is Done" (AND ports must exist)
+                        const canPreview = ports && (isAppReady || isMissionComplete);
+
+                        return (
+                            <button
+                                onClick={async () => {
+                                    if (!canPreview) return;
+                                    setIsPreviewOpening(true);
+                                    setTimeout(() => setIsPreviewOpening(false), 2000);
+                                    window.open(`/api/startups/${id}/preview/`, '_blank');
+                                }}
+                                disabled={!canPreview}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${canPreview
+                                    ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/20'
+                                    : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700 opacity-50'
+                                    }`}
+                                title={
+                                    !ports ? "Server not started" :
+                                        (!isAppReady && !isMissionComplete) ? "App starting up... (Port 3000 unreachable)" :
+                                            "Open Preview"
+                                }
+                            >
+                                {isPreviewOpening ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />} Preview
+                            </button>
+                        );
+                    })()}
                     <button
                         onClick={() => setShowTerminal(true)}
                         className="ml-4 flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded text-sm font-medium transition-colors"
@@ -868,17 +965,9 @@ const StartupCodeStudio: React.FC = () => {
 
                     <div className="flex items-center gap-4 ml-4">
                         {isWorking && (
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span>Working...</span>
-                                </div>
-                                <button
-                                    onClick={handlePause}
-                                    className="flex items-center gap-1 bg-yellow-900/50 hover:bg-yellow-900 text-yellow-200 border border-yellow-800 px-2 py-1 rounded text-xs font-medium transition-colors"
-                                >
-                                    <Square className="w-3 h-3 fill-current" /> Pause
-                                </button>
+                            <div className="flex items-center gap-2 text-blue-400 text-sm animate-pulse">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Working...</span>
                             </div>
                         )}
                         {!isWorking && taskStatus === 'paused' && (
@@ -890,7 +979,8 @@ const StartupCodeStudio: React.FC = () => {
                         )}
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Main Content Area */}
             <div className="flex-1 flex overflow-hidden">
@@ -1016,7 +1106,7 @@ const StartupCodeStudio: React.FC = () => {
                     {/* V3 Brain View - Full Height */}
                     <div className="flex-1 bg-gray-950 p-2 min-h-0">
                         <div className="h-full">
-                            <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} />
+                            <AgentBrain node={activeNode} thoughts={thoughts} isThinking={isWorking} startupId={id} />
                         </div>
                     </div>
                 </div>

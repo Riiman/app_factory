@@ -6,6 +6,11 @@ import StatCard from '../../components/admin/StatCard';
 import BusinessPerformanceChart from '../../components/admin/charts/BusinessPerformanceChart';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { DollarSign, Users, TrendingDown, ArrowLeft, PlusCircle, Edit, Terminal } from 'lucide-react';
+import DashboardOverview from '../../modules/dashboard/pages/DashboardOverview';
+import InsightsScoreCards from '../../components/admin/InsightsScoreCards';
+import { useQuery } from '@tanstack/react-query';
+import api from '../../utils/api';
+import LogoUpload from '../../components/common/LogoUpload';
 
 interface StartupDetailViewProps {
   startup: Startup;
@@ -38,7 +43,7 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab startup={startup} latestMonthData={latestMonthData} />;
+        return <AnalyticsTab startupId={startup.id} startup={startup} />;
       case 'products':
         return <ProductsTab products={startup.products} onEditFeature={onEditFeature} />;
       case 'business':
@@ -47,8 +52,8 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
         return <FundraisingTab fundingRounds={startup.funding_rounds} />;
       case 'marketing':
         return <MarketingTab campaigns={startup.marketing_campaigns} />;
-      case 'workspace':
-        return <WorkspaceTab startupId={startup.id} tasks={startup.tasks} experiments={startup.experiments} artifacts={startup.artifacts} onOpenCreateTaskModal={onOpenCreateTaskModal} onOpenCreateExperimentModal={onOpenCreateExperimentModal} onOpenCreateArtifactModal={onOpenCreateArtifactModal} />;
+      case 'team':
+        return <TeamTab startup={startup} />;
       default:
         return null;
     }
@@ -64,23 +69,26 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
       </div>
 
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-3xl font-bold text-brand-text-primary">{startup.name}</h2>
-          <div className="flex items-center space-x-2 mt-1">
-            <StatusBadge status={startup.status} />
-            <span className="text-slate-400">&bull;</span>
-            <span className="text-sm text-brand-text-secondary">Stage: <span className="font-semibold">{startup.current_stage}</span></span>
+        <div className="flex items-center space-x-6">
+          <LogoUpload
+            startupId={startup.id}
+            currentLogoUrl={startup.logo_url}
+            size="lg"
+            editable={false} // Admin shouldn't change startup logos here
+            onUploadSuccess={(url) => {
+              // Usually we'd update state here, but since props are managed by parent
+              // and we might need to refresh, for now the preview is handled inside component
+              console.log('Logo uploaded:', url);
+            }}
+          />
+          <div>
+            <h2 className="text-3xl font-bold text-brand-text-primary">{startup.name}</h2>
+            <div className="flex items-center space-x-2 mt-1">
+              <StatusBadge status={startup.status} />
+              <span className="text-slate-400">&bull;</span>
+              <span className="text-sm text-brand-text-secondary">Stage: <span className="font-semibold">{startup.current_stage}</span></span>
+            </div>
           </div>
-        </div>
-        <div className="text-right">
-          <p className="text-sm text-brand-text-secondary">Next Milestone</p>
-          <p className="font-semibold text-brand-primary mb-2">{startup.next_milestone}</p>
-          <a
-            href={`/admin/startups/${startup.id}/code-studio`}
-            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md hover:bg-black transition-colors"
-          >
-            <Terminal className="mr-1.5 h-3 w-3" /> Open Code Studio
-          </a>
         </div>
       </div>
 
@@ -91,7 +99,7 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
           <TabButton active={activeTab === 'business'} onClick={() => setActiveTab('business')}>Business</TabButton>
           <TabButton active={activeTab === 'fundraising'} onClick={() => setActiveTab('fundraising')}>Fundraising</TabButton>
           <TabButton active={activeTab === 'marketing'} onClick={() => setActiveTab('marketing')}>Marketing</TabButton>
-          <TabButton active={activeTab === 'workspace'} onClick={() => setActiveTab('workspace')}>Workspace</TabButton>
+          <TabButton active={activeTab === 'team'} onClick={() => setActiveTab('team')}>Team</TabButton>
         </nav>
       </div>
 
@@ -103,9 +111,9 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
 const OverviewTab: React.FC<{ startup: Startup, latestMonthData: any }> = ({ startup, latestMonthData }) => (
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div className="lg-col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-      <StatCard icon={<DollarSign size={20} />} label="Latest MRR" value={`$${latestMonthData?.mrr.toLocaleString() || 0}`} />
-      <StatCard icon={<Users size={20} />} label="Total Customers" value={latestMonthData?.total_customers || 0} />
-      <StatCard icon={<TrendingDown size={20} />} label="Latest Net Burn" value={`$${latestMonthData?.net_burn.toLocaleString() || 0}`} />
+      <StatCard icon={<DollarSign size={20} />} label="Latest MRR" value={`$${latestMonthData?.mrr?.toLocaleString() || 0}`} />
+      <StatCard icon={<Users size={20} />} label="Total Customers" value={latestMonthData?.total_customers?.toLocaleString() || 0} />
+      <StatCard icon={<TrendingDown size={20} />} label="Latest Net Burn" value={`$${latestMonthData?.net_burn?.toLocaleString() || 0}`} />
     </div>
     <Card title="Business Performance" className="lg:col-span-3">
       <BusinessPerformanceChart data={startup.monthly_data} />
@@ -179,21 +187,12 @@ const ProductsTab: React.FC<{ products: Product[], onEditFeature: (productId: nu
           </div>
           <div className="space-y-4">
             <h4 className="font-semibold">Features</h4>
-            {renderTable(['Name', 'Description', 'Actions'], product.features.map(f => [
+            {renderTable(['Name', 'Description'], product.features.map(f => [
               f.name,
-              f.description,
-              <button
-                onClick={() => onEditFeature(product.id, f)}
-                className="text-brand-text-secondary hover:text-brand-primary transition-colors"
-                title="Edit Feature"
-              >
-                <Edit size={16} />
-              </button>
+              f.description
             ]), "No features defined.")}
             <h4 className="font-semibold mt-4">Metrics</h4>
             {renderTable(['Name', 'Value', 'Unit', 'Period'], product.product_metrics.map(m => [m.metric_name, m.value?.toLocaleString() ?? 'N/A', m.unit, m.period]), "No metrics recorded.")}
-            <h4 className="font-semibold mt-4">Issues</h4>
-            {renderTable(['Title', 'Severity', 'Status'], product.product_issues.map(i => [i.title, <StatusBadge status={i.severity} />, <StatusBadge status={i.status} />]), "No issues reported.")}
           </div>
         </Card>
       ))
@@ -209,11 +208,11 @@ const BusinessTab: React.FC<{ monthlyData: any[] }> = ({ monthlyData }) => (
       ['Month', 'Revenue', 'Expenses', 'Net Burn', 'MRR', 'New Customers', 'Total Customers'],
       monthlyData.map(d => [
         new Date(d.month_start).toLocaleString('default', { month: 'long', year: 'numeric' }),
-        `$${d.total_revenue.toLocaleString()}`,
-        `$${d.total_expenses.toLocaleString()}`,
-        `$${d.net_burn.toLocaleString()}`,
-        `$${d.mrr.toLocaleString()}`,
-        d.new_customers,
+        `$${(d.total_revenue ?? 0).toLocaleString()}`,
+        `$${(d.total_expenses ?? 0).toLocaleString()}`,
+        `$${(d.net_burn ?? 0).toLocaleString()}`,
+        `$${(d.mrr ?? 0).toLocaleString()}`,
+        (d.new_customers ?? 0).toLocaleString(),
         d.total_customers
       ]).reverse()
     )}
@@ -239,7 +238,7 @@ const FundraisingTab: React.FC<{ fundingRounds: FundingRound[] }> = ({ fundingRo
           <div><span className="font-semibold">Closed:</span> {round.date_closed ? new Date(round.date_closed).toLocaleDateString() : 'N/A'}</div>
         </div>
         <h4 className="font-semibold mt-4">Investors</h4>
-        {renderTable(['Name', 'Firm', 'Type', 'Amount Invested'], round.investors.map(i => [i.investor.name, i.investor.firm_name || 'N/A', i.investor.type, `$${i.amount_invested.toLocaleString()}`]), "No investors for this round.")}
+        {renderTable(['Name', 'Firm', 'Type', 'Amount Invested'], round.investors.map(i => [i.investor.name, i.investor.firm_name || 'N/A', i.investor.type, `$${(i.amount_invested ?? 0).toLocaleString()}`]), "No investors for this round.")}
       </Card>
     ))}
   </div>
@@ -363,3 +362,89 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ startupId, tasks, experimen
 };
 
 export default StartupDetailView;
+
+// Analytics Tab Component
+const AnalyticsTab: React.FC<{ startupId: number; startup: Startup }> = ({ startupId, startup }) => {
+  const { data: insights, isLoading } = useQuery({
+    queryKey: ['startupInsights', startupId],
+    queryFn: async () => {
+      const response = await api.get(`/admin/startups/${startupId}/insights/latest`);
+      return response.data;
+    },
+  });
+
+
+
+  // Build simple description from submission data
+  const submission = startup.submission;
+
+  return (
+    <div>
+      {/* Startup Description */}
+      {submission && (submission.problem_statement || submission.how_solves_problem) && (
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
+          <h3 className="text-lg font-semibold text-brand-text-primary mb-4">About {startup.name}</h3>
+
+          <div className="space-y-3">
+            {submission.problem_statement && (
+              <p className="text-sm text-brand-text-secondary">{submission.problem_statement}</p>
+            )}
+            {submission.how_solves_problem && (
+              <p className="text-sm text-brand-text-secondary">{submission.how_solves_problem}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Insights Scores */}
+      <InsightsScoreCards insights={insights} />
+
+      {/* Full Dashboard */}
+      <DashboardOverview startupId={startupId} />
+    </div>
+  );
+};
+
+
+// Team Tab Component
+const TeamTab: React.FC<{ startup: Startup }> = ({ startup }) => (
+  <div>
+    <Card title="Founders">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {startup.founders.map(founder => (
+          <div key={founder.id} className="flex items-start space-x-3 p-4 border border-slate-200 rounded-lg">
+            <div className="w-12 h-12 rounded-full bg-brand-secondary/20 text-brand-secondary flex items-center justify-center font-bold text-lg flex-shrink-0">
+              {founder.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-brand-text-primary">{founder.name}</p>
+              <p className="text-sm text-brand-text-secondary">{founder.role}</p>
+              <a href={`mailto:${founder.email}`} className="text-sm text-brand-primary hover:underline block truncate">{founder.email}</a>
+              {founder.phone_number && <a href={`tel:${founder.phone_number}`} className="text-sm text-brand-text-secondary hover:underline block">{founder.phone_number}</a>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+
+    {startup.team_members && startup.team_members.length > 0 && (
+      <Card title="Team Members" className="mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {startup.team_members.map((member) => (
+            <div key={member.id} className="flex items-start space-x-3 p-4 border border-slate-200 rounded-lg">
+              <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg flex-shrink-0">
+                {member.user_name?.charAt(0) || 'T'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-brand-text-primary">{member.user_name}</p>
+                <p className="text-sm text-brand-text-secondary">{member.role}</p>
+                {member.user_email && <a href={`mailto:${member.user_email}`} className="text-sm text-brand-primary hover:underline block truncate">{member.user_email}</a>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    )}
+  </div>
+);
+

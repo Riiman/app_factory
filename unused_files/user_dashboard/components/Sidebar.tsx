@@ -57,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
             return newSet;
         });
     };
-    
+
     /**
      * Checks if a given scope name matches the currently active scope.
      * @param {string} scopeName - The name of the scope to check.
@@ -71,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
     return (
         <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
             <div className="h-16 flex items-center justify-center border-b border-gray-200">
-                <h1 className="text-2xl font-bold text-brand-primary">StartupOS</h1>
+                <h1 className="text-2xl font-bold text-brand-primary">VentureStack</h1>
             </div>
             <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
                 {menuItems.map((item) => {
@@ -85,9 +85,8 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
                                 key={item.name}
                                 href="#"
                                 onClick={(e) => { e.preventDefault(); onNavClick(item.name); }}
-                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors duration-150 ${
-                                    isActive ? 'bg-indigo-50 text-brand-primary' : 'text-gray-700 hover:bg-gray-100'
-                                }`}
+                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors duration-150 ${isActive ? 'bg-indigo-50 text-brand-primary' : 'text-gray-700 hover:bg-gray-100'
+                                    }`}
                             >
                                 <Icon className="mr-3 h-5 w-5" />
                                 <span>{item.name}</span>
@@ -98,15 +97,14 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
                     return (
                         <div key={item.name}>
                             <button
-                                onClick={() => { 
+                                onClick={() => {
                                     if (!isOpen) { // Only navigate if closing
-                                      onNavClick(item.name, item.subItems[0])
+                                        onNavClick(item.name, item.subItems[0])
                                     }
                                     toggleScope(item.name);
                                 }}
-                                className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-md transition-colors duration-150 ${
-                                    isActive ? 'bg-indigo-50 text-brand-primary' : 'text-gray-700 hover:bg-gray-100'
-                                }`}
+                                className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-md transition-colors duration-150 ${isActive ? 'bg-indigo-50 text-brand-primary' : 'text-gray-700 hover:bg-gray-100'
+                                    }`}
                             >
                                 <span className="flex items-center">
                                     <Icon className="mr-3 h-5 w-5" />
@@ -121,9 +119,8 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, activeScope, activeSubPage
                                             key={subItem}
                                             href="#"
                                             onClick={(e) => { e.preventDefault(); onNavClick(item.name, subItem); }}
-                                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
-                                                isActive && activeSubPage === subItem ? 'text-brand-primary font-semibold' : 'text-gray-500 hover:text-gray-900'
-                                            }`}
+                                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${isActive && activeSubPage === subItem ? 'text-brand-primary font-semibold' : 'text-gray-500 hover:text-gray-900'
+                                                }`}
                                         >
                                             {subItem}
                                         </a>

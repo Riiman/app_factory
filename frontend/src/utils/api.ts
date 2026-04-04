@@ -19,17 +19,27 @@ export const getWebSocketUrl = (endpoint: string) => {
 };
 
 class Api {
+  private baseURL: string;
+
+  constructor() {
+    this.baseURL = API_BASE_URL;
+  }
 
   private async fetch(url: string, options: RequestInit = {}) {
     const token = localStorage.getItem('access_token');
 
-    const headers = {
+    const headers: any = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // If body is FormData, don't set Content-Type (browser will do it)
+    if (options.body instanceof FormData) {
+      delete headers['Content-Type'];
     }
 
     const fullUrl = `${API_BASE_URL}${url}`;
@@ -52,6 +62,7 @@ class Api {
           const errorMessage = errorData.error || errorData.msg || 'An API error occurred';
           const error: any = new Error(errorMessage);
           error.status = response.status;
+          error.response = { data: errorData }; // Attach response data for error handling
           throw error;
         } else {
           const errorText = await response.text();
@@ -68,12 +79,12 @@ class Api {
     }
   }
 
-  async get(url: string, options: RequestInit = {}) {
+  async get<T = any>(url: string, options: RequestInit = {}): Promise<T> {
     const response = await this.fetch(url, options);
     return response.json();
   }
 
-  async post(url: string, body: any, options: RequestInit = {}) {
+  async post<T = any>(url: string, body: any, options: RequestInit = {}): Promise<T> {
     const response = await this.fetch(url, {
       method: 'POST',
       body: JSON.stringify(body),
@@ -82,12 +93,33 @@ class Api {
     return response.json();
   }
 
-  async put(url: string, body: any, options: RequestInit = {}) {
+
+  async put<T = any>(url: string, body: any, options: RequestInit = {}): Promise<T> {
     const response = await this.fetch(url, {
       method: 'PUT',
       body: JSON.stringify(body),
       ...options,
     });
+    return response.json();
+  }
+
+  async delete<T = any>(url: string, options: RequestInit = {}): Promise<T> {
+    const response = await this.fetch(url, {
+      method: 'DELETE',
+      ...options,
+    });
+    return response.json();
+  }
+
+  async request(method: string, url: string, body?: any, options: RequestInit = {}) {
+    const fetchOptions: RequestInit = {
+      method,
+      ...options,
+    };
+    if (body) {
+      fetchOptions.body = JSON.stringify(body);
+    }
+    const response = await this.fetch(url, fetchOptions);
     return response.json();
   }
 
@@ -130,6 +162,47 @@ class Api {
     return data.startup;
   }
 
+  getAssetUrl(path: string | null | undefined): string | undefined {
+    if (!path) return undefined;
+    if (path.startsWith('http')) return path;
+
+    // If API_BASE_URL is a full URL, use its origin for assets
+    if (API_BASE_URL.startsWith('http')) {
+      try {
+        const url = new URL(API_BASE_URL);
+        return `${url.origin}${path}`;
+      } catch (e) {
+        console.warn('Invalid API_BASE_URL, falling back to relative path:', e);
+      }
+    }
+
+    // Otherwise return relative path; Vite proxy or production server will handle it
+    return path;
+  }
+
+  async uploadFile(url: string, formData: FormData) {
+    const response = await this.fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+    return response.json();
+  }
+
+  async uploadLogo(startupId: number, formData: FormData) {
+    const response = await this.fetch(`/startups/${startupId}/logo`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        // Let the browser set the Content-Type with boundary for FormData
+      },
+    });
+    return response.json();
+  }
+
+  async deleteLogo(startupId: number) {
+    return this.delete(`/startups/${startupId}/logo`);
+  }
+
   // --- Pre-Admission Stage Endpoints ---
   async getEvaluationTasks() {
     const response = await this.fetch('/stages/evaluation/tasks');
@@ -158,6 +231,122 @@ class Api {
     const response = await this.fetch(`/startups/${startupId}/marketing-overview`);
     if (!response.ok) throw new Error('Failed to fetch marketing overview');
     return (await response.json()).marketing_overview;
+  }
+
+  async getDashboardOverview(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/dashboard-overview`);
+    if (!response.ok) throw new Error('Failed to fetch dashboard overview');
+    return (await response.json()).dashboard_overview;
+  }
+
+  async getProducts(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/products`);
+    if (!response.ok) throw new Error('Failed to fetch products');
+    return (await response.json()).products;
+  }
+
+  async getCampaigns(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/campaigns`);
+    if (!response.ok) throw new Error('Failed to fetch campaigns');
+    return (await response.json()).campaigns;
+  }
+
+  async recalculateCampaignMetrics(startupId: number) {
+    const response = await this.post(`/startups/${startupId}/marketing/recalculate-metrics`, {});
+    return response;
+  }
+
+  async getTasks(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/tasks`);
+    if (!response.ok) throw new Error('Failed to fetch tasks');
+    return (await response.json()).tasks;
+  }
+
+  async getBusinessMonthlyReports(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/monthly-reports`);
+    if (!response.ok) throw new Error('Failed to fetch monthly reports');
+    return (await response.json()).reports;
+  }
+
+  async getBusinessOverview(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/business-overview`);
+    if (!response.ok) throw new Error('Failed to fetch business overview');
+    return (await response.json()).business_overview;
+  }
+
+  async getFundingRounds(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/funding-rounds`);
+    if (!response.ok) throw new Error('Failed to fetch funding rounds');
+    return (await response.json()).rounds;
+  }
+
+  async getFundraiseDetails(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/fundraise-details`);
+    if (!response.ok) throw new Error('Failed to fetch fundraise details');
+    return await response.json();
+  }
+
+  async getInvestors(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/investors`);
+    if (!response.ok) throw new Error('Failed to fetch investors');
+    return (await response.json()).investors;
+  }
+
+  async getGlobalInvestors(
+    startupId: number,
+    options: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      bioKeywords?: string;
+      investmentKeywords?: string;
+      types?: string;
+      sectors?: string;
+      stages?: string;
+      locations?: string;
+      minCheck?: number;
+      maxCheck?: number;
+      sortBy?: string;
+      order?: 'asc' | 'desc';
+    } = {}
+  ) {
+    const params = new URLSearchParams();
+
+    // Pagination
+    if (options.page) params.append('page', options.page.toString());
+    if (options.limit) params.append('limit', options.limit.toString());
+
+    // Search
+    if (options.search) params.append('search', options.search);
+    if (options.bioKeywords) params.append('bio_keywords', options.bioKeywords);
+    if (options.investmentKeywords) params.append('investment_keywords', options.investmentKeywords);
+
+    // Filters
+    if (options.types) params.append('types', options.types);
+    if (options.sectors) params.append('sectors', options.sectors);
+    if (options.stages) params.append('stages', options.stages);
+    if (options.locations) params.append('locations', options.locations);
+    if (options.minCheck) params.append('min_check', options.minCheck.toString());
+    if (options.maxCheck) params.append('max_check', options.maxCheck.toString());
+
+    // Sorting
+    if (options.sortBy) params.append('sort_by', options.sortBy);
+    if (options.order) params.append('order', options.order);
+
+    const response = await this.fetch(`/startups/${startupId}/global-investors?${params.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch global investors');
+    const data = await response.json();
+    return {
+      investors: data.investors,
+      pagination: data.pagination
+    };
+  }
+
+  async getRecommendedInvestors(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/global-investors/recommended`);
+    if (!response.ok) throw new Error('Failed to fetch recommended investors');
+    const data = await response.json();
+    return data;
   }
 
   // --- Admin Endpoints ---
@@ -241,163 +430,173 @@ class Api {
 
   async createTask(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/tasks`, data);
-    await this.createActivity({
-      user_id: 1, // Admin or Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Task',
-      target_id: response.task.id,
-      details: data.name
-    });
-    return response;
+    return response.task;
+  }
+
+  async getExperiments(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/experiments`);
+    if (!response.ok) throw new Error('Failed to fetch experiments');
+    return (await response.json()).experiments;
+  }
+
+  async getArtifacts(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/artifacts`);
+    if (!response.ok) throw new Error('Failed to fetch artifacts');
+    return (await response.json()).artifacts;
   }
 
   async createExperiment(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/experiments`, data);
-    await this.createActivity({
-      user_id: 1, // Admin or Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Experiment',
-      target_id: response.experiment.id,
-      details: data.name
-    });
-    return response;
+    return response.experiment;
   }
 
-  async createArtifact(startupId: number, data: any) {
+  async createArtifact(startupId: number, data: {
+    name: string;
+    type: string;
+    location: string;
+    scope?: string;
+    description?: string;
+    linked_to_type?: string;
+    linked_to_id?: number;
+  }) {
     const response = await this.post(`/startups/${startupId}/artifacts`, data);
-    await this.createActivity({
-      user_id: 1, // Admin or Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Artifact',
-      target_id: response.artifact.id,
-      details: data.name
+    return response.artifact;
+  }
+
+  // --- DELETE Methods ---
+
+  async deleteTask(startupId: number, taskId: number) {
+    return this.delete(`/startups/${startupId}/tasks/${taskId}`);
+  }
+
+  async deleteExperiment(startupId: number, experimentId: number) {
+    return this.delete(`/startups/${startupId}/experiments/${experimentId}`);
+  }
+
+  async deleteFeature(startupId: number, productId: number, featureId: number) {
+    return this.delete(`/startups/${startupId}/products/${productId}/features/${featureId}`);
+  }
+
+  async deleteMetric(startupId: number, productId: number, metricId: number) {
+    return this.delete(`/startups/${startupId}/products/${productId}/metrics/${metricId}`);
+  }
+
+  async deleteIssue(startupId: number, productId: number, issueId: number) {
+    return this.delete(`/startups/${startupId}/products/${productId}/issues/${issueId}`);
+  }
+
+  // NEW: For FILE uploads with FormData
+  async createArtifactWithFile(
+    startupId: number,
+    formData: FormData,
+    onProgress?: (progress: number) => void
+  ) {
+    const token = localStorage.getItem('access_token');
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      if (onProgress) {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            onProgress(percentComplete);
+          }
+        });
+      }
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response.artifact);
+        } else {
+          reject(new Error(`Upload failed: ${xhr.statusText}`));
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Upload failed'));
+      });
+
+      xhr.open('POST', `${this.baseURL}/startups/${startupId}/artifacts`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
     });
+  }
+
+  // NEW: Get download URL for FILE artifacts
+  async getArtifactDownloadUrl(startupId: number, artifactId: number) {
+    const response = await this.fetch(`/startups/${startupId}/artifacts/${artifactId}/download`);
+    if (!response.ok) throw new Error('Failed to get download URL');
+    return await response.json();
+  }
+
+  // NEW: Delete artifact (soft delete + S3 cleanup)
+  async deleteArtifact(startupId: number, artifactId: number) {
+    const response = await this.delete(`/startups/${startupId}/artifacts/${artifactId}`);
     return response;
   }
 
   async createProduct(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Product',
-      target_id: response.product.id,
-      details: data.name
-    });
-    return response;
+    return response.product;
   }
 
   async createFeature(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/features`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Feature',
-      target_id: response.feature.id,
-      details: data.name
-    });
-    return response;
+    return response.feature;
   }
 
   async createMetric(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/metrics`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Metric',
-      target_id: response.metric.id,
-      details: data.name
-    });
-    return response;
+    return response.metric;
   }
 
   async createIssue(startupId: number, productId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/products/${productId}/issues`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'reported',
-      target_type: 'Issue',
-      target_id: response.issue.id,
-      details: data.title
-    });
-    return response;
+    return response.issue;
   }
 
   async createMonthlyReport(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/monthly-reports`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'submitted',
-      target_type: 'Report',
-      target_id: response.report.id,
-      details: `Report for ${data.month}`
-    });
-    await this.createNotification({
-      user_id: 1, // Admin
-      title: 'Monthly Report Submitted',
-      message: `Startup has submitted a monthly report for ${data.month}.`,
-      type: 'info'
-    });
-    return response;
+    return response.report;
   }
 
   async createFundingRound(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/funding-rounds`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Funding',
-      target_id: response.round.id,
-      details: `${data.round_type} Round`
-    });
-    return response;
+    return response.round;
   }
 
   async createInvestor(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/investors`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Investor',
-      target_id: response.investor.id,
-      details: data.name
-    });
-    return response;
+    return response.investor;
+  }
+
+  async updateInvestor(startupId: number, investorId: number, data: any) {
+    const response = await this.put(`/startups/${startupId}/investors/${investorId}`, data);
+    return response.investor;
+  }
+
+  async getInvestorInteractions(startupId: number, investorId: number) {
+    const response = await this.fetch(`/startups/${startupId}/investors/${investorId}/interactions`);
+    if (!response.ok) throw new Error('Failed to fetch interactions');
+    return (await response.json()).interactions;
+  }
+
+  async logInteraction(startupId: number, investorId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/investors/${investorId}/interactions`, data);
+    return response.interaction;
   }
 
   async createCampaign(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/campaigns`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'created',
-      target_type: 'Campaign',
-      target_id: response.campaign.id,
-      details: data.campaign_name
-    });
-    return response;
+    return response.campaign;
   }
 
   async updateCampaign(startupId: number, campaignId: number, data: Partial<MarketingCampaign>) {
     const response = await this.put(`/startups/${startupId}/campaigns/${campaignId}`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Campaign',
-      target_id: campaignId,
-      details: `Campaign updated`
-    });
+
     return response.campaign;
   }
 
@@ -442,42 +641,78 @@ class Api {
     return this.post(`/startups/${startupId}/campaigns/${campaignId}/content-items`, data);
   }
 
+  async updateContentItem(startupId: number, contentId: number, data: any) {
+    const response = await this.put(`/startups/${startupId}/content-items/${contentId}`, data);
+    return response.content_item;
+  }
+
+  async deleteContentItem(startupId: number, contentId: number) {
+    const response = await this.fetch(`/startups/${startupId}/content-items/${contentId}`, {
+      method: 'DELETE',
+    });
+    return response.json();
+  }
+
+  async generateContentItem(startupId: number, contentId: number) {
+    const response = await this.post(`/startups/${startupId}/content-items/${contentId}/generate`, {});
+    return response.content_item;
+  }
+
   async createFounder(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/founders`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'added',
-      target_type: 'Founder',
-      target_id: response.founder.id,
-      details: `${data.first_name} ${data.last_name}`
-    });
-    return response;
+    return response.founder;
   }
 
   async updateStartupSettings(startupId: number, data: any) {
     const response = await this.put(`/startups/${startupId}/settings`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Settings',
-      target_id: startupId,
-      details: 'Startup settings updated'
+    return response;
+  }
+
+  async getMarketingSettings(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/settings`);
+    if (!response.ok) throw new Error('Failed to fetch marketing settings');
+    return (await response.json()).settings;
+  }
+
+  async updateMarketingSettings(startupId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/settings`, data);
+    return response.setting;
+  }
+
+  async initiateGetLateAuth(startupId: number, provider: string) {
+    const response = await this.get(`/startups/${startupId}/marketing/${provider}/connect`);
+    return response.auth_url;
+  }
+
+  async listEntities(startupId: number, provider: string, connectToken: string, orgIds?: string, organizations?: string) {
+    const response = await this.post(`/startups/${startupId}/marketing/${provider}/list-entities`, {
+      connect_token: connectToken,
+      orgIds: orgIds,
+      organizations: organizations
+    });
+    return response.data;
+  }
+
+  async finalizeConnection(startupId: number, provider: string, connectToken: string, selectedId: string, selectedName?: string, userProfile?: any, profileId?: string, refreshToken?: string) {
+    const response = await this.post(`/startups/${startupId}/marketing/${provider}/finalize`, {
+      connect_token: connectToken,
+      selected_id: selectedId,
+      selected_name: selectedName,
+      userProfile: userProfile,
+      profileId: profileId,
+      refreshToken: refreshToken
     });
     return response;
   }
 
+  async initiateLinkedInAuth(startupId: number) {
+    // Legacy method - kept for reference or backwards compatibility until fully migrated
+    const response = await this.post(`/startups/${startupId}/marketing/linkedin/authorize`, {});
+    return response.auth_url;
+  }
+
   async updateBusinessOverview(startupId: number, data: Partial<BusinessOverview>) {
     const response = await this.put(`/startups/${startupId}/business-overview`, data);
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Overview',
-      target_id: startupId,
-      details: 'Business overview updated'
-    });
     return response.business_overview; // Assuming backend returns updated business_overview directly
   }
 
@@ -490,14 +725,7 @@ class Api {
       fundraise: fundraiseData,
       next_funding_goal: nextFundingGoalData
     });
-    await this.createActivity({
-      user_id: 2, // Founder
-      startup_id: startupId,
-      action: 'updated',
-      target_type: 'Fundraising',
-      target_id: startupId,
-      details: 'Fundraising goals updated'
-    });
+
     return response;
   }
 
@@ -557,6 +785,306 @@ class Api {
   async generateAssets(startupId: number, generateProduct: boolean, generateGtm: boolean) {
     return this.post(`/startups/${startupId}/assets/generate`, { generate_product: generateProduct, generate_gtm: generateGtm });
   }
+
+  async createInvestment(startupId: number, roundId: number, investorId: number, amountInvested: number, shares?: number) {
+    return this.post(`/startups/${startupId}/funding-rounds/${roundId}/investments`, {
+      investor_id: investorId,
+      amount_invested: amountInvested,
+      shares: shares
+    });
+  }
+  async addTeamMember(startupId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/team`, data);
+    return response;
+  }
+
+  async getTeamMembers(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/team`);
+    if (!response.ok) throw new Error('Failed to fetch team members');
+    return (await response.json()).members;
+  }
+
+  async removeTeamMember(startupId: number, userId: number) {
+    const response = await this.fetch(`/startups/${startupId}/team/${userId}`, {
+      method: 'DELETE',
+    });
+    return response.json();
+  }
+
+  async updateTeamMember(startupId: number, userId: number, data: any) {
+    const response = await this.put(`/startups/${startupId}/team/${userId}`, data);
+    return response;
+  }
+
+  // --- AI Assistant ---
+  async askAiAssistant(startupId: number, query: string, history: any[] = []) {
+    return this.post('/ai/chat', { startup_id: startupId, query, history });
+  }
+
+  // --- Cap Table & Scenarios ---
+  async getCapTable(startupId: number) {
+    const response = await this.fetch(`/startups/${startupId}/cap-table`);
+    if (!response.ok) throw new Error('Failed to fetch cap table');
+    return (await response.json()).cap_table;
+  }
+
+  async addCapTableEntry(startupId: number, data: any) {
+    const response = await this.post(`/startups/${startupId}/cap-table`, data);
+    return response.entry;
+  }
+
+  async deleteCapTableEntry(startupId: number, entryId: number) {
+    return this.fetch(`/startups/${startupId}/cap-table/${entryId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async calculateDilution(startupId: number, newInvestment: number, preMoneyValuation: number) {
+    const response = await this.post(`/startups/${startupId}/scenarios/calculate-dilution`, {
+      new_investment: newInvestment,
+      pre_money_valuation: preMoneyValuation
+    });
+    return response.scenario;
+  }
+
+  // --- Recruitment ---
+
+  async getJobs(startupId: number) {
+    const response = await this.fetch(`/recruitment/jobs?startup_id=${startupId}`);
+    return await response.json();
+  }
+
+  async getJobDetail(jobId: number) {
+    const response = await this.fetch(`/recruitment/jobs/${jobId}`);
+    return await response.json();
+  }
+
+  async createJob(startupId: number, data: any) {
+    return this.post(`/recruitment/jobs`, { startup_id: startupId, ...data });
+  }
+
+  async closeJob(jobId: number) {
+    return this.post(`/recruitment/jobs/${jobId}/close`, {});
+  }
+
+  async generateJobDescription(title: string, keywords: string, context?: string) {
+    return this.post(`/recruitment/jobs/generate-description`, { title, keywords, context });
+  }
+
+  async uploadCandidate(jobId: number | null, startupId: number, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('startup_id', startupId.toString());
+    if (jobId) formData.append('job_id', jobId.toString());
+
+    return this.uploadFile(`/recruitment/candidates/upload`, formData);
+  }
+
+  async getJobPipeline(jobId: number) {
+    const response = await this.fetch(`/recruitment/jobs/${jobId}/pipeline`);
+    return await response.json();
+  }
+
+  async getApplicationDetail(appId: number) {
+    const response = await this.fetch(`/recruitment/applications/${appId}`);
+    return await response.json();
+  }
+
+  async getRecruitmentAnalytics(startupId: number) {
+    const response = await this.fetch(`/recruitment/analytics?startup_id=${startupId}`);
+    return await response.json();
+  }
+
+  async moveApplication(appId: number, stage: string) {
+    return this.post(`/recruitment/applications/${appId}/move`, { stage });
+  }
+
+  async getApplicationActivities(appId: number) {
+    const response = await this.fetch(`/recruitment/applications/${appId}/activities`);
+    return await response.json();
+  }
+
+  async addApplicationActivity(appId: number, note: string, type: string = 'comment') {
+    return this.post(`/recruitment/applications/${appId}/activities`, { note, type });
+  }
+
+  // Calendar API
+  async getCalendarEvents(params: {
+    user_id?: number;
+    start?: string;
+    end?: string;
+    types?: string[];
+    modules?: string[];
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params.user_id) queryParams.append('user_id', params.user_id.toString());
+    if (params.start) queryParams.append('start', params.start);
+    if (params.end) queryParams.append('end', params.end);
+    params.types?.forEach(type => queryParams.append('types[]', type));
+    params.modules?.forEach(module => queryParams.append('modules[]', module));
+
+    const response = await this.fetch(`/calendar/events?${queryParams.toString()}`);
+    return await response.json();
+  }
+
+  async createEvent(data: {
+    title: string;
+    description?: string;
+    start: string;
+    end: string;
+    type: string;
+    location?: string;
+  }) {
+    const response = await this.fetch('/calendar/events', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  async updateEvent(eventId: number | string, data: any) {
+    const response = await this.fetch(`/calendar/events/${eventId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  async deleteEvent(eventId: number | string) {
+    const response = await this.fetch(`/calendar/events/${eventId}`, {
+      method: 'DELETE',
+    });
+    return await response.json();
+  }
+
+  async getTeamCalendarEvents(params: {
+    start?: string;
+    end?: string;
+    types?: string[];
+    modules?: string[];
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params.start) queryParams.append('start', params.start);
+    if (params.end) queryParams.append('end', params.end);
+    params.types?.forEach(type => queryParams.append('types[]', type));
+    params.modules?.forEach(module => queryParams.append('modules[]', module));
+
+    const response = await this.fetch(`/calendar/team-events?${queryParams.toString()}`);
+    return await response.json();
+  }
+
+  // Recruitment - Interview Scheduling
+  async scheduleInterview(applicationId: number, data: {
+    scheduled_at: string;
+    interviewer_id: number;
+    meeting_link?: string | null;
+    notes?: string | null;
+  }) {
+    const response = await this.fetch(`/recruitment/applications/${applicationId}/schedule-interview`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  async updateInterview(interviewId: number | string, data: any) {
+    const response = await this.fetch(`/recruitment/interviews/${interviewId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  async deleteInterview(interviewId: number | string) {
+    const response = await this.fetch(`/recruitment/interviews/${interviewId}`, {
+      method: 'DELETE',
+    });
+    return await response.json();
+  }
+
+
+  // --- PRODUCT PLANNER ENDPOINTS ---
+
+  async getFeatures(productId: number, filters?: any) {
+    // const params = new URLSearchParams(filters).toString();
+    const response = await this.fetch(`/planner/products/${productId}/features`);
+    if (!response.ok) throw new Error('Failed to fetch features');
+    return await response.json(); // Returns array directly
+  }
+
+  // Overriding/Replacing existing createFeature if it's different in planner logic,
+  // but existing createFeature uses /startups/... which might be legacy.
+  // The new planner endpoints use /api/planner
+  // Let's create new methods to avoid breaking legacy for now.
+
+  async addPlannerFeature(productId: number, data: any) {
+    const response = await this.post(`/planner/products/${productId}/features`, data);
+    return response;
+  }
+
+  async updatePlannerFeature(featureId: number, data: any) {
+    const response = await this.put(`/planner/features/${featureId}`, data);
+    return response;
+  }
+
+  async deletePlannerFeature(featureId: number) {
+    return this.delete(`/planner/features/${featureId}`);
+  }
+
+  async getSprints(productId: number) {
+    const response = await this.fetch(`/planner/products/${productId}/sprints`);
+    if (!response.ok) throw new Error('Failed to fetch sprints');
+    return await response.json();
+  }
+
+  async createSprint(productId: number, data: any) {
+    const response = await this.post(`/planner/products/${productId}/sprints`, data);
+    return response;
+  }
+
+  async startSprint(sprintId: number) {
+    const response = await this.post(`/planner/sprints/${sprintId}/start`, {});
+    return response;
+  }
+
+  async completeSprint(sprintId: number) {
+    const response = await this.post(`/planner/sprints/${sprintId}/complete`, {});
+    return response;
+  }
+
+  async getReleases(productId: number) {
+    const response = await this.fetch(`/planner/products/${productId}/releases`);
+    if (!response.ok) throw new Error('Failed to fetch releases');
+    return await response.json();
+  }
+
+  async createRelease(productId: number, data: any) {
+    const response = await this.post(`/planner/products/${productId}/releases`, data);
+    return response;
+  }
+
+  async generateReleaseNotes(releaseId: number) {
+    const response = await this.post(`/planner/releases/${releaseId}/generate-notes`, {});
+    return response;
+  }
+
+  // Feature Assignment Methods
+  async assignFeaturesToSprint(sprintId: number, featureIds: number[]) {
+    const response = await this.post(`/planner/sprints/${sprintId}/assign-features`, { feature_ids: featureIds });
+    return response;
+  }
+
+  async assignFeaturesToRelease(releaseId: number, featureIds: number[]) {
+    const response = await this.post(`/planner/releases/${releaseId}/assign-features`, { feature_ids: featureIds });
+    return response;
+  }
+
+  async unassignFeature(featureId: number, type: 'sprint' | 'release' | 'both' = 'both') {
+    const response = await this.post(`/planner/features/${featureId}/unassign`, { type });
+    return response;
+  }
+
+
 }
 
 export default new Api();

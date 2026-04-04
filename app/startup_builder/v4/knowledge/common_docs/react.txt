@@ -1,0 +1,32 @@
+# React Configuration & Best Practices
+
+## Official Documentation
+**URL:** [https://react.dev](https://react.dev)
+
+## Best Practices (Core)
+
+### 1. Components & Hooks
+- **Purity:** Components must be pure (same input -> same output). No side effects in render.
+- **Rules of Hooks:**
+  1. Only call Hooks at the top level (no loops/conditions).
+  2. Only call Hooks from React functions.
+- **Use `useEffect` sparingly:** distinct data fetching or specialized subscriptions only. Prefer event handlers for user-triggered actions.
+
+### 2. Rendering & Keys
+- **Unique Keys:** Always provides a stable, unique `key` prop for list items. Do NOT use array index if list can reorder.
+- **One Component Per File:** Recommended for maintainability.
+
+### 3. File Naming Conventions
+- **Components:** PascalCase (e.g., `ReservationCard.tsx`).
+- **Hooks:** camelCase, starting with use (e.g., `useAuth.ts`).
+
+### 4. Logic & State
+- **Avoid Prop Drilling:** Use Context API for global state.
+- **Custom Hooks:** Abstract complex stateful logic into strict custom hooks.
+
+### 5. Performance
+- **Re-renders:** Use `React.memo` components and `useCallback`/`useMemo` hooks only when performance issues specificially arise or for expensive computations.
+
+### 6. Modern React
+- React 18+ encourages Functional Components over Class Components.
+- Use `Strict Mode` to catch lifecycle, legacy API usage, and side-effect issues early.

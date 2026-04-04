@@ -7,6 +7,9 @@ import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import api, { getWebSocketUrl } from './utils/api';
 import DashboardPage from './pages/DashboardPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
@@ -33,7 +36,10 @@ const AppRoutes: FC = () => {
     if (!token) return; // Don't connect if no token
 
     // Establish WebSocket connection for dashboard notifications with token
-    // Establish WebSocket connection for dashboard notifications with token
+
+    // Skip global WS for Code Studio to avoid conflicts
+    if (window.location.pathname.includes('/code-studio')) return;
+
     const wsUrl = getWebSocketUrl('/ws/dashboard-notifications');
     const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
@@ -48,7 +54,6 @@ const AppRoutes: FC = () => {
           console.log("Received dashboard update, invalidating startupData query:", message);
           // This tells React Query to refetch the data for the dashboard
           queryClient.invalidateQueries({ queryKey: ['startupData'] });
-          queryClient.invalidateQueries({ queryKey: ['adminData'] });
           refreshUser(); // Refresh user context to update status/stage
         } else if (message.type.startsWith('submission_')) {
           console.log(`Received submission update (${message.type}), invalidating submission queries:`, message);
@@ -56,13 +61,14 @@ const AppRoutes: FC = () => {
           queryClient.invalidateQueries({ queryKey: ['submissions'] });
           // Also invalidate dashboard data as submission status might affect it
           queryClient.invalidateQueries({ queryKey: ['startupData'] });
-          queryClient.invalidateQueries({ queryKey: ['adminData'] });
           refreshUser(); // Refresh user context to update status/stage which triggers redirection
-        } else if (message.type === 'contract_status_updated' || message.type === 'scope_status_updated') {
-          console.log(`Received status update (${message.type}), refreshing user context:`, message);
+        } else if (message.type.startsWith('contract_') || message.type.startsWith('scope_')) {
+          console.log(`Received status/contract/scope update (${message.type}), refreshing data:`, message);
           // Invalidate startup data to reflect new stage/status
           queryClient.invalidateQueries({ queryKey: ['startupData'] });
-          refreshUser(); // Refresh user context to trigger potential redirections (e.g. Contact -> Dashboard)
+          queryClient.invalidateQueries({ queryKey: ['contract'] });
+          queryClient.invalidateQueries({ queryKey: ['scope'] }); // Invalidate scope query
+          refreshUser(); // Refresh user context to trigger potential redirections
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -79,9 +85,7 @@ const AppRoutes: FC = () => {
 
     // Cleanup function: Close WebSocket connection when component unmounts
     return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
+      ws.close();
     };
   }, [queryClient, token, refreshUser]); // Add queryClient, token, and refreshUser to the dependency array
 
@@ -96,16 +100,47 @@ const AppRoutes: FC = () => {
         </>
       } />
 
-      {/* Routes for logged-out users only */}
+      {/* Routes for logged-out users only (Global) */}
       <Route element={<PublicRoute />}>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/org/signup" element={<SignupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
-
-      <Route path="/signup" element={<SignupPage />} />
 
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-      {/* Protected Routes (User) */}
+      {/* Organization Scoped Routes */}
+      <Route path="/:orgSlug">
+        <Route element={<PublicRoute />}>
+          <Route path="login" element={<LoginPage />} />
+          <Route path="signup" element={<SignupPage />} />
+        </Route>
+
+        {/* Protected Routes (User) - Scoped */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="start-submission" element={<StartSubmissionPage />} />
+          <Route path="submission" element={<SubmissionPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="finalize-submission" element={<FinalizeSubmissionPage />} />
+          <Route path="in-review" element={<InReviewPage />} />
+          <Route path="rejected-submission" element={<RejectedSubmissionPage />} />
+          <Route path="evaluation" element={<EvaluationPage />} />
+          <Route path="scope" element={<ScopePage />} />
+          <Route path="contract" element={<ContractPage />} />
+        </Route>
+
+        {/* Protected Routes (Admin) - Scoped */}
+        <Route element={<AdminRoute />}>
+          <Route path="admin/*" element={<AdminDashboardPage />} />
+          {/* Note: code-studio path might need adjustment or be kept global if not org-specific in this way */}
+          <Route path="admin/startups/:id/code-studio" element={<StartupCodeStudio />} />
+        </Route>
+      </Route>
+
+      {/* Protected Routes (User) - Global Fallback */}
       <Route element={<ProtectedRoute />}>
         <Route path="/start-submission" element={<StartSubmissionPage />} />
         <Route path="/submission" element={<SubmissionPage />} />
@@ -118,7 +153,7 @@ const AppRoutes: FC = () => {
         <Route path="/contract" element={<ContractPage />} />
       </Route>
 
-      {/* Protected Routes (Admin) */}
+      {/* Protected Routes (Admin) - Global Fallback */}
       <Route element={<AdminRoute />}>
         <Route path="/admin/*" element={<AdminDashboardPage />} />
         <Route path="/admin/startups/:id/code-studio" element={<StartupCodeStudio />} />

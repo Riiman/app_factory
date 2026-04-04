@@ -4,6 +4,539 @@ from datetime import datetime, timedelta
 from flask import current_app, url_for
 from flask_mail import Message
 from app.extensions import mail
+import base64
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from googleapiclient.discovery import build
+
+
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+
+def get_gmail_service():
+    """Authenticate and return Gmail API service using OAuth 2.0 Refresh Token"""
+    try:
+        client_id = current_app.config.get('GOOGLE_OAUTH_CLIENT_ID')
+        client_secret = current_app.config.get('GOOGLE_OAUTH_CLIENT_SECRET')
+        refresh_token = current_app.config.get('GOOGLE_OAUTH_REFRESH_TOKEN')
+        
+        if not all([client_id, client_secret, refresh_token]):
+            print("Error: Missing OAuth credentials in configuration")
+            return None
+            
+        SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+        
+        # Create credentials object with refresh token
+        creds = Credentials(
+            None, # No access token initially
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=SCOPES
+        )
+        
+        # Refresh the token if expired (loops through logic to get new access token)
+        if not creds.valid:
+             creds.refresh(Request())
+            
+        service = build('gmail', 'v1', credentials=creds, cache_discovery=False)
+        return service
+    except Exception as e:
+        print(f"Error creating Gmail service: {str(e)}")
+        return None
+
+def send_email_via_gmail(to_email, subject, html_content, text_content=None):
+    """Send email using Gmail API"""
+    try:
+        service = get_gmail_service()
+        if not service:
+            return False, "Failed to initialize Gmail service"
+
+        message = MIMEMultipart('alternative')
+        message['to'] = to_email
+        message['subject'] = subject
+        
+        # Determine sender email - crucial for DWD
+        sender_email = current_app.config.get('MAIL_DEFAULT_SENDER')
+        message['from'] = sender_email
+
+        if text_content:
+            part1 = MIMEText(text_content, 'plain')
+            message.attach(part1)
+        
+        part2 = MIMEText(html_content, 'html')
+        message.attach(part2)
+
+        # Encode the message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+        body = {'raw': raw_message}
+
+        service.users().messages().send(userId='me', body=body).execute()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+def send_email_internal(recipients, subject, html_content, text_content=None):
+    """
+    Common function to send email via SMTP or Gmail API based on config
+    """
+    use_gmail_api = current_app.config.get('USE_GMAIL_API', False)
+    
+    if use_gmail_api:
+        success_count = 0
+        error_msg = None
+        for recipient in recipients:
+            success, error = send_email_via_gmail(recipient, subject, html_content, text_content)
+            if success:
+                success_count += 1
+            else:
+                error_msg = error
+        
+        if success_count == len(recipients):
+            return {"success": True}
+        else:
+            return {"success": False, "error": error_msg or "Failed to send to some recipients via Gmail API"}
+    else:
+        # Fallback to SMTP (Flask-Mail)
+        try:
+            msg = Message(
+                subject=subject,
+                recipients=recipients,
+                html=html_content,
+                body=text_content
+            )
+            mail.send(msg)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+def generate_verification_token(email, expires_in=3600):
+    """
+    Generate JWT token for email verification.
+    """
+    payload = {
+        'email': email,
+        'exp': datetime.utcnow() + timedelta(seconds=expires_in),
+        'iat': datetime.utcnow(),
+        'purpose': 'email_verification'
+    }
+    
+    token = jwt.encode(
+        payload,
+        os.getenv("SECRET_KEY"),
+        algorithm='HS256'
+    )
+    
+    return token
+
+def verify_token(token):
+    """
+    Verify and decode JWT token.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            os.getenv("SECRET_KEY"),
+            algorithms=['HS256']
+        )
+        
+        # Check if token is for email verification
+        if payload.get('purpose') != 'email_verification':
+            return None
+            
+        return payload.get('email')
+    except jwt.ExpiredSignatureError:
+        return None  # Token expired
+    except jwt.InvalidTokenError:
+        return None  # Invalid token
+
+def send_verification_email(user_email, user_name, verification_token):
+    """
+    Send verification email using Resend.
+    """
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    verification_link = f"{frontend_url}/verify-email?token={verification_token}"
+    
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Hi {user_name},
+    </p>
+
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Thanks for joining VentureStack. Please confirm your email address to activate your account.
+    </p>
+
+    <p style="margin-top:24px; font-size:13px; color:#6b7280;">
+    This link expires in 1 hour.
+    </p>
+
+    <p style="font-size:13px; color:#6b7280; word-break:break-all;">
+    {verification_link}
+    </p>
+
+    <p style="margin-top:24px; font-size:13px; color:#6b7280;">
+    If you didn’t create a VentureStack account, you can safely ignore this email.
+    </p>
+    """
+
+    html_content = render_premium_email(
+        title="Verify your email",
+        body_html=body_html,
+        cta_text="Confirm email",
+        cta_link=verification_link
+    )
+        
+    return send_email_internal([user_email], "Verify your VentureXit account", html_content)
+
+def send_password_reset_email(user_email, user_name, reset_token):
+    """
+    Send password reset email.
+    """
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    reset_link = f"{frontend_url}/reset-password?token={reset_token}"
+    
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Hi {user_name},
+    </p>
+
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    We received a request to reset your VentureStack password.
+    </p>
+
+    <p style="margin-top:24px; font-size:13px; color:#6b7280;">
+    This link expires in 1 hour. If you didn’t request this, you can safely ignore this email.
+    </p>
+    """
+
+    html_content = render_premium_email(
+        title="Reset your password",
+        body_html=body_html,
+        cta_text="Reset password",
+        cta_link=reset_link,
+        footer_note="Security first"
+    )
+    
+    return send_email_internal([user_email], "Reset your VentureXit password", html_content)
+
+
+def get_org_context(email):
+    """
+    Fetch organization context for a given email.
+    Returns: (org_name, org_logo_url)
+    """
+    from app.models import User
+    
+    try:
+        user = User.query.filter_by(email=email).first()
+        if user and user.organization:
+            return user.organization.name, user.organization.logo_url
+    except Exception as e:
+        print(f"Error fetching org context for {email}: {str(e)}")
+        
+    return "Turning Ideas App Factory", None
+
+# VentureStack Text Logo CSS
+VS_LOGO_HTML = """
+<div style="
+  font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:-0.3px;
+  background:linear-gradient(90deg, #2563eb, #f97316);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  display:inline-block;
+">
+  VentureStack
+</div>
+"""
+
+
+def render_premium_email(
+    title,
+    body_html,
+    cta_text=None,
+    cta_link=None,
+    footer_note="Built for serious founders"
+):
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+</head>
+<body style="
+  margin:0;
+  padding:0;
+  background-color:#f6f7f9;
+  font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="
+          background:#ffffff;
+          border-radius:14px;
+          box-shadow:0 12px 30px rgba(0,0,0,0.05);
+          overflow:hidden;
+        ">
+
+          <!-- Header -->
+          <tr>
+            <td style="padding:40px 48px 24px; border-bottom:1px solid #eef0f3;">
+              {VS_LOGO_HTML}
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 48px;">
+              <h1 style="
+                margin:0 0 16px;
+                font-size:24px;
+                font-weight:600;
+                color:#111827;
+              ">
+                {title}
+              </h1>
+
+              {body_html}
+
+              {f'''
+              <a href="{cta_link}" style="
+                display:inline-block;
+                margin-top:28px;
+                padding:14px 28px;
+                background:#111827;
+                color:#ffffff;
+                font-size:14px;
+                font-weight:500;
+                text-decoration:none;
+                border-radius:10px;
+              ">
+                {cta_text}
+              </a>
+              ''' if cta_text and cta_link else ''}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="
+              padding:28px 48px;
+              background:#fafafa;
+              border-top:1px solid #eef0f3;
+              font-size:12px;
+              color:#9ca3af;
+            ">
+              © {datetime.now().year} VentureStack · {footer_note}
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+def send_submission_confirmation_email(recipient_email, startup_name):
+    """
+    Send confirmation email when a startup application is submitted
+    """
+    org_name, org_logo_url = get_org_context(recipient_email)
+    
+    subject = f"Application Submitted - {startup_name} to {org_name}"
+    
+    # Org Logo HTML
+    org_logo_html = ""
+    if org_logo_url:
+        org_logo_html = f'<img src="{org_logo_url}" alt="{org_name}" style="max-height: 40px; margin-left: 15px; vertical-align: middle;">'
+    
+    # HTML email template
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Dear Founder,
+    </p>
+
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Thank you for submitting your application for
+    <strong>{startup_name}</strong> to <strong>{org_name}</strong>.
+    </p>
+
+    <div style="
+    margin:24px 0;
+    padding:16px;
+    background:#f9fafb;
+    border-left:4px solid #111827;
+    font-size:14px;
+    color:#374151;
+    ">
+    <strong>What happens next</strong><br><br>
+    • Review within 5–7 business days<br>
+    • Evaluation based on market, team, and scalability<br>
+    • You’ll receive an update by <strong>{get_response_date()}</strong>
+    </div>
+
+    <p style="font-size:14px; color:#374151;">
+    We appreciate the time you took to apply.
+    </p>
+
+    <p style="font-size:14px; color:#374151;">
+    — The {org_name} Team
+    </p>
+    """
+
+    html_body = render_premium_email(
+        title="Application submitted",
+        body_html=body_html,
+        footer_note="Powered by VentureStack"
+    )
+    
+    # Plain text version
+    text_body = f"""
+    Application Submitted Successfully!
+    
+    Dear Founder,
+    
+    Thank you for submitting your application for {startup_name} to {org_name}!
+    
+    WHAT HAPPENS NEXT?
+    - Review Period: Our team will review your application within 5-7 business days
+    - Evaluation: We'll assess your startup based on innovation, market potential, team strength, and scalability
+    - Decision: You'll receive an email with our decision and next steps
+    
+    Timeline: You can expect to hear from us by {get_response_date()}
+    
+    Best regards,
+    The {org_name} Team
+    """
+    
+    result = send_email_internal([recipient_email], subject, html_body, text_body)
+    return result.get('success', False)
+
+def send_submission_status_email(email, startup_name, status, message=''):
+    """
+    Send notification when submission status changes
+    """
+    org_name, org_logo_url = get_org_context(email)
+    
+    status_messages = {
+        'under_review': {
+            'title': 'Application Under Review',
+            'message': 'Your application is currently being reviewed by our team.'
+        },
+        'approved': {
+            'title': 'Application Approved! 🎉',
+            'message': 'Congratulations! Your application has been approved.'
+        },
+        'rejected': {
+            'title': 'Application Status Update',
+            'message': 'Thank you for your application. After careful review, we are unable to move forward at this time.'
+        },
+        'in_review': {
+             'title': 'Application Under Review',
+             'message': 'Your application is currently being reviewed by our team.'
+        }
+    }
+    
+    status_key = status.lower()
+    status_info = status_messages.get(status_key, {
+        'title': 'Application Status Update',
+        'message': 'Your application status has been updated.'
+    })
+    
+    subject = f"{status_info['title']} - {startup_name}"
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
+    # Org Logo HTML
+    org_logo_html = ""
+    if org_logo_url:
+        org_logo_html = f'<img src="{org_logo_url}" alt="{org_name}" style="max-height: 40px; margin-left: 15px; vertical-align: middle;">'
+
+    status_label = status.replace("_", " ").title()
+
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Hello,
+    </p>
+
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    <strong>{org_name}</strong> has updated the status of your application for
+    <strong>{startup_name}</strong>.
+    </p>
+
+    <div style="
+    margin:24px 0;
+    padding:16px;
+    background:#f9fafb;
+    border-left:4px solid #111827;
+    font-size:14px;
+    color:#374151;
+    ">
+    <strong>Status:</strong> {status_label}<br><br>
+    {status_info['message']}
+    {f'<br><br><strong>Notes:</strong> {message}' if message else ''}
+    </div>
+
+    <p style="font-size:14px; color:#374151;">
+    You can view more details in your dashboard.
+    </p>
+    """
+
+    html_content = render_premium_email(
+        title=status_info["title"],
+        body_html=body_html,
+        cta_text="View submission",
+        cta_link=f"{frontend_url}/submissions"
+    )
+    
+    result = send_email_internal([email], subject, html_content)
+    return result.get('success', False)
+
+def send_contact_form_email(data):
+    """
+    Send contact form submission to admin
+    """
+    admin_email = os.getenv('MAIL_DEFAULT_SENDER', 'info@venturestackai.com')
+    subject = f"New Contact Request: {data.get('name', 'Unknown')}"
+    
+    body_html = f"""
+    <p style="font-size:15px; color:#374151;">
+    A new contact request has been submitted.
+    </p>
+
+    <div style="
+    margin:24px 0;
+    padding:16px;
+    background:#f9fafb;
+    border-left:4px solid #111827;
+    font-size:14px;
+    color:#374151;
+    ">
+    <strong>Name:</strong> {data.get('name', 'N/A')}<br><br>
+    <strong>Email:</strong> {data.get('email', 'N/A')}<br><br>
+    <strong>Organization:</strong> {data.get('organization', 'N/A')}<br><br>
+    <strong>Timeline:</strong> {data.get('timeline', 'N/A')}<br><br>
+    <strong>Use case:</strong> {data.get('useCase', 'N/A')}<br><br>
+    <strong>Message:</strong><br>
+    {data.get('message', 'N/A')}
+    </div>
+    """
+
+    html_content = render_premium_email(
+        title="New contact request",
+        body_html=body_html,
+        footer_note="Internal notification"
+    )
+    
+    result = send_email_internal([admin_email], subject, html_content)
+    return result.get('success', False)
+
 
 def generate_verification_token(email, expires_in=3600):
     """
@@ -58,103 +591,6 @@ def verify_token(token):
     except jwt.InvalidTokenError:
         return None  # Invalid token
 
-def send_verification_email(user_email, user_name, verification_token):
-    """
-    Send verification email using Resend.
-    
-    Args:
-        user_email: Recipient email address
-        user_name: User's name for personalization
-        verification_token: JWT token for verification
-    
-    Returns:
-        Response from Resend API
-    """
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    verification_link = f"{frontend_url}/verify-email?token={verification_token}"
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-            }}
-            .container {{
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            .header {{
-                background-color: #4F46E5;
-                color: white;
-                padding: 20px;
-                text-align: center;
-                border-radius: 5px 5px 0 0;
-            }}
-            .content {{
-                background-color: #f9f9f9;
-                padding: 30px;
-                border-radius: 0 0 5px 5px;
-            }}
-            .button {{
-                display: inline-block;
-                padding: 12px 30px;
-                background-color: #4F46E5;
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-                margin: 20px 0;
-            }}
-            .footer {{
-                text-align: center;
-                margin-top: 20px;
-                font-size: 12px;
-                color: #666;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>Welcome to VentureXit!</h1>
-            </div>
-            <div class="content">
-                <p>Hi {user_name},</p>
-                <p>Thank you for signing up with VentureXit, India's premier marketplace for startup exits and acquisitions.</p>
-                <p>Please verify your email address by clicking the button below:</p>
-                <center>
-                    <a href="{verification_link}" class="button">Verify Email Address</a>
-                </center>
-                <p>Or copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; color: #4F46E5;">{verification_link}</p>
-                <p><strong>This link will expire in 1 hour.</strong></p>
-                <p>If you didn't create an account with VentureXit, you can safely ignore this email.</p>
-            </div>
-            <div class="footer">
-                <p>© 2025 VentureXit. All rights reserved.</p>
-                <p>Noida, India</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    try:
-        msg = Message(
-            subject="Verify your VentureXit account",
-            recipients=[user_email],
-            html=html_content
-        )
-        mail.send(msg)
-        return {"success": True}
-    
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
 def send_password_reset_email(user_email, user_name, reset_token):
     """
     Send password reset email.
@@ -176,242 +612,111 @@ def send_password_reset_email(user_email, user_name, reset_token):
     <head>
         <style>
             body {{
-                font-family: Arial, sans-serif;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 line-height: 1.6;
                 color: #333;
-            }}
-            .container {{
                 max-width: 600px;
                 margin: 0 auto;
                 padding: 20px;
             }}
             .header {{
-                background-color: #DC2626;
-                color: white;
-                padding: 20px;
                 text-align: center;
-                border-radius: 5px 5px 0 0;
+                padding: 30px 0;
+                border-bottom: 1px solid #e0e0e0;
             }}
             .content {{
-                background-color: #f9f9f9;
-                padding: 30px;
-                border-radius: 0 0 5px 5px;
+                padding: 30px 0;
             }}
             .button {{
                 display: inline-block;
                 padding: 12px 30px;
-                background-color: #DC2626;
+                background-color: #dc2626;
                 color: white;
                 text-decoration: none;
                 border-radius: 5px;
                 margin: 20px 0;
             }}
+            .footer {{
+                text-align: center;
+                padding-top: 20px;
+                color: #666;
+                font-size: 12px;
+                border-top: 1px solid #e0e0e0;
+            }}
         </style>
     </head>
     <body>
-        <div class="container">
-            <div class="header">
-                <h1>Password Reset Request</h1>
-            </div>
-            <div class="content">
-                <p>Hi {user_name},</p>
-                <p>We received a request to reset your password for your VentureXit account.</p>
-                <p>Click the button below to reset your password:</p>
-                <center>
-                    <a href="{reset_link}" class="button">Reset Password</a>
-                </center>
-                <p><strong>This link will expire in 1 hour.</strong></p>
-                <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
-            </div>
+        <div class="header">
+            {VS_LOGO_HTML}
+        </div>
+        
+        <div class="content">
+            <p>Hi {user_name},</p>
+            <p>We received a request to reset your password.</p>
+            <p>Click the button below to reset it:</p>
+            
+            <center>
+                <a href="{reset_link}" class="button">Reset Password</a>
+            </center>
+            
+            <p>This link will expire in 1 hour.</p>
+            <p>If you didn't request a password reset, you can safely ignore this email.</p>
+        </div>
+        
+        <div class="footer">
+            <p>© {datetime.now().year} VentureStack. All rights reserved.</p>
         </div>
     </body>
     </html>
     """
     
-    try:
-        msg = Message(
-            subject="Reset your VentureXit password",
-            recipients=[user_email],
-            html=html_content
-        )
-        mail.send(msg)
-        return {"success": True}
-    
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    return send_email_internal([user_email], "Reset your VentureStack password", html_content)
 
-def send_submission_confirmation_email(recipient_email, startup_name):
+
+def send_org_ready_credentials_email(user_email, user_name, org_name, slug, temp_password):
     """
-    Send confirmation email when a startup application is submitted
-    
-    Args:
-        recipient_email: User's email address
-        startup_name: Name of the submitted startup
+    Send credentials to a newly pre-setup organization admin.
     """
-    try:
-        subject = f"Application Submitted - {startup_name}"
-        
-        # HTML email template
-        html_body = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    line-height: 1.6;
-                    color: #333;
-                    max-width: 600px;
-                    margin: 0 auto;
-                    padding: 20px;
-                }}
-                .header {{
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 30px;
-                    text-align: center;
-                    border-radius: 10px 10px 0 0;
-                }}
-                .header h1 {{
-                    margin: 0;
-                    font-size: 28px;
-                }}
-                .content {{
-                    background: #ffffff;
-                    padding: 30px;
-                    border: 1px solid #e0e0e0;
-                    border-top: none;
-                }}
-                .success-icon {{
-                    font-size: 48px;
-                    text-align: center;
-                    margin: 20px 0;
-                }}
-                .info-box {{
-                    background: #f8f9fa;
-                    border-left: 4px solid #667eea;
-                    padding: 15px;
-                    margin: 20px 0;
-                }}
-                .next-steps {{
-                    background: #fff3cd;
-                    border-left: 4px solid #ffc107;
-                    padding: 15px;
-                    margin: 20px 0;
-                }}
-                .next-steps h3 {{
-                    margin-top: 0;
-                    color: #856404;
-                }}
-                .footer {{
-                    text-align: center;
-                    padding: 20px;
-                    color: #666;
-                    font-size: 14px;
-                    border-top: 1px solid #e0e0e0;
-                }}
-                .highlight {{
-                    color: #667eea;
-                    font-weight: bold;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>🎉 Application Submitted Successfully!</h1>
-            </div>
-            
-            <div class="content">
-                <div class="success-icon">✓</div>
-                
-                <p>Dear Founder,</p>
-                
-                <p>Thank you for submitting your application for <span class="highlight">{startup_name}</span> to Turning Ideas App Factory!</p>
-                
-                <div class="info-box">
-                    <h3>📋 What Happens Next?</h3>
-                    <ul>
-                        <li><strong>Review Period:</strong> Our team will review your application within 5-7 business days</li>
-                        <li><strong>Evaluation:</strong> We'll assess your startup based on innovation, market potential, team strength, and scalability</li>
-                        <li><strong>Decision:</strong> You'll receive an email with our decision and next steps</li>
-                    </ul>
-                </div>
-                
-                <div class="next-steps">
-                    <h3>⏰ Timeline</h3>
-                    <p>You can expect to hear from us by <strong>{get_response_date()}</strong></p>
-                </div>
-                
-                <p>In the meantime, feel free to:</p>
-                <ul>
-                    <li>Check your application status on your dashboard</li>
-                    <li>Update your profile with any additional information</li>
-                    <li>Explore our resources for founders</li>
-                </ul>
-                
-                <p>If you have any questions, feel free to reach out to us at <a href="mailto:support@turningideas.com">support@turningideas.com</a></p>
-                
-                <p>We're excited to learn more about your startup!</p>
-                
-                <p>Best regards,<br>
-                <strong>The Turning Ideas Team</strong></p>
-            </div>
-            
-            <div class="footer">
-                <p>© 2025 Turning Ideas App Factory. All rights reserved.</p>
-                <p>Building the future, one startup at a time.</p>
-            </div>
-        </body>
-        </html>
-        """
-        
-        # Plain text version for email clients that don't support HTML
-        text_body = f"""
-        Application Submitted Successfully!
-        
-        Dear Founder,
-        
-        Thank you for submitting your application for {startup_name} to Turning Ideas App Factory!
-        
-        WHAT HAPPENS NEXT?
-        - Review Period: Our team will review your application within 5-7 business days
-        - Evaluation: We'll assess your startup based on innovation, market potential, team strength, and scalability
-        - Decision: You'll receive an email with our decision and next steps
-        
-        Timeline: You can expect to hear from us by {get_response_date()}
-        
-        In the meantime, feel free to:
-        - Check your application status on your dashboard
-        - Update your profile with any additional information
-        - Explore our resources for founders
-        
-        If you have any questions, reach out to us at support@turningideas.com
-        
-        We're excited to learn more about your startup!
-        
-        Best regards,
-        The Turning Ideas Team
-        
-        © 2025 Turning Ideas App Factory
-        Building the future, one startup at a time.
-        """
-        
-        # Send email using Flask-Mail
-        msg = Message(
-            subject=subject,
-            recipients=[recipient_email],
-            body=text_body,
-            html=html_body
-        )
-        
-        mail.send(msg)
-        return True
-        
-    except Exception as e:
-        print(f"Error sending submission confirmation email: {str(e)}")
-        return False
-
-
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    login_link = f"{frontend_url}/{slug}/login"
+    
+    body_html = f"""
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Hi {user_name},
+    </p>
+ 
+    <p style="font-size:15px; line-height:1.7; color:#374151;">
+    Your organization, <strong>{org_name}</strong>, is now ready on VentureStack!
+    </p>
+ 
+    <div style="
+    margin:24px 0;
+    padding:16px;
+    background:#f9fafb;
+    border-left:4px solid #111827;
+    font-size:14px;
+    color:#374151;
+    ">
+    <strong>Your Login Credentials:</strong><br><br>
+    • <strong>Email:</strong> {user_email}<br>
+    • <strong>Temporary Password:</strong> <code style="background:#eeeeee; padding:2px 4px; border-radius:3px;">{temp_password}</code>
+    </div>
+ 
+    <p style="font-size:14px; color:#374151;">
+    For security reasons, we recommend changing your password after your first login.
+    </p>
+    """
+ 
+    html_content = render_premium_email(
+        title="Your Organization is Ready",
+        body_html=body_html,
+        cta_text="Log in to your Dashboard",
+        cta_link=login_link,
+        footer_note="Welcome to the future of venture building"
+    )
+         
+    return send_email_internal([user_email], f"Welcome to {org_name} on VentureStack", html_content)
+ 
 def get_response_date():
     """Calculate expected response date (7 business days from now)"""
     from datetime import datetime, timedelta
@@ -427,163 +732,3 @@ def get_response_date():
             business_days += 1
     
     return current_date.strftime("%B %d, %Y")
-
-def send_submission_status_email(email, startup_name, status, message=''):
-    """
-    Send notification when submission status changes
-    """
-    status_messages = {
-        'under_review': {
-            'title': 'Application Under Review',
-            'message': 'Your application is currently being reviewed by our team.'
-        },
-        'approved': {
-            'title': 'Application Approved! 🎉',
-            'message': 'Congratulations! Your application has been approved.'
-        },
-        'rejected': {
-            'title': 'Application Status Update',
-            'message': 'Thank you for your application. After careful review, we are unable to move forward at this time.'
-        },
-        'in_review': {
-             'title': 'Application Under Review',
-             'message': 'Your application is currently being reviewed by our team.'
-        }
-    }
-    
-    # Handle case insensitivity and enum naming differences
-    status_key = status.lower()
-    
-    status_info = status_messages.get(status_key, {
-        'title': 'Application Status Update',
-        'message': 'Your application status has been updated.'
-    })
-    
-    subject = f"{status_info['title']} - {startup_name}"
-    
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
-            .button {{ display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
-            .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
-            .status-box {{ background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #667eea; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>{{status_info['title']}}</h1>
-            </div>
-            <div class="content">
-                <p>Hello,</p>
-                <p>We have an update regarding your application for <strong>{{startup_name}}</strong>.</p>
-                
-                <div class="status-box">
-                    <h3>Status: {{status.replace('_', ' ').title()}}</h3>
-                    <p>{{status_info['message']}}</p>
-                    {{f'<p><strong>Additional Notes:</strong> {{message}}</p>' if message else ''}}
-                </div>
-                
-                {{'<p>Our team will be in touch with you shortly regarding next steps.</p>' if status == 'approved' else ''}}
-                {{'<p>We encourage you to continue refining your business model and reapply in the future.</p>' if status == 'rejected' else ''}}
-                
-                <a href="{frontend_url}/submissions" class="button">View Submission Details</a>
-                
-                <p>If you have any questions, please feel free to contact us.</p>
-            </div>
-            <div class="footer">
-                <p>&copy; 2025 Turning Ideas App Factory. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    try:
-        msg = Message(
-            subject=subject,
-            recipients=[email],
-            html=html_content
-        )
-        mail.send(msg)
-        return True
-    except Exception as e:
-        print(f"Error sending submission status email: {str(e)}")
-        return False
-
-def send_contact_form_email(data):
-    """
-    Send contact form submission to admin
-    """
-    admin_email = os.getenv('MAIL_DEFAULT_SENDER', 'info@venturestackai.com')
-    subject = f"New Contact Request: {data.get('name', 'Unknown')}"
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: #1e3a8a; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }}
-            .content {{ background: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; border: 1px solid #ddd; }}
-            .field {{ margin-bottom: 15px; }}
-            .label {{ font-weight: bold; color: #555; }}
-            .value {{ margin-top: 5px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h2>New Contact Request</h2>
-            </div>
-            <div class="content">
-                <div class="field">
-                    <div class="label">Name:</div>
-                    <div class="value">{data.get('name', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Email:</div>
-                    <div class="value">{data.get('email', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Organization:</div>
-                    <div class="value">{data.get('organization', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Timeline:</div>
-                    <div class="value">{data.get('timeline', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Use Case:</div>
-                    <div class="value">{data.get('useCase', 'N/A')}</div>
-                </div>
-                <div class="field">
-                    <div class="label">Message:</div>
-                    <div class="value">{data.get('message', 'N/A')}</div>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    try:
-        msg = Message(
-            subject=subject,
-            recipients=[admin_email],
-            html=html_content
-        )
-        mail.send(msg)
-        return True
-    except Exception as e:
-        print(f"Error sending contact form email: {str(e)}")
-        return False

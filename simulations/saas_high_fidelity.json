@@ -1,0 +1,1274 @@
+{
+    "metadata": {
+        "company_name": "PulseSync",
+        "tagline": "Empowering Teams with Real-Time Feedback",
+        "description": "PulseSync is a SaaS startup founded in early 2024, providing an innovative platform for continuous employee feedback and engagement analytics. Designed for remote and hybrid teams, PulseSync helps organizations capture actionable insights, improve morale, and drive performance through easy-to-use pulse surveys and AI-powered recommendations.",
+        "roadmap": [
+            {
+                "month_name": "May",
+                "year": 2025,
+                "milestone_title": "Launch of Advanced Analytics Dashboard",
+                "narrative_description": "PulseSync unveils its new analytics dashboard, enabling HR teams to visualize employee sentiment trends and engagement metrics, marking a significant upgrade to its platform."
+            },
+            {
+                "month_name": "June",
+                "year": 2025,
+                "milestone_title": "First Major B2B Client Acquisition",
+                "narrative_description": "The company signs its first enterprise client, a midsize tech firm, validating its value proposition and providing critical user feedback for product refinement."
+            },
+            {
+                "month_name": "July",
+                "year": 2025,
+                "milestone_title": "Integration with Slack and Microsoft Teams",
+                "narrative_description": "PulseSync releases integrations with popular communication tools, broadening its reach and offering seamless survey deployment within existing workflows."
+            },
+            {
+                "month_name": "August",
+                "year": 2025,
+                "milestone_title": "Seed Funding Round Completion",
+                "narrative_description": "The startup secures $1.5M in seed funding from reputable VCs, enabling hires in engineering and sales, and fueling product development for the next phase."
+            },
+            {
+                "month_name": "September",
+                "year": 2025,
+                "milestone_title": "Launch of Mobile App (iOS & Android)",
+                "narrative_description": "PulseSync rolls out its mobile applications, making feedback accessible anytime and boosting engagement rates among distributed teams."
+            },
+            {
+                "month_name": "October",
+                "year": 2025,
+                "milestone_title": "Hiring of First Customer Success Manager",
+                "narrative_description": "The company onboards its first customer success manager to improve onboarding and support for new clients, aiming to reduce churn and increase satisfaction."
+            },
+            {
+                "month_name": "November",
+                "year": 2025,
+                "milestone_title": "Introduction of AI-Powered Recommendations",
+                "narrative_description": "PulseSync launches AI-driven suggestions for managers, helping them address team issues proactively based on real-time survey data."
+            },
+            {
+                "month_name": "December",
+                "year": 2025,
+                "milestone_title": "First Industry Recognition Award",
+                "narrative_description": "PulseSync is recognized as a 'Top HR Tech Innovator' at a national HR conference, increasing brand visibility and credibility."
+            },
+            {
+                "month_name": "January",
+                "year": 2026,
+                "milestone_title": "Milestone of 100 Paying Customers",
+                "narrative_description": "The startup celebrates reaching 100 paying customers, demonstrating strong traction and validating market demand."
+            },
+            {
+                "month_name": "February",
+                "year": 2026,
+                "milestone_title": "Expansion into European Market",
+                "narrative_description": "PulseSync begins onboarding its first European clients, adapting the platform for GDPR compliance and local languages."
+            },
+            {
+                "month_name": "March",
+                "year": 2026,
+                "milestone_title": "First Churn Analysis and Product Iteration",
+                "narrative_description": "After noticing churn among SMB clients, PulseSync completes a detailed analysis and rolls out new features to address pain points and improve retention."
+            },
+            {
+                "month_name": "April",
+                "year": 2026,
+                "milestone_title": "Quarterly Revenue Hits $100k",
+                "narrative_description": "For the first time, PulseSync achieves $100k in quarterly recurring revenue, signaling sustainable growth and setting the stage for future expansion."
+            }
+        ]
+    },
+    "monthly_data": [
+        {
+            "financials": {
+                "revenue": 1200.0,
+                "expenses": 18000.0,
+                "mrr": 1200.0,
+                "new_customers": 6,
+                "total_customers": 6
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Corp Pilot",
+                    "amount": 5000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled, interested in dashboard analytics for remote team."
+                },
+                {
+                    "name": "BetaTech Ltd",
+                    "amount": 1200.0,
+                    "stage": "WON",
+                    "notes": "Signed up for monthly subscription after seeing new analytics features."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Customer Onboarding Workflow",
+                    "description": "Design and implement onboarding email sequence and guides for new users.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Dashboard Launch Announcement",
+                    "description": "Prepare communication and update website with new dashboard feature.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "HR Outreach Initiative",
+                    "description": "Reach out to HR leaders in target companies for demo scheduling.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Analytics Dashboard",
+                    "description": "Interactive dashboard for HR to visualize sentiment and engagement metrics.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "AI-powered Recommendations",
+                    "description": "Automated suggestions for HR based on survey results and analytics.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Survey Customization",
+                    "description": "Allow admins to tailor pulse surveys to their team's needs.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "LinkedIn Outreach Test",
+                    "hypothesis": "Direct outreach to HR managers on LinkedIn will yield demo requests.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Dashboard Launch Email Blast",
+                    "channel": "Email",
+                    "spend": 1200,
+                    "conversions": 4,
+                    "impressions": 900,
+                    "clicks": 200
+                },
+                {
+                    "name": "Targeted LinkedIn Ads",
+                    "channel": "LinkedIn",
+                    "spend": 2500,
+                    "conversions": 2,
+                    "impressions": 12000,
+                    "clicks": 420
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active User Rate",
+                    "value": 85.0,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Survey Completion Rate",
+                    "value": 78.0,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Average Session Duration",
+                    "value": 11.2,
+                    "unit": "minutes"
+                }
+            ],
+            "month": "May",
+            "year": 2025,
+            "milestone": "Launch of Advanced Analytics Dashboard"
+        },
+        {
+            "financials": {
+                "revenue": 5000.0,
+                "expenses": 9000.0,
+                "mrr": 4000.0,
+                "new_customers": 3,
+                "total_customers": 9
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Tech Solutions",
+                    "amount": 3000.0,
+                    "stage": "WON",
+                    "notes": "First major B2B (enterprise) client; signed annual contract, providing critical feedback."
+                },
+                {
+                    "name": "RemoteWorks Ltd.",
+                    "amount": 1200.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled for mid-June, potential midsize client for Q3."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Enterprise Onboarding",
+                    "description": "Customize onboarding process for Acme Tech Solutions; gather feedback for platform improvements.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Success Playbook",
+                    "description": "Draft and implement playbook for handling enterprise accounts.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "June Outreach Campaign",
+                    "description": "Target remote/hybrid tech firms with new analytics dashboard via LinkedIn and email.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Team Benchmarking",
+                    "description": "Add feature for enterprise clients to compare engagement across teams/departments.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "AI-powered Recommendations v2",
+                    "description": "Enhance recommendation engine based on enterprise feedback.",
+                    "status": "BACKLOG"
+                },
+                {
+                    "name": "Enterprise Custom Reporting",
+                    "description": "Enable custom reporting for B2B clients; first version shipped.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Pricing Model Test",
+                    "hypothesis": "Higher tier pricing will unlock larger deals and improve retention.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Tech Firm Outreach",
+                    "channel": "LinkedIn Ads",
+                    "spend": 2000,
+                    "conversions": 2,
+                    "impressions": 18000,
+                    "clicks": 950
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 220,
+                    "unit": "users"
+                },
+                {
+                    "name": "Survey Response Rate",
+                    "value": 72.5,
+                    "unit": "%"
+                },
+                {
+                    "name": "NPS",
+                    "value": 45,
+                    "unit": "score"
+                }
+            ],
+            "month": "June",
+            "year": 2025,
+            "milestone": "First Major B2B Client Acquisition"
+        },
+        {
+            "financials": {
+                "revenue": 4400.0,
+                "expenses": 10500.0,
+                "mrr": 4400.0,
+                "new_customers": 1,
+                "total_customers": 10
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Health",
+                    "amount": 2400.0,
+                    "stage": "OPEN",
+                    "notes": "Large remote team, interested in Slack integration."
+                },
+                {
+                    "name": "TechNova",
+                    "amount": 1800.0,
+                    "stage": "WON",
+                    "notes": "Closed this month after demo of Teams integration."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Slack Integration Launch",
+                    "description": "Release and promote Slack integration to existing and prospective customers.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Microsoft Teams Integration Launch",
+                    "description": "Roll out Teams integration and update onboarding materials.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Demo Campaign Outreach",
+                    "description": "Contact 50 target accounts for demo of new integrations.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Slack Integration",
+                    "description": "Seamlessly deploy pulse surveys within Slack channels.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Microsoft Teams Integration",
+                    "description": "Enable survey distribution and analytics inside Teams workspace.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Survey Templates for Remote Teams",
+                    "description": "Curated templates optimized for distributed workforces.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Slack App Directory Listing",
+                    "hypothesis": "Listing in Slack App Directory will increase inbound leads by 30%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Remote Productivity Webinar",
+                    "channel": "LinkedIn Ads",
+                    "spend": 1600,
+                    "conversions": 6,
+                    "impressions": 5200,
+                    "clicks": 320
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 242.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Survey Completion Rate",
+                    "value": 71.5,
+                    "unit": "percent"
+                },
+                {
+                    "name": "NPS",
+                    "value": 8.1,
+                    "unit": "score"
+                }
+            ],
+            "month": "July",
+            "year": 2025,
+            "milestone": "Integration with Slack and Microsoft Teams"
+        },
+        {
+            "financials": {
+                "revenue": 5200.0,
+                "expenses": 63000.0,
+                "mrr": 5100.0,
+                "new_customers": 3,
+                "total_customers": 13
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Corp",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise pilot, decision expected next month"
+                },
+                {
+                    "name": "RemoteX",
+                    "amount": 4400.0,
+                    "stage": "WON",
+                    "notes": "Signed up for annual plan after marketing outreach"
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard New Hires",
+                    "description": "Recruit and integrate 2 engineers and 1 sales rep enabled by new funding",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Upgrade Analytics Dashboard",
+                    "description": "Kick off product development for enhanced engagement analytics",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Seed Funding Round Completion",
+                    "description": "Finalize paperwork and public announcement for seed round",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Recommendations V2",
+                    "description": "Second iteration to improve personalized suggestions for managers",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Mobile Survey Notifications",
+                    "description": "Push notifications for pulse surveys to increase engagement",
+                    "status": "BACKLOG"
+                },
+                {
+                    "name": "Slack & Teams Integration",
+                    "description": "Launch and monitor usage of new integrations",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Content Marketing for HR Managers",
+                    "hypothesis": "Targeted content will increase inbound leads from HR professionals",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Sponsored Posts",
+                    "channel": "LinkedIn",
+                    "spend": 8500,
+                    "conversions": 2,
+                    "impressions": 34000,
+                    "clicks": 940
+                },
+                {
+                    "name": "Google Ads for Remote Teams",
+                    "channel": "Google",
+                    "spend": 6700,
+                    "conversions": 1,
+                    "impressions": 22000,
+                    "clicks": 520
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Survey Response Rate",
+                    "value": 64.3,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 210,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Feedback per User",
+                    "value": 7.2,
+                    "unit": "responses/month"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed",
+                "amount": 1500000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Jane Lee",
+                        "firm": "NextGen Ventures",
+                        "amount": 650000
+                    },
+                    {
+                        "name": "Samir Patel",
+                        "firm": "BrightSeed Capital",
+                        "amount": 850000
+                    }
+                ]
+            },
+            "month": "August",
+            "year": 2025,
+            "milestone": "Seed Funding Round Completion"
+        },
+        {
+            "financials": {
+                "revenue": 6200.0,
+                "expenses": 71500.0,
+                "mrr": 6100.0,
+                "new_customers": 2,
+                "total_customers": 15
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Corp Remote Pilot",
+                    "amount": 4200.0,
+                    "stage": "OPEN",
+                    "notes": "Testing enterprise features with mobile app rollout."
+                },
+                {
+                    "name": "BlueSky Solutions Annual Plan",
+                    "amount": 3600.0,
+                    "stage": "WON",
+                    "notes": "Closed after successful onboarding via mobile app."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Mobile App Launch",
+                    "description": "Deploy iOS and Android apps to app stores and notify customers.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboard New Hires (Sales & Marketing)",
+                    "description": "Ramp up team to support post-funding growth and mobile push.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Q4 Customer Success Planning",
+                    "description": "Prepare proactive outreach for new users onboarded via mobile app.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Mobile App (iOS/Android)",
+                    "description": "Native apps for pulse surveys, notifications, and analytics.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Push Notification Reminders",
+                    "description": "Boost survey completion rates via timely mobile alerts.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration Enhancements",
+                    "description": "Allow feedback directly from Slack for hybrid teams.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Mobile Onboarding Funnel",
+                    "hypothesis": "Mobile onboarding will improve conversion rates by 20%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Mobile Launch PR Blitz",
+                    "channel": "PR & Influencer Outreach",
+                    "spend": 20000,
+                    "conversions": 7,
+                    "impressions": 42000,
+                    "clicks": 3900
+                },
+                {
+                    "name": "Paid Ads for Remote Teams",
+                    "channel": "LinkedIn Ads",
+                    "spend": 15000,
+                    "conversions": 3,
+                    "impressions": 17000,
+                    "clicks": 2100
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 350.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Survey Completion Rate",
+                    "value": 62.0,
+                    "unit": "%"
+                },
+                {
+                    "name": "Mobile App Engagement",
+                    "value": 2.8,
+                    "unit": "sessions/user/week"
+                }
+            ],
+            "month": "September",
+            "year": 2025,
+            "milestone": "Launch of Mobile App (iOS & Android)"
+        },
+        {
+            "financials": {
+                "revenue": 6500.0,
+                "expenses": 70000.0,
+                "mrr": 6600.0,
+                "new_customers": 3,
+                "total_customers": 18
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Corp (Remote Team)",
+                    "amount": 2400.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled, interested in annual plan for 40 seats."
+                },
+                {
+                    "name": "Globex Ltd",
+                    "amount": 900.0,
+                    "stage": "WON",
+                    "notes": "Signed up after improved onboarding process."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard Customer Success Manager",
+                    "description": "Integrate new hire, train on product, and assign first client accounts.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Update Onboarding Flow",
+                    "description": "Revise onboarding steps and tutorials based on feedback from new manager.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Satisfaction Survey",
+                    "description": "Launch quarterly survey to measure NPS and identify pain points.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Smart Onboarding Checklist",
+                    "description": "Automated onboarding tasks and progress tracking for new clients.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "AI-Driven Feedback Summary",
+                    "description": "Summarize employee feedback into actionable insights for managers.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Enable pulse surveys and notifications directly in Slack.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Personalized Welcome Call",
+                    "hypothesis": "Direct customer success manager calls will reduce churn for new signups.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Remote Teams Webinar",
+                    "channel": "LinkedIn",
+                    "spend": 4500,
+                    "conversions": 2,
+                    "impressions": 35000,
+                    "clicks": 600
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Customer Churn Rate",
+                    "value": 0.04,
+                    "unit": "monthly"
+                },
+                {
+                    "name": "Avg Survey Response Rate",
+                    "value": 76.3,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Active User Engagement",
+                    "value": 68.7,
+                    "unit": "percent"
+                }
+            ],
+            "month": "October",
+            "year": 2025,
+            "milestone": "Hiring of First Customer Success Manager"
+        },
+        {
+            "financials": {
+                "revenue": 7000,
+                "expenses": 67000,
+                "mrr": 7000,
+                "new_customers": 2,
+                "total_customers": 20
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Media Group",
+                    "amount": 3600,
+                    "stage": "WON",
+                    "notes": "Closed after demo of AI-powered recommendations feature."
+                },
+                {
+                    "name": "RemoteTech Solutions",
+                    "amount": 2400,
+                    "stage": "OPEN",
+                    "notes": "Trial period started; awaiting feedback from HR team."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Launch AI-Powered Recommendations",
+                    "description": "Deploy and announce new AI-driven suggestions for managers based on real-time survey data.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Onboarding",
+                    "description": "First Customer Success Manager to onboard new clients and drive engagement.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Expand Paid Marketing",
+                    "description": "Increase spend on LinkedIn and Google Ads to drive new customer acquisition.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Recommendations",
+                    "description": "Managers receive actionable suggestions powered by real-time survey analytics.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Admin Dashboard Enhancements",
+                    "description": "Improved dashboard for HR leads to visualize engagement analytics.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Targeted LinkedIn Outreach",
+                    "hypothesis": "Direct LinkedIn campaigns to HR leaders will drive higher conversion than generic ads.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "AI Launch Awareness",
+                    "channel": "LinkedIn",
+                    "spend": 22000,
+                    "conversions": 2,
+                    "impressions": 32000,
+                    "clicks": 1400
+                },
+                {
+                    "name": "Remote Team Engagement",
+                    "channel": "Google Ads",
+                    "spend": 9000,
+                    "conversions": 1,
+                    "impressions": 13000,
+                    "clicks": 600
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 310,
+                    "unit": "users"
+                },
+                {
+                    "name": "Survey Completion Rate",
+                    "value": 74.5,
+                    "unit": "percent"
+                },
+                {
+                    "name": "AI Recommendation Usage",
+                    "value": 62,
+                    "unit": "percent"
+                }
+            ],
+            "month": "November",
+            "year": 2025,
+            "milestone": "Introduction of AI-Powered Recommendations"
+        },
+        {
+            "financials": {
+                "revenue": 7800.0,
+                "expenses": 42000.0,
+                "mrr": 7800.0,
+                "new_customers": 4,
+                "total_customers": 24
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital",
+                    "amount": 2400.0,
+                    "stage": "WON",
+                    "notes": "Closed after demo at national HR conference"
+                },
+                {
+                    "name": "FinServe Group",
+                    "amount": 1800.0,
+                    "stage": "OPEN",
+                    "notes": "Currently in trial, decision expected in January"
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Award Announcement PR",
+                    "description": "Draft and distribute press release announcing PulseSync's industry recognition.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "HR Conference Follow-Up",
+                    "description": "Follow up with leads and contacts from the national HR conference.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Q1 2026 Feature Planning",
+                    "description": "Prepare roadmap and resource allocation for upcoming feature releases.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Pulse Insights",
+                    "description": "Delivers proactive recommendations to managers based on real-time feedback trends.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Multi-language Support",
+                    "description": "Enables surveys and dashboards in 5 additional languages.",
+                    "status": "BACKLOG"
+                },
+                {
+                    "name": "Custom Branding",
+                    "description": "Allows organizations to customize survey look and feel.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Conference Lead Nurture Sequence",
+                    "hypothesis": "Personalized follow-up emails to conference leads will increase demo bookings by 30%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Industry Award Social Blast",
+                    "channel": "LinkedIn",
+                    "spend": 2500,
+                    "conversions": 2,
+                    "impressions": 34000,
+                    "clicks": 1300
+                },
+                {
+                    "name": "Conference Retargeting Ads",
+                    "channel": "Google Ads",
+                    "spend": 3500,
+                    "conversions": 1,
+                    "impressions": 27000,
+                    "clicks": 800
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 460.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Survey Response Rate",
+                    "value": 72.8,
+                    "unit": "%"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 3.5,
+                    "unit": "%"
+                }
+            ],
+            "month": "December",
+            "year": 2025,
+            "milestone": "First Industry Recognition Award"
+        },
+        {
+            "financials": {
+                "revenue": 10500.0,
+                "expenses": 61000.0,
+                "mrr": 10000.0,
+                "new_customers": 76,
+                "total_customers": 100
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Corp",
+                    "amount": 4800.0,
+                    "stage": "WON",
+                    "notes": "Closed annual contract after demo; large remote team."
+                },
+                {
+                    "name": "RemoteWorks Ltd",
+                    "amount": 1200.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating terms for Q1 onboarding."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Customer Onboarding Sprint",
+                    "description": "Rapid onboarding for 76 new paying customers, including walkthroughs and initial setup.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Scale Support Team",
+                    "description": "Hire 2 new customer success specialists to handle increased volume.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Publish 100 Customer Milestone Announcement",
+                    "description": "Create blog post and press release to amplify milestone achievement.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Pulse Survey Recommendations",
+                    "description": "Enhancements to recommendation engine for more actionable insights.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Customizable Analytics Dashboard",
+                    "description": "Allow admins to tailor engagement analytics views for their teams.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Enable feedback collection directly via Slack for remote teams.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Referral Incentive Program",
+                    "hypothesis": "Offering rewards for customer referrals will increase organic growth.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Milestone PR Blitz",
+                    "channel": "Press/Media",
+                    "spend": 6500,
+                    "conversions": 24,
+                    "impressions": 22000,
+                    "clicks": 2900
+                },
+                {
+                    "name": "LinkedIn Targeted Ads",
+                    "channel": "LinkedIn",
+                    "spend": 4700,
+                    "conversions": 18,
+                    "impressions": 18500,
+                    "clicks": 2200
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Weekly Active Users",
+                    "value": 630,
+                    "unit": "users"
+                },
+                {
+                    "name": "Survey Completion Rate",
+                    "value": 77.8,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Customer Churn Rate",
+                    "value": 1.3,
+                    "unit": "percent"
+                }
+            ],
+            "month": "January",
+            "year": 2026,
+            "milestone": "Milestone of 100 Paying Customers"
+        },
+        {
+            "financials": {
+                "revenue": 11500.0,
+                "expenses": 62000.0,
+                "mrr": 11500.0,
+                "new_customers": 15,
+                "total_customers": 115
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions GmbH",
+                    "amount": 3600.0,
+                    "stage": "OPEN",
+                    "notes": "Large German HR SaaS client, evaluating PulseSync for 250 employees."
+                },
+                {
+                    "name": "EuroTalent Ltd",
+                    "amount": 1200.0,
+                    "stage": "WON",
+                    "notes": "First UK-based client onboarded, 40 seats."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "GDPR Compliance Implementation",
+                    "description": "Update data handling, privacy policies, and platform features for full GDPR compliance.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Onboarding European Clients",
+                    "description": "Support the onboarding of first European customers with tailored demos and technical setup.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Localization - French & German",
+                    "description": "Translate platform UI and support materials into French and German.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "GDPR Data Export Tool",
+                    "description": "Allow European users to easily export their data for compliance requests.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Multi-language Support",
+                    "description": "Platform now supports English, French, and German for survey delivery.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "European Market Outreach",
+                    "hypothesis": "Targeted LinkedIn ads and webinars will generate at least 10 qualified leads in Germany and UK.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn B2B Outreach (Europe)",
+                    "channel": "LinkedIn",
+                    "spend": 15000,
+                    "conversions": 9,
+                    "impressions": 120000,
+                    "clicks": 2700
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 700,
+                    "unit": "users"
+                },
+                {
+                    "name": "Survey Response Rate",
+                    "value": 63.2,
+                    "unit": "%"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 2.0,
+                    "unit": "%"
+                }
+            ],
+            "month": "February",
+            "year": 2026,
+            "milestone": "Expansion into European Market"
+        },
+        {
+            "financials": {
+                "revenue": 12300.0,
+                "expenses": 67000.0,
+                "mrr": 12300.0,
+                "new_customers": 12,
+                "total_customers": 127
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Analytics",
+                    "amount": 4800.0,
+                    "stage": "OPEN",
+                    "notes": "Mid-sized European tech firm evaluating PulseSync for hybrid teams."
+                },
+                {
+                    "name": "BrightHR Solutions",
+                    "amount": 2050.0,
+                    "stage": "WON",
+                    "notes": "Closed deal after product iteration addressed their retention concerns."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Churn Analysis Presentation",
+                    "description": "Prepare and present findings from SMB churn analysis to leadership and product team.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Outreach Initiative",
+                    "description": "Reach out to recently churned SMB customers for feedback post-feature rollout.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Retention Measurement",
+                    "description": "Begin tracking retention metrics following product updates.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Improved Survey Scheduling",
+                    "description": "Allows admins to customize survey frequency to reduce fatigue among SMB users.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "SMB Dashboard Enhancements",
+                    "description": "Simplified analytics and actionable insights for smaller teams.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "AI-Powered Churn Prediction",
+                    "description": "Backend feature to identify at-risk accounts using engagement signals.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "SMB Feature Adoption Test",
+                    "hypothesis": "New dashboard and scheduling features will reduce churn by at least 20% in SMB segment.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "European SMB Outreach",
+                    "channel": "LinkedIn Ads",
+                    "spend": 14000,
+                    "conversions": 8,
+                    "impressions": 56000,
+                    "clicks": 3200
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 920,
+                    "unit": "users"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 0.076,
+                    "unit": "fraction"
+                },
+                {
+                    "name": "Survey Completion Rate",
+                    "value": 0.65,
+                    "unit": "fraction"
+                }
+            ],
+            "month": "March",
+            "year": 2026,
+            "milestone": "First Churn Analysis and Product Iteration"
+        },
+        {
+            "financials": {
+                "revenue": 33700.0,
+                "expenses": 57000.0,
+                "mrr": 14500.0,
+                "new_customers": 14,
+                "total_customers": 141
+            },
+            "crm_deals": [
+                {
+                    "name": "RemoteHub Inc.",
+                    "amount": 7800.0,
+                    "stage": "WON",
+                    "notes": "Closed after successful 2-month pilot; 120 seats annual contract."
+                },
+                {
+                    "name": "TalentWave",
+                    "amount": 4900.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating enterprise onboarding and integration timeline."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Q2 Customer Success Plan",
+                    "description": "Develop and launch proactive customer success outreach for new accounts onboarded in Q1 and Q2.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Sales Playbook Update",
+                    "description": "Revise sales collateral with new case studies and churn analysis insights.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Performance Dashboard Launch",
+                    "description": "Prepare go-live for enhanced analytics dashboard by end of month.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI-Powered Churn Prediction",
+                    "description": "Machine learning model to proactively alert CSMs to at-risk accounts.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Pulse Survey Scheduling",
+                    "description": "Allow admins to pre-schedule recurring pulse surveys for teams.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Push survey notifications and summary reports into Slack channels.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "LinkedIn Lead Magnet",
+                    "hypothesis": "Gated industry report will increase demo signups by 30%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Q2 Paid Social Pilot",
+                    "channel": "LinkedIn",
+                    "spend": 9000,
+                    "conversions": 38,
+                    "impressions": 18500,
+                    "clicks": 2100
+                },
+                {
+                    "name": "PeopleOps Webinar Series",
+                    "channel": "Email",
+                    "spend": 1500,
+                    "conversions": 12,
+                    "impressions": 3200,
+                    "clicks": 480
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 1580,
+                    "unit": "users"
+                },
+                {
+                    "name": "Survey Completion Rate",
+                    "value": 70.3,
+                    "unit": "%"
+                },
+                {
+                    "name": "Logo Churn Rate",
+                    "value": 2.1,
+                    "unit": "%"
+                }
+            ],
+            "month": "April",
+            "year": 2026,
+            "milestone": "Quarterly Revenue Hits $100k"
+        }
+    ]
+}

@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useStageRedirect } from '../utils/useStageRedirect';
 
 const ProtectedRoute: React.FC = () => {
   const { user, isLoading, startupStage, submissionStatus } = useAuth();
   const { handleNavigation } = useStageRedirect();
+  const { orgSlug } = useParams<{ orgSlug: string }>();
 
   useEffect(() => {
     if (user && !isLoading) {
@@ -21,7 +22,7 @@ const ProtectedRoute: React.FC = () => {
   if (user) {
     return <Outlet />;
   } else {
-    return <Navigate to="/login" />;
+    return <Navigate to={orgSlug ? `/${orgSlug}/login` : "/login"} />;
   }
 };
 

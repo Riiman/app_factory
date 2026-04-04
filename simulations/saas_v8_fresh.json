@@ -1,0 +1,1285 @@
+{
+    "metadata": {
+        "company_name": "FlowSync",
+        "tagline": "Automate Your Workflow, Effortlessly.",
+        "description": "FlowSync is a SaaS startup founded in April 2024, dedicated to empowering SMBs to automate cross-app workflows without code. With intuitive drag-and-drop tools and deep integrations, FlowSync helps businesses save time, reduce errors, and scale operations seamlessly. The platform has gained early traction among marketing agencies and e-commerce companies.",
+        "roadmap": [
+            {
+                "month_name": "May",
+                "year": 2025,
+                "milestone_title": "Major Feature Release: 'Conditional Logic'",
+                "narrative_description": "Launch of the 'Conditional Logic' feature, allowing users to build more intelligent automation workflows based on triggers and data variables. This update is anticipated to drive greater user engagement and expand use cases."
+            },
+            {
+                "month_name": "June",
+                "year": 2025,
+                "milestone_title": "First Enterprise Client Onboarded",
+                "narrative_description": "Secured and onboarded FlowSync's first enterprise client, marking a significant step toward upmarket expansion and validating the platform's scalability."
+            },
+            {
+                "month_name": "July",
+                "year": 2025,
+                "milestone_title": "ISO 27001 Certification Initiated",
+                "narrative_description": "Began the process of obtaining ISO 27001 certification to strengthen FlowSync\u2019s security posture and meet enterprise compliance requirements."
+            },
+            {
+                "month_name": "August",
+                "year": 2025,
+                "milestone_title": "User Base Hits 2,000 Active Accounts",
+                "narrative_description": "Reached 2,000 active user accounts, reflecting sustained organic growth and the success of targeted marketing campaigns."
+            },
+            {
+                "month_name": "September",
+                "year": 2025,
+                "milestone_title": "Seed Funding Round Closed",
+                "narrative_description": "Closed a $2M seed funding round led by a prominent SaaS-focused VC, securing capital for product development and team expansion."
+            },
+            {
+                "month_name": "October",
+                "year": 2025,
+                "milestone_title": "Hiring: Engineering & Customer Success Teams Expanded",
+                "narrative_description": "Onboarded five new team members in engineering and customer success, boosting product velocity and improving user support."
+            },
+            {
+                "month_name": "November",
+                "year": 2025,
+                "milestone_title": "API Public Beta Launch",
+                "narrative_description": "Released FlowSync's public API in beta, enabling third-party developers and partners to build custom integrations and extending the ecosystem."
+            },
+            {
+                "month_name": "December",
+                "year": 2025,
+                "milestone_title": "Q4 Customer Satisfaction Survey & NPS Improvement",
+                "narrative_description": "Conducted the quarterly customer satisfaction survey, with Net Promoter Score rising from 40 to 52, reflecting improved onboarding and support."
+            },
+            {
+                "month_name": "January",
+                "year": 2026,
+                "milestone_title": "ISO 27001 Certification Achieved",
+                "narrative_description": "Successfully completed ISO 27001 certification, enabling FlowSync to confidently pursue larger enterprise contracts."
+            },
+            {
+                "month_name": "February",
+                "year": 2026,
+                "milestone_title": "Strategic Partnership with E-commerce Platform",
+                "narrative_description": "Announced a strategic partnership with a leading e-commerce platform, unlocking new customer acquisition channels and integration opportunities."
+            },
+            {
+                "month_name": "March",
+                "year": 2026,
+                "milestone_title": "Mobile App MVP Released",
+                "narrative_description": "Launched the MVP version of FlowSync\u2019s mobile app, allowing users to monitor workflows and receive notifications on the go."
+            },
+            {
+                "month_name": "April",
+                "year": 2026,
+                "milestone_title": "Annual Revenue Exceeds $500K",
+                "narrative_description": "FlowSync surpasses $500K in annual recurring revenue, a major financial milestone reflecting healthy SaaS metrics and positioning the company for future growth."
+            }
+        ]
+    },
+    "monthly_data": [
+        {
+            "financials": {
+                "revenue": 1200.0,
+                "expenses": 18000.0,
+                "mrr": 1100.0,
+                "new_customers": 12,
+                "total_customers": 12
+            },
+            "crm_deals": [
+                {
+                    "name": "MarketMakers Agency",
+                    "amount": 900.0,
+                    "stage": "WON",
+                    "notes": "Signed up after demo of Conditional Logic feature."
+                },
+                {
+                    "name": "EcomBoost Solutions",
+                    "amount": 300.0,
+                    "stage": "OPEN",
+                    "notes": "Trial started; evaluating advanced workflow automation."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Launch Conditional Logic Feature",
+                    "description": "Release and promote the new Conditional Logic workflow tool for early users.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboard First Customers",
+                    "description": "Guide new signups through platform setup and workflow creation.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Support Setup",
+                    "description": "Establish live chat and help center resources for initial customer base.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Conditional Logic",
+                    "description": "Allows users to build workflows that adapt based on triggers and data values.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Zapier Import",
+                    "description": "Enable users to import workflows from Zapier for easier migration.",
+                    "status": "BACKLOG"
+                },
+                {
+                    "name": "Audit Logs",
+                    "description": "Track workflow changes and events for compliance and troubleshooting.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Targeted LinkedIn Outreach",
+                    "hypothesis": "Direct outreach to SMB decision makers will yield >10% conversion.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Conditional Logic Launch Promo",
+                    "channel": "Facebook Ads",
+                    "spend": 2800,
+                    "conversions": 8,
+                    "impressions": 18000,
+                    "clicks": 900
+                },
+                {
+                    "name": "Workflow Automation Webinar",
+                    "channel": "Email & Zoom",
+                    "spend": 700,
+                    "conversions": 4,
+                    "impressions": 1500,
+                    "clicks": 200
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Workflows Created",
+                    "value": 55,
+                    "unit": "workflows"
+                },
+                {
+                    "name": "Avg. Daily Active Users",
+                    "value": 9,
+                    "unit": "users"
+                },
+                {
+                    "name": "Workflow Success Rate",
+                    "value": 97.5,
+                    "unit": "%"
+                }
+            ],
+            "month": "May",
+            "year": 2025,
+            "milestone": "Major Feature Release: 'Conditional Logic'"
+        },
+        {
+            "financials": {
+                "revenue": 5200.0,
+                "expenses": 8500.0,
+                "mrr": 4200.0,
+                "new_customers": 3,
+                "total_customers": 15
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Corp (Enterprise)",
+                    "amount": 3200.0,
+                    "stage": "WON",
+                    "notes": "First enterprise client onboarded; annual contract for platform usage."
+                },
+                {
+                    "name": "GrowthMark Agency",
+                    "amount": 280.0,
+                    "stage": "OPEN",
+                    "notes": "SMB agency interested after recent webinar demo."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Enterprise Onboarding",
+                    "description": "Guide Acme Corp through onboarding, training, and integration setup.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Sales Playbook Update",
+                    "description": "Revise sales materials to include enterprise use case and testimonials.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Optimize Support Processes",
+                    "description": "Improve support documentation and response times for higher-tier clients.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Conditional Logic",
+                    "description": "Enable advanced branching in workflow automation (completed last month).",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Team Workspaces",
+                    "description": "Collaborative environment for enterprise customers.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Advanced Analytics Dashboard",
+                    "description": "In-depth workflow performance metrics for admins.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Demo Webinars",
+                    "hypothesis": "Targeted webinars will generate qualified enterprise leads.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Enterprise Outreach",
+                    "channel": "LinkedIn",
+                    "spend": 1200,
+                    "conversions": 1,
+                    "impressions": 8500,
+                    "clicks": 320
+                },
+                {
+                    "name": "SMB Content Marketing",
+                    "channel": "Content",
+                    "spend": 600,
+                    "conversions": 2,
+                    "impressions": 4200,
+                    "clicks": 180
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Workflow Runs per Customer (Monthly Avg)",
+                    "value": 115.0,
+                    "unit": "runs"
+                },
+                {
+                    "name": "Net Promoter Score",
+                    "value": 47.0,
+                    "unit": "NPS"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 3.0,
+                    "unit": "%"
+                }
+            ],
+            "month": "June",
+            "year": 2025,
+            "milestone": "First Enterprise Client Onboarded"
+        },
+        {
+            "financials": {
+                "revenue": 4400.0,
+                "expenses": 9200.0,
+                "mrr": 4500.0,
+                "new_customers": 2,
+                "total_customers": 17
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Retail - Automation Suite",
+                    "amount": 3600.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise prospect interested in workflow automation for e-commerce ops. Security compliance is a key requirement."
+                },
+                {
+                    "name": "BrightEdge Agency Expansion",
+                    "amount": 1200.0,
+                    "stage": "WON",
+                    "notes": "Existing agency customer upgraded to higher tier after onboarding more clients."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "ISO 27001 Certification Project Kickoff",
+                    "description": "Initiated certification process with consulting partner; mapped compliance gaps.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Security Documentation Draft",
+                    "description": "Drafting new security policies required for ISO 27001.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Customer Knowledge Base Update",
+                    "description": "Added new content focused on security and compliance features to help enterprise customers.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Audit Logs",
+                    "description": "Users can now view detailed logs of workflow executions for compliance and troubleshooting.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Advanced Permission Controls",
+                    "description": "Granular user roles for enterprise customers, supporting security requirements.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Shopify Integration Enhancement",
+                    "description": "Improved data sync and error handling for e-commerce clients.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Agency Referral Program",
+                    "hypothesis": "Offering incentives to existing agency customers will increase referrals and new sign-ups.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Enterprise Security Webinar",
+                    "channel": "LinkedIn",
+                    "spend": 1800,
+                    "conversions": 4,
+                    "impressions": 12000,
+                    "clicks": 540
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Workflow Executions",
+                    "value": 11800,
+                    "unit": "runs/month"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 47,
+                    "unit": "users"
+                },
+                {
+                    "name": "Support Tickets Resolved",
+                    "value": 22,
+                    "unit": "tickets"
+                }
+            ],
+            "month": "July",
+            "year": 2025,
+            "milestone": "ISO 27001 Certification Initiated"
+        },
+        {
+            "financials": {
+                "revenue": 56500.0,
+                "expenses": 24500.0,
+                "mrr": 5500.0,
+                "new_customers": 8,
+                "total_customers": 25
+            },
+            "crm_deals": [
+                {
+                    "name": "EcomPro Agency Annual Plan",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating enterprise features and custom integrations"
+                },
+                {
+                    "name": "MarketWave Subscription",
+                    "amount": 3600.0,
+                    "stage": "WON",
+                    "notes": "Closed after demo; expected to be high usage client"
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "ISO 27001 Audit Preparation",
+                    "description": "Gather and organize documentation for the upcoming certification audit.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Success Hiring",
+                    "description": "Interview candidates for the new customer success manager role.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Usage Analytics Dashboard",
+                    "description": "Finalize and deploy dashboard to track user workflow automations.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Zap Migration",
+                    "description": "Enable seamless migration of workflows from Zapier to FlowSync.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Allow users to automate Slack notifications and workflows.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "API Rate Limit Controls",
+                    "description": "Introduce admin tools to set custom API usage limits per account.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Referral Program Launch",
+                    "hypothesis": "Offering rewards for user referrals will increase sign-ups by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Instagram Sponsored Content",
+                    "channel": "Instagram",
+                    "spend": 4200,
+                    "conversions": 110,
+                    "impressions": 34000,
+                    "clicks": 2100
+                },
+                {
+                    "name": "LinkedIn Lead Gen",
+                    "channel": "LinkedIn",
+                    "spend": 2500,
+                    "conversions": 40,
+                    "impressions": 14500,
+                    "clicks": 900
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Accounts",
+                    "value": 2000,
+                    "unit": "accounts"
+                },
+                {
+                    "name": "Average Workflow Executions",
+                    "value": 112.3,
+                    "unit": "per account/month"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 1.8,
+                    "unit": "percent"
+                }
+            ],
+            "month": "August",
+            "year": 2025,
+            "milestone": "User Base Hits 2,000 Active Accounts"
+        },
+        {
+            "financials": {
+                "revenue": 6000.0,
+                "expenses": 56000.0,
+                "mrr": 6500.0,
+                "new_customers": 7,
+                "total_customers": 32
+            },
+            "crm_deals": [
+                {
+                    "name": "AgencyPro Onboarding",
+                    "amount": 2400.0,
+                    "stage": "WON",
+                    "notes": "Signed up for annual plan after successful pilot."
+                },
+                {
+                    "name": "RetailRocket Partnership",
+                    "amount": 1200.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating custom integration support."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Start Hiring: Engineering & Sales",
+                    "description": "Initiate recruiting for 2 engineers and 1 sales manager to accelerate product and customer acquisition.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Expand Paid Acquisition",
+                    "description": "Increase marketing budget and launch new ads on LinkedIn targeting SMB e-commerce.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Investor Reporting Setup",
+                    "description": "Implement monthly reporting cadence for new investors.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Zapier Import",
+                    "description": "Enable users to migrate workflows from Zapier with one click.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Team Roles & Permissions",
+                    "description": "Allow admins to manage user access and workflow editing rights.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Shopify Multi-Store Integration",
+                    "description": "Connect and automate across multiple Shopify stores from a single FlowSync account.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Referral Incentives Launch",
+                    "hypothesis": "Offering customers a $50 credit per referral will increase signups by 20%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn SMB E-Com Push",
+                    "channel": "LinkedIn Ads",
+                    "spend": 12000,
+                    "conversions": 5,
+                    "impressions": 48000,
+                    "clicks": 3100
+                },
+                {
+                    "name": "Google Search - Agency Automation",
+                    "channel": "Google Ads",
+                    "spend": 8000,
+                    "conversions": 2,
+                    "impressions": 26000,
+                    "clicks": 1200
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Accounts",
+                    "value": 2300,
+                    "unit": "accounts"
+                },
+                {
+                    "name": "Workflow Runs",
+                    "value": 18500,
+                    "unit": "runs/month"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 3.1,
+                    "unit": "percent/month"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed",
+                "amount": 2000000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Jane Kim",
+                        "firm": "ScaleForge Ventures",
+                        "amount": 1200000
+                    },
+                    {
+                        "name": "Chris Patel",
+                        "firm": "SaaS Angels",
+                        "amount": 500000
+                    },
+                    {
+                        "name": "Alexis Tran",
+                        "firm": "Operator Syndicate",
+                        "amount": 300000
+                    }
+                ]
+            },
+            "month": "September",
+            "year": 2025,
+            "milestone": "Seed Funding Round Closed"
+        },
+        {
+            "financials": {
+                "revenue": 7000.0,
+                "expenses": 79000.0,
+                "mrr": 7000.0,
+                "new_customers": 6,
+                "total_customers": 38
+            },
+            "crm_deals": [
+                {
+                    "name": "AdVantage Media",
+                    "amount": 2400.0,
+                    "stage": "OPEN",
+                    "notes": "Marketing agency trialing FlowSync for campaign automation."
+                },
+                {
+                    "name": "ShopXpress",
+                    "amount": 1800.0,
+                    "stage": "WON",
+                    "notes": "E-commerce client signed annual contract for workflow automation."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard New Engineers",
+                    "description": "Integrate new engineering hires into dev workflow and sprint routines.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Training",
+                    "description": "Train newly hired customer success reps on product and support protocols.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Optimize Support Ticket Response",
+                    "description": "Reduce average response time by 30% with expanded team.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Zapier Import Tool",
+                    "description": "Allow users to migrate workflows from Zapier automatically.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Enable workflow triggers and notifications in Slack.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Landing Page A/B Test",
+                    "hypothesis": "Changing headline to focus on 'no code' will increase signups.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "E-commerce Automation Webinar",
+                    "channel": "Webinar",
+                    "spend": 6000,
+                    "conversions": 4,
+                    "impressions": 2800,
+                    "clicks": 610
+                },
+                {
+                    "name": "LinkedIn Ads Expansion",
+                    "channel": "LinkedIn",
+                    "spend": 7000,
+                    "conversions": 2,
+                    "impressions": 9200,
+                    "clicks": 650
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Average Workflow Executions per User",
+                    "value": 48.3,
+                    "unit": "workflows/month"
+                },
+                {
+                    "name": "Customer Churn Rate",
+                    "value": 3.1,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Support Ticket Response Time",
+                    "value": 6.7,
+                    "unit": "hours"
+                }
+            ],
+            "month": "October",
+            "year": 2025,
+            "milestone": "Hiring: Engineering & Customer Success Teams Expanded"
+        },
+        {
+            "financials": {
+                "revenue": 7600.0,
+                "expenses": 105000.0,
+                "mrr": 7600.0,
+                "new_customers": 5,
+                "total_customers": 43
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Marketing Agency",
+                    "amount": 4100.0,
+                    "stage": "WON",
+                    "notes": "Closed after successful API beta integration trial."
+                },
+                {
+                    "name": "Shopify Retail Partners",
+                    "amount": 2600.0,
+                    "stage": "OPEN",
+                    "notes": "Interested in custom e-commerce workflows enabled by new API."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "API Beta Feedback Collection",
+                    "description": "Gather early feedback from developers and partners using the API beta.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Developer Documentation Improvement",
+                    "description": "Enhance developer docs to streamline API onboarding.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Customer Success Onboarding",
+                    "description": "Onboard new customers acquired through API partnerships.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Public API Beta",
+                    "description": "Initial release of FlowSync's public API for third-party integrations.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Webhook Triggers",
+                    "description": "Allow users to trigger workflows via webhooks from external apps.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Integration Marketplace",
+                    "description": "Curate and display third-party integrations built on FlowSync API.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "API Developer Outreach",
+                    "hypothesis": "Targeted outreach to SaaS developers will result in increased partnerships and platform adoption.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "API Beta Launch Webinar",
+                    "channel": "Webinars & Email",
+                    "spend": 6500,
+                    "conversions": 3,
+                    "impressions": 3200,
+                    "clicks": 780
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Workflows",
+                    "value": 312,
+                    "unit": "workflows"
+                },
+                {
+                    "name": "API Calls",
+                    "value": 18000,
+                    "unit": "calls"
+                },
+                {
+                    "name": "Customer Retention Rate",
+                    "value": 94.2,
+                    "unit": "%"
+                }
+            ],
+            "month": "November",
+            "year": 2025,
+            "milestone": "API Public Beta Launch"
+        },
+        {
+            "financials": {
+                "revenue": 8300.0,
+                "expenses": 52000.0,
+                "mrr": 8300.0,
+                "new_customers": 9,
+                "total_customers": 52
+            },
+            "crm_deals": [
+                {
+                    "name": "AgencyPro",
+                    "amount": 2400.0,
+                    "stage": "WON",
+                    "notes": "Signed a 6-month contract after improved onboarding experience"
+                },
+                {
+                    "name": "ShopEase",
+                    "amount": 1800.0,
+                    "stage": "OPEN",
+                    "notes": "E-commerce company trialing workflow automation for holiday campaigns"
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Customer Feedback Analysis",
+                    "description": "Analyze Q4 survey responses to identify actionable improvements.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Support Team Training",
+                    "description": "Enhance onboarding and support scripts based on survey insights.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Holiday Workflow Templates",
+                    "description": "Build and launch new e-commerce workflow templates for Q4 holidays.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Enhanced Onboarding Wizard",
+                    "description": "New step-by-step onboarding flows for SMBs, increasing activation rates.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Zapier Import Tool",
+                    "description": "Enable customers to migrate workflows from Zapier with one click.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Custom Email Notifications",
+                    "description": "Allow users to customize workflow-triggered email alerts.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "E-commerce Template Promotion",
+                    "hypothesis": "Offering tailored e-commerce workflows will increase conversion rates.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Holiday Workflow Campaign",
+                    "channel": "Paid Social",
+                    "spend": 4500,
+                    "conversions": 7,
+                    "impressions": 42000,
+                    "clicks": 3200
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "NPS",
+                    "value": 52.0,
+                    "unit": "score"
+                },
+                {
+                    "name": "Activation Rate",
+                    "value": 77.0,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Monthly Workflow Runs",
+                    "value": 11400.0,
+                    "unit": "runs"
+                }
+            ],
+            "month": "December",
+            "year": 2025,
+            "milestone": "Q4 Customer Satisfaction Survey & NPS Improvement"
+        },
+        {
+            "financials": {
+                "revenue": 8900.0,
+                "expenses": 37000.0,
+                "mrr": 8800.0,
+                "new_customers": 8,
+                "total_customers": 60
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Enterprises",
+                    "amount": 18000.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise lead in evaluation phase, attracted by ISO 27001 certification."
+                },
+                {
+                    "name": "Shopify Pro Agency",
+                    "amount": 4200.0,
+                    "stage": "WON",
+                    "notes": "Closed mid-sized agency, cited improved workflow automation and security."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Enterprise Outreach Campaign",
+                    "description": "Targeting enterprise prospects with new ISO certification messaging.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Security Landing Page Update",
+                    "description": "Revamping website to showcase ISO 27001 achievement and security features.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Training",
+                    "description": "Upskilling CS team to handle larger enterprise accounts.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Audit Logs",
+                    "description": "Enterprise-grade logging for security and compliance reporting.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Bulk Workflow Import",
+                    "description": "Allow customers to import multiple workflows at once for easier onboarding.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Teams & Permissions",
+                    "description": "Role-based access for organizations scaling usage.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Lead Gen via LinkedIn Ads",
+                    "hypothesis": "ISO 27001 messaging will increase enterprise demo requests.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "ISO Certification Announcement",
+                    "channel": "Email & LinkedIn",
+                    "spend": 4800,
+                    "conversions": 6,
+                    "impressions": 12000,
+                    "clicks": 830
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Workflow Success Rate",
+                    "value": 98.1,
+                    "unit": "%"
+                },
+                {
+                    "name": "Average Workflows per Customer",
+                    "value": 7.4,
+                    "unit": "workflows"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 56.0,
+                    "unit": "users"
+                }
+            ],
+            "month": "January",
+            "year": 2026,
+            "milestone": "ISO 27001 Certification Achieved"
+        },
+        {
+            "financials": {
+                "revenue": 9800.0,
+                "expenses": 59200.0,
+                "mrr": 9300.0,
+                "new_customers": 7,
+                "total_customers": 67
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Marketing Agency",
+                    "amount": 6500.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled, interested in e-commerce integration."
+                },
+                {
+                    "name": "ShopEase Enterprise",
+                    "amount": 8000.0,
+                    "stage": "WON",
+                    "notes": "Signed after new e-commerce partnership. Multi-seat account."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "E-commerce Partnership Integration Launch",
+                    "description": "Release FlowSync integration with strategic e-commerce partner to all customers.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboarding New E-commerce Customers",
+                    "description": "Design and implement onboarding flow tailored for e-commerce users.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Targeted Outreach to E-commerce Agencies",
+                    "description": "Email campaign targeting agencies using partner platform.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "E-commerce Trigger Automations",
+                    "description": "Allow users to automate workflows based on e-commerce events (e.g., order placed, cart abandoned).",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Drag-and-Drop Workflow Templates",
+                    "description": "Pre-built templates for popular e-commerce and marketing use cases.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "E-commerce Landing Page A/B Test",
+                    "hypothesis": "A focused landing page improves conversion rate among e-commerce visitors.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Partner Platform Co-Marketing",
+                    "channel": "Email & Social",
+                    "spend": 12000,
+                    "conversions": 5,
+                    "impressions": 52000,
+                    "clicks": 4300
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Workflow Runs",
+                    "value": 16700.0,
+                    "unit": "runs/month"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 54.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 2.8,
+                    "unit": "percent"
+                }
+            ],
+            "month": "February",
+            "year": 2026,
+            "milestone": "Strategic Partnership with E-commerce Platform"
+        },
+        {
+            "financials": {
+                "revenue": 10300.0,
+                "expenses": 36500.0,
+                "mrr": 10300.0,
+                "new_customers": 8,
+                "total_customers": 75
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Marketing Agency",
+                    "amount": 2400.0,
+                    "stage": "WON",
+                    "notes": "Signed after demo of mobile app MVP"
+                },
+                {
+                    "name": "Shopify Plus Retailer",
+                    "amount": 1350.0,
+                    "stage": "OPEN",
+                    "notes": "Evaluating workflow automation for their team"
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Mobile App Bug Fixes",
+                    "description": "Address initial feedback and fix bugs in the newly released mobile app MVP.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "User Onboarding Enhancement",
+                    "description": "Simplify onboarding flows for new mobile users to increase activation rates.",
+                    "status": "PENDING"
+                },
+                {
+                    "name": "Customer Success Outreach",
+                    "description": "Contact new customers from marketing campaign to ensure successful setup.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Mobile App MVP",
+                    "description": "Monitor workflows and receive notifications on the go.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Push Notification Integration",
+                    "description": "Send real-time workflow alerts to users' mobile devices.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Zapier Import Tool",
+                    "description": "Allow users to import existing workflows from Zapier.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Mobile Push Campaign",
+                    "hypothesis": "Push notifications will increase workflow completion rates by 20%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Mobile Launch Email Blast",
+                    "channel": "Email",
+                    "spend": 1200,
+                    "conversions": 5,
+                    "impressions": 2200,
+                    "clicks": 610
+                },
+                {
+                    "name": "E-commerce Instagram Ads",
+                    "channel": "Instagram",
+                    "spend": 3500,
+                    "conversions": 3,
+                    "impressions": 15000,
+                    "clicks": 1800
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Workflow Success Rate",
+                    "value": 91.2,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Mobile Active Users",
+                    "value": 49,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Workflows per Customer",
+                    "value": 6.8,
+                    "unit": "workflows"
+                }
+            ],
+            "month": "March",
+            "year": 2026,
+            "milestone": "Mobile App MVP Released"
+        },
+        {
+            "financials": {
+                "revenue": 42,
+                "expenses": 46,
+                "mrr": 42,
+                "new_customers": 13,
+                "total_customers": 88
+            },
+            "crm_deals": [
+                {
+                    "name": "EcomX Agency Annual Plan",
+                    "amount": 12,
+                    "stage": "WON",
+                    "notes": "Closed annual deal with mid-sized marketing agency. Upsold on premium integrations."
+                },
+                {
+                    "name": "Shopify Marketplace Partnership",
+                    "amount": 9,
+                    "stage": "OPEN",
+                    "notes": "Negotiating partnership for marketplace listing and bundled offer."
+                },
+                {
+                    "name": "RetailFlow Consulting",
+                    "amount": 7,
+                    "stage": "LOST",
+                    "notes": "Lost to competitor due to lack of advanced reporting capabilities."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboarding Automation",
+                    "description": "Build onboarding flows for new customers to improve activation rate.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Q2 Financial Reporting",
+                    "description": "Prepare and review quarterly financial statements for board.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Support Hiring",
+                    "description": "Recruit 2 new support reps to handle increased ticket volume.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Zapier Import",
+                    "description": "Allow users to import workflows from Zapier seamlessly.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Template Marketplace",
+                    "description": "Launch library of pre-built workflow templates for common use cases.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Custom Webhook Triggers",
+                    "description": "Enable users to trigger flows from any external service via webhook.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Agency Referral Program",
+                    "hypothesis": "Referral incentives will increase new agency signups by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "LinkedIn Lead Generation",
+                    "channel": "LinkedIn",
+                    "spend": 8,
+                    "conversions": 9,
+                    "impressions": 29000,
+                    "clicks": 1600
+                },
+                {
+                    "name": "Google Ads E-Commerce",
+                    "channel": "Google Ads",
+                    "spend": 7,
+                    "conversions": 4,
+                    "impressions": 18000,
+                    "clicks": 900
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Workflow Success Rate",
+                    "value": 97.2,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Average Session Length",
+                    "value": 15.6,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "NPS",
+                    "value": 38,
+                    "unit": "score"
+                }
+            ],
+            "month": "April",
+            "year": 2026,
+            "milestone": "Annual Revenue Exceeds $500K"
+        }
+    ]
+}

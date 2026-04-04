@@ -56,7 +56,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupName, startupSlug, n
         onSave({ name, slug, next_milestone: milestone });
         alert('Settings saved!'); // Placeholder for a proper notification
     };
-    
+
     /** Placeholder function for deactivating the startup. */
     const handleDeactivate = () => {
         if (window.confirm('Are you sure you want to deactivate this startup? This action can be undone.')) {
@@ -90,7 +90,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupName, startupSlug, n
                             <label htmlFor="startup-slug" className="block text-sm font-medium text-gray-700">URL Slug</label>
                             <div className="mt-1 flex rounded-md shadow-sm">
                                 <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
-                                    startupos.com/
+                                    VentureStackAI.com/
                                 </span>
                                 <input type="text" id="startup-slug" value={slug} onChange={(e) => setSlug(e.target.value)} className="flex-1 block w-full min-w-0 rounded-none rounded-r-md border-gray-300 sm:text-sm" />
                             </div>
@@ -113,7 +113,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupName, startupSlug, n
                 <div className="p-6">
                     <div className="flex items-start">
                         <div className="flex-shrink-0">
-                             <AlertTriangle className="h-6 w-6 text-red-600" aria-hidden="true" />
+                            <AlertTriangle className="h-6 w-6 text-red-600" aria-hidden="true" />
                         </div>
                         <div className="ml-3">
                             <h3 className="text-lg font-medium text-red-800">Danger Zone</h3>
@@ -122,16 +122,16 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupName, startupSlug, n
                             </div>
                         </div>
                     </div>
-                     <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-end sm:space-x-3 space-y-3 sm:space-y-0">
-                        <button 
+                    <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-end sm:space-x-3 space-y-3 sm:space-y-0">
+                        <button
                             onClick={handleDeactivate}
-                            type="button" 
+                            type="button"
                             className="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-500 text-white font-medium hover:bg-yellow-600 sm:text-sm">
                             Deactivate Startup
                         </button>
-                        <button 
+                        <button
                             onClick={handleDelete}
-                            type="button" 
+                            type="button"
                             className="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-white font-medium hover:bg-red-700 sm:text-sm">
                             Delete Startup Permanently
                         </button>

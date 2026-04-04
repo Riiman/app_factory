@@ -24,6 +24,16 @@ class NotificationManager:
             logger.warning("Attempted to disconnect non-existent websocket from NotificationManager.")
         logger.info("Connection closed.")
 
+    def subscribe(self, websocket: WebSocket, room: str):
+        if websocket in self.active_connections:
+            self.active_connections[websocket].add(room)
+            logger.info(f"Client subscribed to room: {room}")
+
+    def unsubscribe(self, websocket: WebSocket, room: str):
+        if websocket in self.active_connections:
+            self.active_connections[websocket].discard(room)
+            logger.info(f"Client unsubscribed from room: {room}")
+
     async def broadcast(self, message_data: Dict):
         """
         Broadcasts a message to relevant connections based on rooms.

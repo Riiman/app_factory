@@ -1,0 +1,1310 @@
+{
+    "metadata": {
+        "company_name": "SyncFields",
+        "tagline": "Bringing Clarity to Collaborative Workflows",
+        "description": "SyncFields is a SaaS startup founded in April 2024, offering dynamic, customizable workflow and data management solutions for distributed teams. The platform enables seamless integration of tasks, data, and communication, targeting mid-sized enterprises seeking to unify their project management and reporting. After a year of building their MVP and early adoption, SyncFields is poised for strategic growth, product refinement, and market expansion.",
+        "roadmap": [
+            {
+                "month_name": "May",
+                "year": 2025,
+                "milestone_title": "Beta Feature Expansion",
+                "narrative_description": "Release of advanced workflow automation and analytics features to a select group of beta users, gathering feedback for product improvement."
+            },
+            {
+                "month_name": "June",
+                "year": 2025,
+                "milestone_title": "Customer Success Initiative",
+                "narrative_description": "Launch of a new customer onboarding and support program, boosting retention and addressing early adopter needs."
+            },
+            {
+                "month_name": "July",
+                "year": 2025,
+                "milestone_title": "Integration with Major Third-Party Tools",
+                "narrative_description": "SyncFields rolls out native integrations with Slack and Microsoft Teams, opening doors to broader enterprise adoption."
+            },
+            {
+                "month_name": "August",
+                "year": 2025,
+                "milestone_title": "Seed Funding Round",
+                "narrative_description": "Successful closing of a $1.2M seed round, providing capital for scaling development and marketing efforts."
+            },
+            {
+                "month_name": "September",
+                "year": 2025,
+                "milestone_title": "Hiring Spree",
+                "narrative_description": "Onboarding new talent in engineering, sales, and customer support to accelerate product delivery and market reach."
+            },
+            {
+                "month_name": "October",
+                "year": 2025,
+                "milestone_title": "Product Launch",
+                "narrative_description": "Official release of SyncFields v1.0, transitioning from beta to a fully-supported SaaS platform with robust features."
+            },
+            {
+                "month_name": "November",
+                "year": 2025,
+                "milestone_title": "Major B2B Win",
+                "narrative_description": "Secures a key contract with a mid-sized financial services firm, marking the company\u2019s first major enterprise client."
+            },
+            {
+                "month_name": "December",
+                "year": 2025,
+                "milestone_title": "Brand Awareness Campaign",
+                "narrative_description": "Launches a targeted marketing campaign, increasing brand visibility via webinars, case studies, and industry events."
+            },
+            {
+                "month_name": "January",
+                "year": 2026,
+                "milestone_title": "Platform Scalability Upgrade",
+                "narrative_description": "Completes infrastructure enhancements to support a growing user base and more complex workflows."
+            },
+            {
+                "month_name": "February",
+                "year": 2026,
+                "milestone_title": "Security and Compliance Audit",
+                "narrative_description": "Conducts a thorough external security review, achieving SOC 2 compliance to reassure enterprise customers."
+            },
+            {
+                "month_name": "March",
+                "year": 2026,
+                "milestone_title": "International Expansion Planning",
+                "narrative_description": "Begins strategic planning for entry into European markets, assessing legal, operational, and localization requirements."
+            },
+            {
+                "month_name": "April",
+                "year": 2026,
+                "milestone_title": "Annual User Summit",
+                "narrative_description": "Hosts SyncFields\u2019 first virtual user summit, showcasing platform innovations, sharing success stories, and fostering a growing community."
+            }
+        ]
+    },
+    "monthly_data": [
+        {
+            "financials": {
+                "revenue": 24000.0,
+                "expenses": 36000.0,
+                "mrr": 21000.0,
+                "new_customers": 7,
+                "total_customers": 38
+            },
+            "crm_deals": [
+                {
+                    "name": "BlueSky Logistics Pilot",
+                    "amount": 9000.0,
+                    "stage": "OPEN",
+                    "notes": "Beta feature access granted; awaiting pilot results."
+                },
+                {
+                    "name": "InnoTech Expansion",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "Signed after positive feedback on new automation features."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Release Advanced Workflow Automations",
+                    "description": "Deploy new workflow automation modules to beta users.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Analytics Dashboard Beta",
+                    "description": "Launch analytics dashboard with customizable reporting for select users.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Beta Feedback Sprints",
+                    "description": "Collect and prioritize feedback from beta testers for June release cycle.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Conditional Task Triggers",
+                    "description": "Automate workflows with multi-condition triggers for complex team processes.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Custom Analytics Widgets",
+                    "description": "Allow users to create and pin custom analytics widgets to their dashboards.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration 2.0",
+                    "description": "Upgrade Slack integration to support real-time notifications and task creation.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Beta Cohort Feature Adoption",
+                    "hypothesis": "Early access to advanced features will increase user engagement by 20%.",
+                    "result": "Validated"
+                },
+                {
+                    "name": "Automated Onboarding Emails",
+                    "hypothesis": "Automated onboarding emails will increase beta feedback response rates.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Beta Feature Webinar Series",
+                    "channel": "Webinar",
+                    "spend": 1500,
+                    "conversions": 22
+                },
+                {
+                    "name": "LinkedIn Beta Launch Ads",
+                    "channel": "LinkedIn",
+                    "spend": 2800,
+                    "conversions": 12
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 177.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.97,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Workflow Automation Usage",
+                    "value": 340.0,
+                    "unit": "automated actions/day"
+                }
+            ],
+            "month": "May",
+            "year": 2025,
+            "milestone": "Beta Feature Expansion"
+        },
+        {
+            "financials": {
+                "revenue": 42500.0,
+                "expenses": 26500.0,
+                "mrr": 31500.0,
+                "new_customers": 12,
+                "total_customers": 62
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics",
+                    "amount": 7200.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled; onboarding program highlighted as differentiator."
+                },
+                {
+                    "name": "BrightWave Media",
+                    "amount": 5300.0,
+                    "stage": "WON",
+                    "notes": "Signed after successful pilot; cited onboarding as key factor."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboarding Workflow Design",
+                    "description": "Create step-by-step onboarding guides and automated checklists for new customers.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Team Training",
+                    "description": "Train new hires on proactive support and retention strategies.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Early Adopter Feedback Review",
+                    "description": "Analyze feedback from first cohort to refine onboarding materials.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Interactive Onboarding Dashboard",
+                    "description": "Centralized, customizable dashboard to guide new users through setup and key workflows.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Automated Ticket Routing",
+                    "description": "Smart routing of support tickets to appropriate customer success agents.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Guided Setup Impact",
+                    "hypothesis": "Users completing the guided onboarding will have >20% higher weekly engagement.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Customer Success Launch Webinar",
+                    "channel": "Webinar",
+                    "spend": 1800,
+                    "conversions": 5
+                },
+                {
+                    "name": "Retention Email Series",
+                    "channel": "Email",
+                    "spend": 650,
+                    "conversions": 3
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Onboarding Completion Rate",
+                    "value": 86.0,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 222.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.8,
+                    "unit": "percent"
+                }
+            ],
+            "month": "June",
+            "year": 2025,
+            "milestone": "Customer Success Initiative"
+        },
+        {
+            "financials": {
+                "revenue": 58000.0,
+                "expenses": 42000.0,
+                "mrr": 54000.0,
+                "new_customers": 22,
+                "total_customers": 111
+            },
+            "crm_deals": [
+                {
+                    "name": "Orion Logistics",
+                    "amount": 18000.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise prospect interested after Slack integration demo."
+                },
+                {
+                    "name": "BluePeak Consulting",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "Deal closed following successful Microsoft Teams pilot."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Deploy Slack Integration",
+                    "description": "Release and monitor native Slack workspace integration to all customers.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Onboard Beta Users for Teams Integration",
+                    "description": "Select and onboard 10 enterprise accounts for early Teams integration access.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Update Documentation",
+                    "description": "Publish user guides and technical docs for new integrations.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Slack Integration",
+                    "description": "Native two-way sync with Slack channels and direct messages for workflow automation.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Microsoft Teams Integration",
+                    "description": "Embed SyncFields dashboards and notifications inside Microsoft Teams.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Onboarding Sequence",
+                    "hypothesis": "A tailored onboarding experience for enterprises using Slack/Teams will increase activation rates by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "SyncFields x Slack Launch",
+                    "channel": "LinkedIn Ads",
+                    "spend": 5500,
+                    "conversions": 38
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 2100,
+                    "unit": "users"
+                },
+                {
+                    "name": "System Uptime",
+                    "value": 99.96,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Integration Adoption Rate",
+                    "value": 37.0,
+                    "unit": "percent"
+                }
+            ],
+            "month": "July",
+            "year": 2025,
+            "milestone": "Integration with Major Third-Party Tools"
+        },
+        {
+            "financials": {
+                "revenue": 31500.0,
+                "expenses": 78000.0,
+                "mrr": 26000.0,
+                "new_customers": 17,
+                "total_customers": 94
+            },
+            "crm_deals": [
+                {
+                    "name": "NorthStar Logistics",
+                    "amount": 18000.0,
+                    "stage": "WON",
+                    "notes": "First enterprise deployment; annual contract closed post-product demo."
+                },
+                {
+                    "name": "Polaris Tech",
+                    "amount": 9500.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating workflow customization for distributed teams."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Investor Onboarding",
+                    "description": "Coordinate post-close communication and documentation with new investors.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Hiring Senior Backend Engineer",
+                    "description": "Expand development team to accelerate feature delivery.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Budget Reforecast",
+                    "description": "Update financial projections to reflect new capital infusion.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Scale Marketing Campaigns",
+                    "description": "Deploy increased marketing budget to drive lead generation.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Workflow Automation",
+                    "description": "Users can now automate complex cross-team workflows with triggers and approvals.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Custom Reporting Dashboards",
+                    "description": "Release of customizable dashboards for real-time project and KPI tracking.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Onboarding Funnel Redesign",
+                    "hypothesis": "Streamlined onboarding will increase trial-to-paid conversion by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Unified Teams Launch",
+                    "channel": "LinkedIn Ads",
+                    "spend": 12000,
+                    "conversions": 260
+                },
+                {
+                    "name": "SyncFields Summer Webinar",
+                    "channel": "Email & Webinar",
+                    "spend": 3500,
+                    "conversions": 75
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.96,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 1420,
+                    "unit": "users"
+                },
+                {
+                    "name": "Workflow Automation Runs",
+                    "value": 10800,
+                    "unit": "executions"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed",
+                "amount": 1200000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Ava Singh",
+                        "firm": "Forward Ventures",
+                        "amount": 600000
+                    },
+                    {
+                        "name": "TechLeap Fund",
+                        "firm": "TechLeap Fund",
+                        "amount": 400000
+                    },
+                    {
+                        "name": "Mosaic Angels",
+                        "firm": "Mosaic Angels",
+                        "amount": 200000
+                    }
+                ]
+            },
+            "month": "August",
+            "year": 2025,
+            "milestone": "Seed Funding Round"
+        },
+        {
+            "financials": {
+                "revenue": 62000.0,
+                "expenses": 78000.0,
+                "mrr": 54000.0,
+                "new_customers": 16,
+                "total_customers": 97
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Manufacturing Expansion",
+                    "amount": 21000.0,
+                    "stage": "OPEN",
+                    "notes": "Upsell opportunity as Acme expands to new departments. Demo scheduled."
+                },
+                {
+                    "name": "Greenfield Logistics Pilot",
+                    "amount": 8500.0,
+                    "stage": "WON",
+                    "notes": "Signed pilot contract for 120 seats after successful POC."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard New Engineering Hires",
+                    "description": "Integrate 4 new engineers into product teams with onboarding sessions and project assignments.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Sales Team Ramp-Up",
+                    "description": "Train 2 new sales reps on SyncFields' value proposition, CRM, and outreach scripts.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Support Training",
+                    "description": "Complete onboarding for 2 new support agents with knowledge base and ticketing system walkthrough.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Hiring Feedback Loop",
+                    "description": "Collect and analyze feedback from new hires to improve onboarding process.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Custom Workflow Builder",
+                    "description": "Drag-and-drop interface for teams to create tailored workflows integrated with reporting tools.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Bulk User Management",
+                    "description": "Admins can add, remove, and update users at scale, supporting enterprise onboarding.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Automated Data Sync",
+                    "description": "Scheduled sync between SyncFields and external data sources (e.g., Google Sheets, Salesforce).",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Sales Playbook Iteration",
+                    "hypothesis": "A tailored outreach script for mid-sized enterprises will increase demo bookings by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Hiring Spree Announcement",
+                    "channel": "LinkedIn",
+                    "spend": 2500,
+                    "conversions": 34
+                },
+                {
+                    "name": "Workflow Integration Webinar",
+                    "channel": "Email",
+                    "spend": 1200,
+                    "conversions": 17
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.94,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 1210,
+                    "unit": "users"
+                },
+                {
+                    "name": "Workflow Creation Efficiency",
+                    "value": 2.7,
+                    "unit": "hours (avg per workflow)"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed Extension",
+                "amount": 350000.0,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Julia Chen",
+                        "firm": "Skyline Ventures",
+                        "amount": 200000.0
+                    },
+                    {
+                        "name": "Raj Patel",
+                        "firm": "Indie Angels",
+                        "amount": 150000.0
+                    }
+                ]
+            },
+            "month": "September",
+            "year": 2025,
+            "milestone": "Hiring Spree"
+        },
+        {
+            "financials": {
+                "revenue": 38000.0,
+                "expenses": 29500.0,
+                "mrr": 34000.0,
+                "new_customers": 18,
+                "total_customers": 64
+            },
+            "crm_deals": [
+                {
+                    "name": "Greenline Logistics",
+                    "amount": 7200.0,
+                    "stage": "WON",
+                    "notes": "Closed annual contract post-launch; mid-sized distributed team."
+                },
+                {
+                    "name": "Horizon Tech Partners",
+                    "amount": 5400.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating integration requirements for data unification."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Finalize v1.0 Release",
+                    "description": "Complete final QA and deployment of SyncFields v1.0 to production.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Onboarding",
+                    "description": "Onboard first wave of post-launch customers with guided sessions.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Support Documentation Update",
+                    "description": "Enhance knowledge base to reflect new feature set in v1.0.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Unified Project Dashboard",
+                    "description": "Centralized dashboard aggregating tasks, data, and team communication.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Custom Workflow Automations",
+                    "description": "Drag-and-drop workflow builder with triggers and notifications.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Advanced Reporting Suite",
+                    "description": "Dynamic, customizable reporting for cross-team projects.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Customer Referral Program",
+                    "hypothesis": "Referral incentives will increase signups by 15% month-over-month.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "SyncFields v1.0 Launch Webinar",
+                    "channel": "Webinar/Email",
+                    "spend": 2500,
+                    "conversions": 31
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 550.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.96,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Avg. Workflow Creation Time",
+                    "value": 7.2,
+                    "unit": "minutes"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed Extension",
+                "amount": 350000.0,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Dana Wu",
+                        "firm": "Peak Ventures",
+                        "amount": 200000.0
+                    },
+                    {
+                        "name": "NexGen Angels",
+                        "firm": "NexGen Angels",
+                        "amount": 150000.0
+                    }
+                ]
+            },
+            "month": "October",
+            "year": 2025,
+            "milestone": "Product Launch"
+        },
+        {
+            "financials": {
+                "revenue": 54000.0,
+                "expenses": 36000.0,
+                "mrr": 45000.0,
+                "new_customers": 4,
+                "total_customers": 21
+            },
+            "crm_deals": [
+                {
+                    "name": "Crestline Financial Services",
+                    "amount": 42000.0,
+                    "stage": "WON",
+                    "notes": "SyncFields' first major B2B contract; multi-year agreement for workflow and reporting integration."
+                },
+                {
+                    "name": "Atlas Insurance Group",
+                    "amount": 15000.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating terms for onboarding project management suite; expected close in December."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Enterprise Onboarding",
+                    "description": "Kick off implementation and training for Crestline Financial Services.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Security & Compliance Audit",
+                    "description": "Complete additional audit requirements for financial sector client.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Custom Reporting Module Delivery",
+                    "description": "Deploy tailored reporting feature for Crestline contract fulfillment.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Custom Reporting Dashboards",
+                    "description": "Enable flexible, client-specific dashboards for enterprise data visibility.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Enhanced SSO Integration",
+                    "description": "Add SAML-based Single Sign-On for secure access across distributed teams.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Onboarding Cohort",
+                    "hypothesis": "Providing dedicated onboarding managers will reduce churn and accelerate adoption among enterprise clients.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Financial Services Case Study Launch",
+                    "channel": "LinkedIn Ads",
+                    "spend": 3200,
+                    "conversions": 12
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.95,
+                    "unit": "%"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 370,
+                    "unit": "users"
+                },
+                {
+                    "name": "Workflow Efficiency",
+                    "value": 17.2,
+                    "unit": "% improvement"
+                }
+            ],
+            "month": "November",
+            "year": 2025,
+            "milestone": "Major B2B Win"
+        },
+        {
+            "financials": {
+                "revenue": 47000.0,
+                "expenses": 28500.0,
+                "mrr": 39000.0,
+                "new_customers": 36,
+                "total_customers": 142
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions Partnership",
+                    "amount": 18000.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise deal initiated after webinar; evaluating custom API integration."
+                },
+                {
+                    "name": "TechBridge Inc. Expansion",
+                    "amount": 8500.0,
+                    "stage": "WON",
+                    "notes": "Mid-sized client upgraded plan post-case study exposure."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Webinar Production",
+                    "description": "Organize and host two webinars featuring SyncFields use cases and expert panels.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Case Study Development",
+                    "description": "Publish three detailed case studies highlighting workflow efficiencies for distributed teams.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Industry Event Networking",
+                    "description": "Attend and present at two industry events to boost SyncFields' visibility.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Custom Reporting Dashboards",
+                    "description": "Enable users to build personalized dashboards for project analytics and reporting.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Allow seamless task and message sync between SyncFields and Slack workspace.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Webinar Lead Conversion",
+                    "hypothesis": "Hosting targeted webinars will increase qualified leads by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "SyncFields Visibility Surge",
+                    "channel": "LinkedIn Ads",
+                    "spend": 7600,
+                    "conversions": 24
+                },
+                {
+                    "name": "Industry Insights Webinar Series",
+                    "channel": "Email + Webinars",
+                    "spend": 4200,
+                    "conversions": 12
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 3100,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.95,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Workflow Efficiency",
+                    "value": 17.5,
+                    "unit": "percent improvement"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed Extension",
+                "amount": 450000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Sarah Lin",
+                        "firm": "VentureDrive",
+                        "amount": 250000
+                    },
+                    {
+                        "name": "Elliot Park",
+                        "firm": "Remote Capital",
+                        "amount": 200000
+                    }
+                ]
+            },
+            "month": "December",
+            "year": 2025,
+            "milestone": "Brand Awareness Campaign"
+        },
+        {
+            "financials": {
+                "revenue": 54000.0,
+                "expenses": 43000.0,
+                "mrr": 45000.0,
+                "new_customers": 18,
+                "total_customers": 117
+            },
+            "crm_deals": [
+                {
+                    "name": "CloudEdge Solutions",
+                    "amount": 18000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled; interested in platform scalability for their distributed teams."
+                },
+                {
+                    "name": "BrightPath Analytics",
+                    "amount": 22000.0,
+                    "stage": "WON",
+                    "notes": "Closed deal after infrastructure upgrade announcement."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Database Sharding Implementation",
+                    "description": "Split database workloads to support higher concurrency and workflow complexity.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Load Testing for Enterprise Workflows",
+                    "description": "Simulate heavy workflow usage to validate new infrastructure limits.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Service Monitoring Expansion",
+                    "description": "Deploy enhanced monitoring for new scalability endpoints and services.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Workflow Engine",
+                    "description": "Supports conditional logic and parallel tasks for complex team processes.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Custom Reporting Dashboards",
+                    "description": "Enable users to build and share tailored reports across teams.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Enterprise Onboarding Funnel",
+                    "hypothesis": "Streamlining onboarding will increase conversion rates among mid-sized enterprises.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Scalability Upgrade Announcement",
+                    "channel": "LinkedIn Ads",
+                    "spend": 3500,
+                    "conversions": 7
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.98,
+                    "unit": "%"
+                },
+                {
+                    "name": "Average Workflow Completion Time",
+                    "value": 1.2,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 940,
+                    "unit": "users"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed Extension",
+                "amount": 350000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Rachel Lin",
+                        "firm": "Next Horizon Ventures",
+                        "amount": 200000
+                    },
+                    {
+                        "name": "Samir Patel",
+                        "firm": "Grid Capital",
+                        "amount": 150000
+                    }
+                ]
+            },
+            "month": "January",
+            "year": 2026,
+            "milestone": "Platform Scalability Upgrade"
+        },
+        {
+            "financials": {
+                "revenue": 54000.0,
+                "expenses": 38500.0,
+                "mrr": 52000.0,
+                "new_customers": 8,
+                "total_customers": 71
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Logistics",
+                    "amount": 15000.0,
+                    "stage": "OPEN",
+                    "notes": "Enterprise prospect awaiting SOC 2 compliance report prior to contract signature."
+                },
+                {
+                    "name": "BlueTech Solutions",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "Closed after successful security audit presentation. Integration scheduled for March."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "External Security Audit",
+                    "description": "Coordinate and complete third-party audit for SOC 2 Type I certification.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Compliance Documentation",
+                    "description": "Update internal documentation and customer-facing materials with compliance details.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customer Communication",
+                    "description": "Notify all enterprise customers of SOC 2 achievement and new security features.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Role-based Access Controls",
+                    "description": "Granular permissions for workflow modules, supporting compliance requirements.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Audit Logging Dashboard",
+                    "description": "Real-time monitoring and export of user activity for enterprise security teams.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "GDPR Data Export Tool",
+                    "description": "Enable customers to export and review all their data for regulatory purposes.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "SOC 2 Compliance Messaging",
+                    "hypothesis": "Highlighting SOC 2 compliance in sales outreach will increase enterprise lead conversion.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "SOC 2 Launch Press Release",
+                    "channel": "PR & Content",
+                    "spend": 3200,
+                    "conversions": 5
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.98,
+                    "unit": "%"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 1085,
+                    "unit": "users"
+                },
+                {
+                    "name": "Security Incidents",
+                    "value": 0,
+                    "unit": "incidents"
+                }
+            ],
+            "month": "February",
+            "year": 2026,
+            "milestone": "Security and Compliance Audit"
+        },
+        {
+            "financials": {
+                "revenue": 84500.0,
+                "expenses": 69000.0,
+                "mrr": 78500.0,
+                "new_customers": 6,
+                "total_customers": 77
+            },
+            "crm_deals": [
+                {
+                    "name": "EuroTech GmbH",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled with Berlin-based project management team; awaiting legal compliance queries."
+                },
+                {
+                    "name": "GlobalSync Solutions",
+                    "amount": 17500.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiations in progress for pilot deployment in France; localization requirements under revision."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "GDPR Compliance Assessment",
+                    "description": "Evaluate platform and data flows for GDPR compliance to prepare for European entry.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Localization Needs Analysis",
+                    "description": "Identify language, currency, and feature localization requirements for target EU markets.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Legal Entity Setup Research",
+                    "description": "Investigate legal structures and tax implications for establishing a European subsidiary.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Multi-language Support (Beta)",
+                    "description": "Enable UI translation and locale-aware formatting for core features.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Customizable Data Retention Policies",
+                    "description": "Allow enterprise customers to set data retention and deletion policies for compliance.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Localized Landing Pages",
+                    "hypothesis": "Translating landing pages to German and French will increase demo signups from EU IP addresses by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "EU Market Awareness Pilot",
+                    "channel": "LinkedIn Ads",
+                    "spend": 4200,
+                    "conversions": 38
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.98,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 1460,
+                    "unit": "users"
+                },
+                {
+                    "name": "Workflow Automation Rate",
+                    "value": 54.2,
+                    "unit": "%"
+                }
+            ],
+            "month": "March",
+            "year": 2026,
+            "milestone": "International Expansion Planning"
+        },
+        {
+            "financials": {
+                "revenue": 42000.0,
+                "expenses": 32000.0,
+                "mrr": 38000.0,
+                "new_customers": 24,
+                "total_customers": 173
+            },
+            "crm_deals": [
+                {
+                    "name": "Summit Partner: DataLogic Inc.",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "Secured sponsorship and integration partnership during the summit."
+                },
+                {
+                    "name": "Enterprise Expansion: GreenWave Solutions",
+                    "amount": 15000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled after summit; interested in platform-wide rollout."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Host Annual User Summit",
+                    "description": "Plan, execute, and moderate SyncFields\u2019 inaugural virtual user summit.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Summit Feature Demos",
+                    "description": "Prepare and showcase new platform features for users and prospects.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Publish Success Stories",
+                    "description": "Collect and share case studies from top-performing customers during the summit.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Custom Reporting Dashboards",
+                    "description": "Empower users to build personalized reports and analytics visualizations.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Integrated Team Chat",
+                    "description": "Real-time messaging directly within workflow modules for distributed teams.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Automated Workflow Triggers",
+                    "description": "Set rules to auto-update tasks and notify stakeholders based on data changes.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Summit Referral Incentive",
+                    "hypothesis": "Offering exclusive summit referral rewards will increase signups by 15%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Summit Social Push",
+                    "channel": "LinkedIn",
+                    "spend": 3500,
+                    "conversions": 62
+                },
+                {
+                    "name": "Email Nurture: Summit Series",
+                    "channel": "Email",
+                    "spend": 1200,
+                    "conversions": 28
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.98,
+                    "unit": "%"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 964,
+                    "unit": "users"
+                },
+                {
+                    "name": "Workflow Completion Efficiency",
+                    "value": 89.5,
+                    "unit": "%"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed Extension",
+                "amount": 500000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Riya Patel",
+                        "firm": "TechSpring Ventures",
+                        "amount": 250000
+                    },
+                    {
+                        "name": "Lucas Grant",
+                        "firm": "BrightEdge Capital",
+                        "amount": 250000
+                    }
+                ]
+            },
+            "month": "April",
+            "year": 2026,
+            "milestone": "Annual User Summit"
+        }
+    ]
+}

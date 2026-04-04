@@ -1,15 +1,21 @@
 from flask import request, jsonify, current_app, redirect, url_for, Blueprint, session
 from app.extensions import db, oauth
-from app.models import User, Submission
+from app.models import User, Submission, Organization, UserRole
 from app.services.chatbot_orchestrator import SUBMISSION_FIELDS
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 from app.utils.decorators import jwt_session_required
 from firebase_admin import auth # Added Firebase Auth import
+import re
 
 from app.services.notification_service import publish_update
+from app.email_utils import generate_verification_token, send_verification_email, verify_token, send_password_reset_email
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+def slugify(text):
+    text = text.lower()
+    return re.sub(r'[^a-z0-9]+', '-', text).strip('-')
 
 @auth_bp.route('/status')
 @jwt_required(optional=True)
@@ -50,16 +56,129 @@ def status():
     return jsonify(response)
 
 
+@auth_bp.route('/organization/signup', methods=['POST'])
+def organization_signup():
+    data = request.get_json()
+    firebase_id_token = data.get('firebase_id_token')
+    organization_name = data.get('organization_name')
+    full_name = data.get('full_name')
+    phone_number = data.get('phone_number')
+    email = data.get('email')
+
+    if not firebase_id_token or not organization_name:
+        return jsonify({'success': False, 'error': 'Firebase ID token and Organization Name are required.'}), 400
+
+    try:
+        # 1. Verify Firebase Token
+        decoded_token = auth.verify_id_token(firebase_id_token)
+        firebase_uid = decoded_token['uid']
+        token_email = decoded_token['email']
+
+        if email and email != token_email:
+             return jsonify({'success': False, 'error': 'Email mismatch.'}), 400
+
+        # 2. Check if user already exists
+        if User.query.filter_by(firebase_uid=firebase_uid).first():
+            return jsonify({'success': False, 'error': 'User already exists. Please login.'}), 400
+
+        # 3. Create Organization with Slug
+        base_slug = slugify(organization_name)
+        slug = base_slug
+        counter = 1
+        while Organization.query.filter_by(slug=slug).first():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        new_org = Organization(name=organization_name, slug=slug)
+        db.session.add(new_org)
+        db.session.flush() # Get ID
+
+        # 4. Create Admin User
+        firebase_user = auth.get_user(firebase_uid)
+        
+        user = User(
+            firebase_uid=firebase_uid,
+            email=token_email,
+            full_name=full_name or firebase_user.display_name or token_email,
+            phone_number=phone_number or firebase_user.phone_number,
+            email_verified=firebase_user.email_verified,
+            phone_verified=firebase_user.phone_number is not None,
+            role=UserRole.ADMIN, # Org Admin
+            organization_id=new_org.id
+        )
+        db.session.add(user)
+        db.session.commit()
+
+        # 5. Generate Token
+        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value, "organization_id": new_org.id})
+        
+        
+        publish_update("user_signup", {"user": user.to_dict()}, rooms=["admin"])
+
+        # Send Verification Email ONLY if not verified
+        if not user.email_verified:
+            try:
+                token = generate_verification_token(user.email)
+                send_verification_email(user.email, user.full_name, token)
+            except Exception as e:
+                current_app.logger.error(f"Failed to send verification email: {e}")
+
+        # 6. Check the user's most recent submission (even if empty, for consistency)
+        submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+        submission_status = submission.status.value if submission else "not_started"
+        
+        user_dict = user.to_dict()
+        if not user.startups:
+             from app.models import TeamMember
+             tm = TeamMember.query.filter_by(user_id=user.id).first()
+             if tm:
+                 user_dict['scopes'] = tm.scopes
+                 if not user_dict.get('startup_id'):
+                     user_dict['startup_id'] = tm.startup_id
+        else:
+             user_dict['scopes'] = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
+
+        return jsonify({
+            'success': True, 
+            'message': 'Organization created successfully.',
+            'organization': new_org.to_dict(),
+            'invite_code': new_org.invite_code, 
+            'user': user_dict,
+            'access_token': access_token,
+            'submission_status': submission_status,
+            'submission_data': submission.to_dict() if submission else None,
+        }), 201
+
+    except auth.InvalidIdTokenError:
+        return jsonify({'success': False, 'error': 'Invalid Firebase ID token.'}), 401
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Org Signup error: {e}")
+        return jsonify({'success': False, 'error': 'Failed to create organization.'}), 500
+
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
     firebase_id_token = data.get('firebase_id_token')
+    organization_id = data.get('organization_id') # REQUIRED now
     full_name = data.get('full_name')
     phone_number = data.get('phone_number')
     email = data.get('email')
 
     if not firebase_id_token:
         return jsonify({'success': False, 'error': 'Firebase ID token is required.'}), 400
+    
+    if not organization_id:
+        return jsonify({'success': False, 'error': 'Invitation Code is required to join.'}), 400
+
+    # Verify Organization exists by invite_code
+    # Frontend might send 'organization_id' key, but value is now invite code
+    # We should probably rename the key in frontend, but backend can handle it.
+    invite_code = organization_id 
+    org = Organization.query.filter_by(invite_code=invite_code).first()
+    
+    if not org:
+        return jsonify({'success': False, 'error': 'Invalid Invitation Code.'}), 400
 
     try:
         # 1. Verify the Firebase ID token
@@ -71,54 +190,66 @@ def signup():
         if email and email != token_email:
              return jsonify({'success': False, 'error': 'Email mismatch.'}), 400
 
-        # 2. Check if user already exists in our local database via Firebase UID
+        # 2. Check if user already exists
         user = User.query.filter_by(firebase_uid=firebase_uid).first()
+        if user:
+             return jsonify({'success': False, 'error': 'User already exists. Please login.'}), 400
+             
+        # Check by email
+        if User.query.filter_by(email=token_email).first():
+             return jsonify({'success': False, 'error': 'User with this email already exists.'}), 400
 
-        if not user:
-            # Check if user exists by email (to avoid unique constraint violation)
-            user = User.query.filter_by(email=token_email).first()
-            
-            if user:
-                # Link existing user to Firebase UID
-                user.firebase_uid = firebase_uid
-                # Update other details if needed
-                firebase_user = auth.get_user(firebase_uid)
-                user.full_name = full_name or firebase_user.display_name or user.full_name
-                user.phone_number = phone_number or firebase_user.phone_number or user.phone_number
-                user.email_verified = firebase_user.email_verified
-                user.phone_verified = firebase_user.phone_number is not None
-            else:
-                # If not, create a new local user record
-                # Get Firebase user to check verification status
-                firebase_user = auth.get_user(firebase_uid)
-                
-                user = User(
-                    firebase_uid=firebase_uid,
-                    email=token_email,
-                    full_name=full_name or firebase_user.display_name or token_email,
-                    phone_number=phone_number or firebase_user.phone_number,
-                    email_verified=firebase_user.email_verified,
-                    phone_verified=firebase_user.phone_number is not None
-                )
-                db.session.add(user)
-        else:
-            # If user exists, update their details
-            user.full_name = full_name or user.full_name
-            user.phone_number = phone_number or user.phone_number
-            # Don't overwrite email/verification status blindly, trust the token/firebase_user
-            
+        # 3. Create User linked to Organization
+        firebase_user = auth.get_user(firebase_uid)
+        
+        user = User(
+            firebase_uid=firebase_uid,
+            email=token_email,
+            full_name=full_name or firebase_user.display_name or token_email,
+            phone_number=phone_number or firebase_user.phone_number,
+            email_verified=firebase_user.email_verified,
+            phone_verified=firebase_user.phone_number is not None,
+            organization_id=org.id,
+            role=UserRole.USER 
+        )
+        db.session.add(user)
         db.session.commit()
 
-        # 3. Generate internal JWT
-        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
+        # 4. Generate internal JWT
+        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value, "organization_id": org.id})
         
         publish_update("user_signup", {"user": user.to_dict()}, rooms=["admin"])
+
+        # Send Verification Email ONLY if not verified
+        if not user.email_verified:
+            try:
+                token = generate_verification_token(user.email)
+                send_verification_email(user.email, user.full_name, token)
+            except Exception as e:
+                current_app.logger.error(f"Failed to send verification email: {e}")
+
+        # 5. Check the user's most recent submission (existing logic)
+        submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+        submission_status = submission.status.value if submission else "not_started"
+        
+        user_dict = user.to_dict()
+        if not user.startups:
+             from app.models import TeamMember
+             tm = TeamMember.query.filter_by(user_id=user.id).first()
+             if tm:
+                 user_dict['scopes'] = tm.scopes
+                 if not user_dict.get('startup_id'):
+                     user_dict['startup_id'] = tm.startup_id
+        else:
+             user_dict['scopes'] = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
 
         return jsonify({
             'success': True, 
             'message': 'Account created successfully.',
-            'user': user.to_dict(),
-            'access_token': access_token
+            'user': user_dict,
+            'access_token': access_token,
+            'submission_status': submission_status,
+            'submission_data': submission.to_dict() if submission else None,
         }), 201
 
     except auth.InvalidIdTokenError:
@@ -147,29 +278,53 @@ def login():
         # 2. Get Firebase user record to check verification status
         firebase_user = auth.get_user(firebase_uid)
 
-        # 3. Find or create user in our local database
+        # 3. Find user in our local database
         user = User.query.filter_by(firebase_uid=firebase_uid).first()
 
         if not user:
-            # If user doesn't exist locally, create a new record
-            user = User(
-                firebase_uid=firebase_uid,
-                email=email,
-                full_name=firebase_user.display_name or email,
-                phone_number=phone_number,
-                email_verified=firebase_user.email_verified,
-                phone_verified=firebase_user.phone_number is not None # Check if phone number exists
-            )
-            db.session.add(user)
-        else:
-            # Update existing user's details and verification status
-            user.email = email
-            user.full_name = firebase_user.display_name or email
-            user.phone_number = phone_number
-            user.email_verified = firebase_user.email_verified # Removed trailing comma
-            user.phone_verified = firebase_user.phone_number is not None # Removed trailing comma
-            
+            # User doesn't exist - they need to sign up first
+            return jsonify({
+                'success': False,
+                'error': 'User not found. Please sign up first.',
+                'requires_signup': True,
+                'firebase_uid': firebase_uid,
+                'email': email
+            }), 200 # Using 200 to handle as a valid flow, not an error
+        
+        # Update existing user's details and verification status
+        user.email = email
+        user.full_name = firebase_user.display_name or email
+        user.phone_number = phone_number
+        user.email_verified = firebase_user.email_verified
+        # user.phone_verified = firebase_user.phone_number is not None # Don't overwrite unless necessary
+
+        # Check Verification Blockade
+        if current_app.config.get('REQUIRE_EMAIL_VERIFICATION'):
+             if not user.email_verified:
+                 # Check if recently signed up (grace period? No, strict mode requested)
+                 return jsonify({
+                     'success': False, 
+                     'error': 'Email not verified.',
+                     'code': 'EMAIL_NOT_VERIFIED',
+                     'user': user.to_dict()
+                 }), 403
+        
         db.session.commit()
+        
+        print(f"DEBUG_AUTH_LOGIN: User {user.email} (id={user.id}) - org_id={user.organization_id}")
+        
+        # Check if user has an organization assigned
+        if not user.organization_id:
+            print(f"DEBUG_AUTH_LOGIN: User {user.id} has NO organization. Returning requires_organization.")
+            # Generate a temporary token for organization assignment
+            temp_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
+            return jsonify({
+                'success': False,
+                'error': 'Organization assignment required.',
+                'requires_organization': True,
+                'user': user.to_dict(),
+                'access_token': temp_token
+            }), 200 # Using 200 to handle as a valid flow, not an error
 
         # Enforce verification (Disabled for now)
         # if not user.phone_verified:
@@ -179,17 +334,34 @@ def login():
         #     }), 403
 
         # 4. Create our internal JWT
-        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
+        access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value, "organization_id": user.organization_id})
 
         # Check the user's most recent submission (existing logic)
         submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
         submission_status = submission.status.value if submission else "not_started"
 
+        user_dict = user.to_dict()
+        
+        # Explicitly patch scopes for team members to ensure frontend gets them
+        if not user.startups:
+             from app.models import TeamMember
+             tm = TeamMember.query.filter_by(user_id=user.id).first()
+             if tm:
+                 user_dict['scopes'] = tm.scopes
+                 print(f"DEBUG_AUTH: Explicitly injected scopes: {tm.scopes}")
+                 # Also ensure startup_id is set if missing
+                 if not user_dict.get('startup_id'):
+                     user_dict['startup_id'] = tm.startup_id
+        else:
+             # User is an owner
+             print(f"DEBUG_AUTH: User {user.email} is an owner. Injecting FULL scopes.")
+             user_dict['scopes'] = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
+
         response = {
             'success': True,
             'is_logged_in': True, # For consistency with useAuth hook
             'access_token': access_token,
-            'user': user.to_dict(),
+            'user': user_dict,
             'submission_status': submission_status,
             'submission_data': submission.to_dict() if submission else None,
         }
@@ -216,6 +388,171 @@ def login():
         traceback.print_exc()
         current_app.logger.error(f"Firebase login error: {e}")
         return jsonify({'success': False, 'error': f'Authentication failed: {str(e)}'}), 500
+
+@auth_bp.route('/assign-organization', methods=['POST'])
+@jwt_required()
+def assign_organization():
+    """
+    Assign an organization to an OAuth user who signed in without one.
+    Supports both creating a new organization or joining an existing one.
+    """
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found.'}), 404
+    
+    # Check if user already has an organization
+    if user.organization_id:
+        return jsonify({'success': False, 'error': 'User already belongs to an organization.'}), 400
+    
+    data = request.get_json()
+    mode = data.get('mode')  # 'create' or 'join'
+    
+    try:
+        if mode == 'create':
+            organization_name = data.get('organization_name')
+            if not organization_name:
+                return jsonify({'success': False, 'error': 'Organization name is required.'}), 400
+            
+            # Create new organization with slug
+            base_slug = slugify(organization_name)
+            slug = base_slug
+            counter = 1
+            while Organization.query.filter_by(slug=slug).first():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            new_org = Organization(name=organization_name, slug=slug)
+            db.session.add(new_org)
+            db.session.flush()
+            
+            # Assign user to organization and make them admin
+            user.organization_id = new_org.id
+            user.role = UserRole.ADMIN
+            db.session.commit()
+            print(f"DEBUG_AUTH_ASSIGN: Created Org {new_org.id}, Assigned to User {user.id}. Committed.")
+            
+            # Generate new token with organization info
+            access_token = create_access_token(
+                identity=str(user.id), 
+                additional_claims={"role": user.role.value, "organization_id": new_org.id}
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': 'Organization created successfully.',
+                'organization': new_org.to_dict(),
+                'invite_code': new_org.invite_code,
+                'user': user.to_dict(),
+                'access_token': access_token
+            }), 201
+            
+        elif mode == 'join':
+            invite_code = data.get('invite_code')
+            if not invite_code:
+                return jsonify({'success': False, 'error': 'Invite code is required.'}), 400
+            
+            # Find organization by invite code
+            org = Organization.query.filter_by(invite_code=invite_code).first()
+            if not org:
+                return jsonify({'success': False, 'error': 'Invalid invite code.'}), 400
+            
+            # Assign user to organization
+            user.organization_id = org.id
+            user.role = UserRole.USER
+            db.session.commit()
+            print(f"DEBUG_AUTH_ASSIGN: User {user.id} Joined Org {org.id}. Committed.")
+            
+            # Generate new token with organization info
+            access_token = create_access_token(
+                identity=str(user.id), 
+                additional_claims={"role": user.role.value, "organization_id": org.id}
+            )
+            
+            # Check the user's most recent submission
+            submission = Submission.query.filter_by(user_id=user.id).order_by(Submission.submitted_at.desc()).first()
+            submission_status = submission.status.value if submission else "not_started"
+            
+            user_dict = user.to_dict()
+            if not user.startups:
+                 from app.models import TeamMember
+                 tm = TeamMember.query.filter_by(user_id=user.id).first()
+                 if tm:
+                     user_dict['scopes'] = tm.scopes
+                     if not user_dict.get('startup_id'):
+                         user_dict['startup_id'] = tm.startup_id
+            else:
+                 user_dict['scopes'] = ['PRODUCT', 'BUSINESS', 'FUNDRAISE', 'MARKETING', 'WORKSPACE', 'TEAM', 'SETTINGS', 'USER_SETTINGS']
+
+            return jsonify({
+                'success': True,
+                'message': 'Successfully joined organization.',
+                'organization': org.to_dict(),
+                'user': user_dict,
+                'access_token': access_token,
+                'submission_status': submission_status,
+                'submission_data': submission.to_dict() if submission else None,
+            }), 200
+            
+        else:
+            return jsonify({'success': False, 'error': 'Invalid mode. Use "create" or "join".'}), 400
+            
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Assign organization error: {e}")
+        return jsonify({'success': False, 'error': 'Failed to assign organization.'}), 500
+
+@auth_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+
+    data = request.get_json()
+    full_name = data.get('full_name')
+
+    try:
+        if full_name:
+            user.full_name = full_name
+            # Sync with Firebase
+            auth.update_user(user.firebase_uid, display_name=full_name)
+        
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'message': 'Profile updated successfully',
+            'user': user.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Update profile error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@auth_bp.route('/password', methods=['PUT'])
+@jwt_required()
+def change_password():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+
+    data = request.get_json()
+    new_password = data.get('new_password')
+    
+    if not new_password or len(new_password) < 6:
+        return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+
+    try:
+        # We trust the JWT authentication here. 
+        # In a stricter system, we might require re-authentication (current_password).
+        auth.update_user(user.firebase_uid, password=new_password)
+        return jsonify({'success': True, 'message': 'Password updated successfully'}), 200
+    except Exception as e:
+        current_app.logger.error(f"Change password error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
@@ -245,3 +582,165 @@ def debug_routes():
 
     return jsonify({"message": "Routes printed to backend console"}), 200
 
+@auth_bp.route('/organization/<slug>', methods=['GET'])
+def get_organization_by_slug(slug):
+    org = Organization.query.filter_by(slug=slug).first()
+    if not org:
+        return jsonify({'success': False, 'error': 'Organization not found.'}), 404
+    
+    return jsonify({
+        'success': True,
+        'organization': {
+            'id': org.id,
+            'name': org.name,
+            'slug': org.slug,
+            'invite_code': org.invite_code, # Required for signup flow
+            'logo_url': org.logo_url
+        }
+    }), 200
+
+@auth_bp.route('/organization/<int:org_id>', methods=['PUT'])
+# @verify_firebase_token # TODO: Re-enable auth check in production
+def update_organization(org_id):
+    data = request.get_json()
+    org = Organization.query.get(org_id)
+    
+    if not org:
+        return jsonify({'success': False, 'error': 'Organization not found.'}), 404
+        
+    # Validation
+    if 'slug' in data:
+        new_slug = data['slug']
+        if new_slug:
+            existing = Organization.query.filter_by(slug=new_slug).first()
+            if existing and existing.id != org_id:
+                return jsonify({'success': False, 'error': 'Slug already in use.'}), 400
+            org.slug = new_slug
+
+    if 'name' in data:
+        org.name = data['name']
+        
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'organization': org.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@auth_bp.route('/organization/<int:org_id>/details', methods=['GET'])
+def get_organization_details(org_id):
+    org = Organization.query.get(org_id)
+    if not org:
+        return jsonify({'success': False, 'error': 'Organization not found.'}), 404
+    
+    return jsonify({
+        'success': True,
+        'organization': {
+            'id': org.id,
+            'name': org.name,
+            'slug': org.slug,
+            'invite_code': org.invite_code
+        }
+    }), 200
+
+@auth_bp.route('/verify-email', methods=['POST'])
+def verify_email_token():
+    data = request.get_json()
+    token = data.get('token')
+    
+    if not token:
+        return jsonify({'success': False, 'error': 'Token is required'}), 400
+        
+    email = verify_token(token)
+    if not email:
+        return jsonify({'success': False, 'error': 'Invalid or expired token'}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+    try:
+        # Update local DB
+        user.email_verified = True
+        db.session.commit()
+        
+        # Update Firebase
+        try:
+            auth.update_user(user.firebase_uid, email_verified=True)
+        except Exception as e:
+            current_app.logger.error(f"Failed to update Firebase email verification: {e}")
+            
+        return jsonify({'success': True, 'message': 'Email verified successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@auth_bp.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    data = request.get_json()
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required'}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+    if user.email_verified:
+        return jsonify({'success': False, 'error': 'Email already verified'}), 400
+        
+    try:
+        token = generate_verification_token(user.email)
+        send_verification_email(user.email, user.full_name, token)
+        return jsonify({'success': True, 'message': 'Verification email sent'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json()
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required'}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # Return success even if user not found to prevent enumeration
+        return jsonify({'success': True, 'message': 'If an account exists, a reset link has been sent'}), 200
+        
+    try:
+        token = generate_verification_token(user.email) # Reusing this token generator is fine for reset too
+        send_password_reset_email(user.email, user.full_name, token)
+        return jsonify({'success': True, 'message': 'Password reset link sent'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@auth_bp.route('/reset-password-confirm', methods=['POST'])
+def reset_password_confirm():
+    data = request.get_json()
+    token = data.get('token')
+    new_password = data.get('new_password')
+    
+    if not token or not new_password:
+        return jsonify({'success': False, 'error': 'Token and new password are required'}), 400
+        
+    email = verify_token(token)
+    if not email:
+        return jsonify({'success': False, 'error': 'Invalid or expired token'}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+    try:
+        # Update Firebase
+        auth.update_user(user.firebase_uid, password=new_password)
+        return jsonify({'success': True, 'message': 'Password updated successfully'}), 200
+    except Exception as e:
+        current_app.logger.error(f"Failed to update password: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

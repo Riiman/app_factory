@@ -4,7 +4,7 @@ from . import builder_bp
 from .manager import DockerManager
 from .graph import create_graph
 from .agent import MultiAgentSystem
-from .v3.orchestrator import create_v3_graph
+# from .v3.orchestrator import create_v3_graph
 
 manager = DockerManager()
 agent = MultiAgentSystem()
@@ -22,7 +22,11 @@ stop_signals = set()
 @builder_bp.route('/<startup_id>/start', methods=['POST'])
 def start_env(startup_id):
     from app.models import Startup
-    from app.extensions import db
+    from app.extensions import db, redis_client
+    from app.services.notification_service import publish_update
+    
+    # Clear any pending stop signals
+    redis_client.delete(f"signal:{startup_id}")
     
     print(f"Received start_env request for {startup_id}")
     data = request.json or {}
@@ -73,25 +77,24 @@ def start_env(startup_id):
 
     def build_task():
         with app.app_context():
-            from app.extensions import socketio
             room = f"startup_{startup_id}"
             
             try:
                 # Emit build started event
-                socketio.emit('build_started', {
+                publish_update('build_started', {
                     'startup_id': startup_id,
                     'stack_type': stack_type
-                }, room=room, namespace='/builder')
+                }, rooms=[room])
                 
                 # Re-fetch startup within this thread's app context
                 from app.models import Startup
                 startup_obj = Startup.query.get(startup_id)
                 if not startup_obj:
                     print(f"Startup {startup_id} not found in build task")
-                    socketio.emit('build_failed', {
+                    publish_update('build_failed', {
                         'startup_id': startup_id,
                         'error': 'Startup not found'
-                    }, room=room, namespace='/builder')
+                    }, rooms=[room])
                     return
                 
                 start_container_name = startup_obj.container_name
@@ -105,10 +108,10 @@ def start_env(startup_id):
                 # Check for errors
                 if result.get("error"):
                     print(f"Build failed: {result['error']}")
-                    socketio.emit('build_failed', {
+                    publish_update('build_failed', {
                         'startup_id': startup_id,
                         'error': result['error']
-                    }, room=room, namespace='/builder')
+                    }, rooms=[room])
                     return
                 
                 # Save container_name to database if it was generated
@@ -127,13 +130,13 @@ def start_env(startup_id):
                 print(f"Async build finished for {startup_id}")
                 
                 # Emit build complete event
-                socketio.emit('build_complete', {
+                publish_update('build_complete', {
                     'startup_id': startup_id,
                     'status': result.get('status'),
                     'container_id': result.get('container_id'),
                     'ports': result.get('ports'),
                     'container_name': result.get('container_name')
-                }, room=room, namespace='/builder')
+                }, rooms=[room])
                 
             except Exception as e:
                 print(f"Async build failed for {startup_id}: {e}")
@@ -141,10 +144,10 @@ def start_env(startup_id):
                 traceback.print_exc()
                 
                 # Emit build failed event
-                socketio.emit('build_failed', {
+                publish_update('build_failed', {
                     'startup_id': startup_id,
                     'error': str(e)
-                }, room=room, namespace='/builder')
+                }, rooms=[room])
     
     thread = threading.Thread(target=build_task)
     thread.start()
@@ -173,17 +176,20 @@ def env_status(startup_id):
 @builder_bp.route('/<startup_id>/stop', methods=['POST'])
 def stop_env(startup_id):
     from app.models import Startup
-    from app.extensions import db
+    from app.extensions import db, redis_client
     
     startup = Startup.query.get(startup_id)
     if not startup:
         return jsonify({"error": "Startup not found"}), 404
     
-    # Stop and remove the container
-    # Stop the container but KEEP it (and the DB record)
+    # 1. Send STOP Signal to Graph Agents (V2 & V3)
+    # This ensures the agent loop exits and doesn't try to query the dead container
+    redis_client.set(f"signal:{startup_id}", "stop", ex=60) # Expires in 60s
+    print(f"Sent STOP signal for {startup_id}")
+    
+    # 2. Stop the container
     if startup.container_name:
         result = manager.stop_container(startup_id, container_name=startup.container_name)
-        # Do NOT clear container_name from database
         return jsonify(result)
     else:
         return jsonify({"status": "not_found"})
@@ -198,14 +204,49 @@ def run_command(startup_id):
     result = manager.run_command(startup_id, command)
     return jsonify(result)
 
+@builder_bp.route('/<startup_id>/file', methods=['GET'])
+def get_file(startup_id):
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'error': 'Path required'}), 400
+    
+    # Check extension
+    lower_path = path.lower()
+    is_image = lower_path.endswith(('.png', '.jpg', '.jpeg', '.gif'))
+    
+    if is_image:
+        res = manager.read_file_base64(startup_id, path)
+        if res.get('error'):
+             return jsonify(res), 404
+        
+        import base64
+        import io
+        from flask import send_file
+        
+        try:
+            decoded = base64.b64decode(res['content_base64'])
+            mimetype = 'image/png'
+            if lower_path.endswith('.jpg') or lower_path.endswith('.jpeg'):
+                mimetype = 'image/jpeg'
+            
+            return send_file(io.BytesIO(decoded), mimetype=mimetype)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+            
+    else:
+        res = manager.read_file(startup_id, path)
+        return jsonify(res)
+
 @builder_bp.route('/<startup_id>/approve', methods=['POST'])
 def approve_step(startup_id):
-    yolo = request.json.get('yolo', False) # Allow switching to YOLO mid-stream
+    yolo = request.json.get('yolo', False) 
     
-    # Resume the graph with interaction_completed
     initial_state = {"interaction_completed": True}
     
-    # Run in background
+    # CLEAR any pending signals
+    from app.extensions import redis_client
+    redis_client.delete(f"signal:{startup_id}")
+    
     run_agent_bg(startup_id, initial_state, yolo)
     
     return jsonify({"status": "success", "message": "Step approved, resuming in background"})
@@ -215,33 +256,30 @@ def get_status(startup_id):
     """Returns the current state of the agent for UI persistence (Supports V3 & V2)."""
     config = {"configurable": {"thread_id": startup_id}}
     
-    # 1. Try V3 State
-    try:
-        from .v3.orchestrator import create_v3_graph
-        # Log callback not needed for reading state
-        v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
-        snapshot = v3_graph.get_state(config)
+    # V3 Status Check Disabled
+    # try:
+    #     from .v3.orchestrator import create_v3_graph
+    #     v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
+    #     snapshot = v3_graph.get_state(config)
         
-        if snapshot.values and snapshot.values.get("status") != "init":
-             # Found active V3 state
-             state = snapshot.values
-             return jsonify({
-                "status": "active",
-                "version": "v3",
-                "task_status": state.get("status", "unknown"),
-                "logs": state.get("logs", []),
-                "thoughts": state.get("thoughts", []), # Return thoughts for Brain
-                "node": snapshot.next[0] if snapshot.next else "idle", # Current Active Node
-                "plan": state.get("plan", []),
-                # Map V3 fields to Frontend expectations
-                "total_tasks": len(state.get("plan", [])),
-                "completed_tasks": len([t for t in state.get("plan", []) if t.get("status") == "completed"]),
-                "waiting_approval": False, # V3 Auto-runs for now
-                "mission_queue": state.get("missions", []), 
-                "current_mission_index": state.get("current_mission_id", 0) 
-            })
-    except Exception as e:
-        print(f"V3 Status Check Error: {e}")
+    #     if snapshot.values and snapshot.values.get("status") != "init":
+    #          state = snapshot.values
+    #          return jsonify({
+    #             "status": "active",
+    #             "version": "v3",
+    #             "task_status": state.get("status", "unknown"),
+    #             "logs": state.get("logs", []),
+    #             "thoughts": state.get("thoughts", []), 
+    #             "node": snapshot.next[0] if snapshot.next else "idle", 
+    #             "plan": state.get("plan", []),
+    #             "total_tasks": len(state.get("plan", [])),
+    #             "completed_tasks": len([t for t in state.get("plan", []) if t.get("status") == "completed"]),
+    #             "waiting_approval": False, 
+    #             "mission_queue": state.get("missions", []), 
+    #             "current_mission_index": state.get("current_mission_id", 0) 
+    #         })
+    # except Exception as e:
+    #     print(f"V3 Status Check Error: {e}")
 
     # 2. Fallback to V2 State
     try:
@@ -269,7 +307,9 @@ def get_status(startup_id):
 
 @builder_bp.route('/<startup_id>/pause', methods=['POST'])
 def pause_task(startup_id):
-    stop_signals.add(startup_id)
+    from app.extensions import redis_client
+    redis_client.set(f"signal:{startup_id}", "pause", ex=60)
+    print(f"Sent PAUSE signal for {startup_id}")
     return jsonify({"status": "success", "message": "Pause signal sent"})
 
 @builder_bp.route('/<startup_id>/features', methods=['GET'])
@@ -289,6 +329,9 @@ from app.extensions import db
 
 @builder_bp.route('/<startup_id>/run-task', methods=['POST'])
 def run_task(startup_id):
+    from app.extensions import redis_client
+    redis_client.delete(f"signal:{startup_id}")
+    
     data = request.json
     goal = data.get('goal')
     yolo = data.get('yolo', False)
@@ -313,32 +356,27 @@ def run_task(startup_id):
     except Exception as e:
         print(f"Error updating DB status: {e}")
         
-    # Initialize State
-    initial_state = {
-        "startup_id": startup_id,
-        "goal": goal,
-        "context": "",
-        "plan": [],
-        "current_step_index": 0,
-        "current_step": {},
-        "code_changes": {},
-        "error_history": [],
-        "logs": [],
-        "status": "start",
-        "total_tasks": 0,
-        "completed_tasks": 0
+    # V4 PORT: Generic Task
+    mission_data = {
+        "title": "Ad-hoc User Task",
+        "description": goal,
+        "type": "general",
+        "status": "pending"
     }
     
     # Run in background
-    run_agent_bg(startup_id, initial_state, yolo)
+    run_v4_agent_bg(startup_id, mission_data)
     
-    return jsonify({"status": "success", "message": "Task started in background"})
+    return jsonify({"status": "success", "message": "V4 Task started in background"})
 
 @builder_bp.route('/<startup_id>/build-product', methods=['POST'])
 def build_product(startup_id):
     from app.models import Product, ProductStage
-    from app.extensions import db
-    from .v3.orchestrator import create_v3_graph
+    from app.extensions import db, redis_client
+    # from .v3.orchestrator import create_v3_graph
+    
+    # CLEAR pending signals
+    redis_client.delete(f"signal:{startup_id}")
     
     data = request.json
     product_id = data.get('product_id')
@@ -374,137 +412,70 @@ def build_product(startup_id):
     # -----------------------------------
     
     # Synthesize V3 Initial State
+    # 1. ENSURE CONTEXT FILE EXISTS (Optimization: Run once per container)
+    ensure_project_context(startup_id, manager)
+    
+    # 2. Build local object for State
     product_context = {
         "name": product.name,
         "description": product.description,
         "features": [f.to_dict() for f in product.features]
     }
     
-    # Check for existing state/missions
-    force_rebuild = data.get('force_rebuild', False)
-    initial_state = None
-    found_checkpoint = False
+    # V4 PORT: Construct Mission for V4 Agent
+    features = product_context.get("features", [])
+    features_desc = ""
+    for f in features:
+        features_desc += f"- {f['name']}: {f['description']}\n"
     
-    if not force_rebuild:
-        try:
-             # Look for existing checkpoint
-             v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=lambda x, y: None)
-             config = {"configurable": {"thread_id": startup_id}}
-             snapshot = v3_graph.get_state(config)
-             if snapshot.values and snapshot.values.get("missions"):
-                  found_checkpoint = True
-                  current_status = snapshot.values.get("status")
-                  missions = snapshot.values.get("missions", [])
-                  pending_work = any(m["status"] == "pending" for m in missions)
-                  
-                  if pending_work:
-                      print(f"Resuming existing missions for {startup_id}")
-                      initial_state = None # Default Resume
-                      
-                      # SMART RESUME: Recover from terminal states if work remains
-                      if current_status in ["done", "failed", "stopped"]:
-                          print(f"Auto-Recovering: Resetting status from '{current_status}' to 'routed'")
-                          initial_state = {"status": "routed"}
-                  else:
-                      print(f"Previous build '{current_status}' with no pending work. Starting fresh.")
-                      # Force fresh rebuild
-                      force_rebuild = True
-        except Exception as e:
-            print(f"Error checking existing state: {e}")
-            
-    if found_checkpoint and initial_state is None and not force_rebuild:
-         # Resume confirmed from DB checkpoint
-         pass
-    else:
-        # Check for File-Based Persistence (artifacts/missions.json)
-        # This allows resuming even if DB checkpoint is missing/cleared but workspace is intact.
-        import json
-        missions_file = manager.read_file(startup_id, "artifacts/missions.json")
-        
-        if not force_rebuild and not missions_file.get("error"):
-            try:
-                data = json.loads(missions_file["content"])
-                print(f"Resuming from missions.json for {startup_id}")
-                
-                existing_missions = data.get("missions", [])
-                
-                # --- SMART INCREMENTAL BUILD ---
-                # Check for new features in Product Context not in Existing Missions
-                existing_feature_ids = set()
-                for m in existing_missions:
-                    if m.get("feature_id"):
-                        existing_feature_ids.add(str(m["feature_id"])) # Ensure string comparison
-                
-                new_missions = []
-                current_timestamp = 1000 # dummy or use time
-                import time
-                base_id = len(existing_missions)
-                
-                features = product_context.get("features", [])
-                for f in features:
-                    f_id = str(f["id"])
-                    if f_id not in existing_feature_ids:
-                        print(f"Found New Feature: {f['name']} (ID: {f_id})")
-                        # Create Synthetic Mission
-                        new_missions.append({
-                            "id": base_id + len(new_missions), # increment ID
-                            "title": f"Implement Feature: {f['name']}",
-                            "description": f"Implement the feature '{f['name']}'. Description: {f['description']}",
-                            "status": "pending", # Force pending
-                            "feature_id": f_id
-                        })
-                
-                if new_missions:
-                    print(f"Adding {len(new_missions)} new missions to queue.")
-                    existing_missions.extend(new_missions)
-                    status_override = "routed" # Resumed/Active
-                else:
-                    # No new features.
-                    # Verify if pending work exists in current list
-                    if any(m["status"] == "pending" for m in existing_missions):
-                        status_override = "routed"
-                    else:
-                        print("All features built. No pending work.")
-                        # SAFETY: Do not auto-rebuild.
-                        return jsonify({"status": "no_changes", "message": "Project is already fully built. No new features found. Use 'Force Rebuild' to restart."})
-                
-                initial_state = {
-                    "startup_id": startup_id,
-                    "product_context": product_context,
-                    "missions": existing_missions, # RESTORED: Load missions into state
-                    "current_mission": None, 
-                    "tech_stack": data.get("tech_stack", "Existing"),
-                    "status": status_override, 
-                    "plan": [],
-                    "logs": [f"Smart Resume: Loaded {len(existing_missions)} missions ({len(new_missions)} new)."]
-                }
-            except Exception as e:
-                print(f"Smart Resume Failed (Starting Fresh): {e}")
-                # Fallback to fresh start
-                initial_state = None
-        
-        if not initial_state:
-            # Start fresh (Initializer will run)
-            initial_state = {
-                "startup_id": startup_id,
-                "product_context": product_context, # Passed to V3Initializer
-                "status": "init", # Trigger Initializer
-                "plan": [],
-                # "missions": [], # Initializer will populate
-                "current_mission": None,
-                "logs": [f"Starting V3 Build for Product: {product.name}"]
-            }
+    mission_prompt = f"""
+Build Complete Product: {product.name}
+Description: {product.description}
 
+CRITICAL REQUIREMENTS:
+1. You MUST implement ALL {len(features)} features listed below
+2. For EACH feature, create complete, working code (not just placeholders)
+3. Each feature should have:
+   - Full implementation with all logic
+   - Proper error handling
+   - Integration with existing codebase
+   - Basic tests/verification
+
+Features to Implement (IN ORDER):
+{features_desc}
+
+IMPORTANT: 
+- Do NOT just create directory structures
+- Do NOT stop after initial setup
+- IMPLEMENT each feature completely before moving to the next
+- Use read_context_cache tool to understand the codebase structure
+- Use list_files and read_file tools to explore existing code
+- Generate a comprehensive plan with 10-20+ tasks covering ALL features
+"""
     
-    # Run in background
-    run_v3_agent_bg(startup_id, initial_state)
+    print(f"Starting V4 Build for {product.name} with {len(features)} features")
     
-    return jsonify({"status": "success", "message": f"Build started for {product.name}"})
+    # Passes structured features for MissionController.plan_iterative_product_build
+    mission_data = {
+        "title": f"Build Product: {product.name}",
+        "description": mission_prompt,
+        "type": "product_build",
+        "status": "pending",
+        "features": [f.to_dict() for f in product.features],
+        "force_rebuild": data.get('force_rebuild', False) 
+    }
+    
+    run_v4_agent_bg(startup_id, mission_data)
+    
+    return jsonify({"status": "success", "message": f"V4 Build started for {product.name}"})
 
 @builder_bp.route('/<startup_id>/build-feature', methods=['POST'])
 def build_feature(startup_id):
     from app.models import Feature, FeatureStatus
-    from app.extensions import db
+    from app.extensions import db, redis_client
+    
+    # CLEAR pending signals
+    redis_client.delete(f"signal:{startup_id}")
     
     data = request.json
     feature_id = data.get('feature_id')
@@ -520,7 +491,7 @@ def build_feature(startup_id):
     
     product = feature.product
     
-    # Synthesize V3 Mission
+    # V4 PORT: Construct Mission for Single Feature
     mission_prompt = (
         f"Implement Feature: '{feature.name}' for Product: '{product.name}'.\n"
         f"Description: {feature.description}\n"
@@ -528,51 +499,164 @@ def build_feature(startup_id):
         f"Ensure it integrates with the existing codebase."
     )
     
-    initial_state = {
-        "startup_id": startup_id,
-        "mission": mission_prompt,
-        "status": "analyzing", # Start with analysis
-        "plan": [],
-        "logs": [f"Starting V3 Build for Feature: {feature.name}"]
+    mission_data = {
+        "title": f"Implement Feature: {feature.name}",
+        "description": mission_prompt,
+        "type": "feature_build",
+        "status": "pending",
+        "feature_id": feature_id 
     }
     
     # Run in background
-    run_v3_agent_bg(startup_id, initial_state)
+    run_v4_agent_bg(startup_id, mission_data)
     
-    return jsonify({"status": "success", "message": f"V3 Agent started building feature: {feature.name}"})
+    return jsonify({"status": "success", "message": f"V4 Agent started building feature: {feature.name}"})
 
-@builder_bp.route('/v3/start', methods=['POST'])
-def start_v3_agent():
-    data = request.json
-    startup_id = data.get('startup_id')
+# @builder_bp.route('/<int:startup_id>/v3/start', methods=['POST'])
+# def start_v3_agent(startup_id):
+#     data = request.json or {}
+#     # startup_id is passed in URL
+#     from app.extensions import redis_client
+
+    # CLEAR pending signals
+    redis_client.delete(f"signal:{startup_id}")
+    
+    # If resuming, we might not have a mission in body.
+    # The Selector will handle picking up the mission.
     mission = data.get('mission')
     
-    if not startup_id or not mission:
-        return jsonify({'error': 'Startup ID and Mission required'}), 400
-        
-    # Initial State
-    # Fix: Wrap single mission in a list for V3 Planner
-    synthetic_mission = {
-        "id": 0,
-        "title": "Ad-Hoc Task",
-        "description": mission,
+    initial_state = {
+        "startup_id": startup_id,
+        "missions": [], # Will be ignored if file exists?
+        "current_mission_id": 0,
+        "tech_stack": "Existing",
+        "status": "mission_selector", # Force Selector to pick up pending work
+        "plan": [],
+        "logs": ["V3 Agent Resumed."]
+    }
+
+    if mission:
+        # If explicit mission passed (Ad-hoc start)
+        synthetic_mission = {
+            "id": 0,
+            "title": "Ad-Hoc Task",
+            "description": mission,
+            "status": "pending"
+        }
+        initial_state["missions"] = [synthetic_mission]
+        initial_state["logs"] = ["V3 Agent Started with New Mission."]
+    
+    # Run in background
+    # run_v3_agent_bg(startup_id, initial_state)
+    
+    return jsonify({"status": "success", "message": "V3 Agent Started"})
+
+
+# ==========================================
+# V4 PURE ROUTES
+# ==========================================
+
+@builder_bp.route('/v4/start', methods=['POST'])
+def start_v4_agent():
+    """
+    Entry point for the Pure V4 Agent.
+    Frontend calls this endpoint.
+    """
+    data = request.json or {}
+    startup_id = data.get('startup_id')
+    
+    if not startup_id:
+         return jsonify({"error": "Startup ID required"}), 400
+         
+    mission_description = data.get('mission', 'Proceed with next task')
+    mission_type = data.get('mission_type', 'general')
+    
+    from app.extensions import redis_client
+    # CLEAR pending signals
+    redis_client.delete(f"signal:{startup_id}")
+    
+    print(f"Starting V4 Agent for {startup_id}: {mission_description}")
+    
+    # Construct Mission Object
+    mission_data = {
+        "title": "User Request",
+        "description": mission_description,
+        "type": mission_type,
         "status": "pending"
     }
     
-    initial_state = {
-        "startup_id": startup_id,
-        "missions": [synthetic_mission],
-        "current_mission_id": 0,
-        "tech_stack": "Existing",
-        "status": "mission_selector",
-        "plan": [],
-        "logs": ["V3 Agent Initialized with Ad-Hoc Mission."]
-    }
-    
     # Run in background
-    run_v3_agent_bg(startup_id, initial_state)
+    run_v4_agent_bg(startup_id, mission_data)
     
-    return jsonify({"status": "success", "message": "V3 Agent Started"})
+    return jsonify({"status": "success", "message": "V4 Agent Started"})
+
+def run_v4_agent_bg(startup_id, mission_data):
+    """Runs the V4 Orchestrator in a background thread."""
+    from flask import current_app
+    app = current_app._get_current_object()
+    
+    def task():
+        with app.app_context():
+            from app.startup_builder.v4.orchestrator import V4Orchestrator
+            from app.services.notification_service import publish_update
+            
+            # Helper to emit updates to frontend
+            def log_callback(terminal_id, message=None):
+                # V5 Signature: log_callback(terminal_id, message)
+                # Legacy Fallback: log_callback(message) -> terminal_id=message, message=None
+                
+                logs = []
+                if message is None:
+                    # Legacy call (single arg)
+                    # Treating 'terminal_id' field as the message
+                    if isinstance(terminal_id, dict):
+                         logs = terminal_id.get("logs", [])
+                    else:
+                         logs = [str(terminal_id)]
+                else:
+                    # V5 call (two args)
+                    logs = [f"[{terminal_id}] {message}"]
+                
+                if logs:
+                    publish_update('agent_update', {
+                        'task_status': 'processing', # Active state
+                        'logs': logs
+                    }, rooms=[f"startup_{startup_id}"])
+            
+            try:
+                # 1. Initialize Orchestrator
+                log_callback("Initializing V4 Orchestrator...")
+                orchestrator = V4Orchestrator(startup_id, log_callback=log_callback)
+                
+                # 2. Run Mission
+                result = orchestrator.run_mission(mission_data)
+                
+                # 3. Report Final Status
+                final_status = 'done' if result.get("status") == "success" else 'failed'
+                final_logs = []
+                if result.get("error"):
+                    final_logs.append(f"Mission Failed: {result['error']}")
+                else:
+                    final_logs.append("Mission Completed Successfully.")
+                    
+                publish_update('agent_update', {
+                    'task_status': final_status,
+                    'logs': final_logs
+                }, rooms=[f"startup_{startup_id}"])
+                
+            except Exception as e:
+                print(f"V4 Critical Error: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                publish_update('agent_update', {
+                    'task_status': 'failed',
+                    'logs': [f"Critical System Error: {str(e)}"]
+                }, rooms=[f"startup_{startup_id}"])
+
+    import threading
+    thread = threading.Thread(target=task)
+    thread.start()
 
 def run_v3_agent_bg(startup_id, initial_state):
     """Runs the V3 Agent Graph in background."""
@@ -585,60 +669,143 @@ def run_v3_agent_bg(startup_id, initial_state):
             
             # Callback for Thoughts
             def log_callback(content, node):
-                socketio.emit('agent_thought', {
+                from app.services.notification_service import publish_update
+                publish_update('agent_thought', {
                     'content': content, 
                     'node': node
-                }, room=f"startup_{startup_id}", namespace='/builder')
+                }, rooms=[f"startup_{startup_id}"])
 
-            # Create V3 Graph on the fly (lightweight)
-            # or cache it if expensive. We need log_callback bound though.
-            v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=log_callback)
-            
-            config = {"configurable": {"thread_id": startup_id}, "recursion_limit": 100}
-            
             try:
+                # DEBUG DIAGNOSTICS
+                from app.extensions import redis_client
+                s_id_str = str(startup_id)
+                print(f"THREAD START: startup_id={s_id_str}, redis={redis_client}")
+                
+                # Notify Start
+                from app.services.notification_service import publish_update
+                publish_update('agent_update', {
+                    'task_status': 'planning', 
+                    'logs': [f"Agent Thread Started for ID {s_id_str}"]
+                }, rooms=[f"startup_{s_id_str}"])
+
+                # --- CONTEXT INJECTION REMOVED (Moved to ensure_project_context) ---
+
+
+                # Create V3 Graph on the fly (lightweight)
+                # or cache it if expensive. We need log_callback bound though.
+                v3_graph = create_v3_graph(db_path="v3_checkpoints.sqlite", log_callback=log_callback)
+                
+                config = {"configurable": {"thread_id": s_id_str}, "recursion_limit": 500}
+                
+                publish_update('agent_update', {'logs': ["Debug: Graph Created. Starting Stream..."]}, rooms=[f"startup_{s_id_str}"])
+                
+                # Run the graph
                 for event in v3_graph.stream(initial_state, config=config):
-                    # CHECK FOR PAUSE SIGNAL
-                    if startup_id in stop_signals:
-                        print(f"Pausing V3 Agent for {startup_id}")
-                        stop_signals.remove(startup_id)
-                        socketio.emit('agent_update', {
+                    # event is a dict where keys are node names and values are the state updates from that node
+                    publish_update('agent_update', {'logs': [f"Debug: Stream Event Received"]}, rooms=[f"startup_{s_id_str}"])
+                    
+                    # --- REDIS SIGNAL CHECK ---
+                    from app.extensions import redis_client
+                    signal = redis_client.get(f"signal:{s_id_str}")
+                    if signal and signal in ["pause", "stop"]:
+                        print(f"Pausing V3 Agent for {startup_id} (Signal: {signal})")
+                        redis_client.delete(f"signal:{s_id_str}")
+                        
+                        from app.services.notification_service import publish_update
+                        publish_update('agent_update', {
                             'task_status': 'paused',
-                            'logs': ["Process paused by user."]
-                        }, room=f"startup_{startup_id}", namespace='/builder')
+                            'logs': ["Process paused/stopped by user."]
+                        }, rooms=[f"startup_{startup_id}"])
                         return
 
+                    # FETCH FULL STATE
+                    # We use the snapshot because 'event' only contains the delta from the last node
+                    snapshot = v3_graph.get_state(config)
+                    full_state = snapshot.values
+                    
                     for key, value in event.items():
+                         # We still use 'key' to know WHICH node just ran, but 'full_state' for data
+                        
+                        print(f"DEBUG: Node {key} returned type {type(value)}: {value}")
+                        
                         # Compute Progress for Frontend
-                        plan = value.get('plan', [])
+                        plan = full_state.get('plan', [])
                         total_tasks = len(plan)
                         completed_tasks = len([t for t in plan if t.get("status") == "completed"])
                         
-                        # Emit Updated State
-                        socketio.emit('agent_update', {
+                        # Extract Mission Info
+                        missions = full_state.get("missions", [])
+                        current_mission = full_state.get("current_mission", {})
+                        
+                        # Find index locally if passed
+                        # Or rely on 'current_mission' object emission
+                        
+                        from app.services.notification_service import publish_update
+                        
+                        # SAFE LOG GETTER
+                        logs_val = []
+                        if isinstance(value, dict):
+                            logs_val = value.get('logs', [])
+                        elif isinstance(value, tuple):
+                             # Try to salvage logs if tuple
+                             logs_val = [f"System Error: Received tuple from node {key}: {value}"]
+                        else:
+                             logs_val = [str(value)]
+                        
+                        publish_update('agent_update', {
                             'node': key,
-                            'task_status': value.get('status', 'processing'),
-                            # Analyzer returns status='planning', so it will show 'planning' after analyzer is done.
-                            # During analyzer run, it's 'analyzing'.
+                            'task_status': full_state.get('status', 'processing'),
                             'plan': plan,
-                            'logs': value.get('logs', []),
-                            'mission_queue': value.get('missions', []),
-                            'current_mission_index': value.get('current_mission_id', 0),
+                            'logs': logs_val,
+                            'mission_queue': missions,
+                            'current_mission': current_mission, # Pass full object
                             'total_tasks': total_tasks,
                             'completed_tasks': completed_tasks
-                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        }, rooms=[f"startup_{startup_id}"])
+
+                        # --- FEATURE STATUS SYNC ---
+                        current_mission = full_state.get("current_mission")
+                        if current_mission and current_mission.get("feature_id"):
+                            try:
+                                from app.models import Feature, FeatureStatus
+                                from app.extensions import db
+                                
+                                f_id = current_mission["feature_id"]
+                                m_status = current_mission.get("status")
+                                
+                                target_status = None
+                                if m_status == "in_progress":
+                                    target_status = FeatureStatus.IN_PROGRESS
+                                elif m_status == "completed":
+                                    target_status = FeatureStatus.COMPLETED
+                                
+                                if target_status:
+                                    # Optimistic DB Update (Check first to reduce writes)
+                                    # Since we are in a different thread context, we must query.
+                                    # NOTE: db_session is thread-local in Flask-SQLAlchemy? Yes in app context.
+                                    
+                                    f = Feature.query.get(f_id)
+                                    if f and f.status != target_status:
+                                        print(f"Syncing Feature {f_id} status to {target_status}")
+                                        f.status = target_status
+                                        db.session.commit()
+                            except Exception as e:
+                                print(f"Feature Status Sync Error: {e}")
                         
-                socketio.emit('agent_update', {
+                        
+                from app.services.notification_service import publish_update
+                publish_update('agent_update', {
                     'task_status': 'done',
                     'logs': ['V3 Mission Complete']
-                }, room=f"startup_{startup_id}", namespace='/builder')
+                }, rooms=[f"startup_{startup_id}"])
                 
             except Exception as e:
                 print(f"V3 Error: {e}")
-                socketio.emit('agent_update', {
+                from app.services.notification_service import publish_update
+                publish_update('agent_update', {
                     'task_status': 'failed',
                     'logs': [f"Critical Error: {e}"]
-                }, room=f"startup_{startup_id}", namespace='/builder')
+                }, rooms=[f"startup_{startup_id}"])
 
     thread = threading.Thread(target=task)
     thread.start()
@@ -703,14 +870,14 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                         print(f"Pausing task for {startup_id}")
                         stop_signals.remove(startup_id)
                         
-                        from app.extensions import socketio
+                        from app.services.notification_service import publish_update
                         # Update status to paused in state
                         # Note: We can't easily update langgraph state without a transition, 
                         # but we can just stop the loop. The state remains at the last step.
-                        socketio.emit('agent_update', {
+                        publish_update('agent_update', {
                             'task_status': 'paused',
                             'logs': state_tracker.get("logs", []) + ["Process paused by user."]
-                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        }, rooms=[f"startup_{startup_id}"])
                         return
 
                     for event in graph.stream(current_input, config=config):
@@ -756,14 +923,14 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                                     print(f"Error syncing feature status: {e}")
 
                             # Emit update via WebSocket
-                            from app.extensions import socketio
+                            from app.services.notification_service import publish_update
                             
                             # Calculate Progress dynamically
                             plan = state_tracker.get("plan", [])
                             total_tasks = len(plan)
                             completed_tasks = len([t for t in plan if t.get("status") == "completed"])
                             
-                            socketio.emit('agent_update', {
+                            publish_update('agent_update', {
                                 'logs': state_tracker.get("logs", []),
                                 'plan': plan,
                                 'task_status': state_tracker.get("status", "unknown"),
@@ -771,8 +938,22 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                                 'completed_tasks': completed_tasks,
                                 'current_step': state_tracker.get("current_step", {}),
                                 'waiting_approval': False # Default
-                            }, room=f"startup_{startup_id}", namespace='/builder')
+                            }, rooms=[f"startup_{startup_id}"])
                     
+                        # --- REDIS SIGNAL CHECK (Inside Loop) ---
+                        from app.extensions import redis_client
+                        signal = redis_client.get(f"signal:{startup_id}")
+                        if signal and signal in ["pause", "stop"]:
+                            print(f"Signal '{signal}' received for {startup_id}. Pausing/Stopping Agent.")
+                            redis_client.delete(f"signal:{startup_id}")
+                            
+                            from app.services.notification_service import publish_update
+                            publish_update('agent_update', {
+                                'task_status': 'paused',
+                                'logs': state_tracker.get("logs", []) + ["Process paused/stopped by user."]
+                            }, rooms=[f"startup_{startup_id}"])
+                            return
+
                     snapshot = graph.get_state(config)
                     
                     if not snapshot.next:
@@ -842,11 +1023,10 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                         continue
                     else:
                         # Waiting for approval
-                        from app.extensions import socketio
-                        socketio.emit('agent_update', {
+                        publish_update('agent_update', {
                             'waiting_approval': True,
                             'current_step': snapshot.values.get("current_step", {})
-                        }, room=f"startup_{startup_id}", namespace='/builder')
+                        }, rooms=[f"startup_{startup_id}"])
                         return # Exit thread, wait for /approve endpoint to resume
                 
                 # Finished
@@ -860,11 +1040,10 @@ def run_agent_bg(startup_id, initial_state, yolo, feature_id=None):
                         
             except Exception as e:
                 print(f"Agent background task failed: {e}")
-                from app.extensions import socketio
-                socketio.emit('agent_update', {
+                publish_update('agent_update', {
                     'task_status': 'failed',
                     'logs': state_tracker.get("logs", []) + [f"System Error: {str(e)}"]
-                }, room=f"startup_{startup_id}", namespace='/builder')
+                }, rooms=[f"startup_{startup_id}"])
 
     thread = threading.Thread(target=task)
     thread.start()
@@ -983,3 +1162,62 @@ def reset_agent(startup_id):
 
 
 
+
+def ensure_project_context(startup_id, manager):
+    """
+    Ensures artifacts/project_context.json exists in the container.
+    If missing, generates it from the Database.
+    """
+    try:
+        # 1. Check if exists
+        check = manager.run_command(startup_id, "test -f artifacts/project_context.json")
+        if check.get("exit_code") == 0:
+             print(f"Project Context exists for {startup_id}. Skipping generation.")
+             return
+             
+        # 2. Generate
+        print(f"Generating Project Context for {startup_id}...")
+        from app.models import Startup, Evaluation, Submission, Product
+        
+        startup = Startup.query.get(startup_id)
+        if not startup: return
+        
+        context_data = {
+            "startup_id": startup_id,
+            "name": startup.name,
+            "description": startup.submission.product_service_idea if startup.submission else "No description",
+        }
+        
+        # Correctly fetch Evaluation via Submission
+        if startup.submission_id:
+            submission = Submission.query.get(startup.submission_id)
+            if submission and submission.evaluation:
+                evaluation = submission.evaluation
+                context_data["evaluation"] = {
+                    "viability": evaluation.overall_score, # Mapped from overall_score
+                    "complexity": 50, # Default or derive from risk analysis
+                    "report": evaluation.overall_summary,
+                    "final_decision": evaluation.final_decision
+                }
+        
+        product = Product.query.filter_by(startup_id=startup_id).first()
+        if product:
+             context_data["product"] = {
+                 "name": product.name,
+                 "description": product.description,
+                 "target_audience": product.target_audience if hasattr(product, 'target_audience') else "General",
+                 "features": product.features_list if hasattr(product, 'features_list') else [f.to_dict() for f in product.features],
+                 "unique_selling_propositions": getattr(product, 'usp', [])
+             }
+             
+        import json
+        context_json = json.dumps(context_data, indent=2)
+        
+        # Optimization: storing in root to avoid 'non-empty dir' errors during scaffolding (npx create-next-app)
+        manager.write_file(startup_id, "/app/project_context.json", context_json)
+        print(f"Saved /app/project_context.json for {startup_id}")
+        
+    except Exception as e:
+        print(f"Failed to ensure project context: {e}")
+        import traceback
+        traceback.print_exc()

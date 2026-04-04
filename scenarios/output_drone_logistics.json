@@ -1,0 +1,70 @@
+{
+    "startup": {
+        "name": "SkyDrop",
+        "slug": "skydrop",
+        "startup_type": "Logistics_Drone",
+        "industry": "Logistics",
+        "status": "StartupStatus.ACTIVE",
+        "mission": "Rural hospitals lack blood supplies."
+    },
+    "business_model": {
+        "name": "Core Operations",
+        "model_type": "B2B_Contract",
+        "pricing": "To Be Determined",
+        "target_margin": null,
+        "revenue_streams": [
+            "Per Delivery or Retainer"
+        ]
+    },
+    "products": [],
+    "tasks": [
+        {
+            "title": "Secure BVLOS Approval",
+            "description": "Regulatory requirement for commercial Ops",
+            "priority": "High",
+            "status": "Pending"
+        },
+        {
+            "title": "R&D: Extend Battery Life",
+            "description": "Critical for rural viability",
+            "priority": "High",
+            "status": "Pending"
+        }
+    ],
+    "fundraise": {
+        "goal_amount": 1.0,
+        "valuation_target": null,
+        "runway_months": null,
+        "status": "Seed Planning"
+    },
+    "messages": [
+        {
+            "role": "system",
+            "content": "Archetype Detected: Logistics_Drone"
+        },
+        {
+            "role": "ai",
+            "content": "I see you are in Logistics_Drone. Do you have BVLOS (Beyond Visual Line of Sight) approval yet?"
+        },
+        {
+            "role": "user",
+            "content": "i dont think that is required in india for now"
+        },
+        {
+            "role": "ai",
+            "content": "How are you funding this? Bootstrapping or Raising?"
+        },
+        {
+            "role": "user",
+            "content": "Raising a seed round of $1M."
+        },
+        {
+            "role": "ai",
+            "content": "What's your drone's range? For rural delivery you need >30 mins flight time."
+        },
+        {
+            "role": "user",
+            "content": "Currently 15 mins."
+        }
+    ]
+}

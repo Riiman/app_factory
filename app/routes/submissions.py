@@ -25,7 +25,7 @@ def start_submission():
     if existing_submission:
         return jsonify({"msg": "You already have an active submission.", "submission_id": existing_submission.id}), 400
 
-    new_submission = Submission(user_id=user_id, status=SubmissionStatus.DRAFT)
+    new_submission = Submission(user_id=user_id, organization_id=user.organization_id, status=SubmissionStatus.DRAFT)
     db.session.add(new_submission)
     db.session.commit()
 
@@ -109,7 +109,11 @@ def submit_submission(submission_id):
     submission.status = SubmissionStatus.PENDING
     db.session.commit()
 
-    publish_update("submission_submitted", {"submission_id": submission.id, "user_id": user_id}, rooms=[f"user_{user_id}", "admin"])
+    publish_update("submission_submitted", {
+        "submission_id": submission.id, 
+        "user_id": user_id,
+        "submission": submission.to_dict()
+    }, rooms=[f"user_{user_id}", "admin"])
     
     # Send confirmation email
     user = User.query.get(user_id)

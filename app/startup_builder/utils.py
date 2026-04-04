@@ -38,17 +38,47 @@ class JsonRepair:
     @staticmethod
     def extract_json(text):
         """
-        Extracts JSON substring from text (finding { and }).
+        Extracts JSON substring from text (finding { or [ and } or ]).
         """
         if not text: return ""
         
-        start = text.find('{')
-        end = text.rfind('}')
+        # Check for code blocks first
+        import re
+        match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if match:
+            text = match.group(1)
+        else:
+             match = re.search(r'```\s*(.*?)\s*```', text, re.DOTALL)
+             if match:
+                 text = match.group(1)
+
+        start_brace = text.find('{')
+        start_bracket = text.find('[')
+        
+        start = -1
+        if start_brace != -1 and start_bracket != -1:
+            start = min(start_brace, start_bracket)
+        elif start_brace != -1:
+            start = start_brace
+        elif start_bracket != -1:
+            start = start_bracket
+            
+        end_brace = text.rfind('}')
+        end_bracket = text.rfind(']')
+        
+        end = -1
+        if end_brace != -1 and end_bracket != -1:
+            end = max(end_brace, end_bracket)
+        elif end_brace != -1:
+            end = end_brace
+        elif end_bracket != -1:
+            end = end_bracket
         
         if start != -1 and end != -1 and end > start:
             return text[start:end+1]
             
         return text
+
 
     @staticmethod
     def repair_json(json_str):

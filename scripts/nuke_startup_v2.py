@@ -62,7 +62,7 @@ def nuke_startup(startup_id):
 
         # 3. Checkpoints Cleanup (Sqlite)
         try:
-            db_path = "checkpoints.sqlite"
+            db_path = "v3_checkpoints.sqlite"
             if os.path.exists(db_path):
                 conn = sqlite3.connect(db_path)
                 c = conn.cursor()
@@ -74,7 +74,7 @@ def nuke_startup(startup_id):
                 conn.close()
                 print("Agent checkpoints deleted.")
             else:
-                print("No checkpoints.sqlite found.")
+                print("No v3_checkpoints.sqlite found.")
         except Exception as e:
             print(f"Checkpoint Cleanup Error: {e}")
 

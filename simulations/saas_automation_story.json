@@ -1,0 +1,1231 @@
+{
+    "metadata": {
+        "company_name": "Pulseboard",
+        "tagline": "Empowering Teams with Real-Time Project Insights",
+        "description": "Pulseboard is a SaaS startup founded in early 2023, offering an intelligent dashboard platform for project managers and distributed teams. It aggregates tasks, deadlines, and team communication into actionable insights, improving transparency and productivity. After acquiring its first paying customers, Pulseboard aims to scale, refine its product, and expand its reach.",
+        "roadmap": [
+            {
+                "month_name": "April",
+                "year": 2024,
+                "milestone_title": "Beta Feature Launch: AI Suggestions",
+                "narrative_description": "Pulseboard releases a beta version of its AI-powered task suggestions, allowing select customers to test automated prioritization and workflow enhancements."
+            },
+            {
+                "month_name": "May",
+                "year": 2024,
+                "milestone_title": "Customer Feedback Sprint",
+                "narrative_description": "The team conducts focused interviews and surveys with early users, collecting valuable feedback on usability and feature gaps to guide product improvements."
+            },
+            {
+                "month_name": "June",
+                "year": 2024,
+                "milestone_title": "First Major B2B Win",
+                "narrative_description": "Pulseboard lands a contract with a mid-sized marketing agency, marking its first significant B2B client and opening doors to new industry segments."
+            },
+            {
+                "month_name": "July",
+                "year": 2024,
+                "milestone_title": "Brand Refresh & Website Relaunch",
+                "narrative_description": "The company unveils a new brand identity and an upgraded website, enhancing its positioning and marketing assets for broader outreach."
+            },
+            {
+                "month_name": "August",
+                "year": 2024,
+                "milestone_title": "Seed Funding Round",
+                "narrative_description": "Pulseboard secures $600,000 in seed funding, enabling accelerated hiring and development. The milestone is celebrated with internal planning sessions."
+            },
+            {
+                "month_name": "September",
+                "year": 2024,
+                "milestone_title": "Team Expansion",
+                "narrative_description": "New hires join the development and customer success teams, scaling Pulseboard's capacity to support more clients and iterate faster."
+            },
+            {
+                "month_name": "October",
+                "year": 2024,
+                "milestone_title": "API Integration Release",
+                "narrative_description": "Pulseboard launches its public API, allowing customers to integrate with Slack, Trello, and other productivity tools, driving adoption among tech-savvy teams."
+            },
+            {
+                "month_name": "November",
+                "year": 2024,
+                "milestone_title": "Onboarding Automation",
+                "narrative_description": "Automated onboarding workflows are released, reducing friction for new users and improving conversion rates from trial to paid plans."
+            },
+            {
+                "month_name": "December",
+                "year": 2024,
+                "milestone_title": "Security Audit & Compliance Update",
+                "narrative_description": "Pulseboard completes its first external security audit, implements GDPR compliance upgrades, and reassures clients with transparent reporting."
+            },
+            {
+                "month_name": "January",
+                "year": 2025,
+                "milestone_title": "Customer Success Summit",
+                "narrative_description": "The company hosts a virtual summit, bringing together clients, partners, and staff to share best practices and gather feedback for the coming year."
+            },
+            {
+                "month_name": "February",
+                "year": 2025,
+                "milestone_title": "Churn Spike & Retention Challenge",
+                "narrative_description": "Pulseboard faces its first notable churn spike, prompting a cross-functional task force to diagnose causes and implement retention strategies."
+            },
+            {
+                "month_name": "March",
+                "year": 2025,
+                "milestone_title": "Mobile App Launch",
+                "narrative_description": "Pulseboard launches its dedicated mobile app for iOS and Android, expanding accessibility and boosting user engagement as it enters its third year."
+            }
+        ]
+    },
+    "monthly_data": [
+        {
+            "financials": {
+                "revenue": 15300.0,
+                "expenses": 12600.0,
+                "mrr": 13500.0,
+                "new_customers": 18,
+                "total_customers": 66
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions",
+                    "amount": 4500.0,
+                    "stage": "OPEN",
+                    "notes": "Demo booked for AI Suggestions beta; evaluating integration."
+                },
+                {
+                    "name": "TechNova Inc.",
+                    "amount": 7200.0,
+                    "stage": "WON",
+                    "notes": "Signed up for pilot of automated prioritization; first enterprise client for AI beta."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Deploy AI Suggestions Beta",
+                    "description": "Release the beta version of AI-powered task suggestions to select customers.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Collect User Feedback",
+                    "description": "Gather feedback from beta users on AI-driven prioritization.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Update Documentation",
+                    "description": "Revise help articles and onboarding materials for the new AI features.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "AI Task Prioritization",
+                    "description": "Automated suggestions for task priority based on deadlines, team workload, and communication signals.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Workflow Enhancement Engine",
+                    "description": "Beta engine that recommends workflow improvements for distributed teams.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Feedback Widget",
+                    "description": "In-app widget for collecting feedback on AI features directly from users.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "AI Suggestions Adoption",
+                    "hypothesis": "Offering automated task prioritization will increase weekly active user engagement by 15%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Beta Launch Email Push",
+                    "channel": "Email",
+                    "spend": 750,
+                    "conversions": 12
+                },
+                {
+                    "name": "LinkedIn Awareness Ads",
+                    "channel": "LinkedIn",
+                    "spend": 1450,
+                    "conversions": 8
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Efficiency Improvement",
+                    "value": 12.8,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Monthly Uptime",
+                    "value": 99.94,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 184,
+                    "unit": "users"
+                }
+            ],
+            "month": "April",
+            "year": 2024,
+            "milestone": "Beta Feature Launch: AI Suggestions"
+        },
+        {
+            "financials": {
+                "revenue": 7500.0,
+                "expenses": 5300.0,
+                "mrr": 7000.0,
+                "new_customers": 6,
+                "total_customers": 38
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Analytics",
+                    "amount": 2500.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled; interested in dashboard customization based on feedback."
+                },
+                {
+                    "name": "Global Project Solutions",
+                    "amount": 3200.0,
+                    "stage": "WON",
+                    "notes": "Converted after sharing user feedback-driven roadmap."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "User Interview Series",
+                    "description": "Conduct 10 interviews with early adopters focused on dashboard usability.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Survey Distribution",
+                    "description": "Send out targeted survey to current customers about feature gaps.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Feedback Analysis Workshop",
+                    "description": "Team workshop to synthesize feedback and prioritize action items.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Customizable Widgets",
+                    "description": "Users can rearrange and personalize dashboard widgets based on workflow.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Integrate Slack channels for real-time communication aggregation.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "In-app Feedback Prompt",
+                    "hypothesis": "Prompting users for feedback during active sessions increases response rates.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Feedback Sprint Announcement",
+                    "channel": "Email",
+                    "spend": 200.0,
+                    "conversions": 12
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 102,
+                    "unit": "users"
+                },
+                {
+                    "name": "Dashboard Engagement",
+                    "value": 6.2,
+                    "unit": "sessions/user"
+                },
+                {
+                    "name": "Uptime",
+                    "value": 99.92,
+                    "unit": "%"
+                }
+            ],
+            "month": "May",
+            "year": 2024,
+            "milestone": "Customer Feedback Sprint"
+        },
+        {
+            "financials": {
+                "revenue": 14500.0,
+                "expenses": 9800.0,
+                "mrr": 4500.0,
+                "new_customers": 8,
+                "total_customers": 28
+            },
+            "crm_deals": [
+                {
+                    "name": "Blue Sky Marketing Agency",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "First major B2B win; 12-month contract for 50 seats."
+                },
+                {
+                    "name": "TechLaunch Solutions",
+                    "amount": 3500.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiations ongoing; proposal sent for 15 seats."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard Blue Sky Marketing Agency",
+                    "description": "Set up custom dashboards and train agency staff.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Integrate Slack for Agency Use Case",
+                    "description": "Add Slack integration based on agency feedback.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Update Pricing Page",
+                    "description": "Reflect new B2B tiers and case study on website.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Slack Integration",
+                    "description": "Aggregate team communication from Slack into dashboard insights.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Agency Reporting Suite",
+                    "description": "Advanced reporting tools for client-facing agencies.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Agency Outreach Email Sequence",
+                    "hypothesis": "Targeted email campaigns to agencies will increase B2B leads by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Agency Success Story",
+                    "channel": "LinkedIn",
+                    "spend": 800,
+                    "conversions": 3
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 470,
+                    "unit": "users"
+                },
+                {
+                    "name": "Dashboard Uptime",
+                    "value": 99.96,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Task Completion Rate",
+                    "value": 84.5,
+                    "unit": "percent"
+                }
+            ],
+            "month": "June",
+            "year": 2024,
+            "milestone": "First Major B2B Win"
+        },
+        {
+            "financials": {
+                "revenue": 22000.0,
+                "expenses": 18500.0,
+                "mrr": 19500.0,
+                "new_customers": 9,
+                "total_customers": 58
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital",
+                    "amount": 4800.0,
+                    "stage": "OPEN",
+                    "notes": "Acme interested after seeing new branding; demo scheduled for late July."
+                },
+                {
+                    "name": "TeamFlow Ltd",
+                    "amount": 3500.0,
+                    "stage": "WON",
+                    "notes": "Closed after website relaunch; cited improved UX as decision factor."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Finalize Brand Guidelines",
+                    "description": "Complete and distribute the refreshed brand assets and usage documentation.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Website Relaunch QA",
+                    "description": "Perform cross-browser and mobile testing prior to relaunch.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Announce Brand Update",
+                    "description": "Coordinate announcement across social media, blog, and email channels.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Customizable Dashboard Themes",
+                    "description": "Users can select and personalize dashboard color schemes matching new brand.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Homepage Demo Experience",
+                    "description": "Interactive walkthrough added to website to highlight core Pulseboard workflows.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Brand Asset Library",
+                    "description": "Centralized repository for all new logos, icons, and templates.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "New Homepage Conversion Test",
+                    "hypothesis": "The updated website will increase free trial signups by 20% compared to June.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Pulseboard Relaunch Email Blast",
+                    "channel": "Email",
+                    "spend": 800.0,
+                    "conversions": 110
+                },
+                {
+                    "name": "LinkedIn Brand Awareness Ads",
+                    "channel": "LinkedIn",
+                    "spend": 1800.0,
+                    "conversions": 37
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 1240.0,
+                    "unit": "users"
+                },
+                {
+                    "name": "Website Conversion Rate",
+                    "value": 6.2,
+                    "unit": "%"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.97,
+                    "unit": "%"
+                }
+            ],
+            "month": "July",
+            "year": 2024,
+            "milestone": "Brand Refresh & Website Relaunch"
+        },
+        {
+            "financials": {
+                "revenue": 18500.0,
+                "expenses": 67000.0,
+                "mrr": 17000.0,
+                "new_customers": 12,
+                "total_customers": 65
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Solutions",
+                    "amount": 6000.0,
+                    "stage": "WON",
+                    "notes": "Closed after demo; pilot to rollout across distributed teams."
+                },
+                {
+                    "name": "BlueSky Consulting",
+                    "amount": 4200.0,
+                    "stage": "OPEN",
+                    "notes": "Negotiating terms for annual license, interested in custom integrations."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Seed Round Announcement",
+                    "description": "Prepare press release and update website with investment news.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Hiring Plan Execution",
+                    "description": "Kick off hiring for 2 engineers and 1 product manager post-funding.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Internal Planning Sessions",
+                    "description": "Hold strategy workshops to allocate funds and align on product roadmap.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Analytics Module",
+                    "description": "Provide project managers with predictive insights on deadlines and team performance.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Slack Integration",
+                    "description": "Enable task and communication aggregation from Slack channels.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Custom Dashboard Templates",
+                    "description": "Let teams create personalized dashboards for different project types.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Referral Program Launch",
+                    "hypothesis": "Offering incentives for referrals will increase new customer signups by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Seed Round Press Outreach",
+                    "channel": "PR/Blogs",
+                    "spend": 2500,
+                    "conversions": 6
+                },
+                {
+                    "name": "Targeted LinkedIn Ads",
+                    "channel": "LinkedIn",
+                    "spend": 3200,
+                    "conversions": 18
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 380,
+                    "unit": "users"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.92,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Task Aggregation Efficiency",
+                    "value": 74.5,
+                    "unit": "percent"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed",
+                "amount": 600000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Sarah Lee",
+                        "firm": "Skybridge Ventures",
+                        "amount": 250000
+                    },
+                    {
+                        "name": "Ravi Patel",
+                        "firm": "BrightSpark Capital",
+                        "amount": 200000
+                    },
+                    {
+                        "name": "Pulseboard Angels Syndicate",
+                        "firm": "Angel Syndicate",
+                        "amount": 150000
+                    }
+                ]
+            },
+            "month": "August",
+            "year": 2024,
+            "milestone": "Seed Funding Round"
+        },
+        {
+            "financials": {
+                "revenue": 29500.0,
+                "expenses": 21500.0,
+                "mrr": 24200.0,
+                "new_customers": 14,
+                "total_customers": 112
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital Transformation",
+                    "amount": 7200.0,
+                    "stage": "OPEN",
+                    "notes": "Discovery completed; proposal sent. Awaiting feedback from IT lead."
+                },
+                {
+                    "name": "Globex Remote Teams Expansion",
+                    "amount": 5400.0,
+                    "stage": "WON",
+                    "notes": "Signed contract for Pulseboard rollout to 4 new distributed teams."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Onboard New Developers",
+                    "description": "Set up accounts, provide documentation, and assign initial tickets to new hires on the development team.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Success Training",
+                    "description": "Train new customer success reps on Pulseboard workflows, platform features, and support scripts.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Update Team Directory",
+                    "description": "Revise internal systems and Pulseboard's website to reflect new team members.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Slack Integration v2",
+                    "description": "Improved real-time sync and actionable notifications for distributed teams using Slack.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Role-Based Access Control",
+                    "description": "Granular permissions for project managers and team leads to manage dashboard visibility.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Customer Success Onboarding Playbook",
+                    "hypothesis": "Structured onboarding for new customer success reps will reduce response time by 25%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Distributed Teams Webinar",
+                    "channel": "LinkedIn Ads",
+                    "spend": 1800,
+                    "conversions": 9
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.95,
+                    "unit": "%"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 620,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Task Completion Rate",
+                    "value": 87.4,
+                    "unit": "%"
+                }
+            ],
+            "month": "September",
+            "year": 2024,
+            "milestone": "Team Expansion"
+        },
+        {
+            "financials": {
+                "revenue": 22500.0,
+                "expenses": 14500.0,
+                "mrr": 19500.0,
+                "new_customers": 22,
+                "total_customers": 132
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Corp Expansion",
+                    "amount": 6000.0,
+                    "stage": "OPEN",
+                    "notes": "Interested in custom API endpoints for deeper Slack integration."
+                },
+                {
+                    "name": "NovaTech Onboarding",
+                    "amount": 3000.0,
+                    "stage": "WON",
+                    "notes": "Won after demoing API integration with Trello; go-live scheduled for November."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Finalize API Documentation",
+                    "description": "Complete and publish detailed developer docs for public API users.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Slack Integration QA",
+                    "description": "Test and validate Slack integration workflows for common use cases.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer API Webinar",
+                    "description": "Host a live webinar to onboard existing customers to the new API features.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Public API v1",
+                    "description": "Enables secure, documented access to Pulseboard data for developers.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Trello Integration",
+                    "description": "Allows syncing tasks, cards, and deadlines between Pulseboard and Trello.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Custom Webhooks",
+                    "description": "Users can trigger events in Pulseboard from external tools.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "API Early Access Program",
+                    "hypothesis": "Offering early API access to select customers will increase product engagement and reduce churn.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "API Launch Announcement",
+                    "channel": "Email & LinkedIn",
+                    "spend": 1200,
+                    "conversions": 14
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "API Calls",
+                    "value": 41000,
+                    "unit": "calls"
+                },
+                {
+                    "name": "Monthly Active Users",
+                    "value": 780,
+                    "unit": "users"
+                },
+                {
+                    "name": "Uptime",
+                    "value": 99.96,
+                    "unit": "%"
+                }
+            ],
+            "month": "October",
+            "year": 2024,
+            "milestone": "API Integration Release"
+        },
+        {
+            "financials": {
+                "revenue": 22000.0,
+                "expenses": 15000.0,
+                "mrr": 18500.0,
+                "new_customers": 26,
+                "total_customers": 112
+            },
+            "crm_deals": [
+                {
+                    "name": "TechNova Solutions",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled post onboarding automation launch; mid-size SaaS team."
+                },
+                {
+                    "name": "Global PM Network",
+                    "amount": 7000.0,
+                    "stage": "WON",
+                    "notes": "Converted after improved onboarding; annual plan signed."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Finalize Onboarding Workflow Automation",
+                    "description": "Integrate automated steps for new user setup and walkthrough.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Monitor Conversion Rate Post-Automation",
+                    "description": "Track trial-to-paid metrics for users onboarded automatically.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Update Help Documentation",
+                    "description": "Revise onboarding guides to reflect new automated flows.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Automated Welcome Tour",
+                    "description": "Interactive tour triggers for new users based on role.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Self-Service Team Invitations",
+                    "description": "Enable users to invite teammates during onboarding seamlessly.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Automated Onboarding Impact",
+                    "hypothesis": "Automated onboarding will increase trial-to-paid conversion by at least 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Onboarding Automation Launch",
+                    "channel": "Email",
+                    "spend": 900,
+                    "conversions": 14
+                },
+                {
+                    "name": "Trial-to-Paid Push",
+                    "channel": "LinkedIn Ads",
+                    "spend": 1500,
+                    "conversions": 8
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Conversion Rate",
+                    "value": 28.6,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Onboarding Time",
+                    "value": 6.2,
+                    "unit": "minutes"
+                },
+                {
+                    "name": "Active Users",
+                    "value": 462,
+                    "unit": "users"
+                }
+            ],
+            "month": "November",
+            "year": 2024,
+            "milestone": "Onboarding Automation"
+        },
+        {
+            "financials": {
+                "revenue": 32000.0,
+                "expenses": 22000.0,
+                "mrr": 28500.0,
+                "new_customers": 9,
+                "total_customers": 85
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Tech Annual Plan",
+                    "amount": 12000.0,
+                    "stage": "WON",
+                    "notes": "Closed after security audit report submitted to their IT team."
+                },
+                {
+                    "name": "Globex Remote Suite",
+                    "amount": 6000.0,
+                    "stage": "OPEN",
+                    "notes": "Security compliance updates under review by their procurement."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "External Security Audit Completion",
+                    "description": "Worked with SecuTrust Partners to complete the first external audit of infrastructure and codebase.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "GDPR Compliance Implementation",
+                    "description": "Upgraded data handling and privacy modules to meet full GDPR requirements.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Client Security Report Distribution",
+                    "description": "Prepared and distributed security and compliance report to all enterprise clients.",
+                    "status": "COMPLETED"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Audit Log Dashboard",
+                    "description": "New dashboard module providing detailed user and system activity logs for compliance.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Data Export & Deletion Controls",
+                    "description": "Self-service tools for customers to export or delete their project data on demand.",
+                    "status": "DONE"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Compliance Badge on Landing Page",
+                    "hypothesis": "Displaying a security/compliance badge will increase demo requests from enterprise clients.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Compliance-First Webinar",
+                    "channel": "LinkedIn Live",
+                    "spend": 1800,
+                    "conversions": 19
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Uptime",
+                    "value": 99.97,
+                    "unit": "%"
+                },
+                {
+                    "name": "Weekly Active Users",
+                    "value": 410,
+                    "unit": "users"
+                },
+                {
+                    "name": "Average Incident Response Time",
+                    "value": 9.2,
+                    "unit": "minutes"
+                }
+            ],
+            "month": "December",
+            "year": 2024,
+            "milestone": "Security Audit & Compliance Update"
+        },
+        {
+            "financials": {
+                "revenue": 28500.0,
+                "expenses": 16000.0,
+                "mrr": 23500.0,
+                "new_customers": 14,
+                "total_customers": 89
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Digital Expansion",
+                    "amount": 7800.0,
+                    "stage": "OPEN",
+                    "notes": "Acme attending the summit, considering Pulseboard for additional teams."
+                },
+                {
+                    "name": "ZenTeam Renewal",
+                    "amount": 3700.0,
+                    "stage": "WON",
+                    "notes": "Renewal closed after positive feedback at summit."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Summit Logistics",
+                    "description": "Coordinate speakers, schedule sessions, and manage virtual platform for Customer Success Summit.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Feedback Synthesis",
+                    "description": "Compile and analyze feedback from summit attendees to identify actionable improvements.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Post-Summit Outreach",
+                    "description": "Follow up with participants to thank them and address individual queries or demo requests.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Automated Insights Widget",
+                    "description": "Real-time dashboard widget summarizing project bottlenecks and suggested actions.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Team Communication Analytics",
+                    "description": "Beta release for analyzing message patterns and sentiment across distributed teams.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Summit-driven Upsell",
+                    "hypothesis": "Engaging customers at the summit will increase upsell conversion by 20%.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Summit Invitation Blitz",
+                    "channel": "Email",
+                    "spend": 1400,
+                    "conversions": 38
+                },
+                {
+                    "name": "LinkedIn Thought Leadership",
+                    "channel": "Social",
+                    "spend": 800,
+                    "conversions": 16
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Active Users",
+                    "value": 512,
+                    "unit": "users"
+                },
+                {
+                    "name": "Uptime",
+                    "value": 99.92,
+                    "unit": "%"
+                },
+                {
+                    "name": "Customer Satisfaction",
+                    "value": 4.6,
+                    "unit": "out of 5"
+                }
+            ],
+            "month": "January",
+            "year": 2025,
+            "milestone": "Customer Success Summit"
+        },
+        {
+            "financials": {
+                "revenue": 17600.0,
+                "expenses": 19500.0,
+                "mrr": 14800.0,
+                "new_customers": 9,
+                "total_customers": 73
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Retail Expansion",
+                    "amount": 3200.0,
+                    "stage": "OPEN",
+                    "notes": "Acme considering expansion to 3 more teams after pilot; needs improved onboarding."
+                },
+                {
+                    "name": "Globex Inc. Churn Prevention",
+                    "amount": 0.0,
+                    "stage": "LOST",
+                    "notes": "Globex cancelled due to lacking Jira integration. Marked as lost after feedback call."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "Churn Analysis Deep Dive",
+                    "description": "Analyze churned accounts to identify top reasons and patterns.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Retention Task Force Kickoff",
+                    "description": "Form cross-functional team to address retention and user experience.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Customer Feedback Interviews",
+                    "description": "Conduct interviews with recent churned users to collect actionable insights.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Quick Win Feature Rollout",
+                    "description": "Release immediate improvements addressing top churn driver (notification settings).",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Advanced Notification Settings",
+                    "description": "Allow users to customize notification preferences to reduce alert fatigue.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "Churn Risk Dashboard",
+                    "description": "Internal admin tool visualizing real-time churn risk segments.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Jira Integration (Beta)",
+                    "description": "Enables task sync with Jira for seamless workflow.",
+                    "status": "BACKLOG"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Proactive Onboarding Emails",
+                    "hypothesis": "Sending tailored onboarding content to new teams will reduce first-month churn by 15%.",
+                    "result": "Pending"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Win-Back Email Campaign",
+                    "channel": "Email",
+                    "spend": 400.0,
+                    "conversions": 2
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 210,
+                    "unit": "users"
+                },
+                {
+                    "name": "Churn Rate",
+                    "value": 7.8,
+                    "unit": "%"
+                },
+                {
+                    "name": "Platform Uptime",
+                    "value": 99.93,
+                    "unit": "%"
+                }
+            ],
+            "month": "February",
+            "year": 2025,
+            "milestone": "Churn Spike & Retention Challenge"
+        },
+        {
+            "financials": {
+                "revenue": 46000.0,
+                "expenses": 33000.0,
+                "mrr": 41000.0,
+                "new_customers": 38,
+                "total_customers": 392
+            },
+            "crm_deals": [
+                {
+                    "name": "Acme Consulting",
+                    "amount": 12000.0,
+                    "stage": "OPEN",
+                    "notes": "Demo scheduled for mobile app integration; medium-sized remote team."
+                },
+                {
+                    "name": "TechBridge LLC",
+                    "amount": 8500.0,
+                    "stage": "WON",
+                    "notes": "Closed after successful pilot with mobile dashboard; expected 50 seats."
+                }
+            ],
+            "tasks": [
+                {
+                    "name": "App Store Deployment",
+                    "description": "Finalize and publish Pulseboard mobile app on iOS and Android stores.",
+                    "status": "COMPLETED"
+                },
+                {
+                    "name": "Mobile Onboarding Flow",
+                    "description": "Design and implement onboarding for new users on mobile app.",
+                    "status": "IN_PROGRESS"
+                },
+                {
+                    "name": "Push Notification Setup",
+                    "description": "Enable real-time project updates via push notifications.",
+                    "status": "PENDING"
+                }
+            ],
+            "features": [
+                {
+                    "name": "Mobile Task Aggregation",
+                    "description": "Unified task view across all projects on mobile devices.",
+                    "status": "DONE"
+                },
+                {
+                    "name": "In-app Team Chat",
+                    "description": "Integrated team communication for distributed teams within mobile app.",
+                    "status": "IN_PROGRESS"
+                }
+            ],
+            "experiments": [
+                {
+                    "name": "Mobile-First User Activation",
+                    "hypothesis": "Users who sign up via mobile app will have higher activation and engagement rates.",
+                    "result": "Validated"
+                }
+            ],
+            "marketing_campaigns": [
+                {
+                    "name": "Mobile Launch Promo",
+                    "channel": "Paid Social",
+                    "spend": 4200,
+                    "conversions": 112
+                }
+            ],
+            "product_metrics": [
+                {
+                    "name": "Monthly Active Users",
+                    "value": 2560,
+                    "unit": "users"
+                },
+                {
+                    "name": "App Uptime",
+                    "value": 99.8,
+                    "unit": "percent"
+                },
+                {
+                    "name": "Average Session Duration",
+                    "value": 7.4,
+                    "unit": "minutes"
+                }
+            ],
+            "investment": {
+                "round_name": "Seed Extension",
+                "amount": 350000,
+                "status": "CLOSED",
+                "investors": [
+                    {
+                        "name": "Sarah Lee",
+                        "firm": "NextGen Capital",
+                        "amount": 150000
+                    },
+                    {
+                        "name": "Michael Chen",
+                        "firm": "Angel Syndicate",
+                        "amount": 100000
+                    },
+                    {
+                        "name": "EarlyFounders Fund",
+                        "firm": "EarlyFounders Fund",
+                        "amount": 100000
+                    }
+                ]
+            },
+            "month": "March",
+            "year": 2025,
+            "milestone": "Mobile App Launch"
+        }
+    ]
+}

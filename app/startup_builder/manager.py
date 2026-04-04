@@ -1,19 +1,13 @@
 import docker
 import os
+import json
+import logging
 import time
 
 class DockerManager:
     def __init__(self):
-        try:
-            # Force local socket for Linux environment to avoid SSH hangs
-            self.client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-        except Exception:
-            try:
-                # Fallback to env
-                self.client = docker.from_env()
-            except Exception as e:
-                print(f"Error initializing Docker client: {e}")
-                self.client = None
+        self._client = None
+        self._client_initialized = False
 
         # Fix: Initialize base_work_dir
         base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,7 +16,26 @@ class DockerManager:
             try:
                 os.makedirs(self.base_work_dir, exist_ok=True)
             except Exception as e:
-                print(f"Error creating base_work_dir: {e}")
+                pass # Suppress error printing for cleanly startup
+
+    @property
+    def client(self):
+        if not self._client_initialized:
+            self._client_initialized = True
+            # Suppress noisy docker debug logs
+            logging.getLogger('docker').setLevel(logging.WARNING)
+            logging.getLogger('urllib3').setLevel(logging.WARNING)
+            try:
+                # Force local socket for Linux environment to avoid SSH hangs
+                self._client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+            except Exception:
+                try:
+                    # Fallback to env
+                    self._client = docker.from_env()
+                except Exception:
+                    # We are not using docker anymore, suppress the error print
+                    self._client = None
+        return self._client
 
     def get_container_name(self, startup_id, container_name=None):
         """
@@ -196,7 +209,7 @@ class DockerManager:
         Runs a command inside the container.
         """
         if not self.client:
-            return {"error": "Docker not available"}
+            return {"error": "Docker not available", "exit_code": 1, "output": ""}
 
         # Query database for container name if not provided
         if not container_name:
@@ -205,42 +218,86 @@ class DockerManager:
         try:
             container = self.client.containers.get(container_name)
             if container.status != 'running':
-                return {"error": "Container not running"}
+                return {"error": "Container not running", "exit_code": 1, "output": ""}
             
             # Execute command
             if detach:
                 sanitized_cmd = command.replace("'", "'\\''") 
                 cmd_str = f"nohup bash -c '{sanitized_cmd}' > /dev/null 2>&1 &"
                 
-                container.exec_run(
-                    ["bash", "-c", cmd_str],
-                    workdir="/app",
-                    user="root" # Always root if requested? Or simple default
-                )
-                return {
-                    "exit_code": 0,
-                    "output": "Command started in background."
-                }
+                try:
+                    result = container.exec_run(
+                        ["bash", "-c", cmd_str],
+                        workdir="/app",
+                        user="root"
+                    )
+                    return {
+                        "exit_code": 0,
+                        "output": "Command started in background.",
+                        "status": "background"
+                    }
+                except Exception as e:
+                    return {
+                        "error": f"Failed to start background command: {str(e)}",
+                        "exit_code": 1,
+                        "output": ""
+                    }
             else:
                 # Use list format to avoid quoting issues
                 # Run as root to allow installs
-                exit_code, output = container.exec_run(
-                    ["bash", "-c", command],
-                    workdir="/app",
-                    user="root" 
-                )
-                return {
-                    "exit_code": exit_code,
-                    "output": output.decode('utf-8')
-                }
+                try:
+                    result = container.exec_run(
+                        ["bash", "-c", command],
+                        workdir="/app",
+                        user="root"
+                    )
+                    
+                    # Safely unpack result
+                    if result is None:
+                        return {
+                            "error": "Command execution returned None",
+                            "exit_code": 1,
+                            "output": ""
+                        }
+                    
+                    # Result can be a tuple (exit_code, output) or ExecResult object
+                    if isinstance(result, tuple):
+                        exit_code, output = result
+                    else:
+                        # ExecResult object
+                        exit_code = result.exit_code if hasattr(result, 'exit_code') else 0
+                        output = result.output if hasattr(result, 'output') else b''
+                    
+                    # Safely decode output
+                    if output is None:
+                        output_str = ""
+                    elif isinstance(output, bytes):
+                        output_str = output.decode('utf-8', errors='replace')
+                    else:
+                        output_str = str(output)
+                    
+                    return {
+                        "exit_code": exit_code if exit_code is not None else 0,
+                        "output": output_str,
+                        "status": "completed"
+                    }
+                    
+                except Exception as e:
+                    return {
+                        "error": f"Command execution failed: {str(e)}",
+                        "exit_code": 1,
+                        "output": ""
+                    }
+                    
         except docker.errors.NotFound:
-            return {"error": "Container not found"}
+            return {"error": "Container not found", "exit_code": 1, "output": ""}
         except Exception as e:
-            return {"error": str(e)}
+            return {"error": str(e), "exit_code": 1, "output": ""}
 
-    def list_files(self, startup_id, path=".", container_name=None):
+    def list_files(self, startup_id, path=".", recursive=False, depth=2, container_name=None):
         """
         Lists files in the container directory.
+        Supports recursive listing using 'find'.
         """
         if not self.client:
             return {"error": "Docker not available"}
@@ -254,42 +311,107 @@ class DockerManager:
             if container.status != 'running':
                 return {"error": "Container not running"}
             
-            # Use ls -F to distinguish directories
-            # -1 forces one entry per line, -A includes hidden files (except . and ..)
-            exit_code, output = container.exec_run(
-                f"ls -1FA '{path}'",
-                workdir="/app"
-            )
-            
+            if recursive:
+                # Use find for recursive listing
+                # Exclude hidden files, node_modules, pycache
+                cmd = f"find '{path}' -maxdepth {depth} -not -path '*/.*' -not -path '*/node_modules/*' -not -path '*/__pycache__/*' -not -path '*/artifacts/*'"
+                exit_code, output = container.exec_run(cmd, workdir="/app")
+            else:
+                # Use ls -F for flat listing (Legacy behavior)
+                cmd = f"ls -1FA '{path}'"
+                exit_code, output = container.exec_run(cmd, workdir="/app")
+
             if exit_code != 0:
-                print(f"Error listing files at {path}: {output.decode('utf-8')}")
-                # If directory doesn't exist or is empty, return empty list instead of error if possible
-                # But ls returns error if dir doesn't exist.
-                return {"error": f"Error listing files: {output.decode('utf-8')}"}
+                # print(f"Error listing files at {path}: {output.decode('utf-8')}")
+                return {"files": [], "info": f"Directory not found or empty: {path}"}
             
             raw_output = output.decode('utf-8')
             files = []
-            for line in raw_output.splitlines():
-                line = line.strip()
-                if not line: continue
-                
-                is_dir = line.endswith('/')
-                name = line[:-1] if is_dir else line
-                
-                # Check Hidden Folders
-                if name in ["node_modules", ".git", "__pycache__", "artifacts"]:
-                    continue
-                
-                files.append({
-                    "name": name,
-                    "type": "directory" if is_dir else "file",
-                    "path": os.path.join(path, name) if path != "." else name
-                })
-                
-            if not files:
-                 return {"files": [], "info": "Directory is empty (or contains only hidden files)."}
-            return {"files": files}
             
+            if recursive:
+                # Parse find output
+                for line in raw_output.splitlines():
+                    line = line.strip()
+                    if not line or line == path or line == ".": continue
+                    
+                    # Determine type (heuristic: no extension + not in known files = dir? No, find doesn't tell us type easily without -type)
+                    # Better: Assume file unless we check?
+                    # Let's run find with -type f and -type d in one go? 
+                    # Simpler: Just list paths. The user can infer.
+                    # Or run "ls -F" behavior recursively? No.
+                    # Let's use python inside container for perfect reliable JSON?
+                    # "python3 -c ..."
+                    
+                    # REVERT TO PYTHON for robustness if available
+                    pass
+            
+            # --- ROBUST PYTHON IMPLEMENTATION ---
+            # We override the shell commands with a clean Python script injection
+            # This handles recursion and types perfectly across OS
+            
+            py_script = f"""
+import os
+import json
+
+root = "{path}"
+res = []
+try:
+    if "{str(recursive)}" == "True":
+        for dp, dn, filenames in os.walk(root):
+            depth = dp[len(root):].count(os.sep)
+            if depth >= {depth}:
+                dn[:] = [] # Stop recursion
+            
+            # Filter Blocklist
+            dn[:] = [d for d in dn if not d.startswith(".") and d not in ["node_modules", "__pycache__", "artifacts"]]
+            
+            for f in filenames:
+                if not f.startswith("."):
+                    res.append({{"name": f, "type": "file", "path": os.path.join(dp, f)}})
+            for d in dn:
+                res.append({{"name": d, "type": "directory", "path": os.path.join(dp, d)}})
+    else:
+        # Flat List
+        with os.scandir(root) as it:
+            for entry in it:
+                if entry.name.startswith(".") or entry.name in ["node_modules", "__pycache__", "artifacts"]: continue
+                res.append({{"name": entry.name, "type": "directory" if entry.is_dir() else "file", "path": entry.path}})
+    
+    print(json.dumps(res))
+except Exception as e:
+    print(json.dumps([{{ "error": str(e) }}]))
+"""
+            # Escape quotes for shell
+            import shlex
+            cmd = f"python3 -c {shlex.quote(py_script)}"
+            
+            exit_code, output = container.exec_run(cmd, workdir="/app")
+            output_str = output.decode('utf-8').strip()
+            # Try parsing
+            try:
+                data = json.loads(output_str)
+                if data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict) and "error" in data[0]:
+                     return {"files": [], "error": data[0]["error"]}
+                
+                # Update paths (remove ./ prefix)
+                for f in data:
+                    if "path" in f and f["path"].startswith("./"): f["path"] = f["path"][2:]
+                return {"files": data}
+            except Exception as e:
+                # Fallback: Try regex to extract JSON list if noise exists
+                import re
+                match = re.search(r'\[.*\]', output_str, re.DOTALL)
+                if match:
+                    try:
+                        data = json.loads(match.group(0))
+                        for f in data:
+                            if "path" in f and f["path"].startswith("./"): f["path"] = f["path"][2:]
+                        return {"files": data}
+                    except:
+                        pass
+                
+                return {"error": f"Failed to parse listing: {e}", "raw": output_str}
+
         except Exception as e:
             return {"error": str(e)}
 
@@ -328,6 +450,44 @@ class DockerManager:
         except Exception as e:
             return {"error": str(e)}
 
+    
+    def find_file(self, startup_id, filename, path=".", container_name=None):
+        """
+        Finds a file by NAME (not content).
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+        
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            if container.status != 'running':
+                return {"error": "Container not running"}
+            
+            # Match logic: Auto-wildcard if not present to support "fuzzy" find
+            if "*" not in filename:
+                pattern = f"*{filename}*"
+            else:
+                pattern = filename
+
+            # Use find with -iname for case-insensitive matching
+            cmd = f"find '{path}' -iname '{pattern}' -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/artifacts/*'"
+            exit_code, output = container.exec_run(cmd, workdir="/app")
+            
+            if exit_code != 0:
+                 return {"error": output.decode('utf-8')}
+            
+            files = [f.strip() for f in output.decode('utf-8').splitlines() if f.strip()]
+            # Clean up ./ prefix
+            files = [f[2:] if f.startswith("./") else f for f in files]
+            
+            return {"files": files}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
     def read_file(self, startup_id, path, container_name=None):
         """
         Reads file content from the container.
@@ -353,6 +513,33 @@ class DockerManager:
                 return {"error": f"Error reading file: {output.decode('utf-8')}"}
                 
             return {"content": output.decode('utf-8')}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def read_file_base64(self, startup_id, path, container_name=None):
+        """
+        Reads binary file content from the container encoded as base64.
+        """
+        if not self.client:
+            return {"error": "Docker not available"}
+        
+        if not container_name:
+            container_name = self.get_container_name(startup_id)
+            
+        try:
+            container = self.client.containers.get(container_name)
+            if container.status != 'running':
+                return {"error": "Container not running"}
+            
+            # Use base64 command inside container to ensure clean transfer
+            cmd = f"cat '{path}' | base64 -w 0"
+            exit_code, output = container.exec_run(f"bash -c \"{cmd}\"", workdir="/app")
+            
+            if exit_code != 0:
+                return {"error": f"Error reading file: {output.decode('utf-8')}"}
+            
+            return {"content_base64": output.decode('utf-8').strip()}
             
         except Exception as e:
             return {"error": str(e)}
@@ -428,19 +615,35 @@ class DockerManager:
             if container.status != 'running':
                 return {"error": "Container not running"}
             
-            import base64
-            encoded_content = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+            # METHOD UPDATE: Use put_archive for robust large file writing
+            import io
+            import tarfile
             
-            # Ensure parent directory exists
-            cmd = f"mkdir -p $(dirname {path}) && echo '{encoded_content}' | base64 -d > {path}"
+            # Ensure path is absolute within /app if relative
+            if not path.startswith("/"):
+                path = os.path.join("/app", path)
+                
+            dirname = os.path.dirname(path)
+            basename = os.path.basename(path)
             
-            exit_code, output = container.exec_run(
-                f"bash -c \"{cmd}\"",
-                workdir="/app"
-            )
+            # 1. Create directory if needed (still use exec for mkdir, low risk)
+            # -p creates parents and no error if exists
+            container.exec_run(f"mkdir -p '{dirname}'", workdir="/app", user="root")
+
+            # 2. Create Tar Stream
+            tar_stream = io.BytesIO()
+            with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+                data = content.encode('utf-8')
+                info = tarfile.TarInfo(name=basename)
+                info.size = len(data)
+                info.mtime = int(time.time())
+                tar.addfile(info, io.BytesIO(data))
             
-            if exit_code != 0:
-                return {"error": f"Error writing file: {output.decode('utf-8')}"}
+            tar_stream.seek(0)
+            
+            # 3. Put Archive
+            # extracts into 'dirname'
+            container.put_archive(path=dirname, data=tar_stream)
                 
             return {"status": "success"}
             
@@ -552,34 +755,47 @@ class DockerManager:
             if start_command:
                 start_cmd = start_command
             else:
-                start_cmd = "npm start" # Default
-                
-                # Check for package.json
-                exit_code, output = container.exec_run("cat package.json", workdir="/app")
+                start_cmd = "npm start" # DefaultFallback
+
+                # A. Check for mobile/package.json (Expo/React Native)
+                exit_code, output = container.exec_run("cat mobile/package.json", workdir="/app")
+                is_expo = False
                 if exit_code == 0:
-                    import json
                     try:
                         pkg = json.loads(output.decode('utf-8'))
-                        if "scripts" in pkg and "dev" in pkg["scripts"]:
-                            start_cmd = "npm run dev"
-                        elif "scripts" in pkg and "start" in pkg["scripts"]:
-                            start_cmd = "npm start"
-                    except:
-                        pass
-                else:
-                    # Check for python
-                    exit_code, _ = container.exec_run("ls app.py", workdir="/app")
+                        if "dependencies" in pkg and "expo" in pkg["dependencies"]:
+                            is_expo = True
+                            # Enforce Web port 3000 for consistency
+                            start_cmd = "cd mobile && npx expo start --web --port 3000"
+                    except: pass
+                
+                if not is_expo:
+                    # B. Check for root package.json
+                    exit_code, output = container.exec_run("cat package.json", workdir="/app")
                     if exit_code == 0:
-                        start_cmd = "python app.py"
+                        import json
+                        try:
+                            pkg = json.loads(output.decode('utf-8'))
+                            if "scripts" in pkg and "dev" in pkg["scripts"]:
+                                start_cmd = "npm run dev"
+                            elif "scripts" in pkg and "start" in pkg["scripts"]:
+                                start_cmd = "npm start"
+                        except:
+                            pass
                     else:
-                        exit_code, _ = container.exec_run("ls main.py", workdir="/app")
+                        # C. Check for python
+                        exit_code, _ = container.exec_run("ls app.py", workdir="/app")
                         if exit_code == 0:
-                            start_cmd = "python main.py"
+                            start_cmd = "python app.py"
                         else:
-                            # Flask specific check
-                            exit_code, _ = container.exec_run("ls wsgi.py", workdir="/app")
+                            exit_code, _ = container.exec_run("ls main.py", workdir="/app")
                             if exit_code == 0:
-                                start_cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
+                                start_cmd = "python main.py"
+                            else:
+                                # Flask specific check
+                                exit_code, _ = container.exec_run("ls wsgi.py", workdir="/app")
+                                if exit_code == 0:
+                                    start_cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
 
             print(f"Starting server with command: {start_cmd}")
 
@@ -687,34 +903,51 @@ class DockerManager:
                 return {"error": "Container not running"}
 
             log_file = f"/tmp/{alias}.log"
-            
-            # 1. Update/Read State File
             state_file = "/tmp/process_manager.json"
-            # Ensure state file exists
-            container.exec_run(f"bash -c \"if [ ! -f {state_file} ]; then echo '{{}}' > {state_file}; fi\"", workdir="/app")
             
-            # Check if alias exists
-            cat_cmd = f"cat {state_file}"
-            exit_code, output = container.exec_run(cat_cmd, workdir="/app")
+            # 1. Ensure State File Exists (Atomic-ish)
+            # We use a single bash command to create if missing
+            container.exec_run(f"bash -c \"[ ! -f {state_file} ] && echo '{{}}' > {state_file}\"", workdir="/app")
+            
+            # 2. Check overlap
+            exit_code, output = container.exec_run(f"cat {state_file}", workdir="/app")
             import json
             state = {}
             if exit_code == 0:
                  try:
                     state = json.loads(output.decode('utf-8'))
                  except:
-                    pass
+                    # corrupted, reset
+                    state = {}
+            
+            if state is None:
+                state = {}
             
             if alias in state:
-                # Check if running
                 pid = state[alias]
-                exit_code, _ = container.exec_run(f"ps -p {pid}", workdir="/app")
-                if exit_code == 0:
+                # Check if actually running
+                check_exit, _ = container.exec_run(f"ps -p {pid}", workdir="/app")
+                if check_exit == 0:
                      return {"error": f"Process '{alias}' is already running (PID: {pid}). Stop it first."}
+                else:
+                    # Stale entry, cleanup
+                    del state[alias]
             
-            # 2. Run Command
-            # Sanitize command for shell
+            # 3. Run Command
+            # We explicitly use setsid or nohup to ensure it doesn't die with the shell
+            # We also capture EXIT CODE to a file so we can check success/failure later
+            exit_file = f"/tmp/{alias}.exit"
             sanitized_cmd = command.replace("'", "'\\''") 
-            full_cmd = f"nohup bash -c '{sanitized_cmd}' > {log_file} 2>&1 & echo $!"
+            
+            # Complex Command:
+            # 1. Run sanitized command
+            # 2. Capture exit code of that command
+            # 3. Write exit code to file
+            # All wrapped in a subshell, redirected to log, detached.
+            # We ensure stdin is silenced (< /dev/null)
+            
+            wrapper = f"{{ {sanitized_cmd}; echo $? > {exit_file}; }}"
+            full_cmd = f"nohup bash -c '{wrapper}' > {log_file} 2>&1 < /dev/null & echo $!"
             
             exit_code, output = container.exec_run(
                 ["bash", "-c", full_cmd],
@@ -723,10 +956,16 @@ class DockerManager:
             
             if exit_code != 0:
                  return {"error": f"Failed to start process: {output.decode('utf-8')}"}
-                 
-            pid = output.decode('utf-8').strip()
             
-            # 3. Save State
+            # Robust Parsing: Take the last non-empty line as PID
+            raw_output = output.decode('utf-8').strip()
+            lines = raw_output.splitlines()
+            pid = lines[-1].strip() if lines else ""
+            
+            if not pid.isdigit():
+                 return {"error": f"Failed to get PID. Raw Output: '{raw_output}'"}
+            
+            # 4. Save State
             state[alias] = pid
             save_cmd = f"echo '{json.dumps(state)}' > {state_file}"
             container.exec_run(["bash", "-c", save_cmd], workdir="/app")
@@ -736,7 +975,7 @@ class DockerManager:
                 "alias": alias, 
                 "pid": pid, 
                 "log_file": log_file,
-                "message": f"Verified process started with PID {pid}. Logs at {log_file}."
+                "message": f"Process started with PID {pid}."
             }
             
         except Exception as e:
