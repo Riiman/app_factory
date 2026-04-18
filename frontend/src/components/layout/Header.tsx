@@ -37,7 +37,7 @@ const Header: FC = () => {
               <div className={`absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black ring-opacity-5 transform transition-all duration-200 origin-top-right ${isDropdownOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
                 <div className="p-2 space-y-1">
                   <Link to="/signup" className="block px-4 py-3 rounded-lg hover:bg-indigo-50 transition-colors">
-                    <p className="text-sm font-semibold text-gray-900">For Startups</p>
+                    <p className="text-sm font-semibold text-gray-900">For Ventures</p>
                     <p className="text-xs text-gray-500 mt-0.5">Build and grow your company</p>
                   </Link>
                   <Link to="/org/signup" className="block px-4 py-3 rounded-lg hover:bg-indigo-50 transition-colors">

@@ -148,7 +148,7 @@ const CreateJobWizard: React.FC<CreateJobWizardProps> = ({ isOpen, onClose, star
                                     onChange={e => setFormData({ ...formData, keywords: e.target.value })}
                                     rows={3}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-3 border"
-                                    placeholder="React, TypeScript, Node.js, AWS, Startup Experience..."
+                                    placeholder="React, TypeScript, Node.js, AWS, Venture Experience..."
                                 />
                             </div>
 

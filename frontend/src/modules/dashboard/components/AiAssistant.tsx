@@ -22,7 +22,7 @@ interface AiAssistantProps {
 const AiAssistant: React.FC<AiAssistantProps> = ({ startupId, variant = 'floating' }) => {
     const [isOpen, setIsOpen] = useState(variant === 'embedded');
     const [messages, setMessages] = useState<Message[]>([
-        { role: 'assistant', content: 'Hi! I can help you analyze your startup data. Ask me about your financials, products, or marketing campaigns.' }
+        { role: 'assistant', content: 'Hi! I can help you analyze your venture data. Ask me about your financials, products, or marketing campaigns.' }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +71,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ startupId, variant = 'floatin
                 <div className="p-4 flex justify-between items-center text-gray-800 shrink-0 border-b border-gray-200 bg-white">
                     <div className="flex items-center gap-2">
                         <Bot size={24} className="text-blue-600" />
-                        <span className="font-medium text-lg">Startup Assistant</span>
+                        <span className="font-medium text-lg">Venture Assistant</span>
                     </div>
                 </div>
 
@@ -158,7 +158,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ startupId, variant = 'floatin
                     <div className="bg-blue-600 p-3 flex justify-between items-center text-white">
                         <div className="flex items-center gap-2">
                             <Bot size={20} />
-                            <span className="font-medium">Startup Assistant</span>
+                            <span className="font-medium">Venture Assistant</span>
                         </div>
                         <button onClick={() => setIsOpen(false)} className="hover:bg-blue-700 p-1 rounded transition-colors">
                             <X size={18} />

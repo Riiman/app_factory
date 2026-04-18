@@ -142,7 +142,7 @@ const InvestorDatabasePage: React.FC<InvestorDatabasePageProps> = ({ startupId }
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Investor Database</h1>
                     <p className="text-gray-500 mt-1">
-                        Browse and find investors for your startup.
+                        Browse and find investors for your venture.
                         {activeTab === 'browse' && totalCount > 0 && <span className="ml-1">({totalCount.toLocaleString()} total)</span>}
                     </p>
                 </div>
@@ -365,7 +365,7 @@ const InvestorDatabasePage: React.FC<InvestorDatabasePageProps> = ({ startupId }
                             <h3 className="text-sm font-medium text-blue-800">About Recommendations</h3>
                             <p className="text-sm text-blue-700 mt-1">
                                 We match investors based on your sector, stage, location, and check size preferences.
-                                Complete your startup profile to get better recommendations.
+                                Complete your venture profile to get better recommendations.
                             </p>
                         </div>
                     </div>
@@ -507,7 +507,7 @@ const InvestorDatabasePage: React.FC<InvestorDatabasePageProps> = ({ startupId }
 
                             {recommendedData?.length === 0 && (
                                 <div className="col-span-full text-center py-12 bg-white rounded-lg border border-dashed border-gray-300">
-                                    <p className="text-gray-500">No recommendations found yet. Try completing your startup profile.</p>
+                                    <p className="text-gray-500">No recommendations found yet. Try completing your venture profile.</p>
                                 </div>
                             )}
                         </div>

@@ -85,7 +85,7 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
     } else {
       setContractContent('');
     }
-  }, [selectedStartup?.id, selectedStartup?.contract?.content]); // Reset when startup or content changes
+  }, [selectedStartup?.id, selectedStartup?.contract?.content]); // Reset when venture or content changes
 
   const handleSaveContract = async () => {
     if (selectedStartup && contractContent) {
@@ -102,11 +102,11 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
   };
 
   useEffect(() => {
-    // If no startup is selected, default to the first one
+    // If no venture is selected, default to the first one
     if (!selectedStartupId && startupsInContract.length > 0) {
       setSelectedStartupId(startupsInContract[0].id);
     }
-    // If selected startup disappears (e.g. stage changed), clear or reselect
+    // If selected venture disappears (e.g. stage changed), clear or reselect
     else if (selectedStartupId && !startupsInContract.find(s => s.id === selectedStartupId)) {
       setSelectedStartupId(startupsInContract.length > 0 ? startupsInContract[0].id : null);
     }
@@ -406,8 +406,8 @@ const ContractView: React.FC<ContractViewProps> = ({ startupsInContract, onUpdat
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
                 <FileText className="mx-auto h-12 w-12 text-slate-400" />
-                <h2 className="mt-4 text-xl font-semibold">Select a Startup for Contract Management</h2>
-                <p className="text-brand-text-secondary mt-1">Choose a startup from the list to manage its incubator contract.</p>
+                <h2 className="mt-4 text-xl font-semibold">Select a Venture for Contract Management</h2>
+                <p className="text-brand-text-secondary mt-1">Choose a venture from the list to manage its incubator contract.</p>
               </div>
             </div>
           )}

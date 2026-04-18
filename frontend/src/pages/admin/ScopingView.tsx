@@ -33,7 +33,7 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
   const [isEditingScope, setIsEditingScope] = useState(false);
   const [activeTab, setActiveTab] = useState<'product' | 'gtm'>('product');
 
-  // Sync editor content when selected startup changes
+  // Sync editor content when selected venture changes
   useEffect(() => {
     if (selectedStartup?.scope_document) {
       try {
@@ -73,11 +73,11 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
   };
 
   useEffect(() => {
-    // If no startup is selected, default to the first one
+    // If no venture is selected, default to the first one
     if (!selectedStartupId && startupsInScoping.length > 0) {
       setSelectedStartupId(startupsInScoping[0].id);
     }
-    // If selected startup disappears (e.g. stage changed), clear or reselect
+    // If selected venture disappears (e.g. stage changed), clear or reselect
     else if (selectedStartupId && !startupsInScoping.find(s => s.id === selectedStartupId)) {
       setSelectedStartupId(startupsInScoping.length > 0 ? startupsInScoping[0].id : null);
     }
@@ -412,8 +412,8 @@ const ScopingView: React.FC<ScopingViewProps> = ({ startupsInScoping, onUpdateSc
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
                 <FileSignature className="mx-auto h-12 w-12 text-slate-400" />
-                <h2 className="mt-4 text-xl font-semibold">Select a Startup for Scoping</h2>
-                <p className="text-brand-text-secondary mt-1">Choose a startup from the list to define its scope of engagement.</p>
+                <h2 className="mt-4 text-xl font-semibold">Select a Venture for Scoping</h2>
+                <p className="text-brand-text-secondary mt-1">Choose a venture from the list to define its scope of engagement.</p>
               </div>
             </div>
           )}

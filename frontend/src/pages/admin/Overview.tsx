@@ -49,7 +49,7 @@ const Overview: React.FC<OverviewProps> = ({ startups, submissions, activity, no
         refetchInterval: 60000, // Refresh every minute
     });
 
-    // Fetch startup rankings
+    // Fetch venture rankings
     const { data: rankingsData } = useQuery({
         queryKey: ['adminRankings'],
         queryFn: async () => {
@@ -94,7 +94,7 @@ const Overview: React.FC<OverviewProps> = ({ startups, submissions, activity, no
 
             {/* Workflow Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <StatCard icon={<Briefcase size={20} />} label="Active Startups" value={activeStartupsCount} />
+                <StatCard icon={<Briefcase size={20} />} label="Active Ventures" value={activeStartupsCount} />
                 <StatCard icon={<Inbox size={20} />} label="Pending Submissions" value={pendingSubmissionsCount} />
                 <StatCard icon={<FileClock size={20} />} label="In Review" value={inReviewCount} />
             </div>
@@ -110,7 +110,7 @@ const Overview: React.FC<OverviewProps> = ({ startups, submissions, activity, no
                             title="Total Revenue"
                             value={formatCurrency(portfolioData.total_revenue)}
                             icon={<DollarSign className="h-6 w-6" />}
-                            subtitle={`Across ${portfolioData.total_startups} startups`}
+                            subtitle={`Across ${portfolioData.total_startups} ventures`}
                         />
                         <MetricCard
                             title="Total Burn Rate"
@@ -134,21 +134,21 @@ const Overview: React.FC<OverviewProps> = ({ startups, submissions, activity, no
 
                     {/* Portfolio Health */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        <Card title="Healthy Startups" className="bg-green-50 border-green-200">
+                        <Card title="Healthy Ventures" className="bg-green-50 border-green-200">
                             <div className="flex items-center justify-between">
                                 <div className="text-4xl font-bold text-green-600">{portfolioData.healthy_startups}</div>
                                 <TrendingUp className="h-12 w-12 text-green-400" />
                             </div>
                             <p className="text-sm text-gray-600 mt-2">On track, no critical issues</p>
                         </Card>
-                        <Card title="Warning Startups" className="bg-yellow-50 border-yellow-200">
+                        <Card title="Warning Ventures" className="bg-yellow-50 border-yellow-200">
                             <div className="flex items-center justify-between">
                                 <div className="text-4xl font-bold text-yellow-600">{portfolioData.warning_startups}</div>
                                 <AlertTriangle className="h-12 w-12 text-yellow-400" />
                             </div>
                             <p className="text-sm text-gray-600 mt-2">Needs attention</p>
                         </Card>
-                        <Card title="Critical Startups" className="bg-red-50 border-red-200">
+                        <Card title="Critical Ventures" className="bg-red-50 border-red-200">
                             <div className="flex items-center justify-between">
                                 <div className="text-4xl font-bold text-red-600">{portfolioData.critical_startups}</div>
                                 <TrendingDown className="h-12 w-12 text-red-400" />
@@ -161,7 +161,7 @@ const Overview: React.FC<OverviewProps> = ({ startups, submissions, activity, no
 
             {/* Charts and Feeds */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <Card title="Active Startup Stage Distribution" className="lg:col-span-2">
+                <Card title="Active Venture Stage Distribution" className="lg:col-span-2">
                     <StartupStagePieChart startups={startups} />
                 </Card>
                 <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 flex flex-col">

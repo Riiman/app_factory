@@ -1,7 +1,7 @@
 /**
  * @file Header.tsx
  * @description The main header component for the application.
- * It displays the startup's name and current stage, and contains global action buttons
+ * It displays the venture's name and current stage, and contains global action buttons
  * like the "Create" button and a user profile button.
  */
 
@@ -16,9 +16,9 @@ import UserProfileMenu from './UserProfileMenu';
  * @interface HeaderProps
  */
 interface HeaderProps {
-    /** The name of the startup to display. */
+    /** The name of the venture to display. */
     startupName: string;
-    /** The current stage of the startup (e.g., 'Seed'). */
+    /** The current stage of the venture (e.g., 'Seed'). */
     currentStage: string;
     /** The current logo URL */
     logoUrl?: string;

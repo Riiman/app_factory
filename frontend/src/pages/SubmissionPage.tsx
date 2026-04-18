@@ -111,10 +111,10 @@ const SubmissionPage = () => {
                         onSendMessage={() => handleSendMessage({ preventDefault: () => { } } as any)}
                         isLoading={isChatLoading}
                         isTyping={isChatLoading}
-                        placeholder="Describe your startup idea..."
+                        placeholder="Describe your venture idea..."
                         emptyStateMessage={
                             <div className="text-center">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Let's build your startup!</h2>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Let's build your venture!</h2>
                                 <p className="text-gray-600">Tell me about your idea, and I'll help you create a plan.</p>
                             </div>
                         }
@@ -155,7 +155,7 @@ const SubmissionPage = () => {
                                     <FileText className="w-8 h-8 text-brand-200" />
                                 </div>
                                 <p className="text-gray-900 font-medium">No details yet</p>
-                                <p className="text-sm text-gray-500 mt-1 max-w-[200px]">As you chat, extracted details about your startup will appear here.</p>
+                                <p className="text-sm text-gray-500 mt-1 max-w-[200px]">As you chat, extracted details about your venture will appear here.</p>
                             </div>
                         )}
                     </div>

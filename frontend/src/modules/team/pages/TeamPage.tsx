@@ -40,7 +40,7 @@ const TeamPage: React.FC<TeamPageProps> = ({ startupId }) => {
                         Team
                     </h1>
                     <p className="mt-1 text-sm text-gray-500">
-                        Manage who has access to your startup dashboard and their permissions.
+                        Manage who has access to your venture dashboard and their permissions.
                     </p>
                 </div>
                 <div className="mt-4 flex sm:mt-0 sm:ml-4">

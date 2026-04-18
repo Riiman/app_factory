@@ -81,7 +81,7 @@ const AssetGenerationModal: React.FC<AssetGenerationModalProps> = ({ isOpen, onC
                                         className="text-lg font-medium leading-6 text-gray-900 flex items-center"
                                     >
                                         <Sparkles className="h-5 w-5 text-purple-600 mr-2" />
-                                        Generate Startup Assets
+                                        Generate Venture Assets
                                     </Dialog.Title>
                                     <button onClick={handleClose} className="text-gray-400 hover:text-gray-500">
                                         <X className="h-5 w-5" />

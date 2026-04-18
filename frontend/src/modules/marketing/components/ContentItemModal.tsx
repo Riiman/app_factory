@@ -20,7 +20,7 @@ interface ContentItemModalProps {
     onSave: (contentData: Partial<MarketingContentItem>, campaignId?: number) => Promise<void>;
     /** The content item to edit. If null/undefined, mode is "Create". */
     item?: MarketingContentItem | null;
-    /** The ID of the startup. */
+    /** The ID of the venture. */
     startupId: number;
     /** List of available channels for this campaign. Required if not selecting campaign. */
     availableChannels?: string[];

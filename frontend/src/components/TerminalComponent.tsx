@@ -46,7 +46,7 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ startupId }) => {
         socketRef.current = socket;
 
         socket.onopen = () => {
-            term.write('\r\n\x1b[32mConnected to Startup Environment\x1b[0m\r\n');
+            term.write('\r\n\x1b[32mConnected to Venture Environment\x1b[0m\r\n');
         };
 
         socket.onclose = () => {

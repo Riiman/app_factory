@@ -31,7 +31,7 @@ interface CreateArtifactModalProps {
     defaultScope?: Scope;
     /** Optional default linked entity ID to pre-select. */
     defaultLinkedToId?: number;
-    /** Startup ID for file uploads */
+    /** Venture ID for file uploads */
     startupId: number;
 }
 

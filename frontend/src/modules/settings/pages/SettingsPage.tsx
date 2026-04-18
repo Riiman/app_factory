@@ -1,7 +1,7 @@
 /**
  * @file SettingsPage.tsx
  * @description This page component provides an interface for users to manage their
- * startup's high-level settings. It includes sections for general information
+ * venture's high-level settings. It includes sections for general information
  * and sensitive, potentially destructive actions.
  */
 
@@ -15,21 +15,21 @@ import LogoUpload from '@/components/common/LogoUpload';
  * @interface SettingsPageProps
  */
 interface SettingsPageProps {
-    /** The startup ID */
+    /** The venture ID */
     startupId: number;
-    /** The current name of the startup. */
+    /** The current name of the venture. */
     startupName: string;
-    /** The current URL slug for the startup. */
+    /** The current URL slug for the venture. */
     startupSlug: string;
-    /** The current next milestone for the startup. */
+    /** The current next milestone for the venture. */
     nextMilestone: string;
     /** The current logo URL */
     logoUrl?: string;
     /**
      * Callback function to save the updated settings.
      * @param {object} settings - An object containing the new settings.
-     * @param {string} settings.name - The updated startup name.
-     * @param {string} settings.slug - The updated startup slug.
+     * @param {string} settings.name - The updated venture name.
+     * @param {string} settings.slug - The updated venture slug.
      * @param {string} settings.next_milestone - The updated next milestone.
      */
     onSave: (settings: { name: string; slug: string; next_milestone: string }) => void;
@@ -55,14 +55,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupId, startupName, sta
     };
 
     const handleDeactivate = () => {
-        if (window.confirm('Are you sure you want to deactivate this startup? This action can be undone.')) {
-            alert('Startup deactivated.');
+        if (window.confirm('Are you sure you want to deactivate this venture? This action can be undone.')) {
+            alert('Venture deactivated.');
         }
     };
 
     const handleDelete = () => {
-        if (window.confirm('Are you sure you want to permanently delete this startup? This action CANNOT be undone.')) {
-            alert('Startup deleted permanently.');
+        if (window.confirm('Are you sure you want to permanently delete this venture? This action CANNOT be undone.')) {
+            alert('Venture deleted permanently.');
         }
     };
 
@@ -70,14 +70,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupId, startupName, sta
         <div className="max-w-4xl mx-auto space-y-8">
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-                <p className="mt-1 text-sm text-gray-600">Manage your startup's core information and settings.</p>
+                <p className="mt-1 text-sm text-gray-600">Manage your venture's core information and settings.</p>
             </div>
 
             <Card>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 flex flex-col md:flex-row gap-8">
                         <div className="flex-shrink-0">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Startup Logo</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Venture Logo</label>
                             <LogoUpload
                                 startupId={startupId}
                                 currentLogoUrl={logoUrl}
@@ -87,7 +87,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupId, startupName, sta
 
                         <div className="flex-1 space-y-6">
                             <div>
-                                <label htmlFor="startup-name" className="block text-sm font-medium text-gray-700">Startup Name</label>
+                                <label htmlFor="startup-name" className="block text-sm font-medium text-gray-700">Venture Name</label>
                                 <input type="text" id="startup-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm" />
                             </div>
                             {/* Slug editing moved to Admin Dashboard */}
@@ -130,7 +130,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ startupId, startupName, sta
                             onClick={handleDelete}
                             type="button"
                             className="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-white font-medium hover:bg-red-700 sm:text-sm">
-                            Delete Startup Permanently
+                            Delete Venture Permanently
                         </button>
                     </div>
                 </div>

@@ -101,7 +101,7 @@ export const mockEvaluations: Evaluation[] = [
       solutionAnalysis: { "Value Prop": "All-in-one platform", "AI Integration": "Key feature" },
       marketAnalysis: { "Market": "Extremely crowded", "Target Niche": "AI/ML developers" },
       growthAnalysis: { "Go-to-Market": "Open-source core, pro features", "Community": "Essential for success" },
-      competitorAnalysis: { "Giants": "Microsoft (VS Code), JetBrains", "Startups": "Cursor, Replit" },
+      competitorAnalysis: { "Giants": "Microsoft (VS Code), JetBrains", "Ventures": "Cursor, Replit" },
       risksAnalysis: { "Competition": "Very High", "Execution": "Massive scope" },
       overallScore: 7.2,
       finalDecision: 'Pending',

@@ -151,12 +151,12 @@ class Api {
     return this.post(`/submissions/${submissionId}/submit`, {});
   }
 
-  // --- Startup Data ---
+  // --- Venture Data ---
   async getStartupData(startupId: number) {
     const response = await this.fetch(`/startups/${startupId}`);
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to fetch startup data');
+      throw new Error(errorData.error || 'Failed to fetch venture data');
     }
     const data = await response.json();
     return data.startup;
@@ -426,7 +426,7 @@ class Api {
     return this.post(`/admin/contract/${startupId}/comments`, { text });
   }
 
-  // --- Startup Dashboard Create/Update Endpoints ---
+  // --- Venture Dashboard Create/Update Endpoints ---
 
   async createTask(startupId: number, data: any) {
     const response = await this.post(`/startups/${startupId}/tasks`, data);

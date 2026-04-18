@@ -1,7 +1,7 @@
 /**
  * @file ProductMetricsPage.tsx
  * @description This page provides a global, aggregated view of all product metrics
- * from all products within the startup. It presents the information in a clear,
+ * from all products within the venture. It presents the information in a clear,
  * sortable table for easy comparison and analysis.
  */
 

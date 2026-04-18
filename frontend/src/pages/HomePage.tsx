@@ -94,7 +94,7 @@ const HomePage: FC = () => {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-6">
-              Startups Don’t Fail from Lack of Tools — <br className="hidden lg:block" />They Fail Between Them
+              Ventures Don’t Fail from Lack of Tools — <br className="hidden lg:block" />They Fail Between Them
             </h2>
           </div>
           <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -123,7 +123,7 @@ const HomePage: FC = () => {
                 Most Platforms Are Smart in Silos — Blind as a Whole
               </h2>
               <p className="text-lg text-slate-600">
-                Modern startup platforms give insights inside individual sections:
+                Modern venture platforms give insights inside individual sections:
               </p>
               <ul className="space-y-3">
                 {['Product tools know features', 'Marketing tools know campaigns', 'Finance tools know numbers'].map((item, i) => (
@@ -137,7 +137,7 @@ const HomePage: FC = () => {
                 But no system understands how everything connects.
               </p>
               <div className="font-semibold text-slate-900">
-                Startups don’t fail inside modules. They fail between product, growth, sales, and finance.
+                Ventures don’t fail inside modules. They fail between product, growth, sales, and finance.
               </div>
             </div>
             <div className="order-1 lg:order-2 bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm aspect-video relative">
@@ -286,7 +286,7 @@ const HomePage: FC = () => {
                   gradient="from-indigo-600 to-blue-800"
                   listItems={[
                     "Real-time portfolio visibility",
-                    "Structured startup lifecycle management",
+                    "Structured venture lifecycle management",
                     "Direct interventions without micromanagement"
                   ]}
                 />
@@ -319,7 +319,7 @@ const HomePage: FC = () => {
             {[
               { q: "VentureStack gives us the visibility we never had.", a: "Incubator Manager", r: "TechStars Alumni" },
               { q: "Finally, one place to run my entire company.", a: "Founder, Series A", r: "YCombinator Batch" },
-              { q: "The AI insights actually saved us from a bad hire.", a: "Co-Founder", r: "SaaS Startup" }
+              { q: "The AI insights actually saved us from a bad hire.", a: "Co-Founder", r: "SaaS Venture" }
             ].map((t, i) => (
               <div key={i} className="p-8 bg-slate-50 rounded-2xl border border-slate-100 text-left">
                 <Quote className="w-8 h-8 text-brand-200 mb-4" />

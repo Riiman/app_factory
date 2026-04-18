@@ -96,7 +96,7 @@ export const startupData: Startup = {
     { id: 1, startup_id: 1, scope: Scope.FUNDRAISING, name: 'Seed Pitch Deck v3', description: 'Final version for the current seed round.', type: ArtifactType.FILE, location: '/path/to/deck.pdf', linked_to_id: 1, linked_to_type: 'FundingRound', created_at: '2024-07-19T00:00:00Z' },
     { id: 2, startup_id: 1, scope: Scope.FUNDRAISING, name: 'Q3 Financial Model', description: 'Excel sheet with financial projections.', type: ArtifactType.FILE, location: '/path/to/model.xlsx', linked_to_id: 1, linked_to_type: 'FundingRound', created_at: '2024-07-19T00:00:00Z' },
     { id: 3, startup_id: 1, scope: Scope.PRODUCT, name: 'Mobile App Wireframes', description: 'Figma link to the latest wireframes.', type: ArtifactType.LINK, location: 'https://www.figma.com/file/xyz', linked_to_id: 2, linked_to_type: 'Product', created_at: '2024-06-15T00:00:00Z' },
-    { id: 4, startup_id: 1, scope: Scope.MARKETING, name: 'Final Ad Copy', description: 'Approved ad copy for Q3 Social Push', type: ArtifactType.TEXT, location: 'Grow your startup with StartupOS...', linked_to_id: 1, linked_to_type: 'MarketingCampaign', created_at: '2024-07-20T00:00:00Z' },
+    { id: 4, startup_id: 1, scope: Scope.MARKETING, name: 'Final Ad Copy', description: 'Approved ad copy for Q3 Social Push', type: ArtifactType.TEXT, location: 'Grow your venture with StartupOS...', linked_to_id: 1, linked_to_type: 'MarketingCampaign', created_at: '2024-07-20T00:00:00Z' },
   ],
 
   business_overview: {
@@ -132,7 +132,7 @@ export const startupData: Startup = {
   ],
 
   marketing_overview: {
-    marketing_id: 1, startup_id: 1, positioning_statement: 'The intelligent operating system for early-stage startups.'
+    marketing_id: 1, startup_id: 1, positioning_statement: 'The intelligent operating system for early-stage ventures.'
   },
   
   marketing_campaigns: [
@@ -143,7 +143,7 @@ export const startupData: Startup = {
       startup_id: 1, 
       scope: 'overall', 
       campaign_name: 'August 2024 Content Marketing Initiative', 
-      objective: 'Establish thought leadership in the startup ecosystem.', 
+      objective: 'Establish thought leadership in the venture ecosystem.', 
       channel: 'Blog, Newsletter', 
       start_date: '2024-08-01', 
       end_date: '2024-08-31',
@@ -163,7 +163,7 @@ export const startupData: Startup = {
         created_at: '2024-07-20T00:00:00Z',
         content_items: [
           { content_id: 1, calendar_id: 1, title: 'How to Build Your First Pitch Deck', content_type: 'Blog Post', content_body: '...', channel: 'Blog', publish_date: '2024-08-05', status: MarketingContentStatus.DRAFT, created_by: 1, created_at: '2024-07-21T00:00:00Z' },
-          { content_id: 2, calendar_id: 1, title: 'Top 5 Metrics for Pre-Seed Startups', content_type: 'Blog Post', content_body: '...', channel: 'Blog', publish_date: '2024-08-12', status: MarketingContentStatus.PLANNED, created_by: 1, created_at: '2024-07-21T00:00:00Z' },
+          { content_id: 2, calendar_id: 1, title: 'Top 5 Metrics for Pre-Seed Ventures', content_type: 'Blog Post', content_body: '...', channel: 'Blog', publish_date: '2024-08-12', status: MarketingContentStatus.PLANNED, created_by: 1, created_at: '2024-07-21T00:00:00Z' },
           { content_id: 3, calendar_id: 1, title: 'Weekly Roundup Newsletter - August 16', content_type: 'Newsletter', content_body: '...', channel: 'Email', publish_date: '2024-08-16', status: MarketingContentStatus.PLANNED, created_by: 1, created_at: '2024-07-21T00:00:00Z' },
         ]
       }

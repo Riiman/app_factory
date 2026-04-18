@@ -1,6 +1,6 @@
 /**
  * @file ProductListPage.tsx
- * @description This page displays a list of all products associated with the startup.
+ * @description This page displays a list of all products associated with the venture.
  * Each product is shown in a card format, which is clickable to navigate to the
  * product's detail page. It also includes a button to add a new product.
  */

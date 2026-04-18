@@ -146,7 +146,7 @@ const LogoUpload: React.FC<LogoUploadProps> = ({
                         <img
                             src={api.getAssetUrl(previewUrl)}
                             onError={handleImageError}
-                            alt="Startup logo"
+                            alt="Venture logo"
                             className="w-full h-full object-contain"
                         />
                     ) : (

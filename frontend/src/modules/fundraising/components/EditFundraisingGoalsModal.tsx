@@ -1,6 +1,6 @@
 /**
  * @file EditFundraisingGoalsModal.tsx
- * @description A modal component for editing a startup's fundraising details and next funding goals.
+ * @description A modal component for editing a venture's fundraising details and next funding goals.
  */
 
 import React, { useState, useEffect } from 'react';

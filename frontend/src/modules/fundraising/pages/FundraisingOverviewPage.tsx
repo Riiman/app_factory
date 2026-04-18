@@ -1,6 +1,6 @@
 /**
  * @file FundraisingOverviewPage.tsx
- * @description This page serves as a high-level dashboard for the startup's fundraising efforts.
+ * @description This page serves as a high-level dashboard for the venture's fundraising efforts.
  * It displays the current funding stage, total amount raised, and the specific goals for the next round.
  */
 

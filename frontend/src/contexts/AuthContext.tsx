@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         setStartupStage(startupData.current_stage);
                         setStartupSlug(startupData.slug); // Set startupSlug
                     } catch (err) {
-                        console.error("Failed to fetch startup stage:", err);
+                        console.error("Failed to fetch venture stage:", err);
                     }
                 }
             } else if (data.requires_signup || data.requires_organization) {

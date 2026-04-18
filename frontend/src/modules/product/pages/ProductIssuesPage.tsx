@@ -2,7 +2,7 @@
  * @file ProductIssuesPage.tsx
  * @description This page provides a global, aggregated view of all issues and feedback
  * items from all products. It allows for easy tracking and prioritization of product
- * improvements across the entire startup.
+ * improvements across the entire venture.
  */
 
 import React from 'react';

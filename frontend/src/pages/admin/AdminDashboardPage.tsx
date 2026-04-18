@@ -209,11 +209,11 @@ const AdminDashboardPage: React.FC = () => {
             break;
 
           case 'product_generated':
-            handleEvent('Product Gen', data, "Product generated for startup!", "Failed to generate product.");
+            handleEvent('Product Gen', data, "Product generated for venture!", "Failed to generate product.");
             break;
 
           case 'campaigns_generated':
-            handleEvent('Campaigns Gen', data, "Marketing campaigns generated for startup!", "Failed to generate campaigns.");
+            handleEvent('Campaigns Gen', data, "Marketing campaigns generated for venture!", "Failed to generate campaigns.");
             break;
 
           case 'submission_submitted':
@@ -249,11 +249,11 @@ const AdminDashboardPage: React.FC = () => {
 
               let updatedStartups = oldData.startups;
 
-              // If we received a new startup (e.g. on approval), add it to the list
+              // If we received a new venture (e.g. on approval), add it to the list
               if (data.startup) {
                 // Check if it already exists to avoid duplicates
                 if (!oldData.startups.find((s: Startup) => s.id === data.startup.id)) {
-                  // Manually link submission to startup for consistency
+                  // Manually link submission to venture for consistency
                   const newStartup = {
                     ...data.startup,
                     submission: updatedSubmissions.find((s: Submission) => s.id === data.submission_id)
@@ -275,7 +275,7 @@ const AdminDashboardPage: React.FC = () => {
             break;
 
           case 'scope_accepted':
-            // Update the specific startup's scope document status in the cache
+            // Update the specific venture's scope document status in the cache
             queryClient.setQueryData(['adminData'], (oldData: any) => {
               if (!oldData) return oldData;
               return {
@@ -320,14 +320,14 @@ const AdminDashboardPage: React.FC = () => {
           case 'contract_accepted':
           case 'contract_updated':
           case 'contract_signed':
-            // Update the specific startup's contract in the cache
+            // Update the specific venture's contract in the cache
             queryClient.setQueryData(['adminData'], (oldData: any) => {
               if (!oldData) return oldData;
               return {
                 ...oldData,
                 startups: oldData.startups.map((s: Startup) => {
                   if (s.id === data.startup_id) {
-                    // For contract_signed, we might also need to update startup stage if it changed
+                    // For contract_signed, we might also need to update venture stage if it changed
                     const updatedStartup = { ...s, contract: data.contract };
                     if (type === 'contract_signed') {
                       // Assuming the backend handles the stage transition, but if the WS sends it, we should use it.
@@ -484,7 +484,7 @@ const AdminDashboardPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['adminData'] });
     } catch (err) {
       console.error("Failed to activate startup:", err);
-      alert("Failed to activate startup.");
+      alert("Failed to activate venture.");
     }
   }, [queryClient]);
 

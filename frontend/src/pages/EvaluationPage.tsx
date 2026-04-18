@@ -16,7 +16,7 @@ const initialTasks: Task[] = [
     {
       id: '2',
       title: 'Complete Founder Bio',
-      description: 'Fill out the founder biography form. Include your background, experience, and motivation for this startup.',
+      description: 'Fill out the founder biography form. Include your background, experience, and motivation for this venture.',
       status: TaskStatus.PENDING,
       dueDate: '2024-08-18',
     },

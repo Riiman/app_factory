@@ -74,7 +74,7 @@ const StartupDetailView: React.FC<StartupDetailViewProps> = ({ startup, onBack, 
             startupId={startup.id}
             currentLogoUrl={startup.logo_url}
             size="lg"
-            editable={false} // Admin shouldn't change startup logos here
+            editable={false} // Admin shouldn't change venture logos here
             onUploadSuccess={(url) => {
               // Usually we'd update state here, but since props are managed by parent
               // and we might need to refresh, for now the preview is handled inside component
@@ -380,7 +380,7 @@ const AnalyticsTab: React.FC<{ startupId: number; startup: Startup }> = ({ start
 
   return (
     <div>
-      {/* Startup Description */}
+      {/* Venture Description */}
       {submission && (submission.problem_statement || submission.how_solves_problem) && (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
           <h3 className="text-lg font-semibold text-brand-text-primary mb-4">About {startup.name}</h3>

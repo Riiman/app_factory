@@ -145,7 +145,7 @@ const SubmissionsView: React.FC<SubmissionsViewProps> = ({ submissions, onUpdate
                     <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.how_stands_out}</p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-brand-text-primary">Startup Type</h4>
+                    <h4 className="font-semibold text-brand-text-primary">Venture Type</h4>
                     <p className="text-sm text-brand-text-secondary mt-1">{selectedDetails.startup_type}</p>
                   </div>
                 </div>

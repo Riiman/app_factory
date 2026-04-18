@@ -746,7 +746,7 @@ const StartupCodeStudio: React.FC = () => {
                     </button>
                     <h1 className="font-semibold text-lg flex items-center gap-2">
                         <Users className="w-5 h-5 text-blue-400" />
-                        Startup Code Studio <span className="text-gray-500 text-sm ml-2">ID: {id}</span>
+                        Venture Code Studio <span className="text-gray-500 text-sm ml-2">ID: {id}</span>
                     </h1>
                 </div>
                 <div className="flex items-center gap-4">

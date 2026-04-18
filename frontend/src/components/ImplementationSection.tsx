@@ -7,7 +7,7 @@ const ImplementationSection: FC = () => {
             <div className="container mx-auto px-4 max-w-6xl">
                 <div className="text-center mb-16">
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">Implementation & Timelines</h2>
-                    <p className="text-gray-600">Tailored paths for corporate innovation and startup acceleration.</p>
+                    <p className="text-gray-600">Tailored paths for corporate innovation and venture acceleration.</p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-8">

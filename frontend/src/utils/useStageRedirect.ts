@@ -35,10 +35,10 @@ export const useStageRedirect = () => {
                     break;
             }
         } else {
-            // Fallback to submission status if startup stage is not available
+            // Fallback to submission status if venture stage is not available
             switch (submissionStatus?.toUpperCase()) {
                 case 'APPROVED':
-                    // This case might lead to the dashboard if the startup object is created right after approval
+                    // This case might lead to the dashboard if the venture object is created right after approval
                     targetPath = '/dashboard';
                     break;
                 case 'DRAFT':

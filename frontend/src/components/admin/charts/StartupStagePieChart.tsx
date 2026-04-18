@@ -45,7 +45,7 @@ const StartupStagePieChart: React.FC<StartupStagePieChartProps> = ({ startups })
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-center text-sm text-slate-500">
-        <p>No active startups to display in chart.</p>
+        <p>No active ventures to display in chart.</p>
       </div>
     );
   }

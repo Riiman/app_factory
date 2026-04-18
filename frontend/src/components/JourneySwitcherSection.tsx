@@ -32,8 +32,8 @@ const JourneySwitcherSection = () => {
             borderColor: 'border-accent-200',
             pathColor: '#f97316', // accent-500
             icon: <Rocket className="w-6 h-6" />,
-            title: 'Startup Acceleration',
-            desc: 'Launch 20+ startups with a proven build-track methodology.',
+            title: 'Venture Acceleration',
+            desc: 'Launch 20+ ventures with a proven build-track methodology.',
             steps: [
                 { id: 'i1', week: 'T-Minus 2', label: 'Program Setup', sub: 'Mentor & calendar scaffolding' },
                 { id: 'i2', week: 'Week 1-6', label: 'Build & GTM Sprints', sub: 'High-velocity execution' },
