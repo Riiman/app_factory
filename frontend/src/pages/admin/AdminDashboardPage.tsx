@@ -13,12 +13,13 @@ import ContractView from './ContractView';
 import Overview from './Overview';
 import RecentActivityFeed from '@/modules/dashboard/components/RecentActivityFeed';
 import NotificationCenter from '@/modules/dashboard/components/NotificationCenter';
-import { Building2, LayoutDashboard, Inbox, FileClock, FileSignature, FileText, Briefcase, LogOut, Settings } from 'lucide-react';
+import { Building2, LayoutDashboard, Inbox, FileClock, FileSignature, FileText, Briefcase, LogOut, Settings, User as UserIcon } from 'lucide-react';
 
 import { useAuth } from '../../contexts/AuthContext';
 
-type ActiveView = 'overview' | 'submissions' | 'in-review' | 'startups' | 'settings';
+type ActiveView = 'overview' | 'submissions' | 'in-review' | 'startups' | 'settings' | 'user-settings';
 import OrgSettingsView from './OrgSettingsView';
+import UserSettingsPage from '@/modules/settings/pages/UserSettingsPage';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -546,6 +547,8 @@ const AdminDashboardPage: React.FC = () => {
         return <StartupListView startups={activeStartups} onSelectStartup={handleSelectStartup} />;
       case 'settings':
         return <OrgSettingsView />;
+      case 'user-settings':
+        return <UserSettingsPage />;
       default:
         return (
           <Overview
@@ -616,7 +619,8 @@ const AdminDashboardPage: React.FC = () => {
           <div>
             <h2 className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Management</h2>
             <ul>
-              <NavItem icon={<Settings className="mr-3 h-4 w-4" />} label="Settings" view="settings" activeView={activeView} onClick={handleViewChange} />
+              <NavItem icon={<Settings className="mr-3 h-4 w-4" />} label="Org Settings" view="settings" activeView={activeView} onClick={handleViewChange} />
+              <NavItem icon={<UserIcon className="mr-3 h-4 w-4" />} label="User Settings" view="user-settings" activeView={activeView} onClick={handleViewChange} />
             </ul>
           </div>
 
@@ -654,7 +658,8 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.ACCOUNTING]: [],
             [Scope.EMAIL]: [],
             [Scope.CHAT]: [],
-            [Scope.CRM]: []
+            [Scope.CRM]: [],
+            [Scope.RECRUITMENT]: []
           }}
         />
       )}
@@ -677,7 +682,8 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.ACCOUNTING]: [],
             [Scope.EMAIL]: [],
             [Scope.CHAT]: [],
-            [Scope.CRM]: []
+            [Scope.CRM]: [],
+            [Scope.RECRUITMENT]: []
           }}
         />
       )}
@@ -701,7 +707,8 @@ const AdminDashboardPage: React.FC = () => {
             [Scope.ACCOUNTING]: [],
             [Scope.EMAIL]: [],
             [Scope.CHAT]: [],
-            [Scope.CRM]: []
+            [Scope.CRM]: [],
+            [Scope.RECRUITMENT]: []
           }}
         />
       )}

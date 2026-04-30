@@ -47,6 +47,11 @@ A cross-functional area for operational items that span multiple pillars.
 - **Experiment Tracker:** A central repository to log, manage, and view results of business experiments.
 - **Artifacts Repository:** A global library for all important files, links, and notes, from pitch decks to ad copy.
 
+### 7. Admin Dashboard
+A separate administrative interface for managing organizations and users.
+- **Organization Settings:** Manage the organization's identity, including name, logo, and invite codes.
+- **User Settings:** Individual admins can securely manage their personal profiles and change their passwords. This ensures secure segregation of access and credentials when multiple admins manage the same organization.
+
 ## Technical Architecture
 
 The application is architected as a modern, single-page application using a component-based approach.
