@@ -304,7 +304,7 @@ def monitor_containers():
                                 from app.services.notification_service import publish_update
                                 publish_update('agent_update', {
                                     'task_status': 'paused',
-                                    'logs': ["🚨 Container Heartbeat Failed: Process Auto-Paused."]
+                                    'logs': ["Container Heartbeat Failed: Process Auto-Paused."]
                                 }, rooms=[f"startup_{s_id}"])
                             
                             last_known_status[s_id] = 'stopped'

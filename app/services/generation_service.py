@@ -131,11 +131,11 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
             print(f"--- [Generation Task] Error: Failed to decode JSON for product generation for startup ID: {startup_id}. Raw output: {product_json_str} ---")
             return
 
-        # Notify product generated
+        # Notify product generated (user only — too granular for admin)
         try:
             publish_update("product_generated", 
                            {"startup_id": startup.id, "product": product.to_dict()}, 
-                           rooms=[f"user_{startup.user_id}", "admin"])
+                           rooms=[f"user_{startup.user_id}"])
         except Exception as e:
              print(f"Error publishing product_generated event: {e}")
 
@@ -353,14 +353,14 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
         else:
             print(f"--- [Generation Task] Warning: No campaigns data to process for startup ID: {startup_id}. Raw output: {campaigns_json_str} ---")
 
-        # Notify campaigns generated
+        # Notify campaigns generated (user only — too granular for admin)
         try:
             # Re-fetch campaigns to ensure we have all data if needed, or just send a signal
             campaigns = MarketingCampaign.query.filter_by(startup_id=startup.id).all()
             if campaigns:
                 publish_update("campaigns_generated", 
                                {"startup_id": startup.id, "campaigns": [c.to_dict() for c in campaigns]}, 
-                               rooms=[f"user_{startup.user_id}", "admin"])
+                               rooms=[f"user_{startup.user_id}"])
         except Exception as e:
             print(f"Error publishing campaigns_generated event: {e}")
 
@@ -404,7 +404,8 @@ def generate_startup_assets(startup_id, generate_product=True, generate_gtm=True
 
     db.session.commit()
     
-    publish_update("assets_generated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
+    # Notify user only — admin gets the higher-level assets_generation_completed via tasks.py
+    publish_update("assets_generated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}"])
     
     print(f"--- [Generation Task] Successfully generated assets for startup ID: {startup.id} ---")
 
@@ -707,8 +708,8 @@ def generate_campaign_content_calendar(startup_id, campaign_id):
 
         db.session.commit()
         
-        # Publish update
-        publish_update("calendar_generated", {"startup_id": startup.id, "campaign_id": campaign.campaign_id}, rooms=[f"user_{startup.user_id}", "admin"])
+        # Publish update (user only — calendar details are too granular for admin)
+        publish_update("calendar_generated", {"startup_id": startup.id, "campaign_id": campaign.campaign_id}, rooms=[f"user_{startup.user_id}"])
         print(f"--- [Generation Task] Success: Generated {len(items)} items. ---")
 
     except Exception as e:

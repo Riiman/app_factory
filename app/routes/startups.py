@@ -138,7 +138,7 @@ def create_task(startup_id):
         "id": new_task.id,
         "startup_id": startup_id,
         "timestamp": datetime.now().isoformat()
-    }, rooms=[f"user_{startup.user_id}", "admin"])
+    }, rooms=[f"user_{startup.user_id}"])
 
     activity = ActivityLog(
         user_id=user_id,
@@ -208,7 +208,7 @@ def update_task(startup_id, task_id):
     publish_update("task_updated", {
         "startup_id": startup_id, 
         "task": task.to_dict()
-    }, rooms=[f"user_{startup.user_id}", "admin"])
+    }, rooms=[f"user_{startup.user_id}"])
     
     return jsonify({'success': True, 'task': task.to_dict()}), 200
 
@@ -290,7 +290,7 @@ def create_experiment(startup_id):
     db.session.add(new_experiment)
     db.session.commit()
     
-    publish_update("experiment_created", {"startup_id": startup_id, "experiment": new_experiment.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    publish_update("experiment_created", {"startup_id": startup_id, "experiment": new_experiment.to_dict()}, rooms=[f"user_{startup.user_id}"])
     
     activity = ActivityLog(
         user_id=user_id,
@@ -462,7 +462,7 @@ def create_artifact(startup_id):
             publish_update("artifact_created", {
                 "startup_id": startup_id, 
                 "artifact": target_artifact.to_dict()
-            }, rooms=[f"user_{startup.user_id}", "admin"])
+            }, rooms=[f"user_{startup.user_id}"])
             
             # Log Activity
             activity = ActivityLog(
@@ -505,7 +505,7 @@ def create_artifact(startup_id):
     db.session.add(new_artifact)
     db.session.commit()
     
-    publish_update("artifact_created", {"startup_id": startup_id, "artifact": new_artifact.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    publish_update("artifact_created", {"startup_id": startup_id, "artifact": new_artifact.to_dict()}, rooms=[f"user_{startup.user_id}"])
     
     # Log Activity
     activity = ActivityLog(
@@ -623,7 +623,7 @@ def create_founder(startup_id):
     db.session.add(new_founder)
     db.session.commit()
     
-    publish_update("founder_created", {"startup_id": startup_id, "founder": new_founder.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    publish_update("founder_created", {"startup_id": startup_id, "founder": new_founder.to_dict()}, rooms=[f"user_{startup.user_id}"])
     
     # Log Activity
     activity = ActivityLog(
@@ -661,7 +661,7 @@ def update_founder(startup_id, founder_id):
         setattr(founder, key, value)
     db.session.commit()
     
-    publish_update("founder_updated", {"startup_id": startup_id, "founder": founder.to_dict()}, rooms=[f"user_{startup.user_id}", "admin"])
+    publish_update("founder_updated", {"startup_id": startup_id, "founder": founder.to_dict()}, rooms=[f"user_{startup.user_id}"])
     
     return jsonify({'success': True, 'founder': founder.to_dict()}), 200
 
@@ -682,7 +682,7 @@ def delete_founder(startup_id, founder_id):
     db.session.delete(founder)
     db.session.commit()
     
-    publish_update("founder_deleted", {"startup_id": startup_id, "founder_id": founder_id}, rooms=[f"user_{startup.user_id}", "admin"])
+    publish_update("founder_deleted", {"startup_id": startup_id, "founder_id": founder_id}, rooms=[f"user_{startup.user_id}"])
     
     return jsonify({'success': True, 'message': 'Founder deleted successfully.'}), 200
 
@@ -708,7 +708,7 @@ def update_startup_settings(startup_id):
     
     db.session.commit()
     
-    publish_update("startup_settings_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}", "admin"])
+    publish_update("startup_settings_updated", {"startup_id": startup.id}, rooms=[f"user_{startup.user_id}"])
 
     activity = ActivityLog(
         user_id=user_id,
@@ -764,7 +764,7 @@ def generate_assets(startup_id):
     db.session.commit()
 
     from app.tasks import generate_startup_assets_task
-    publish_update("assets_generation_started", {"startup_id": startup.id, "message": "Asset generation started..."}, rooms=[f"user_{startup.user_id}", "admin"])
+    publish_update("assets_generation_started", {"startup_id": startup.id, "message": "Asset generation started..."}, rooms=[f"user_{startup.user_id}"])
     
     generate_startup_assets_task.delay(startup.id, generate_product=generate_product, generate_gtm=generate_gtm)
 

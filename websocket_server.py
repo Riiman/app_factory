@@ -102,7 +102,7 @@ async def dashboard_websocket(
 
     # 2. Determine Rooms (User Specific)
     rooms = [f"user_{user_id}"]
-    if payload.get("role") == "admin":
+    if payload.get("role", "").upper() == "ADMIN":
         rooms.append("admin")
 
     await manager.connect(websocket, rooms)
